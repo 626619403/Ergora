@@ -1,6 +1,7 @@
 """Shipped recipes use the existing immutable definitions and formal contracts."""
 
 import json
+import runpy
 from copy import deepcopy
 from pathlib import Path
 import shutil
@@ -65,47 +66,94 @@ def test_direction_roots_select_scoped_experts_and_freeze_their_complete_method(
                 assert {source['instance'] for source in inherited['sources']} == {path}
 
 
+def _publish_selected_moe(state):
+    example = Path(__file__).resolve().parents[1] / 'examples/composition/optimization-selected-moe'
+    return example, runpy.run_path(str(example / 'publish.py'))['publish'](state, example)
+
+
 def test_selected_moe_revision_freezes_shared_policy_for_every_actual_leaf(tmp_path):
     state = State(tmp_path / 'state')
-    installed = workflows.install_preset(state, 'training-optimization')
-    for name in ('optimization-moe-dispatcher', 'optimization-moe-overlap'):
-        workflows.install_preset(state, name)
-    example = Path(__file__).resolve().parents[1] / 'examples/composition/optimization-selected-moe'
-    definition = json.loads((example / 'root.revision.example.json').read_text())
-    original = workflows.get(state, installed['root']['id'], installed['root']['version'], material=True)
-    revised = workflows.revise(state, installed['root']['id'], installed['root']['version'],
-        installed['root']['digest'], definition, publish=True)
-    assert revised['published']
-    assert workflows.get(state, installed['root']['id'], installed['root']['version'])['digest'] == original['digest']
-    grant = json.loads((example / 'grant.json').read_text())
-    graph = workflows.preview(state.root, definition['id'], definition['version'], grant)
-    frozen = workflows.freeze_manifest(state.root, definition['id'], definition['version'], grant, graph['preview_sha256'])
-    manifest = Path(frozen['path'])
+    example, published = _publish_selected_moe(state)
+    assert _publish_selected_moe(state)[1] == published
+    publication = json.loads((example / 'publication.json').read_bytes())
+    source = publication['policy_source']
+    original = workflows.get(state, source['id'], source['version'], material=True)
+    assert original['digest'] == source['digest']
+    manifest = Path(published['manifest']['path'])
+    graph = workflows.inspect_manifest(manifest, material=True)['composition']
+    task = json.loads((example / 'task.example.json').read_bytes())
+    option = task['composition']
+    delivery = WorkDelivery(graph, option['execution'], option['review_instance'],
+        task['input']['work_units'], preparation=option['preparation'])
+    assert len(delivery.preparation['inventory']['dag'].members) == 5
+    assert len(delivery.preparation['plan']['dag'].members) == 5
+    assert len(delivery.work.members) == len(delivery.review.members) == 4
+    assert all(item['review_requirement'] == 'required' for item in delivery.review.members.values())
+    kernel = 'root/development/preparation/plan/kernel'
+    coordinator = option['preparation']['plan']['coordinator']
+    assert kernel in delivery.preparation['plan']['dag'].predecessors[coordinator]
+    assert set(delivery.preparation['inventory']['dag'].predecessors[option['preparation']['inventory']['coordinator']]) == {
+        'root/development/preparation/inventory/' + name for name in ('flow', 'profile', 'dispatcher', 'overlap')}
     leaves = {item['path']: item for item in graph['instances'] if item['kind'] == 'agent'}
-    expected = {'root/flow/map', 'root/analysis/design', 'root/analysis/profile',
-        'root/kernel/assess', 'root/measurement/review'}
-    expected.update('root/' + topic + '/' + leaf for topic in ('moe-dispatcher', 'moe-overlap')
-                    for leaf in ('specialist', 'design', 'measurement/review'))
-    assert set(leaves) == expected
+    assert len(leaves) == 18
     common = [resource for resource in original['resources'] if resource['kind'] != 'instructions']
-    assert {resource['kind'] for resource in common} == {'skill', 'context'}
-    nodes = {node['id']: node for node in definition['nodes']}
-    assert nodes['kernel']['inputs'] == {'task': {'node': 'planning-results', 'output': 'result'}}
-    assert nodes['measurement']['inputs'] == {'task': {'node': 'measurement-inputs', 'output': 'result'}}
-    assert set(nodes['measurement-inputs']['depends_on']) == {'flow', 'analysis', 'moe-dispatcher', 'moe-overlap', 'kernel'}
+    policy = next(resource for resource in common if resource['id'] == 'ergora-bottleneck-optimization-skill')
+    assert policy['digest'] == '90aaeb7c6041ac0f10fa8eebae48978a504a1cb213fafc0a537078fb8961ea17'
+    for name, details in publication['policy_files'].items():
+        delivery_ref = publication['published']['delivery']
+        current = workflows.get(state, delivery_ref['id'], delivery_ref['version'])
+        assert current['files'][name]['sha256'] == details['sha256']
+        assert current['files'][name]['executable_bits'] == details['executable_bits']
+        assert (Path(current['path']) / name).read_bytes() == (Path(original['path']) / name).read_bytes()
+    grant = json.loads((example / 'grant.json').read_bytes())
+    for cap in (1, 2):
+        narrowed = deepcopy(grant)
+        narrowed['limits']['concurrency'] = cap
+        preview = workflows.preview(state.root, published['root']['id'], published['root']['version'], narrowed)
+        assert len([item for item in preview['instances'] if item['kind'] == 'agent']) == 18
+        assert all(item['concurrency_scopes'][0]['limit'] == cap for item in preview['instances'] if item['kind'] == 'agent')
     shutil.rmtree(state.root / 'agent-definitions')
     shutil.rmtree(state.root / 'workflow-definitions')
     for path, leaf in leaves.items():
         prepared = workflows.prepare_input_from_manifest(manifest, path,
-            b'Original workload and source; caller supplies every complete required predecessor result.',
+            b'Original exact source, workload and complete supplied predecessor results.',
             tmp_path / path.replace('/', '-'), 1000000)
         actual = workflows.inspect_input(Path(prepared['path']), material=True)
         assert actual['composition'] == graph
         for resource in common:
             inherited = next(item for item in leaf['resources'] if resource['id'] == item['id'])
             assert inherited['text'] == resource['text'] and resource['text'] in actual['prompt']
-            assert {source['instance'] for source in inherited['sources']} == {'root'}
-        assert not leaf['permissions']['write'] and not leaf['permissions']['shell'] and not leaf['permissions']['network']
+            assert {source['instance'] for source in inherited['sources']} == {'root/development'}
+        writable = leaf['role'] == 'implementer'
+        assert bool(leaf['permissions']['write']) is writable and leaf['permissions']['shell'] is writable
+        assert not leaf['permissions']['network']
+        if leaf['role'] == 'planner':
+            assert leaf['backend_request']['reasoning_effort'] == leaf['invocation_minimum']['reasoning_effort'] == 'max'
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Budgeted native preparation requires Linux/WSL2')
+def test_selected_moe_example_prepares_exact_eighteen_slots_on_original_native_owner(registration, tmp_path):
+    state, project = registration
+    example, published = _publish_selected_moe(state)
+    definition = json.loads((example / 'task.example.json').read_bytes())
+    definition['starting_sha'] = subprocess.check_output(['git', '-C', project['repo'], 'rev-parse', 'HEAD'], text=True).strip()
+    definition['issue_id'] = '1'
+    definition['composition'].update(manifest=published['manifest']['path'], manifest_digest=published['manifest']['digest'])
+    project['allowed_paths'] = definition['input']['allowed_paths']
+    registrations.register(state, project, 0)
+    prepared = tasks.prepare(state, 'demo', definition, 1)
+    assert prepared['status'] == 'prepared'
+    preview = tasks.preview(state, 'demo', definition, 1)
+    document = preview['files']['task.spec.json']
+    execution_input(document).require_submission()
+    assert document['schema_version'] == 12 and len(document['budget']['slots']) == 18
+    assert document['budget']['instance'] == prepared['budget']
+    assert document['composition']['native']['instance'] == 'root/development'
+    assert document['composition']['preparation']['protocol'] == 'preparation-dag-v1'
+    created = tasks.create(state, 'demo', definition, 1, preview['preview_sha256'],
+                           prepare_sha256=prepared['prepare_sha256'])
+    assert created['status'] == 'published' and created['execution_started_by_operation'] is False
+    assert tasks.show(state, 'demo', definition['task_id'])['admission_envelope'] == document
 
 
 @pytest.mark.parametrize('kind', reference.TEMPLATES)
@@ -133,16 +181,18 @@ def test_bundled_recipe_is_restartable_and_freezes_complete_ancestors(tmp_path, 
         selected = 'root/analysis/design'
     else:
         units = reference.template_details(kind)['input']['work_units']
-        execution = {'protocol': 'work-units-v1', 'instance': 'root/work', 'mode': 'workspace-task-mcp',
-                     'assignments': {unit['id']: 'root/work/' + unit['id'] for unit in units}}
-        preparation = {'protocol': 'preparation-v1', 'inventory': 'root/preparation/inventory',
-            'plan': 'root/preparation/plan', 'mode': 'task-mcp',
+        execution = {'protocol': 'work-units-v1', 'instance': 'root/development/work', 'mode': 'workspace-task-mcp',
+                     'assignments': {unit['id']: 'root/development/work/' + unit['id'] for unit in units}}
+        preparation = {'protocol': 'preparation-dag-v1',
+            **{stage: {'instance': 'root/development/preparation/' + stage,
+                       'coordinator': 'root/development/preparation/' + stage + '/coordinator'}
+               for stage in ('inventory', 'plan')}, 'mode': 'task-mcp',
             'repository_paths': reference.template_details(kind)['input']['allowed_paths']}
-        delivery = WorkDelivery(before, execution, 'root/review', units, preparation=preparation)
+        delivery = WorkDelivery(before, execution, 'root/development/review', units, preparation=preparation)
         assert set(delivery.work.members) == set(execution['assignments'].values())
         assert {item['backend_request']['tool'] for item in leaves if item['role'] == 'reviewer'} == {'codex'}
         assert {item['backend_request']['tool'] for item in leaves if item['role'] == 'implementer'} == {'codex'}
-        selected = 'root/review/structure/review'
+        selected = 'root/development/review/structure/review'
     manifest = workflows.prepare_manifest(state.root, root['id'], root['version'], grant, tmp_path / 'manifest')
     shutil.rmtree(state.root / 'agent-definitions')
     shutil.rmtree(state.root / 'workflow-definitions')
@@ -245,7 +295,8 @@ def test_bundled_review_can_be_selected_without_its_delivery_parent(registration
     project['allowed_paths'] = original['allowed_paths']
     registrations.register(state, project, 0)
     installed = workflows.install_preset(state, preset)
-    root = workflows.get(state, identity, installed['root']['version'])['definition']
+    selected = next(item for item in installed['workflows'] if item['id'] == identity)
+    root = workflows.get(state, identity, selected['version'])['definition']
     manifest = workflows.prepare_manifest(state.root, identity, root['version'],
         {'schema_version': 1, 'permissions': root['permissions'], 'limits': root['limits']}, tmp_path / 'manifest')
     for protocol in ({}, {'review_protocol': 'dag-v1'}):
@@ -310,42 +361,55 @@ def test_development_preset_creates_original_unit_contract_without_starting(regi
         {'schema_version': 1, 'permissions': root['permissions'], 'limits': root['limits']}, tmp_path / 'manifest')
     graph = workflows.inspect_manifest(Path(manifest['path']), material=True)['composition']
     requested = {item['path']: item['backend_request'] for item in graph['instances'] if item['kind'] == 'agent'}
-    assignments = {unit['id']: 'root/work/' + unit['id'] for unit in original['work_units']}
-    definition = {'schema_version': 4, 'task_id': 'preset-task', 'task_type': kind, 'issue_id': '1', 'input': original,
+    assignments = {unit['id']: 'root/development/work/' + unit['id'] for unit in original['work_units']}
+    definition = {'schema_version': 8, 'task_id': 'preset-task', 'task_type': kind, 'issue_id': '1', 'input': original,
         'composition': {'manifest': manifest['path'], 'manifest_digest': manifest['digest'],
-            'review_protocol': 'dag-v1', 'review_instance': 'root/review', 'mode': 'task-mcp',
-            'preparation': {'protocol': 'preparation-v1', 'inventory': 'root/preparation/inventory',
-                            'plan': 'root/preparation/plan', 'mode': 'task-mcp',
+            'review_protocol': 'dag-v1', 'review_instance': 'root/development/review', 'mode': 'task-mcp',
+            'native': {'protocol': 'six-stage-v1', 'instance': 'root/development'},
+            'preparation': {'protocol': 'preparation-dag-v1',
+                            **{stage: {'instance': 'root/development/preparation/' + stage,
+                                       'coordinator': 'root/development/preparation/' + stage + '/coordinator'}
+                               for stage in ('inventory', 'plan')}, 'mode': 'task-mcp',
                             'repository_paths': original['allowed_paths']},
-            'execution': {'protocol': 'work-units-v2', 'instance': 'root/work',
+            'execution': {'protocol': 'work-units-v2', 'instance': 'root/development/work',
                           'mode': 'workspace-task-mcp', 'assignments': assignments},
             'backend_overrides': {path: {'binding': {**requested[path], 'sandbox': 'current-container'},
                                          'reason': 'Explicit trusted-container selection for this acceptance'}
                                   for path in assignments.values()},
-            'diversity': {'policy': 'prefer-distinct', 'reason': 'Use the explicitly pinned model for independent review sessions.'}}}
+            'diversity': {'policy': 'prefer-distinct', 'reason': 'Use the explicitly pinned model for independent review sessions.'}},
+        'budget': {'wall_seconds': 120, 'cleanup_seconds': 5, 'model_invocations': 32}}
+    prepared = tasks.prepare(state, 'demo', definition, 1)
+    assert prepared['status'] == 'prepared'
     preview = tasks.preview(state, 'demo', definition, 1)
     frozen = preview['files']['task.spec.json']
-    assert frozen['schema_version'] == 8
+    assert frozen['schema_version'] == 12
     preparing = frozen['composition']['preparation']['members']
-    assert preparing['root/preparation/plan']['binding'] == {
+    assert preparing['root/development/preparation/plan/coordinator']['binding'] == {
         'tool': 'codex', 'model': 'gpt-6.1-sol', 'reasoning_effort': 'max'}
     task_envelopes.unwrap(frozen)
     incomplete = deepcopy(definition)
     incomplete['schema_version'] = 2
     del incomplete['composition']['preparation']
+    del incomplete['composition']['native']
+    del incomplete['budget']
     with pytest.raises(ValueError, match='exactly all Agent leaves'):
         tasks.preview(state, 'demo', incomplete, 1)
     lowered = deepcopy(definition)
-    lowered['composition']['backend_overrides']['root/preparation/plan'] = {
+    lowered['composition']['backend_overrides']['root/development/preparation/plan/coordinator'] = {
         'binding': {'tool': 'codex', 'model': 'gpt-6.1-sol', 'reasoning_effort': 'high'},
         'reason': 'Rejected lower planner request'}
-    with pytest.raises(ValueError, match='at least max'):
-        tasks.preview(state, 'demo', lowered, 1)
+    lowered['task_id'] = 'lowered-preset-task'
+    rejected = tasks.prepare(state, 'demo', lowered, 1)
+    assert rejected['status'] == 'failed'
+    runtime = Path(project['execution']['state_directory'])
+    failure = runtime / 'ergora/task-creations/lowered-preset-task.prepare-work/process/stderr.txt'
+    assert 'at least max' in failure.read_text()
     assert frozen['legacy_spec']['request']['input'] == original
     assert set(frozen['composition']['diversity']['same_backend_members']) == set(frozen['composition']['members'])
-    created = tasks.create(state, 'demo', definition, 1, preview['preview_sha256'])
+    created = tasks.create(state, 'demo', definition, 1, preview['preview_sha256'],
+                           prepare_sha256=prepared['prepare_sha256'])
     assert created['status'] == 'published' and created['execution_started_by_operation'] is False
-    assert not (Path(project['execution']['state_directory']) / 'requests-composition-v8').exists()
+    assert not (Path(project['execution']['state_directory']) / 'requests-composition-v12').exists()
 
 
 def test_refactoring_preset_freezes_complete_parent_materials(tmp_path):
@@ -422,10 +486,10 @@ def test_refactoring_preset_prepares_the_original_large_change_native_contract(r
     document = preview['files']['task.spec.json']
     selected = execution_input(document)
     selected.require_submission()
-    assert document['schema_version'] == 10
+    assert document['schema_version'] == 12
     assert document['legacy_spec']['request']['task_type'] == 'large-change'
     assert document['legacy_spec']['request']['input'] == definition['input']
-    assert selected.request_root(Path('requests')) == Path('requests-composition-v10')
+    assert selected.request_root(Path('requests')) == Path('requests-composition-v12')
     composition = document['composition']
     assert [item['instance'] for item in composition['native']['lineage']] == ['root', 'root/development']
     assert composition['native']['task_type'] == 'large-change'
@@ -454,4 +518,4 @@ def test_refactoring_preset_prepares_the_original_large_change_native_contract(r
             task_envelopes.unwrap(changed)
     runtime = Path(project['execution']['state_directory'])
     assert not (runtime / 'tasks' / definition['task_id']).exists()
-    assert not (runtime / 'requests-composition-v10').exists()
+    assert not (runtime / 'requests-composition-v12').exists()

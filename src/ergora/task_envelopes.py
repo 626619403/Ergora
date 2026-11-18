@@ -9,7 +9,7 @@ import hashlib
 import json
 
 from .components import validate_agent_minimum
-from .review_dags import ReviewDAG, WorkDelivery, preparation_members, require_root_task
+from .review_dags import ReviewDAG, WorkDelivery, preparation_members, preparation_stages, require_root_task
 from .issue_sources import validate_snapshot
 
 
@@ -21,6 +21,43 @@ DAG_SUBMIT = 'ergora_review_dag_submit'
 DAG_POLL = 'ergora_review_dag_poll'
 WORK_SUBMIT = 'ergora_work_delivery_submit'
 WORK_POLL = 'ergora_work_delivery_poll'
+# Complete current admissions carry the frozen tree for every selected leaf.
+# This transport/storage budget is separate from each model's material budget.
+WIRE_LIMIT = 4 * 1_048_576
+
+
+def wire_limit(document: dict) -> int:
+    return WIRE_LIMIT if (isinstance(document, dict) and document.get('schema_version') == 12
+                          and document.get('kind') == _KIND) else 1_048_576
+
+
+def context_limit(document: dict) -> int:
+    return WIRE_LIMIT if wire_limit(document) == WIRE_LIMIT else 1_000_000
+
+
+def _wire_object(raw: bytes) -> dict:
+    if len(raw) > WIRE_LIMIT:
+        raise ValueError('Complete wire document exceeds 4 MiB')
+    document = json.loads(raw)
+    if not isinstance(document, dict):
+        raise ValueError('Task wire must be a JSON object')
+    return document
+
+
+def decode_admission(raw: bytes) -> dict:
+    """Decode complete admission bytes without widening ordinary JSON limits."""
+    document = _wire_object(raw)
+    if len(raw) > wire_limit(document):
+        raise ValueError('Task admission exceeds its wire byte limit')
+    return document
+
+
+def decode_job(raw: bytes) -> dict:
+    """Decode the bounded job wrapper, including its complete admission."""
+    envelope = _wire_object(raw)
+    if len(raw) > wire_limit(envelope['context'].get('admission', {})):
+        raise ValueError('Job envelope exceeds its wire byte limit')
+    return envelope
 
 
 def identity(value: dict) -> str:
@@ -63,7 +100,12 @@ def manifest_identity(snapshot: dict) -> str:
 
 def wrap(spec: dict, composition: dict, issue_source: dict | None = None, *, budget: dict | None = None,
          context: dict | None = None) -> dict:
-    version = (11 if context is not None else 10 if budget is not None and 'native' in composition else 9 if budget is not None else 8 if 'preparation' in composition else 7 if issue_source is not None else
+    if 'preparation' in composition:
+        if budget is None or 'native' not in composition:
+            raise ValueError('Current preparation requires its native invocation and original budget')
+    elif budget is not None or context is not None or 'native' in composition:
+        raise ValueError('Native budget and selected context require current preparation')
+    version = (12 if 'preparation' in composition else 7 if issue_source is not None else
                6 if composition.get('execution', {}).get('protocol') == 'work-units-v2' else
                5 if 'execution' in composition else 4 if 'review_protocol' in composition else
                3 if any('review_requirement' in member for member in composition['members'].values()) else 2)
@@ -320,6 +362,11 @@ def work_delivery(composition: dict, spec: dict) -> WorkDelivery:
         composition['review_instance'], spec['request']['input']['work_units'], preparation=composition.get('preparation'))
 
 
+def preparation_dags(composition: dict) -> dict:
+    """Use the original frozen manifest for both current preparation groups."""
+    return preparation_members(manifest_graph(composition['manifest']), composition['preparation'])
+
+
 def outcome_reference_state(outcome: dict | None, job: dict) -> str:
     """Compare complete original job references online and in offline packets."""
     if outcome is None:
@@ -349,37 +396,38 @@ def unwrap(document: dict) -> tuple[dict, dict | None]:
     """Return the legacy projection and its explicit admission; v1 stays untouched."""
     if not isinstance(document, dict):
         raise ValueError('Formal task input must be a JSON object')
+    if wire_limit(document) == WIRE_LIMIT and len(json.dumps(document, ensure_ascii=False,
+            separators=(',', ':'), allow_nan=False).encode('utf-8')) > WIRE_LIMIT:
+        raise ValueError('Complete formal admission exceeds 4 MiB')
     if document.get('kind') != _KIND and 'schema_version' not in document:
         return document, None
     fields = {'schema_version', 'kind', 'legacy_spec', 'composition', 'sha256'}
-    if document.get('schema_version') == 7 or (document.get('schema_version') in (8, 9, 10, 11) and 'issue_source' in document):
+    if document.get('schema_version') == 7 or (document.get('schema_version') == 12 and 'issue_source' in document):
         fields.add('issue_source')
-    if document.get('schema_version') in (9, 10, 11):
+    if document.get('schema_version') == 12:
         fields.add('budget')
-    if document.get('schema_version') == 11:
+    if document.get('schema_version') == 12 and 'context' in document:
         fields.add('context')
     if (set(document) != fields
-            or type(document['schema_version']) is not int or document['schema_version'] not in (2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
+            or type(document['schema_version']) is not int or document['schema_version'] not in (2, 3, 4, 5, 6, 7, 12)
             or document['kind'] != _KIND):
         raise ValueError('Unsupported formal task admission envelope')
     if document['sha256'] != identity({key: value for key, value in document.items() if key != 'sha256'}):
         raise ValueError('Formal task admission envelope digest mismatch')
     composition = document['composition']
     fields = {'manifest', 'root', 'preview_sha256', 'review_instance', 'members', 'diversity'}
-    if document['schema_version'] in (4, 5, 6, 7, 8, 9, 10, 11):
+    if document['schema_version'] in (4, 5, 6, 7, 12):
         fields.add('review_protocol')
-    if document['schema_version'] in (5, 6, 7, 8, 9, 10, 11):
+    if document['schema_version'] in (5, 6, 7, 12):
         fields.add('execution')
-    if document['schema_version'] in (8, 9, 10, 11):
-        fields.add('preparation')
-    if document['schema_version'] in (10, 11):
-        fields.add('native')
+    if document['schema_version'] == 12:
+        fields.update(('preparation', 'native'))
     if (not isinstance(composition, dict) or set(composition) != fields
-            or (document['schema_version'] in (4, 5, 6, 7, 8, 9, 10, 11) and composition['review_protocol'] != 'dag-v1')):
+            or (document['schema_version'] in (4, 5, 6, 7, 12) and composition['review_protocol'] != 'dag-v1')):
         raise ValueError('Invalid formal composition selection')
     manifest_identity(composition['manifest'])
     graph = manifest_graph(composition['manifest'])
-    requirements = document['schema_version'] in (3, 4, 5, 6, 7, 8, 9, 10, 11)
+    requirements = document['schema_version'] in (3, 4, 5, 6, 7, 12)
     if document['schema_version'] == 3 and graph['schema_version'] != 2:
         raise ValueError('Formal v3 admission requires a versioned review requirements graph')
     if graph['root'] != composition['root'] or graph['preview_sha256'] != composition['preview_sha256']:
@@ -416,16 +464,16 @@ def unwrap(document: dict) -> tuple[dict, dict | None]:
             raise ValueError('Formal composition requested binding differs from its frozen graph')
         _policy(member['policy'], member['mode'])
     diversity = composition['diversity']
-    if document['schema_version'] in (8, 9, 10, 11):
+    if document['schema_version'] == 12:
         preparation = composition['preparation']
         if (not isinstance(preparation, dict)
                 or set(preparation) != {'protocol', 'inventory', 'plan', 'mode', 'repository_paths', 'members'}
-                or preparation['protocol'] != 'preparation-v1'
+                or preparation['protocol'] != 'preparation-dag-v1'
                 or preparation['mode'] not in ('text-only', 'task-mcp')
-                or not isinstance(preparation['members'], dict)
-                or any(not isinstance(preparation[stage], str) for stage in ('inventory', 'plan'))):
+                or not isinstance(preparation['members'], dict)):
             raise ValueError('Invalid formal preparation selection')
-        expected = {leaf['path']: leaf for leaf in preparation_members(graph, preparation).values()}
+        expected = {path: leaf for group in preparation_members(graph, preparation).values()
+                    for path, leaf in group['dag'].members.items()}
         if preparation['members'].keys() != expected.keys():
             raise ValueError('Frozen preparation members differ from the selected stage leaves')
         for path, member in preparation['members'].items():
@@ -439,10 +487,10 @@ def unwrap(document: dict) -> tuple[dict, dict | None]:
             _binding(member['requested_binding'])
             validate_agent_minimum(member['binding'], expected[path].get('invocation_minimum'))
             _policy(member['policy'], member['mode'])
-    if document['schema_version'] in (5, 6, 7, 8, 9, 10, 11):
+    if document['schema_version'] in (5, 6, 7, 12):
         execution = composition['execution']
         if (not isinstance(execution, dict) or set(execution) != {'protocol', 'instance', 'assignments', 'mode', 'members'}
-                or execution['protocol'] != ('work-units-v2' if document['schema_version'] in (6, 7, 8, 9, 10, 11) else 'work-units-v1')
+                or execution['protocol'] != ('work-units-v2' if document['schema_version'] in (6, 7, 12) else 'work-units-v1')
                 or execution['mode'] != 'workspace-task-mcp'
                 or not isinstance(execution['assignments'], dict) or not isinstance(execution['members'], dict)):
             raise ValueError('Invalid formal work execution selection')
@@ -488,9 +536,9 @@ def unwrap(document: dict) -> tuple[dict, dict | None]:
             or (same and diversity['policy'] == 'require-distinct')
             or (same and diversity['policy'] == 'prefer-distinct' and not diversity.get('reason'))):
         raise ValueError('Formal composition diversity differs from its selected member backends')
-    if document['schema_version'] in (4, 5, 6, 7, 8, 9, 10, 11):
+    if document['schema_version'] in (4, 5, 6, 7, 12):
         review_members(composition)
-    if document['schema_version'] in (8, 9, 10, 11):
+    if document['schema_version'] == 12:
         # SKILL.md and ordinary resources are already complete inline text.
         # Other Skill files require the fixed MCP resource reader; naming an
         # attachment in a prompt is not byte delivery in text-only mode.
@@ -514,7 +562,7 @@ def unwrap(document: dict) -> tuple[dict, dict | None]:
         if document['legacy_spec']['request']['tracker'] != {
                 'kind': source['provider'], 'project': source['project'], 'issue_id': source['issue_id']}:
             raise ValueError('Formal issue source differs from its original native tracker')
-    if document['schema_version'] in (10, 11):
+    if document['schema_version'] == 12:
         from .native_six_stage import invocation
 
         native = composition['native']
@@ -523,11 +571,11 @@ def unwrap(document: dict) -> tuple[dict, dict | None]:
         selection = {**composition, 'native': {key: native[key] for key in ('protocol', 'instance')}}
         if native != invocation(graph, selection, document['legacy_spec']['request']['task_type']):
             raise ValueError('Native six-stage invocation differs from its frozen instance and ancestors')
-    if document['schema_version'] in (9, 10, 11):
+    if document['schema_version'] == 12:
         from .reference_budget import validate_contract
 
         validate_contract(document['budget'], composition, document['legacy_spec'])
-    if document['schema_version'] == 11:
+    if 'context' in document:
         selected_context(document)
     return document['legacy_spec'], composition
 
@@ -538,17 +586,35 @@ def issue_inventory_context(document: dict, expected_sha: str | None) -> dict:
     Publication and v7 execution share these bytes; neither imports the other's
     native runtime. Later dynamic stages retain their original material limits.
     """
+    return _initial_context(document, expected_sha, 'inventory')
+
+
+def initial_preparation_contexts(document: dict, expected_sha: str) -> list[dict]:
+    """Check every known initial leaf frame before original task publication."""
+    preparation = document['composition']['preparation']
+    group = preparation_dags(document['composition'])['inventory']
+    stages = {path: stage for stage, path in preparation_stages(preparation).items()}
+    return [_initial_context(document, expected_sha, stages[path], {
+                'schema_version': 1, 'kind': 'formal-preparation-ports', 'member': path,
+                'ports': group['dag'].input_ports(path), 'producers': {}})
+            for path in group['dag'].members if not group['dag'].predecessors[path]]
+
+
+def _initial_context(document: dict, expected_sha: str | None, stage: str, ports: dict | None = None) -> dict:
     spec = document['legacy_spec']
     request = spec['request']
     context = {'task_id': request['task_id'], 'request_sha256': spec['request_sha256'],
-        'profile_sha256': spec['profile_sha256'], 'spec': spec, 'stage': 'inventory',
+        'profile_sha256': spec['profile_sha256'], 'spec': spec, 'stage': stage,
         'expected_candidate_sha': expected_sha, 'unit': None, 'dependencies': {},
         'author_ids': [], 'author_sessions': [],
-        'job_id': request['task_id'] + '-' + identity({'stage': 'inventory'})[:24],
+        'job_id': request['task_id'] + '-' + identity({'stage': stage})[:24],
         'admission': document}
+    if ports is not None:
+        context['preparation_ports'] = ports
     if len(json.dumps(context, ensure_ascii=False, sort_keys=True, separators=(',', ':'),
-                      allow_nan=False).encode('utf-8')) > 1_000_000:
-        raise ValueError('Complete issue inventory context exceeds 1,000,000 bytes; split the task')
+                      allow_nan=False).encode('utf-8')) > context_limit(document):
+        name = 'issue inventory' if ports is None else 'initial preparation'
+        raise ValueError('Complete ' + name + ' context exceeds its wire byte limit; split the task')
     return context
 
 
@@ -569,7 +635,7 @@ def summary(document: dict) -> dict:
             **({'native': composition['native']} if 'native' in composition else {}),
             'members': composition['members'], 'diversity': composition['diversity'], 'runtime_supported': supported,
             **({'budget': document['budget']}
-               if document['schema_version'] in (9, 10, 11) else {}),
+               if 'budget' in document else {}),
             **({'context': document['context']} if 'context' in document else {}),
             **({'issue_source': {'snapshot_sha256': document['issue_source']['sha256'],
                 'source': document['issue_source']['payload']['observation']['source'],

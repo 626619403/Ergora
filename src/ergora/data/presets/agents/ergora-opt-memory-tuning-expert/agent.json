@@ -1,10 +1,11 @@
 {
   "schema_version": 1,
   "id": "ergora-opt-memory-tuning-expert",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Readonly memory tuning specialist: Attribute the hottest-rank peak to model/optimizer state, activations, allocator slack and graph pools before choosing a capacity intervention.",
   "roles": [
-    "performance-analyst"
+    "performance-analyst",
+    "planner"
   ],
   "specialties": [
     "memory-tuning",
@@ -13,14 +14,14 @@
   "backend": {
     "tool": "codex",
     "model": "gpt-6.1-sol",
-    "reasoning_effort": "high"
+    "reasoning_effort": "max"
   },
   "resources": [
     {
       "id": "ergora-opt-memory-tuning-expert-instructions",
       "kind": "instructions",
       "path": "instructions.md",
-      "sha256": "09feb33b2df04f5171a5f815cdc2af7745429f4ccaa484976879b29673fb35be"
+      "sha256": "1e08b8cc417a3310624ff238ddb5928f6da1ddeb43c813717f7fa9e97b9e50ee"
     },
     {
       "id": "ergora-opt-memory-tuning-proposal-context",
@@ -31,6 +32,6 @@
   ],
   "invocation_minimum": {
     "model": "gpt-6.1-sol",
-    "reasoning_effort": "high"
+    "reasoning_effort": "max"
   }
 }

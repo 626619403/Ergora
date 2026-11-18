@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "id": "native-development",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "An ordinary parent forwards a single six-stage development instance to the original task owner.",
   "resources": [
     {
@@ -43,8 +43,8 @@
       "ref": {
         "kind": "workflow",
         "id": "prepared-delivery",
-        "version": "1.0.0",
-        "digest": "ac4ee0a5bdd48095df4a07b973e0b7d2bc0200816d44eb7feab0d85cbbca3cd5"
+        "version": "1.1.0",
+        "digest": "2769bb7ad15b9507c882c64d8af7aa31120cac6415bf850f0ce7ffd48a464311"
       },
       "depends_on": [],
       "inputs": {

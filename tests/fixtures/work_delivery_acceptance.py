@@ -62,7 +62,7 @@ def prepare(root, state, task_input, kind, examples, mode):
     if mode.startswith('composition-work-materials-'):
         from full_stage_acceptance import prepare_graph
 
-        identity, version = prepare_graph(root, state, examples)
+        identity, version = prepare_graph(root, state, examples, concurrency=1 if mode.endswith('-serial') else 2)
     else:
         identity = 'specialist-delivery'
     manifest = workflows.prepare_manifest(state.root, identity, version, grant, root / 'manifest')
@@ -108,41 +108,31 @@ def prepare(root, state, task_input, kind, examples, mode):
             saved = issues.capture(state, 'demo', '1', revision + 1)['snapshot']
         definition.update(schema_version=3, source={'snapshot_sha256': saved['sha256']})
     if mode.startswith('composition-work-materials-'):
-        definition['schema_version'] = 4
-        definition['composition']['preparation'] = {'protocol': 'preparation-v1',
-            'inventory': 'root/preparation/inventory', 'plan': 'root/preparation/plan',
-            'mode': 'task-mcp', 'repository_paths': ['src']}
+        definition.update(schema_version=8, budget={'wall_seconds': 300, 'cleanup_seconds': 15, 'model_invocations': 11})
+        option = definition['composition']
+        def nested(path):
+            return 'root/development/' + path.removeprefix('root/')
+        option['review_instance'] = nested(option['review_instance'])
+        option['execution']['instance'] = nested(option['execution']['instance'])
+        option['execution']['assignments'] = {key: nested(path) for key, path in option['execution']['assignments'].items()}
+        option['backend_overrides'] = {nested(path): value for path, value in option['backend_overrides'].items()}
+        option.update(native={'protocol': 'six-stage-v1', 'instance': 'root/development'},
+            preparation={'protocol': 'preparation-dag-v1', 'mode': 'task-mcp', 'repository_paths': ['src'],
+                **{stage: {'instance': 'root/development/preparation/' + stage,
+                           'coordinator': 'root/development/preparation/' + stage + '/coordinator'}
+                   for stage in ('inventory', 'plan')}})
         model = ('fixture-unread-inventory' if mode.endswith('-unread') else
                  'fixture-capacity-inventory' if mode.endswith('-capacity') else 'fixture-complete-inventory')
-        definition['composition']['backend_overrides']['root/preparation/inventory'] = {
-            'binding': {'tool': 'codex', 'model': model}, 'reason': 'Deterministic complete-material protocol fixture'}
-        if mode.endswith(('-budget', '-context')):
-            definition.update(schema_version=5, budget={'wall_seconds': 180, 'cleanup_seconds': 15, 'model_invocations': 7})
+        for name in ('expert-a', 'coordinator'):
+            option['backend_overrides']['root/development/preparation/inventory/' + name] = {
+                'binding': {'tool': 'codex', 'model': model}, 'reason': 'Deterministic complete-material protocol fixture'}
+        option['backend_overrides']['root/development/preparation/plan/expert-a'] = {
+            'binding': {'tool': 'codex', 'model': 'fixture-complete-plan'},
+            'reason': 'Complete planner original reaches the trusted plan and final measurement materials'}
         if mode.endswith('-context'):
-            from pathlib import Path
-            import shutil
+            option['mode'] = 'task-mcp'
             from ergora import memory, skill_assets
 
-            parent = root / 'native-context-parent'
-            shutil.copytree(examples / 'composition/native-development', parent)
-            document = json.loads((parent / 'workflow.json').read_bytes())
-            child = workflows.get(state, identity, version)
-            document['nodes'][0]['ref'].update(id=identity, version=version, digest=child['digest'])
-            (parent / 'workflow.json').write_text(json.dumps(document))
-            workflows.import_bundle(state, parent)
-            manifest = workflows.prepare_manifest(state.root, document['id'], document['version'], grant, root / 'native-manifest')
-            option = definition['composition']
-            def nested(path):
-                return 'root/development/' + path.removeprefix('root/')
-            option['review_instance'] = nested(option['review_instance'])
-            option['mode'] = 'task-mcp'
-            option['execution']['instance'] = nested(option['execution']['instance'])
-            option['execution']['assignments'] = {key: nested(path) for key, path in option['execution']['assignments'].items()}
-            for stage in ('inventory', 'plan'):
-                option['preparation'][stage] = nested(option['preparation'][stage])
-            option['backend_overrides'] = {nested(path): value for path, value in option['backend_overrides'].items()}
-            option.update(manifest=manifest['path'], manifest_digest=manifest['digest'],
-                          native={'protocol': 'six-stage-v1', 'instance': 'root/development'})
             record = memory.save(state, 'demo', 'Frozen explicit context survives canonical deletion.',
                                  {'uri': 'repo://selected-memory', 'revision': 'fixture-v1'})
             source = root / 'selected-context-evidence'
@@ -150,9 +140,9 @@ def prepare(root, state, task_input, kind, examples, mode):
             (source / 'SKILL.md').write_text('---\nname: selected-context-evidence\ndescription: Selected full material fixture\n---\nRead references/complete.md completely.\n')
             (source / 'references/complete.md').write_bytes(b'Explicit selected Skill attachment.\n' * 2100)
             skill = skill_assets.import_bundle(state, 'demo', source)
-            definition.update(schema_version=7, context={'root_version': '1.0.1',
+            definition['context'] = {'root_version': '1.1.1',
                 'memories': [{'id': record['id'], 'revision': record['revision']}],
-                'skills': [{'name': skill['name'], 'digest': skill['digest'], 'revision': 1}]})
+                'skills': [{'name': skill['name'], 'digest': skill['digest'], 'revision': 1}]}
     return definition
 
 
@@ -323,7 +313,7 @@ async def exercise(root, case, app, activities, installation, state, runtime, re
             assert await asyncio.to_thread(process, path, state.root) == receipt
         else:
             assert Executor(read(path), state.root).execute() == receipt
-    assert len(agent_runs.runs(state, 'demo')) == before == len(work_stages) + 3 + (2 if case.startswith('materials') else 0)
+    assert len(agent_runs.runs(state, 'demo')) == before == len(work_stages) + 3 + (6 if case.startswith('materials') else 0)
     assert len({receipt['actor']['session_id'] for receipt in records.values()}) == len(records)
     return {'case': case, 'original_owners': True, 'candidate': candidate, 'work_calls': len(work_stages), 'review_calls': 3,
             'complete_sources': True, 'original_call_recovery': True}

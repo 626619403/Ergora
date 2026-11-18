@@ -1,10 +1,11 @@
 {
   "schema_version": 1,
   "id": "ergora-opt-tp-dp-overlap-expert",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Readonly tp dp overlap specialist: Trace actual TP/DP/PP dependencies, exposed waits and contention; distinguish configured overlap from effective overlap.",
   "roles": [
-    "performance-analyst"
+    "performance-analyst",
+    "planner"
   ],
   "specialties": [
     "tp-dp-overlap",
@@ -13,14 +14,14 @@
   "backend": {
     "tool": "codex",
     "model": "gpt-6.1-sol",
-    "reasoning_effort": "high"
+    "reasoning_effort": "max"
   },
   "resources": [
     {
       "id": "ergora-opt-tp-dp-overlap-expert-instructions",
       "kind": "instructions",
       "path": "instructions.md",
-      "sha256": "c7a0d3a650c88570764603165d223e9a305c11d3b328c4e1ce858e47d216fba6"
+      "sha256": "f01210f0423551c0e7d3dd8b702b9d0230d92f8e2f4b3a8ff5c52553a7fe425b"
     },
     {
       "id": "ergora-opt-tp-dp-overlap-proposal-context",
@@ -31,6 +32,6 @@
   ],
   "invocation_minimum": {
     "model": "gpt-6.1-sol",
-    "reasoning_effort": "high"
+    "reasoning_effort": "max"
   }
 }

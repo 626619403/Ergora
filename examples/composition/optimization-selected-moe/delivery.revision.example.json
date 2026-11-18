@@ -1,0 +1,108 @@
+{
+  "description": "Formal six-stage MoE development; shared policy is the complete resource snapshot of ergora-training-proposal@4.2.1 digest 107243b88573de49c13e3fcc567d270638f97628be5fcdccc1d1bf84d31a4191.",
+  "id": "ergora-large-change-delivery",
+  "inputs": [
+    "task"
+  ],
+  "limits": {
+    "concurrency": 4,
+    "depth": 8,
+    "instances": 128,
+    "material_bytes": 1000000
+  },
+  "nodes": [
+    {
+      "depends_on": [],
+      "id": "preparation",
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "ref": {
+        "digest": "9efcb006857c4c577dc2a1ae8fe1d5740bf81678b4981b186029353d133c5138",
+        "id": "ergora-development-preparation",
+        "kind": "workflow",
+        "version": "1.2.0"
+      }
+    },
+    {
+      "depends_on": [],
+      "id": "work",
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "ref": {
+        "digest": "6cae44a23244810993e5c75eb7ffe78216be49d55ff0757ab01ff741d811053a",
+        "id": "ergora-large-change-work",
+        "kind": "workflow",
+        "version": "1.0.1"
+      }
+    },
+    {
+      "depends_on": [
+        "work"
+      ],
+      "id": "review",
+      "inputs": {
+        "task": {
+          "node": "work",
+          "output": "result"
+        }
+      },
+      "ref": {
+        "digest": "8c6e0210e25d247d27547754cfc8ad5e5d76cc275dff9fa75abd93f3d050fff9",
+        "id": "ergora-delivery-review",
+        "kind": "workflow",
+        "version": "1.1.0"
+      }
+    }
+  ],
+  "outputs": {
+    "result": {
+      "node": "review",
+      "output": "result"
+    }
+  },
+  "permissions": {
+    "network": [],
+    "read": [
+      "workspace",
+      "definitions"
+    ],
+    "shell": true,
+    "write": [
+      "workspace"
+    ]
+  },
+  "resources": [
+    {
+      "id": "ergora-large-change-delivery-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "a3131ea41fd90dd1d854a72e7373cd5fbdcec4df5a584f360cd38697915aebe6"
+    },
+    {
+      "digest": "90aaeb7c6041ac0f10fa8eebae48978a504a1cb213fafc0a537078fb8961ea17",
+      "id": "ergora-bottleneck-optimization-skill",
+      "kind": "skill",
+      "path": "skills/ergora-bottleneck-optimization"
+    },
+    {
+      "digest": "4a04f0512feaf8d6067409bddb233b06764193d616c632fe9f3f53166027b805",
+      "id": "ergora-library-environment-optimization-skill",
+      "kind": "skill",
+      "path": "skills/ergora-library-environment-optimization"
+    },
+    {
+      "id": "ergora-environment-change-record",
+      "kind": "context",
+      "path": "context/environment-change-record.md",
+      "sha256": "575a61cbdf22e0192ebac3db22641356f4a39901707a67eb648356539c587eaf"
+    }
+  ],
+  "schema_version": 2,
+  "version": "1.2.1"
+}

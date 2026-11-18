@@ -1,0 +1,110 @@
+{
+  "description": "Gather complementary reviews of the same exact verified candidate.",
+  "id": "ergora-delivery-review",
+  "inputs": [
+    "task"
+  ],
+  "limits": {
+    "concurrency": 4,
+    "depth": 8,
+    "instances": 128,
+    "material_bytes": 1000000
+  },
+  "nodes": [
+    {
+      "depends_on": [],
+      "id": "structure",
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "ref": {
+        "digest": "934f709f3f4d27e0765729fb70a888778f7fe87b47e913c18ecc62f9ee6bc3c5",
+        "id": "ergora-structure-review",
+        "kind": "workflow",
+        "version": "1.0.1"
+      }
+    },
+    {
+      "depends_on": [],
+      "id": "correctness",
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "ref": {
+        "digest": "a06d27f18ec66260d0586b4eeee11dc9895a5015dc18cf86d8d856fed7522cd3",
+        "id": "ergora-correctness-review",
+        "kind": "workflow",
+        "version": "1.0.1"
+      }
+    },
+    {
+      "depends_on": [],
+      "id": "test-value",
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "ref": {
+        "digest": "3a40362d4d26ef91de6cf85ceb877df01fc7ab3d2456c55cd025e42b0e3e3529",
+        "id": "ergora-test-value-review",
+        "kind": "workflow",
+        "version": "1.0.1"
+      }
+    },
+    {
+      "depends_on": [],
+      "id": "measurement",
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "ref": {
+        "digest": "d8b8e8abb2dd462b32d78d0b878c15f9c702448b386162426c28f4ff871ab914",
+        "id": "ergora-measurement-review",
+        "kind": "workflow",
+        "version": "2.0.1"
+      }
+    },
+    {
+      "depends_on": [
+        "structure",
+        "correctness",
+        "test-value",
+        "measurement"
+      ],
+      "id": "gather",
+      "join": "all"
+    }
+  ],
+  "outputs": {
+    "result": {
+      "node": "gather",
+      "output": "result"
+    }
+  },
+  "permissions": {
+    "network": [],
+    "read": [
+      "workspace",
+      "definitions"
+    ],
+    "shell": false,
+    "write": []
+  },
+  "resources": [
+    {
+      "id": "ergora-delivery-review-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "83e867dadc6b374bd3791bcf79c87462375fff58a43b73a569d6f7b3c954e377"
+    }
+  ],
+  "schema_version": 2,
+  "version": "1.1.0"
+}

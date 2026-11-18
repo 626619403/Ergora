@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "id": "ergora-opt-activation-recompute-proposal",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Limited readonly activation recompute proposal; complete optimization requires a shared training-proposal ancestor.",
   "resources": [
     {
@@ -41,8 +41,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-opt-activation-recompute-expert",
-        "version": "1.0.0",
-        "digest": "dda34a5c3312f9e7ac6355ca141dc5edcd505d76397c69f6563fc2227e3de619"
+        "version": "1.1.0",
+        "digest": "67cd569849f785421d68aa207f8579d7a0a83b2a944f107a126a31bef1df8ecb"
       },
       "role": "performance-analyst",
       "depends_on": [],
@@ -66,8 +66,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-experiment-designer",
-        "version": "2.0.1",
-        "digest": "cb2f8919ee58521eaf74e4c813cb81cbe570380decb7e9433171dca3429bc1df"
+        "version": "2.1.0",
+        "digest": "3b0ab4852241f20d62c8562129238bee89364f959c3e8d6055ce512fbfed5c1f"
       },
       "role": "experiment-planner",
       "depends_on": [],

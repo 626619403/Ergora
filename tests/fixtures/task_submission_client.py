@@ -21,7 +21,7 @@ from ergora.reference_inputs import execution_input
 payload = json.load(sys.stdin)
 sys.stdin = io.StringIO(json.dumps(payload))
 scenario = os.environ.get('ERGORA_TEST_SUBMISSION_SCENARIO', 'normal')
-selected_input = core.task_spec(payload['task_id']).get('schema_version') in (7, 8, 9, 10)
+selected_input = core.task_spec(payload['task_id']).get('schema_version') in (7, 12)
 fixture = Path(payload['project']['registration']['definition']['execution']['state_directory']) / 'sdk-fixture'
 fixture.mkdir(exist_ok=True)
 server = fixture / 'server.json'
@@ -35,7 +35,7 @@ def log(event):
 def report():
     log('doctor')
     if selected_input:
-        raise AssertionError('Source admission must not call the broad fixture doctor')
+        raise AssertionError('Selected admission must not call the broad fixture doctor')
     return {'ready_for_real_tasks': scenario != 'doctor-blocked'}
 
 
@@ -44,8 +44,8 @@ if selected_input:
     from agent_platform.sandbox import Sandbox
     from ergora import processes, task_mcp
 
-    # Only the OS-dependent probe is controlled. The v7 report, real settings,
-    # selected backend/config/program checks and original admission all run.
+    # Only the OS-dependent probe is controlled. Source/current preparation
+    # reports, real settings, selected programs and original admission all run.
     Sandbox.probe = lambda self: {'available': scenario != 'boundary-blocked',
         'backend': 'current-container', 'scope': 'SDK fixture probe, not host isolation acceptance'}
     if scenario == 'mcp-missing':

@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "id": "ergora-opt-model-verification-proposal",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Limited readonly model verification proposal; complete optimization requires a shared training-proposal ancestor.",
   "resources": [
     {
@@ -41,8 +41,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-opt-model-verification-expert",
-        "version": "1.0.0",
-        "digest": "660022c82ec9ce8c736335c30e1835baf282b1e4f6146c8127b618eaf0171cf0"
+        "version": "1.1.0",
+        "digest": "76ff4468977e548bd9529343f46481910e15eccb48e32e35ef2f356675a8099b"
       },
       "role": "performance-analyst",
       "depends_on": [],
@@ -66,8 +66,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-experiment-designer",
-        "version": "2.0.1",
-        "digest": "cb2f8919ee58521eaf74e4c813cb81cbe570380decb7e9433171dca3429bc1df"
+        "version": "2.1.0",
+        "digest": "3b0ab4852241f20d62c8562129238bee89364f959c3e8d6055ce512fbfed5c1f"
       },
       "role": "experiment-planner",
       "depends_on": [],

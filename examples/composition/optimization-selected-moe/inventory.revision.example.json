@@ -1,0 +1,185 @@
+{
+  "description": "Readonly source, profile and MoE evidence specialists before the sole canonical inventory coordinator.",
+  "id": "ergora-optimization-inventory",
+  "inputs": [
+    "task"
+  ],
+  "limits": {
+    "concurrency": 4,
+    "depth": 8,
+    "instances": 128,
+    "material_bytes": 1000000
+  },
+  "nodes": [
+    {
+      "depends_on": [],
+      "id": "flow",
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "permissions": {
+        "network": [],
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "shell": false,
+        "write": []
+      },
+      "ref": {
+        "digest": "05c4a19a35bfae8c066e2939bb5526afc900715f63a5c98d87fd21ec945d56a4",
+        "id": "ergora-training-flow-analyst",
+        "kind": "agent",
+        "version": "1.1.0"
+      },
+      "role": "inspector"
+    },
+    {
+      "depends_on": [],
+      "id": "profile",
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "permissions": {
+        "network": [],
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "shell": false,
+        "write": []
+      },
+      "ref": {
+        "digest": "9c52fc7be53cc051ee8d9066a5a6b114e685e441e3bc8991aef01e6a44001699",
+        "id": "ergora-performance-analyst",
+        "kind": "agent",
+        "version": "2.2.0"
+      },
+      "role": "inspector"
+    },
+    {
+      "depends_on": [],
+      "id": "dispatcher",
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "permissions": {
+        "network": [],
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "shell": false,
+        "write": []
+      },
+      "ref": {
+        "digest": "a1794054d147dfc65ee3d25908a07ca0cb77ea250c86c125fe90315fdca97d89",
+        "id": "ergora-opt-moe-dispatcher-expert",
+        "kind": "agent",
+        "version": "1.1.0"
+      },
+      "role": "inspector"
+    },
+    {
+      "depends_on": [],
+      "id": "overlap",
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "permissions": {
+        "network": [],
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "shell": false,
+        "write": []
+      },
+      "ref": {
+        "digest": "2e17ee7a519df875115fa8caf8f509a9ccff15f9513b4dec2c99657760bdd6ca",
+        "id": "ergora-opt-moe-overlap-expert",
+        "kind": "agent",
+        "version": "1.1.0"
+      },
+      "role": "inspector"
+    },
+    {
+      "depends_on": [
+        "flow",
+        "profile",
+        "dispatcher",
+        "overlap"
+      ],
+      "id": "analyses",
+      "join": "all"
+    },
+    {
+      "depends_on": [
+        "analyses"
+      ],
+      "id": "coordinator",
+      "inputs": {
+        "task": {
+          "node": "analyses",
+          "output": "result"
+        }
+      },
+      "permissions": {
+        "network": [],
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "shell": false,
+        "write": []
+      },
+      "ref": {
+        "digest": "bcb90daaffbd8251c21e1aca5614eeb9aac563dba6da6485203e838ea0f7960c",
+        "id": "ergora-development-preparer",
+        "kind": "agent",
+        "version": "1.0.1"
+      },
+      "role": "inspector"
+    },
+    {
+      "depends_on": [
+        "coordinator"
+      ],
+      "id": "done",
+      "join": "all"
+    }
+  ],
+  "outputs": {
+    "result": {
+      "node": "done",
+      "output": "result"
+    }
+  },
+  "permissions": {
+    "network": [],
+    "read": [
+      "workspace",
+      "definitions"
+    ],
+    "shell": false,
+    "write": []
+  },
+  "resources": [
+    {
+      "id": "ergora-optimization-inventory-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "8caf20b3d71042124b02cdb557836c3053e12e721b7f3cf380ef66fe95a81aef"
+    }
+  ],
+  "schema_version": 2,
+  "version": "1.0.0"
+}

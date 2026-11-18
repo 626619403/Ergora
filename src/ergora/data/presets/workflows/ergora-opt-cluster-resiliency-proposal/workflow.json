@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "id": "ergora-opt-cluster-resiliency-proposal",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Limited readonly cluster resiliency proposal; complete optimization requires a shared training-proposal ancestor.",
   "resources": [
     {
@@ -41,8 +41,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-opt-cluster-resiliency-expert",
-        "version": "1.0.0",
-        "digest": "4096bbd2968d44121284840eadec69d9e1b0b055a4aa7b86f5fea9bde124b462"
+        "version": "1.1.0",
+        "digest": "335af59a814a731a1738671d7521b172a60451ffa4042c6746525247024d284b"
       },
       "role": "performance-analyst",
       "depends_on": [],
@@ -66,8 +66,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-experiment-designer",
-        "version": "2.0.1",
-        "digest": "cb2f8919ee58521eaf74e4c813cb81cbe570380decb7e9433171dca3429bc1df"
+        "version": "2.1.0",
+        "digest": "3b0ab4852241f20d62c8562129238bee89364f959c3e8d6055ce512fbfed5c1f"
       },
       "role": "experiment-planner",
       "depends_on": [],

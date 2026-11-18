@@ -1,10 +1,11 @@
 {
   "schema_version": 1,
   "id": "ergora-opt-cpu-offloading-expert",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Readonly cpu offloading specialist: Distinguish layer, fine-grained activation and optimizer offload; account for host/pinned/NUMA capacity and exposed transfer or CPU work.",
   "roles": [
-    "performance-analyst"
+    "performance-analyst",
+    "planner"
   ],
   "specialties": [
     "cpu-offloading",
@@ -13,14 +14,14 @@
   "backend": {
     "tool": "codex",
     "model": "gpt-6.1-sol",
-    "reasoning_effort": "high"
+    "reasoning_effort": "max"
   },
   "resources": [
     {
       "id": "ergora-opt-cpu-offloading-expert-instructions",
       "kind": "instructions",
       "path": "instructions.md",
-      "sha256": "7fe3a3229ce26d5071a62cc1486246b15ea34b42b52f0d4f9f401dba62604b5d"
+      "sha256": "4cce510ebab62ef96be6ea4ccf901df1feea7b2fd6fb725eeb9e3d37025b55c4"
     },
     {
       "id": "ergora-opt-cpu-offloading-proposal-context",
@@ -31,6 +32,6 @@
   ],
   "invocation_minimum": {
     "model": "gpt-6.1-sol",
-    "reasoning_effort": "high"
+    "reasoning_effort": "max"
   }
 }

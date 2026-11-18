@@ -14,7 +14,7 @@
   "properties": {
     "schema_version": {
       "type": "integer",
-      "const": 5
+      "const": 8
     },
     "task_id": {
       "type": "string",
@@ -48,7 +48,8 @@
         "mode",
         "execution",
         "review_protocol",
-        "preparation"
+        "preparation",
+        "native"
       ],
       "properties": {
         "review_protocol": {
@@ -164,17 +165,13 @@
           ],
           "properties": {
             "protocol": {
-              "const": "preparation-v1"
+              "const": "preparation-dag-v1"
             },
             "inventory": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 2048
+              "$ref": "#/$defs/preparation_stage"
             },
             "plan": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 2048
+              "$ref": "#/$defs/preparation_stage"
             },
             "mode": {
               "enum": [
@@ -192,6 +189,24 @@
                 "minLength": 1,
                 "maxLength": 4096
               }
+            }
+          }
+        },
+        "native": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "protocol",
+            "instance"
+          ],
+          "properties": {
+            "protocol": {
+              "const": "six-stage-v1"
+            },
+            "instance": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
             }
           }
         }
@@ -238,7 +253,112 @@
           "maximum": 258
         }
       }
+    },
+    "context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "root_version",
+        "memories",
+        "skills"
+      ],
+      "properties": {
+        "root_version": {
+          "type": "string",
+          "maxLength": 64,
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+        },
+        "memories": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "revision"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512
+              },
+              "revision": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          }
+        },
+        "skills": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "digest",
+              "revision"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "maxLength": 64,
+                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+              },
+              "digest": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "revision": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          }
+        }
+      },
+      "anyOf": [
+        {
+          "properties": {
+            "memories": {
+              "minItems": 1
+            }
+          }
+        },
+        {
+          "properties": {
+            "skills": {
+              "minItems": 1
+            }
+          }
+        }
+      ]
     }
   },
-  "title": "Ergora budgeted complete six-stage task with persistent preparation"
+  "title": "Ergora budgeted native preparation DAG task",
+  "$defs": {
+    "preparation_stage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "instance",
+        "coordinator"
+      ],
+      "properties": {
+        "instance": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        "coordinator": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        }
+      }
+    }
+  }
 }

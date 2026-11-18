@@ -1,0 +1,101 @@
+{
+  "policy_source": {
+    "kind": "workflow",
+    "id": "ergora-training-proposal",
+    "version": "4.2.1",
+    "digest": "107243b88573de49c13e3fcc567d270638f97628be5fcdccc1d1bf84d31a4191"
+  },
+  "policy_files": {
+    "skills/ergora-bottleneck-optimization/SKILL.md": {
+      "sha256": "e0b27e21eed6c739441249daa9c301b4895a3b7d228a06fecf331d37ea324fc3",
+      "executable_bits": 0,
+      "bytes": 10099
+    },
+    "skills/ergora-library-environment-optimization/SKILL.md": {
+      "sha256": "0f132d0ed3931be397d5a19b5350aef48398f9e273a0d3e479556039c6cb4db5",
+      "executable_bits": 0,
+      "bytes": 5341
+    },
+    "context/environment-change-record.md": {
+      "sha256": "575a61cbdf22e0192ebac3db22641356f4a39901707a67eb648356539c587eaf",
+      "executable_bits": 0,
+      "bytes": 2654
+    }
+  },
+  "bases": {
+    "inventory": {
+      "kind": "workflow",
+      "id": "ergora-development-preparation",
+      "version": "1.1.0",
+      "digest": "8eee9d5a42c9b0a673cec8be043aed557c91e6ee4686989de307487a4c58dcf4"
+    },
+    "plan": {
+      "kind": "workflow",
+      "id": "ergora-development-preparation",
+      "version": "1.1.0",
+      "digest": "8eee9d5a42c9b0a673cec8be043aed557c91e6ee4686989de307487a4c58dcf4"
+    },
+    "preparation": {
+      "kind": "workflow",
+      "id": "ergora-development-preparation",
+      "version": "1.1.0",
+      "digest": "8eee9d5a42c9b0a673cec8be043aed557c91e6ee4686989de307487a4c58dcf4"
+    },
+    "review": {
+      "kind": "workflow",
+      "id": "ergora-delivery-review",
+      "version": "1.0.1",
+      "digest": "38ac828fc5e16ef097a7efb19ca7688ce762d8f889c91927812be927cade4970"
+    },
+    "delivery": {
+      "kind": "workflow",
+      "id": "ergora-large-change-delivery",
+      "version": "1.1.0",
+      "digest": "f882e3b5da5b593bb28e7e15e307b206a25cac8c77c47a6a908a9c3c48dc3659"
+    },
+    "root": {
+      "kind": "workflow",
+      "id": "native-development",
+      "version": "1.1.0",
+      "digest": "d785a8d7765fd4e6256863ad722619033c2ef60f9640b6d283b693da838c859b"
+    }
+  },
+  "published": {
+    "inventory": {
+      "kind": "workflow",
+      "id": "ergora-optimization-inventory",
+      "version": "1.0.0",
+      "digest": "a93309f1aa23518b90bad9459bd021813fb016b73097bd4893636dee3e0b1169"
+    },
+    "plan": {
+      "kind": "workflow",
+      "id": "ergora-optimization-plan",
+      "version": "1.0.0",
+      "digest": "ea62ea3168a14993466aae3a14259f963251478331dfe8b79e42485dd6290252"
+    },
+    "preparation": {
+      "kind": "workflow",
+      "id": "ergora-development-preparation",
+      "version": "1.2.0",
+      "digest": "9efcb006857c4c577dc2a1ae8fe1d5740bf81678b4981b186029353d133c5138"
+    },
+    "review": {
+      "kind": "workflow",
+      "id": "ergora-delivery-review",
+      "version": "1.1.0",
+      "digest": "8c6e0210e25d247d27547754cfc8ad5e5d76cc275dff9fa75abd93f3d050fff9"
+    },
+    "delivery": {
+      "kind": "workflow",
+      "id": "ergora-large-change-delivery",
+      "version": "1.2.1",
+      "digest": "8e8c114f7d4bab85c25ac4390e8aead022328ed27c7893c033db86ab16e744cc"
+    },
+    "root": {
+      "kind": "workflow",
+      "id": "ergora-selected-moe-development",
+      "version": "1.0.1",
+      "digest": "62eeeaf259d179cc0276050b2bae6ea9b23d44d17e0a64aa4ab55b87fa8a3201"
+    }
+  }
+}

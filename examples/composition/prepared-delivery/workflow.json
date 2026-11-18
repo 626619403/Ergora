@@ -1,8 +1,8 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "id": "prepared-delivery",
-  "version": "1.0.0",
-  "description": "Explicit preparation, original work units and review selected by formal input v8.",
+  "version": "1.1.0",
+  "description": "Current preparation stage DAGs, original work units and review selected by budgeted native formal input12.",
   "resources": [
     {
       "id": "prepared-delivery-instructions",
@@ -43,8 +43,8 @@
       "ref": {
         "kind": "workflow",
         "id": "preparation-guide",
-        "version": "1.0.0",
-        "digest": "27a2c7ef67e00255d58f6dafed8044161194fe81226fc2dcb5e0a7e488f2cb27"
+        "version": "1.1.0",
+        "digest": "431422c5dfe5b9464bd0fbc778cb79fa503f71886a601abd5c634e3b416699fc"
       },
       "depends_on": [],
       "inputs": {

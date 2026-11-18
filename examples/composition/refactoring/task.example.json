@@ -1,5 +1,5 @@
 {
-  "schema_version": 6,
+  "schema_version": 8,
   "task_id": "refactor-module-example",
   "task_type": "large-change",
   "issue_id": "REPLACE_WITH_ISSUE_ID",
@@ -52,9 +52,15 @@
     "review_instance": "root/development/review",
     "mode": "task-mcp",
     "preparation": {
-      "protocol": "preparation-v1",
-      "inventory": "root/development/preparation/inventory",
-      "plan": "root/development/preparation/plan",
+      "protocol": "preparation-dag-v1",
+      "inventory": {
+        "instance": "root/development/preparation/inventory",
+        "coordinator": "root/development/preparation/inventory/coordinator"
+      },
+      "plan": {
+        "instance": "root/development/preparation/plan",
+        "coordinator": "root/development/preparation/plan/coordinator"
+      },
       "mode": "task-mcp",
       "repository_paths": [
         "src/example",

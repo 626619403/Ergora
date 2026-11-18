@@ -6,9 +6,9 @@ import sys
 
 import pytest
 
-from ergora import workflow_definitions as workflows
-from ergora.review_dags import ReviewDAG
-from test_workflow_definitions import base, child, definition, grant, imported, leaf, ref
+from ergora import agent_definitions, reference_budget, workflow_definitions as workflows
+from ergora.review_dags import ReviewDAG, preparation_members, preparation_stages
+from test_workflow_definitions import EXAMPLES, base, child, definition, grant, imported, leaf, ref
 
 
 def compile_graph(base, document):
@@ -127,3 +127,117 @@ def test_unknown_port_and_non_predecessor_data_are_rejected_at_projection(base):
         dag = ReviewDAG(damaged, 'root')
         with pytest.raises(ValueError, match='unknown output port|unfinished review producer'):
             dag.input_ports('root/two')
+
+
+@pytest.fixture(params=[0, 2])
+def preparation_graph(base, request):
+    state, _, _ = base
+    agent = agent_definitions.import_bundle(state, EXAMPLES / 'composition/agents/development-preparer')
+    stages = {}
+    for stage, role in (('inventory', 'inspector'), ('plan', 'planner')):
+        nodes = [{**leaf('expert-' + str(index), ref(agent, 'agent')), 'role': role}
+                 for index in range(request.param)]
+        experts = [node['id'] for node in nodes]
+        if experts:
+            nodes.append(gather('analyses', *experts))
+        nodes.append({**leaf('coordinator', ref(agent, 'agent')), 'role': role,
+            'depends_on': ['analyses'] if experts else [],
+            'inputs': {'task': {'node': 'analyses', 'output': 'result'} if experts else {'input': 'task'}}})
+        nodes.append(gather('done', 'coordinator'))
+        stages[stage] = imported(base, definition(stage + '-group', nodes))
+    document = definition('preparation-groups', [child(stage, ref(saved, 'workflow'))
+                                               for stage, saved in stages.items()])
+    graph = compile_graph(base, document)
+    selection = {'protocol': 'preparation-dag-v1', 'mode': 'text-only', 'repository_paths': ['src'],
+        **{stage: {'instance': 'root/' + stage, 'coordinator': 'root/' + stage + '/coordinator'} for stage in stages}}
+    return graph, selection
+
+
+def test_preparation_groups_bind_all_original_ports_and_finite_stage_ids(preparation_graph):
+    graph, selection = preparation_graph
+    groups = preparation_members(graph, selection)
+    members = {}
+    for stage, group in groups.items():
+        dag, coordinator = group['dag'], group['coordinator']
+        others = dag.members.keys() - {coordinator}
+        assert set(dag.predecessors[coordinator]) == set(dag.input_ports(coordinator)['sources']) == others
+        ports = dag.input_ports(coordinator)
+        assert {value['kind'] for value in ports['values'].values()
+                if value.get('instance') in others} <= {stage + '-result'}
+        assert all(not dag.input_ports(path)['sources'] for path in others)
+        members.update(dag.members)
+    frozen = {**selection, 'members': members}
+    stages = preparation_stages(frozen)
+    assert set(stages.values()) == members.keys() and len(stages) == len(members)
+    for stage in groups:
+        assert stages[stage] == groups[stage]['coordinator']
+        assert {key for key, value in stages.items() if value in groups[stage]['dag'].members} == {
+            stage if path == groups[stage]['coordinator'] else stage + ':' + path
+            for path in groups[stage]['dag'].members}
+    composition = {'preparation': frozen, 'execution': {'assignments': {'unit': 'root/work/one'}},
+                   'members': {'root/review/one': {}}}
+    assert reference_budget.call_slots(composition) == {
+        **stages, 'work:unit': 'root/work/one', 'review:root/review/one': 'root/review/one'}
+
+
+@pytest.mark.parametrize('failure', ['data', 'late-member', 'wrong-role', 'write', 'read-ceiling', 'terminal'])
+@pytest.mark.parametrize('preparation_graph', [2], indirect=True)
+def test_preparation_cannot_hide_or_bypass_required_producers(preparation_graph, failure):
+    graph, selection = preparation_graph
+    graph = deepcopy(graph)
+    nodes = {node['path']: node for node in graph['instances']}
+    coordinator = nodes[selection['inventory']['coordinator']]
+    if failure == 'data':
+        coordinator['inputs'] = {'task': {'input': 'task'}}
+    elif failure == 'late-member':
+        extra = {**deepcopy(coordinator), 'path': 'root/inventory/late', 'depends_on': [],
+                 'inputs': {'task': {'input': 'task'}}}
+        graph['instances'].append(extra)
+        nodes['root/inventory/done']['depends_on'].append(extra['path'])
+    elif failure == 'wrong-role':
+        coordinator['role'] = 'planner'
+    elif failure == 'write':
+        coordinator['permissions']['shell'] = True
+    elif failure == 'read-ceiling':
+        coordinator['permissions']['read'] = ['definitions']
+    else:
+        nodes['root/inventory']['outputs'] = {'result': {'node': 'coordinator', 'output': 'result'}}
+    with pytest.raises(ValueError, match='coordinator|wrong role|read-only|read ceiling|explicit all-join'):
+        preparation_members(graph, selection)
+
+
+@pytest.mark.parametrize('failure', ['outside', 'overlap', 'coordinator'])
+def test_preparation_stage_ids_never_drop_or_alias_a_frozen_member(preparation_graph, failure):
+    graph, selection = preparation_graph
+    groups = preparation_members(graph, selection)
+    frozen = deepcopy(selection)
+    frozen['members'] = {path: leaf for group in groups.values() for path, leaf in group['dag'].members.items()}
+    if failure == 'outside':
+        frozen['members']['root/hidden'] = {}
+    elif failure == 'overlap':
+        frozen['inventory']['instance'] = 'root'
+    else:
+        frozen['plan']['coordinator'] = 'root/not-selected'
+    with pytest.raises(ValueError, match='disjoint|coordinator|exactly'):
+        preparation_stages(frozen)
+
+
+@pytest.mark.parametrize('preparation_graph', [2], indirect=True)
+def test_preparation_terminal_cannot_hide_coordinator_behind_a_workflow_output(base, preparation_graph):
+    _, selection = preparation_graph
+    state, _, _ = base
+    body = deepcopy(workflows.get(state, 'inventory-group', '1.0.0')['definition'])
+    body.update(id='early-inventory-output', outputs={'result': {'node': 'analyses', 'output': 'result'}})
+    hidden = imported(base, body)
+    wrapper = imported(base, definition('inventory-output-wrapper', [
+        child('body', ref(hidden, 'workflow')), gather('done', 'body')]))
+    plan = workflows.get(state, 'plan-group', '1.0.0')
+    document = definition('wrapped-preparation', [child('inventory', ref(wrapper, 'workflow')),
+                                                child('plan', ref(plan, 'workflow'))])
+    actual = compile_graph(base, document)
+    selection = deepcopy(selection)
+    selection['inventory']['coordinator'] = 'root/inventory/body/coordinator'
+    # The wrapper is complete only after all children, including coordinator,
+    # but its declared result carries only the earlier experts' outputs.
+    with pytest.raises(ValueError, match='terminal|all-join'):
+        preparation_members(actual, selection)

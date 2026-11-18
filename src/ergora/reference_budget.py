@@ -11,6 +11,7 @@ import re
 import uuid
 
 from . import budget_clock
+from .review_dags import preparation_stages
 
 
 def _sha(value: dict) -> str:
@@ -82,7 +83,7 @@ def require_remaining(instance: dict, *, cleanup: bool = False) -> float:
 def call_slots(composition: dict) -> dict:
     """Finite model-stage slots; retries/observations do not create new slots."""
     preparation, execution = composition['preparation'], composition['execution']
-    return {**{stage: preparation[stage] for stage in ('inventory', 'plan')},
+    return {**preparation_stages(preparation),
             **{'work:' + unit: member for unit, member in sorted(execution['assignments'].items())},
             **{'review:' + member: member for member in sorted(composition['members'])}}
 

@@ -1,8 +1,8 @@
 {
   "schema_version": 2,
   "id": "ergora-development-preparation",
-  "version": "1.0.1",
-  "description": "Read-only inventory and planning calls for the original development owner.",
+  "version": "1.1.0",
+  "description": "Read-only inventory and plan stage DAG selections for the original six-stage development owner.",
   "resources": [
     {
       "id": "ergora-development-preparation-instructions",
@@ -39,51 +39,31 @@
     {
       "id": "inventory",
       "ref": {
-        "kind": "agent",
-        "id": "ergora-development-preparer",
-        "version": "1.0.1",
-        "digest": "bcb90daaffbd8251c21e1aca5614eeb9aac563dba6da6485203e838ea0f7960c"
+        "kind": "workflow",
+        "id": "ergora-development-inventory",
+        "version": "1.0.0",
+        "digest": "cdd8c9f8258d35e79fd24dee74ac17ea72f88be9caf0b01739ceea67f8baa7e5"
       },
-      "role": "inspector",
       "depends_on": [],
       "inputs": {
         "task": {
           "input": "task"
         }
-      },
-      "permissions": {
-        "read": [
-          "workspace",
-          "definitions"
-        ],
-        "write": [],
-        "shell": false,
-        "network": []
       }
     },
     {
       "id": "plan",
       "ref": {
-        "kind": "agent",
-        "id": "ergora-development-preparer",
-        "version": "1.0.1",
-        "digest": "bcb90daaffbd8251c21e1aca5614eeb9aac563dba6da6485203e838ea0f7960c"
+        "kind": "workflow",
+        "id": "ergora-development-plan",
+        "version": "1.0.0",
+        "digest": "3d82cf72d818dbe283935724876bf8509ec13960fd30da4273e526f9000dc687"
       },
-      "role": "planner",
       "depends_on": [],
       "inputs": {
         "task": {
           "input": "task"
         }
-      },
-      "permissions": {
-        "read": [
-          "workspace",
-          "definitions"
-        ],
-        "write": [],
-        "shell": false,
-        "network": []
       }
     }
   ]

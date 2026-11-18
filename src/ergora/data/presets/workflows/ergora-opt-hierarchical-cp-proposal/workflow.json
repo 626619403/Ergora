@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "id": "ergora-opt-hierarchical-cp-proposal",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Limited readonly hierarchical cp proposal; complete optimization requires a shared training-proposal ancestor.",
   "resources": [
     {
@@ -41,8 +41,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-opt-hierarchical-cp-expert",
-        "version": "1.0.0",
-        "digest": "d20e1303bbb4be74e424c912d8a29a64e0618889932b0e5aa6f1460ad4daa072"
+        "version": "1.1.0",
+        "digest": "46138aff2a6c1e050af61dff0dbe48f63edb6fc9af0febf49df72bc558764d81"
       },
       "role": "performance-analyst",
       "depends_on": [],
@@ -66,8 +66,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-experiment-designer",
-        "version": "2.0.1",
-        "digest": "cb2f8919ee58521eaf74e4c813cb81cbe570380decb7e9433171dca3429bc1df"
+        "version": "2.1.0",
+        "digest": "3b0ab4852241f20d62c8562129238bee89364f959c3e8d6055ce512fbfed5c1f"
       },
       "role": "experiment-planner",
       "depends_on": [],

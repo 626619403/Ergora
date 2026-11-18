@@ -26,29 +26,63 @@ def require_root_task(instances: dict, leaf: dict) -> None:
 
 
 def preparation_members(graph: dict, selection: dict) -> dict:
-    """Project the two original preparation calls, without a mixed-role schedule."""
-    paths = selection['repository_paths']
+    """Project two role-pure stages; the existing runtime owns their calls."""
+    if (not isinstance(selection, dict) or selection.get('protocol') != 'preparation-dag-v1'
+            or selection.get('mode') not in ('text-only', 'task-mcp')):
+        raise ValueError('Invalid preparation DAG selection')
+    paths = selection.get('repository_paths')
     if (not isinstance(paths, list) or not 1 <= len(paths) <= 128
             or any(not isinstance(name, str) or not name or len(name) > 4096
                    or name != PurePosixPath(name).as_posix() or PurePosixPath(name).is_absolute()
                    or '..' in PurePosixPath(name).parts or any(char in name for char in ('\\', ':', '\0', '\n', '\r'))
                    for name in paths) or len(set(paths)) != len(paths)):
         raise ValueError('Preparation requires distinct canonical relative repository paths')
-    instances = {item['path']: item for item in graph['instances']}
-    members = {}
+    groups, selected = {}, set()
     for stage, role in (('inventory', 'inspector'), ('plan', 'planner')):
-        leaf = instances.get(selection[stage])
-        if leaf is None or leaf['kind'] != 'agent' or leaf['role'] != role:
-            raise ValueError('Preparation must select an ' + role + ' Agent leaf')
-        if leaf['permissions']['write'] or leaf['permissions']['shell'] or leaf['permissions']['network']:
-            raise ValueError('Preparation requires read-only leaves without shell or network')
-        for name in paths:
-            wanted = 'workspace' if name == '.' else 'workspace/' + name
-            if not any(wanted == prefix or wanted.startswith(prefix + '/') for prefix in leaf['permissions']['read']):
-                raise ValueError('Preparation repository paths exceed the leaf read ceiling: ' + name)
-        require_root_task(instances, leaf)
-        members[stage] = leaf
-    return members
+        group = selection.get(stage)
+        if (not isinstance(group, dict) or set(group) != {'instance', 'coordinator'}
+                or any(not isinstance(value, str) for value in group.values())):
+            raise ValueError('Preparation requires a stage subtree and coordinator')
+        dag = StageDAG(graph, group['instance'], role=role)
+        coordinator = group['coordinator']
+        if (coordinator not in dag.members or selected & dag.members.keys()
+                or set(dag.predecessors[coordinator]) != dag.members.keys() - {coordinator}
+                or set(dag.input_ports(coordinator)['sources']) != dag.members.keys() - {coordinator}):
+            raise ValueError('Preparation coordinator must consume every other member of its disjoint stage')
+        if dag.terminal_sources() != dag.members.keys():
+            raise ValueError('Preparation terminal all-join must carry every member and its coordinator')
+        for leaf in dag.members.values():
+            for name in paths:
+                wanted = 'workspace' if name == '.' else 'workspace/' + name
+                if not any(wanted == prefix or wanted.startswith(prefix + '/') for prefix in leaf['permissions']['read']):
+                    raise ValueError('Preparation repository paths exceed the leaf read ceiling: ' + name)
+            dag.input_ports(leaf['path'])
+        selected.update(dag.members)
+        groups[stage] = {'dag': dag, 'coordinator': coordinator}
+    return groups
+
+
+def preparation_stages(preparation: dict) -> dict:
+    """Derive finite stage IDs from the same frozen groups and member table."""
+    if (not isinstance(preparation, dict) or preparation.get('protocol') != 'preparation-dag-v1'
+            or not isinstance(preparation.get('members'), dict)):
+        raise ValueError('Preparation stage IDs require frozen DAG members')
+    stages, selected = {}, set()
+    for stage in ('inventory', 'plan'):
+        group = preparation.get(stage)
+        if (not isinstance(group, dict) or set(group) != {'instance', 'coordinator'}
+                or any(not isinstance(value, str) or not value for value in group.values())):
+            raise ValueError('Preparation requires a stage subtree and coordinator')
+        members = {path for path in preparation['members']
+                   if isinstance(path, str) and path.startswith(group['instance'] + '/')}
+        if group['coordinator'] not in members or selected & members:
+            raise ValueError('Preparation stage IDs require disjoint groups with their coordinator')
+        for path in sorted(members):
+            stages[stage if path == group['coordinator'] else stage + ':' + path] = path
+        selected.update(members)
+    if selected != preparation['members'].keys():
+        raise ValueError('Preparation stage IDs must cover exactly the frozen members')
+    return stages
 
 
 class StageDAG:
@@ -59,7 +93,11 @@ class StageDAG:
         self._selected = selected
         self._aliases = {}
         self._external = external
-        self._result_kind = 'review-result' if role == 'reviewer' else 'work-result'
+        kinds = {'reviewer': 'review-result', 'implementer': 'work-result',
+                 'inspector': 'inventory-result', 'planner': 'plan-result'}
+        if role not in kinds:
+            raise ValueError('Unsupported stage DAG role: ' + role)
+        self._result_kind = kinds[role]
         if selected not in self._instances:
             raise ValueError('Unknown selected stage subtree: ' + selected)
         root = self._instances[selected]
@@ -72,9 +110,9 @@ class StageDAG:
         for leaf in self.members.values():
             if leaf['role'] != role:
                 raise ValueError('Stage DAG leaf has the wrong role: ' + leaf['path'])
-            if role == 'reviewer' and (leaf['permissions']['write']
+            if role in ('reviewer', 'inspector', 'planner') and (leaf['permissions']['write']
                     or leaf['permissions']['shell'] or leaf['permissions']['network']):
-                raise ValueError('Review DAG requires read-only reviewers without shell or network')
+                raise ValueError('Stage DAG requires read-only leaves without shell or network')
             if role == 'implementer' and (not leaf['permissions']['write']
                     or not leaf['permissions']['shell'] or leaf['permissions']['network']):
                 raise ValueError('Work DAG requires writable shell-enabled leaves without network origins')
@@ -196,6 +234,21 @@ class StageDAG:
         """
         leaf = self.members[member]
         bindings = {port: self._resolve(member, port, 'input') for port in leaf['inputs']}
+        allowed = set(self.predecessors[member]) | (set(self._external.members) if self._external else set())
+        return self._port_table(bindings, allowed)
+
+    def terminal_sources(self) -> set:
+        """Trace actual output data, including the inputs of its Agent producers."""
+        pending = self._port_table({'result': self.terminal}, set(self.members))['sources']
+        sources = set()
+        while pending:
+            path = pending.pop()
+            if path not in sources:
+                sources.add(path)
+                pending.extend(self.input_ports(path)['sources'])
+        return sources
+
+    def _port_table(self, bindings, allowed):
         values, sources, pending, used = {}, set(), list(bindings.values()), 0
         while pending:
             address = pending.pop()
@@ -220,7 +273,6 @@ class StageDAG:
             if used > 1_000_000:
                 raise ValueError('Complete review port table exceeds 1,000,000 bytes')
             values[address] = value
-        allowed = set(self.predecessors[member]) | (set(self._external.members) if self._external else set())
         if not sources <= allowed:
             raise ValueError('Review DAG input requires an unfinished review producer')
         return {'bindings': bindings, 'values': dict(sorted(values.items())), 'sources': sorted(sources)}
@@ -238,7 +290,7 @@ class WorkDelivery:
         self.review = StageDAG(graph, review_instance, external=self.work)
         self.preparation = preparation_members(graph, preparation) if preparation is not None else {}
         work_paths, review_paths = set(self.work.members), set(self.review.members)
-        preparation_paths = {leaf['path'] for leaf in self.preparation.values()}
+        preparation_paths = {path for group in self.preparation.values() for path in group['dag'].members}
         agents = {item['path'] for item in graph['instances'] if item['kind'] == 'agent'}
         if (work_paths & review_paths or preparation_paths & (work_paths | review_paths)
                 or work_paths | review_paths | preparation_paths != agents):

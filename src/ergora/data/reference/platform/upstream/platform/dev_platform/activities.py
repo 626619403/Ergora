@@ -12,6 +12,8 @@ def require(ok, detail):
 
 
 class Activities:
+    context_limit_bytes = MAX_CONTEXT_BYTES
+
     def __init__(self, adapter): self.adapter = adapter
 
     @activity.defn(name="dev_validate")
@@ -29,7 +31,7 @@ class Activities:
     async def submit(self, context: dict) -> dict:
         try:
             validate_spec(context["spec"])
-            require(len(canonical(context)) <= MAX_CONTEXT_BYTES, "Stage context exceeds the control-plane payload limit")
+            require(len(canonical(context)) <= self.context_limit_bytes, "Stage context exceeds the control-plane payload limit")
             require(context["request_sha256"] == context["spec"]["request_sha256"], "Context request hash mismatch")
             async with asyncio.timeout(20): return await self.adapter.submit(context)
         except ContractViolation as error:

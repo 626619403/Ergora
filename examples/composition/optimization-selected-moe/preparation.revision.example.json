@@ -1,0 +1,70 @@
+{
+  "description": "Read-only inventory and plan stage DAG selections for the original six-stage development owner.",
+  "id": "ergora-development-preparation",
+  "inputs": [
+    "task"
+  ],
+  "limits": {
+    "concurrency": 4,
+    "depth": 8,
+    "instances": 128,
+    "material_bytes": 1000000
+  },
+  "nodes": [
+    {
+      "depends_on": [],
+      "id": "inventory",
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "ref": {
+        "digest": "a93309f1aa23518b90bad9459bd021813fb016b73097bd4893636dee3e0b1169",
+        "id": "ergora-optimization-inventory",
+        "kind": "workflow",
+        "version": "1.0.0"
+      }
+    },
+    {
+      "depends_on": [],
+      "id": "plan",
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "ref": {
+        "digest": "ea62ea3168a14993466aae3a14259f963251478331dfe8b79e42485dd6290252",
+        "id": "ergora-optimization-plan",
+        "kind": "workflow",
+        "version": "1.0.0"
+      }
+    }
+  ],
+  "outputs": {
+    "result": {
+      "node": "plan",
+      "output": "result"
+    }
+  },
+  "permissions": {
+    "network": [],
+    "read": [
+      "workspace",
+      "definitions"
+    ],
+    "shell": false,
+    "write": []
+  },
+  "resources": [
+    {
+      "id": "ergora-development-preparation-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "8caf20b3d71042124b02cdb557836c3053e12e721b7f3cf380ef66fe95a81aef"
+    }
+  ],
+  "schema_version": 2,
+  "version": "1.2.0"
+}

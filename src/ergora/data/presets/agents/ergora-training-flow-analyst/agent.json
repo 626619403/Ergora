@@ -1,10 +1,11 @@
 {
   "schema_version": 1,
   "id": "ergora-training-flow-analyst",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Readonly source-anchored training algorithm, dependency and lifetime analysis.",
   "roles": [
-    "performance-analyst"
+    "performance-analyst",
+    "inspector"
   ],
   "specialties": [
     "training-flow-mapping",
@@ -21,7 +22,7 @@
       "id": "ergora-training-flow-analyst-instructions",
       "kind": "instructions",
       "path": "instructions.md",
-      "sha256": "546c6f934cc04c70ed883b72edf49d099dd612117076043fa0cc6a18c3ba8b09"
+      "sha256": "61f798f468530d8078a488c0735822699ec698304ebbf8cbe732dfec14fb691d"
     },
     {
       "id": "ergora-training-flow-analyst-skill",

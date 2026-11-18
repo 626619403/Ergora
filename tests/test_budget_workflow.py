@@ -21,7 +21,7 @@ pytestmark = pytest.mark.skipif(sys.platform != 'linux', reason='Budgeted native
 
 from ergora import reference, reference_budget, task_envelopes, tasks, workflow_definitions
 from ergora.reference_inputs import execution_input
-from test_task_budget import budget_creation, full_creation, full_graph, work_creation, work_graph
+from test_task_budget import budget_creation, budget_graph, full_creation, full_graph, work_creation, work_graph
 from test_registrations import installation, registration
 from test_task_creation import creation_project
 
@@ -42,7 +42,8 @@ def test_poll_reference_preserves_receipt_validation_and_rejects_replaced_materi
     workflow.spec, workflow.admission = selected.spec, document
 
     async def exercise():
-        job = await operations.submit(workflow.context('inventory'))
+        job = await operations.submit(task_envelopes.initial_preparation_contexts(document,
+            selected.spec['request']['repository']['starting_sha'])[0])
         reference = {key: job[key] for key in ('task_id', 'job_id', 'job_sha256')}
         assert await operations.poll(reference) is None
         receipt = {'schema_version': 1, 'job_id': job['job_id'], 'job_sha256': job['job_sha256'],
@@ -64,7 +65,7 @@ def test_poll_reference_preserves_receipt_validation_and_rejects_replaced_materi
 
 @pytest.mark.parametrize('case', ['queued', 'owner', 'activity-queue', 'poll-retry',
                                  'native-cancel', 'fencing', 'review-scope', 'poll-history'])
-def test_original_workflow_uses_one_deadline_for_real_temporal_waits(budget_creation, full_graph, tmp_path, monkeypatch, case):
+def test_original_workflow_uses_one_deadline_for_real_temporal_waits(budget_creation, budget_graph, tmp_path, monkeypatch, case):
     binary = os.environ.get('ERGORA_TEST_TEMPORAL_BIN')
     if not binary:
         pytest.skip('Set ERGORA_TEST_TEMPORAL_BIN for the optional real local Temporal acceptance')
@@ -72,23 +73,23 @@ def test_original_workflow_uses_one_deadline_for_real_temporal_waits(budget_crea
     monkeypatch.syspath_prepend(str(reference.ROOT / 'platform/upstream/platform'))
     from dev_platform.adapter import publish
     from ergora.reference_worker import _ErgoraPackage
-    from ergora.reference_workflows import BudgetedAdapter, BudgetedWorkflow
+    from ergora.reference_workflows import PreparationDAGAdapter, PreparationDAGWorkflow
     from temporalio import activity
     from temporalio.testing import WorkflowEnvironment
     from temporalio.worker import Worker
 
     state, _, definition = budget_creation
     if case == 'review-scope':
-        library, grant, *_ = full_graph
+        library, grant, parent, *_ = budget_graph
         grant['limits']['concurrency'] = 1
-        manifest = workflow_definitions.prepare_manifest(library.root, 'prepared-delivery', '1.0.0', grant,
+        manifest = workflow_definitions.prepare_manifest(library.root, parent['definition']['id'], parent['definition']['version'], grant,
                                                          tmp_path / 'serial-capacity-manifest')
         definition['composition'].update(manifest=manifest['path'], manifest_digest=manifest['digest'])
     definition['budget'].update(wall_seconds=3 if case == 'activity-queue' else 6 if case == 'poll-retry' else 10,
                                 cleanup_seconds=1 if case in ('activity-queue', 'poll-retry') else 2)
     trace = []
 
-    class ControlledAdapter(BudgetedAdapter):
+    class ControlledAdapter(PreparationDAGAdapter):
         async def submit(self, context):
             job = await super().submit(context)
             trace.append({'operation': 'submit', 'stage': context['stage'],
@@ -96,7 +97,14 @@ def test_original_workflow_uses_one_deadline_for_real_temporal_waits(budget_crea
             if case in ('owner', 'native-cancel', 'fencing') or (case == 'review-scope' and not context['stage'].startswith('review:')):
                 artifacts = []
                 stage = context['stage'].split(':', 1)[0]
-                for name in context['spec']['profile']['artifacts_by_stage'][stage]:
+                names = set(context['spec']['profile']['artifacts_by_stage'][stage])
+                prep_member = context.get('preparation_ports', {}).get('member')
+                if prep_member is not None:
+                    if context['stage'] in ('inventory', 'plan'):
+                        names.add('preparation-sources')
+                    elif stage == 'inventory':
+                        names.discard('behavior-baseline')
+                for name in sorted(names):
                     relative = context['task_id'] + '/' + context['job_id'] + '/' + name + '.txt'
                     content = ('Controlled receipt for ' + context['stage'] + '/' + name).encode()
                     path = self.path('artifacts', relative)
@@ -106,7 +114,9 @@ def test_original_workflow_uses_one_deadline_for_real_temporal_waits(budget_crea
                 receipt = {'schema_version': 1, 'job_id': job['job_id'], 'job_sha256': job['job_sha256'],
                     'state': 'SUCCEEDED', 'candidate_sha': context['expected_candidate_sha'] or
                         context['spec']['request']['repository']['starting_sha'],
-                    'actor': {'id': 'controlled-' + context['stage'], 'session_id': job['job_id'],
+                    'actor': {'id': (context['admission']['composition']['preparation']['members'][prep_member]['binding']['tool']
+                                     + ':' + context['spec']['profile']['roles'][stage]) if prep_member is not None
+                                     else 'controlled-' + context['stage'], 'session_id': job['job_id'],
                               'role': context['spec']['profile']['roles'][stage],
                               'kind': 'ci' if stage == 'verify' else 'agent'},
                     'artifacts': artifacts, 'checks': [{'id': name, 'status': 'pass', 'artifact': artifacts[0]['name']}
@@ -155,12 +165,12 @@ def test_original_workflow_uses_one_deadline_for_real_temporal_waits(budget_crea
                         activities=[] if case == 'activity-queue' else operations.registered()):
                     if case in ('owner', 'native-cancel', 'fencing', 'review-scope'):
                         async with asyncio.timeout(6):
-                            while (status := await handle.query(BudgetedWorkflow.status))['phase'] != 'AWAITING_PLAN_APPROVAL':
+                            while (status := await handle.query(PreparationDAGWorkflow.status))['phase'] != 'AWAITING_PLAN_APPROVAL':
                                 await asyncio.sleep(.05)
                         if case == 'native-cancel':
                             await handle.cancel()
                         elif case == 'fencing':
-                            await handle.signal(BudgetedWorkflow.request_cancel,
+                            await handle.signal(PreparationDAGWorkflow.request_cancel,
                                 {'request_sha256': status['request_sha256'], 'reason': 'Controlled cancellation before cutoff'})
                         elif case == 'review-scope':
                             approval = {'schema_version': 1, 'kind': 'plan-approval',
@@ -169,7 +179,7 @@ def test_original_workflow_uses_one_deadline_for_real_temporal_waits(budget_crea
                                 'decision': 'approve', 'principal_type': 'human', 'actor_id': 'controlled-maintainer',
                                 'role': 'maintainer', 'expires_at': time.time() + 60, 'revoked': False}
                             publish(adapter.path('approvals', 'controlled-approval.json'), approval)
-                            await handle.signal(BudgetedWorkflow.approve_plan,
+                            await handle.signal(PreparationDAGWorkflow.approve_plan,
                                 {'request_sha256': status['request_sha256'], 'plan_sha256': status['plan_sha256'],
                                  'receipt_id': 'controlled-approval'})
                     outcome = await asyncio.wait_for(handle.result(), 15)
@@ -186,7 +196,8 @@ def test_original_workflow_uses_one_deadline_for_real_temporal_waits(budget_crea
             if case in ('queued', 'activity-queue'):
                 assert not trace and not list(adapter.roots['requests'].rglob('*.json'))
             elif case in ('owner', 'native-cancel', 'fencing'):
-                assert [row['stage'] for row in trace if row['operation'] == 'submit'] == ['inventory', 'plan']
+                assert [row['stage'] for row in trace if row['operation'] == 'submit'] == ['inventory:root/development/preparation/inventory/expert', 'inventory',
+                    'plan:root/development/preparation/plan/expert', 'plan']
                 assert outcome['status'] == 'BLOCKED' and outcome['fence']['confirmed'] is True
                 if case == 'fencing':
                     assert len([row for row in trace if row['operation'] == 'fence-start']) == 1
@@ -207,7 +218,7 @@ def test_original_workflow_uses_one_deadline_for_real_temporal_waits(budget_crea
                     assert envelope['context']['admission'] == document
                 assert outcome['status'] == 'CANCEL_UNCONFIRMED'
             else:
-                assert [row['stage'] for row in trace if row['operation'] == 'submit'] == ['inventory']
+                assert [row['stage'] for row in trace if row['operation'] == 'submit'] == ['inventory:root/development/preparation/inventory/expert']
                 attempts = [row['attempt'] for row in trace if row['operation'] == 'poll-retry']
                 assert attempts == list(range(1, len(attempts) + 1)) and 1 <= len(attempts) < 3
                 assert outcome['status'] == 'CANCEL_UNCONFIRMED'

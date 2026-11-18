@@ -1,7 +1,7 @@
 {
   "files": {
     "BUNDLE-MANIFEST.json": "5740f260ba7f578ff6ae74920851776df63a920b1b04fe9272edb80850d53b77",
-    "BUNDLE-SHA256SUMS": "02ecdda0f0eee3d2f8225491df78ef4e70f5a6bc02113df2fd4d0054c34bfe53",
+    "BUNDLE-SHA256SUMS": "502cf9e7bf4aab87fd73e013dfc7560894e22f3d42d43abd8cd8b1847d54280b",
     "INSTALL.zh-CN.md": "2f0d675fc5f4ece90f5236c099faa6462b75f4e1bb8c13b3c095f8c9c7679311",
     "install-from-report.sh": "bed9eeb8ec64b9cf7915435e81521433f7cb710c4d566a53684e52b6deb2d971",
     "platform/README.zh-CN.md": "f69455708006b745eeac7790306a8ae3159deec537d53d49c42f265203a0c8a1",
@@ -144,8 +144,8 @@
     "platform/upstream/platform/dev_platform/a2a_gateway/server.py": "6a66a0031e850891489d9992b7b3ea563810a8ba9db8e23e5c3ac2e98ae36054",
     "platform/upstream/platform/dev_platform/a2a_gateway/service.py": "eaf4b44e51c9dc525ddd4dbfd2508974bb49860678df06641e876bc8e545ef65",
     "platform/upstream/platform/dev_platform/a2a_gateway/store.py": "fdb28a7d193c9de2cf0be9fe41fa399c6f683d01a9e8b4c35bee3dcd790fe804",
-    "platform/upstream/platform/dev_platform/activities.py": "c6b2864e57303a43483a78e3e7f2ab4339b0118b1fb695fbeee0157abfd5edf4",
-    "platform/upstream/platform/dev_platform/adapter.py": "fe9e1dc4fb97fadfcac19c6291e2eb1402ce700672237ee1a4458981defb2858",
+    "platform/upstream/platform/dev_platform/activities.py": "a93e6a96bd2c5a2d26c2b0ef542df204507046bfc81ca0292c38a1ce9c881b4e",
+    "platform/upstream/platform/dev_platform/adapter.py": "0f030fabed6b1e8c6b00ba53c4a58b7de846a1a0320d69e0916f01c4d4bab092",
     "platform/upstream/platform/dev_platform/client.py": "2a6ba6ba8b2023556f4682c9a839980d25a33dd8e2ab190ffe72092aa73f06be",
     "platform/upstream/platform/dev_platform/connection.py": "c6ba87fb80de0cbdef026a78cde86ab5bbbcad150372068e51c97d57fca1749c",
     "platform/upstream/platform/dev_platform/contracts.py": "5353ba498534a43e868cfd078086dc42b6cb4afafaa90588fafd9e354ce79f76",

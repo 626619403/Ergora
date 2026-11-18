@@ -1,8 +1,8 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "id": "preparation-guide",
-  "version": "1.0.0",
-  "description": "Shared structural materials for the two original preparation calls.",
+  "version": "1.1.0",
+  "description": "Shared complete materials for explicit inventory and plan DAG groups.",
   "resources": [
     {
       "id": "preparation-guide-instructions",
@@ -45,51 +45,31 @@
     {
       "id": "inventory",
       "ref": {
-        "kind": "agent",
-        "id": "development-preparer",
-        "version": "1.0.0",
-        "digest": "1be08568b1083585dc4c136df7245a18ceecc1f3fff2979d7f5ab0d0cd11cbc3"
+        "kind": "workflow",
+        "id": "preparation-inventory",
+        "version": "1.1.0",
+        "digest": "a874bdd327b7b193ec413f004766a005379b85d7bd774a561677a025c474177f"
       },
-      "role": "inspector",
       "depends_on": [],
       "inputs": {
         "task": {
           "input": "task"
         }
-      },
-      "permissions": {
-        "read": [
-          "workspace",
-          "definitions"
-        ],
-        "write": [],
-        "shell": false,
-        "network": []
       }
     },
     {
       "id": "plan",
       "ref": {
-        "kind": "agent",
-        "id": "development-preparer",
-        "version": "1.0.0",
-        "digest": "1be08568b1083585dc4c136df7245a18ceecc1f3fff2979d7f5ab0d0cd11cbc3"
+        "kind": "workflow",
+        "id": "preparation-plan",
+        "version": "1.1.0",
+        "digest": "a7d79343eaa9c88f1847a90071fede352bfeea77189ab451d7a1ac69e876648a"
       },
-      "role": "planner",
       "depends_on": [],
       "inputs": {
         "task": {
           "input": "task"
         }
-      },
-      "permissions": {
-        "read": [
-          "workspace",
-          "definitions"
-        ],
-        "write": [],
-        "shell": false,
-        "network": []
       }
     }
   ]

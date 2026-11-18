@@ -1,10 +1,12 @@
 {
   "schema_version": 1,
   "id": "ergora-opt-moe-overlap-expert",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Readonly moe overlap specialist: Distinguish ordinary EP overlap from delayed wgrad and follow dispatch/combine/wgrad streams and tensor lifetimes.",
   "roles": [
-    "performance-analyst"
+    "performance-analyst",
+    "planner",
+    "inspector"
   ],
   "specialties": [
     "moe-overlap",
@@ -13,14 +15,14 @@
   "backend": {
     "tool": "codex",
     "model": "gpt-6.1-sol",
-    "reasoning_effort": "high"
+    "reasoning_effort": "max"
   },
   "resources": [
     {
       "id": "ergora-opt-moe-overlap-expert-instructions",
       "kind": "instructions",
       "path": "instructions.md",
-      "sha256": "88966a0d4a675f1b7e122d613bf3e2bfbda4041f0d1eb82e877dc60d1f0b951a"
+      "sha256": "1c8c8e3f01ac9702e925e994ce1bf2b81e6d2ca539f7be8a6711f18bdda1de5f"
     },
     {
       "id": "ergora-opt-moe-overlap-proposal-context",
@@ -31,6 +33,6 @@
   ],
   "invocation_minimum": {
     "model": "gpt-6.1-sol",
-    "reasoning_effort": "high"
+    "reasoning_effort": "max"
   }
 }

@@ -227,11 +227,11 @@ export function tasksView(data, base, { sourceSnapshot = "" } = {}) {
         issue_id: values.get("issue_id"), input: JSON.parse(values.get("input")),
       };
       const selected = compositionEditor.read();
-      if (selected) Object.assign(definition, { schema_version: selected.context ? 7 : selected.budget ? 6 : selected.composition.preparation ? 4 : 2, ...selected });
+      if (selected) Object.assign(definition, { schema_version: selected.composition.preparation ? 8 : 2, ...selected });
       if (sourceSha.value.trim()) {
         if (savedSource?.sha256 !== sourceSha.value.trim()) throw new Error("请先读取当前 SHA256 对应的来源快照。");
         if (!selected?.composition.execution) throw new Error("来源任务须选择完整 manifest 的组合执行与审查，并分配工作单元。");
-        Object.assign(definition, { schema_version: selected.context ? 7 : selected.budget ? 6 : selected.composition.preparation ? 4 : 3, source: { snapshot_sha256: savedSource.sha256 } });
+        Object.assign(definition, { schema_version: selected.composition.preparation ? 8 : 3, source: { snapshot_sha256: savedSource.sha256 } });
       }
       if (values.get("starting_sha")) definition.starting_sha = values.get("starting_sha");
       return definition;

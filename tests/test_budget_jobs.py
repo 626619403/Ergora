@@ -15,7 +15,7 @@ import pytest
 from ergora import reference, registrations, task_envelopes, tasks
 from ergora.reference_inputs import execution_input
 from ergora.state import State
-from test_task_budget import budget_creation, full_creation, full_graph, work_creation, work_graph
+from test_task_budget import budget_creation, budget_graph, full_creation, full_graph, work_creation, work_graph
 from test_registrations import design_policy, installation, registration
 from test_task_creation import creation_project, _files
 
@@ -37,7 +37,7 @@ def _prepare(budget_creation, monkeypatch, *, wall=8, reserve=2, omit_admission=
     roots = {key: str(runtime / key) for key in ('requests', 'receipts', 'artifacts', 'approvals', 'fences')}
     (config / 'adapter.json').write_text(json.dumps({**roots, 'trusted_receipts': True}))
     adapter = execution_input(document).adapter({**roots, 'trusted_receipts': True})
-    context = task_envelopes.issue_inventory_context(document, document['legacy_spec']['request']['repository']['starting_sha'])
+    context = task_envelopes.initial_preparation_contexts(document, document['legacy_spec']['request']['repository']['starting_sha'])[0]
     job = asyncio.run(adapter.submit(context))
     path = adapter.roots['requests'] / definition['task_id'] / (job['job_id'] + '.json')
     if omit_admission:

@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "id": "ergora-opt-cpu-offloading-proposal",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Limited readonly cpu offloading proposal; complete optimization requires a shared training-proposal ancestor.",
   "resources": [
     {
@@ -41,8 +41,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-opt-cpu-offloading-expert",
-        "version": "1.0.0",
-        "digest": "3f633b4339e7a369e554bceaff59df084d1a0d69d924e481b741750f004145ef"
+        "version": "1.1.0",
+        "digest": "e88fb321898fc644ed5aff366f8ae1faf210fe349a98212467b68de59d594abf"
       },
       "role": "performance-analyst",
       "depends_on": [],
@@ -66,8 +66,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-experiment-designer",
-        "version": "2.0.1",
-        "digest": "cb2f8919ee58521eaf74e4c813cb81cbe570380decb7e9433171dca3429bc1df"
+        "version": "2.1.0",
+        "digest": "3b0ab4852241f20d62c8562129238bee89364f959c3e8d6055ce512fbfed5c1f"
       },
       "role": "experiment-planner",
       "depends_on": [],

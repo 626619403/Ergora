@@ -11,7 +11,7 @@ import sys
 
 from .reference_task_submission import _Submission
 from .state import file_lock
-from .task_envelopes import outcome_reference_state
+from .task_envelopes import outcome_reference_state, wire_limit
 
 
 class _Inspection:
@@ -100,7 +100,10 @@ class _Inspection:
         observations, unresolved = [], set(unexpected)
         for job_id, job in sorted(jobs.items()):
             path = self.adapter.path('requests', self.creation.task_id + '/' + job_id + '.json')
-            envelope = self.creation.optional(path)
+            try:
+                envelope = self.adapter.read_job(path)
+            except FileNotFoundError:
+                envelope = None
             expected = {'schema_version': 1, 'job_id': job_id, 'job_sha256': job['job_sha256'], 'context': job['context']}
             if envelope is not None and self.sha(envelope) != self.sha(expected):
                 raise ValueError('External request envelope conflicts with its original history job')
@@ -156,6 +159,7 @@ class _Inspection:
                 **await self.files(jobs, include_receipts=indexed),
                 'lease_released_by_operation': False, 'execution_success': None}
         if indexed:
+            response_limit = wire_limit(self.submission.input.document)
             selection = self.submission.creation_record['files']['agent-bindings.json']
             profile = self.spec['profile']
             usage.update(source='original_run_history', configured_work_units=len(self.spec['request']['input']['work_units']))
@@ -178,8 +182,8 @@ class _Inspection:
                 published_evidence='verified' if not result['unresolved_jobs'] else 'incomplete',
                 context_snapshots={key: {'state': 'not_recorded'} for key in
                                    ('evaluations', 'skills', 'memories', 'source_adoptions')},
-                artifact_limit_bytes=16_777_216, response_limit_bytes=1_048_576)
-            self.creation.check_size(result, 1_048_576, 'Task evidence index')
+                artifact_limit_bytes=16_777_216, response_limit_bytes=response_limit)
+            self.creation.check_size(result, response_limit, 'Task evidence index')
         if self.payload['operation'] == 'export-handoff':
             from dev_platform.adapter import read_raw
             from . import handoff

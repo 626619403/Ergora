@@ -8,8 +8,8 @@ import time
 
 import pytest
 
-from ergora import reference_budget, tasks
-from test_task_budget import budget_creation, full_creation, full_graph, work_creation, work_graph
+from ergora import reference, reference_budget, tasks
+from test_task_budget import budget_creation, budget_graph, full_creation, full_graph, work_creation, work_graph
 from test_registrations import installation, registration
 from test_task_creation import creation_project
 from test_task_submission import native_client, _calls, _root, _resume, _start, _status
@@ -33,12 +33,34 @@ def budget_submission(budget_creation, monkeypatch):
     codex.symlink_to(sys.executable)
     (config / 'claude').symlink_to(sys.executable)
     monkeypatch.setenv('PATH', str(config) + os.pathsep + os.environ.get('PATH', ''))
-    (config / 'platform.json').write_text(json.dumps({'execution_enabled': True, 'codex_bin': str(codex)}))
+    monkeypatch.syspath_prepend(str(reference.ROOT / 'platform/local'))
+    from agent_platform.sandbox import container_identity
+    (config / 'platform.json').write_text(json.dumps({'execution_enabled': True, 'codex_bin': str(codex),
+        'current_container_trust_acknowledged': True, 'container_boundary': container_identity()}))
     (config / 'codex.toml').write_text('model = "local-program-probe-only"\n')
     assert tasks.prepare(state, 'demo', definition, 1)['status'] == 'prepared'
     preview = tasks.preview(state, 'demo', definition, 1)
     created = tasks.create(state, 'demo', definition, 1, preview['preview_sha256'], prepare_sha256=preview['prepare_sha256'])
     return state, registered, definition, created
+
+
+@pytest.mark.parametrize('scenario,match', [
+    ('boundary-blocked', 'execution-boundary.*blocked'),
+    ('mcp-missing', 'task-mcp.*requires'),
+    ('timeout-missing', 'timeout.*Executable not found'),
+])
+def test_current_preparation_prerequisites_precede_connect_claim_and_attempt(
+        budget_submission, native_client, monkeypatch, scenario, match):
+    state, _, definition, _ = budget_submission
+    budget = tasks.preparation(state, 'demo', definition['task_id'])['budget']
+    monkeypatch.setenv('ERGORA_TEST_SUBMISSION_SCENARIO', scenario)
+    with pytest.raises(ValueError, match=match):
+        _start(budget_submission)
+    status = _status(budget_submission)
+    assert status['status'] == 'prepared' and not status['attempt_saved']
+    assert _calls(budget_submission) == []
+    assert not (_root(budget_submission) / 'tasks' / definition['task_id'] / 'cli-ingress.json').exists()
+    assert tasks.preparation(state, 'demo', definition['task_id'])['budget'] == budget
 
 
 @pytest.mark.parametrize('scenario,attempt_saved', [

@@ -3,3 +3,5 @@ Freeze shapes/distributions, strides/layout/alignment, dtype/accumulation/tolera
 Return candidate source or a concrete design, unsupported conditions, correctness oracle, reproducible measurement plan and integration handoff. Text generation is a candidate, not compiled/verified output. No runtime gain, GPU execution or Forge/KDA internal-session coverage follows from this leaf. Independent correctness, quality, measurement and adoption remain separate.
 
 Read context/kernel.md for the complete operator/wrapper contract. Kernel assessment consumes all supplied analysis results; an evidence-supported no-change outcome is valid.
+
+For a formal preparation invocation, follow the selected role and its result schema. As planner, use the complete canonical inventory and supplied predecessor originals to return execution-plan, ownership-map and rollback-plan for this specialty. Retain exact workload, source, environment, quality oracle and execution-owner bindings. The coordinator merges the complete expert results; this invocation grants no experiment execution or plan approval.

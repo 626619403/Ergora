@@ -135,7 +135,7 @@ def _plan_materials(submission, intent: dict, run_id: str, context: dict,
     job_id = identifier(context['job_id'])
     job_sha = creation.sha(context)
     adapter = creation.file_adapter(submission.input)
-    envelope = creation.document(adapter.path('requests', creation.task_id + '/' + job_id + '.json'))
+    envelope = adapter.read_job(adapter.path('requests', creation.task_id + '/' + job_id + '.json'))
     if creation.sha(envelope) != creation.sha({'schema_version': 1, 'job_id': job_id,
                                              'job_sha256': job_sha, 'context': context}):
         raise ValueError('Plan request envelope differs from its original history context')
@@ -146,10 +146,12 @@ def _plan_materials(submission, intent: dict, run_id: str, context: dict,
             or receipt['job_sha256'] != job_sha or receipt['state'] != 'SUCCEEDED'):
         raise ValueError('Plan receipt differs from the exact pending plan or its original job')
     artifacts = {artifact['name']: artifact for artifact in receipt['artifacts']}
-    if 'design-packet' in artifacts and len(artifacts) != len(receipt['artifacts']):
+    if len(artifacts) != len(receipt['artifacts']):
         raise ValueError('Plan receipt contains duplicate review artifact names')
     materials = []
     names = list(spec['profile']['artifacts_by_stage']['plan'])
+    if selected := submission.input.document.get('composition', {}).get('preparation'):
+        names.append('preparation-sources')
     if 'design-packet' in artifacts and 'design-packet' not in names:
         names.append('design-packet')
     for name in names:
@@ -166,6 +168,23 @@ def _plan_materials(submission, intent: dict, run_id: str, context: dict,
               'runtime_status': 'queried', 'phase': 'AWAITING_PLAN_APPROVAL', 'plan_sha256': plan_sha256,
               'history_plan_event_id': history_event_id, 'job_sha256': job_sha, 'receipt': receipt,
               'materials': materials, 'artifact_limit_bytes': 262_144, 'read_only': True}
+    if selected:
+        sources = json.loads(next(item['text'] for item in materials if item['name'] == 'preparation-sources'))
+        if (sources['kind'] != 'formal-preparation-sources' or sources['stage'] != 'plan'
+                or sources['member'] != selected['plan']['coordinator']
+                or sources['request_sha256'] != spec['request_sha256']
+                or sources['profile_sha256'] != spec['profile_sha256']
+                or sources['admission_sha256'] != submission.input.document['sha256']):
+            raise ValueError('Plan preparation sources differ from the original canonical plan')
+        outputs = [output for row in sources['members'].values() for output in row['outputs'].values()]
+        outputs.extend(sources['inventory']['outputs'].values())
+        for output in outputs:
+            artifact = output['ref']
+            path = creation.safe_path(creation.path('artifacts'), artifact['path'])
+            raw = creation.adapter.read_raw(path, 262_144)
+            if (hashlib.sha256(raw).hexdigest() != artifact['sha256'] or len(raw) != output['bytes']
+                    or output['text'].encode('utf-8') != raw):
+                raise ValueError('Preparation source bytes differ from their original artifact: ' + artifact['name'])
     if 'design-packet' in artifacts:
         material = next(item for item in materials if item['name'] == 'design-packet')
         result['design_read'], sources = _read_design(creation, submission.input, context, material)
@@ -293,7 +312,7 @@ def _source_seed(submission, preflight):
 
     job_id = identifier(preflight['receipt']['job_id'])
     adapter = creation.file_adapter(submission.input)
-    envelope = creation.document(adapter.path('requests', creation.task_id + '/' + job_id + '.json'))
+    envelope = adapter.read_job(adapter.path('requests', creation.task_id + '/' + job_id + '.json'))
     context = envelope['context']
     if not submission.input.matches_context(context) or context['stage'] != 'plan':
         raise ValueError('Design source seed differs from its original plan job')

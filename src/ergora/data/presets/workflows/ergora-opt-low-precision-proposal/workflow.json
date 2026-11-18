@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "id": "ergora-opt-low-precision-proposal",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Limited readonly low precision proposal; complete optimization requires a shared training-proposal ancestor.",
   "resources": [
     {
@@ -41,8 +41,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-opt-low-precision-expert",
-        "version": "1.0.0",
-        "digest": "7bb1b280cd6fae9db9d504dc44824eef98d13b7b0c6e809a3540e7a1e5db654b"
+        "version": "1.1.0",
+        "digest": "f6a3b1846b0f940497e80c3bbce9d9e6faaab42e109dff3fe1fcb93fdec78bc9"
       },
       "role": "performance-analyst",
       "depends_on": [],
@@ -66,8 +66,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-experiment-designer",
-        "version": "2.0.1",
-        "digest": "cb2f8919ee58521eaf74e4c813cb81cbe570380decb7e9433171dca3429bc1df"
+        "version": "2.1.0",
+        "digest": "3b0ab4852241f20d62c8562129238bee89364f959c3e8d6055ce512fbfed5c1f"
       },
       "role": "experiment-planner",
       "depends_on": [],
@@ -99,8 +99,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-kernel-designer",
-        "version": "2.1.0",
-        "digest": "66bf825450e0d9fa1d1cfbcd136fff179c9ba9095cbd3ba4d0140cb288ae4428"
+        "version": "2.2.0",
+        "digest": "05d1a0ca7e33f01945dc5f58825413ac514514059a2f60c52113bc18d50f64f1"
       },
       "role": "kernel-tuner",
       "depends_on": [

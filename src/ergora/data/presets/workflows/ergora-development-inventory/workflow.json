@@ -1,0 +1,72 @@
+{
+  "schema_version": 2,
+  "id": "ergora-development-inventory",
+  "version": "1.0.0",
+  "description": "Readonly inventory group with a single canonical coordinator.",
+  "resources": [
+    {
+      "id": "ergora-development-inventory-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "d6479ab2724fa358c3b7f9bef002d441b50cc1f71df8cd646ae9909ebde503b7"
+    }
+  ],
+  "permissions": {
+    "read": [
+      "workspace",
+      "definitions"
+    ],
+    "write": [],
+    "shell": false,
+    "network": []
+  },
+  "limits": {
+    "depth": 8,
+    "instances": 128,
+    "concurrency": 4,
+    "material_bytes": 262144
+  },
+  "inputs": [
+    "task"
+  ],
+  "outputs": {
+    "result": {
+      "node": "done",
+      "output": "result"
+    }
+  },
+  "nodes": [
+    {
+      "id": "coordinator",
+      "ref": {
+        "kind": "agent",
+        "id": "ergora-development-preparer",
+        "version": "1.0.1",
+        "digest": "bcb90daaffbd8251c21e1aca5614eeb9aac563dba6da6485203e838ea0f7960c"
+      },
+      "role": "inspector",
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [],
+        "shell": false,
+        "network": []
+      }
+    },
+    {
+      "id": "done",
+      "join": "all",
+      "depends_on": [
+        "coordinator"
+      ]
+    }
+  ]
+}

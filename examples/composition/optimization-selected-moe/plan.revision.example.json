@@ -1,0 +1,195 @@
+{
+  "description": "Canonical inventory feeds parallel experiment and MoE planning, then required kernel assessment and canonical plan coordination.",
+  "id": "ergora-optimization-plan",
+  "inputs": [
+    "task"
+  ],
+  "limits": {
+    "concurrency": 4,
+    "depth": 8,
+    "instances": 128,
+    "material_bytes": 1000000
+  },
+  "nodes": [
+    {
+      "depends_on": [],
+      "id": "design",
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "permissions": {
+        "network": [],
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "shell": false,
+        "write": []
+      },
+      "ref": {
+        "digest": "3b0ab4852241f20d62c8562129238bee89364f959c3e8d6055ce512fbfed5c1f",
+        "id": "ergora-experiment-designer",
+        "kind": "agent",
+        "version": "2.1.0"
+      },
+      "role": "planner"
+    },
+    {
+      "depends_on": [],
+      "id": "dispatcher",
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "permissions": {
+        "network": [],
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "shell": false,
+        "write": []
+      },
+      "ref": {
+        "digest": "a1794054d147dfc65ee3d25908a07ca0cb77ea250c86c125fe90315fdca97d89",
+        "id": "ergora-opt-moe-dispatcher-expert",
+        "kind": "agent",
+        "version": "1.1.0"
+      },
+      "role": "planner"
+    },
+    {
+      "depends_on": [],
+      "id": "overlap",
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "permissions": {
+        "network": [],
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "shell": false,
+        "write": []
+      },
+      "ref": {
+        "digest": "2e17ee7a519df875115fa8caf8f509a9ccff15f9513b4dec2c99657760bdd6ca",
+        "id": "ergora-opt-moe-overlap-expert",
+        "kind": "agent",
+        "version": "1.1.0"
+      },
+      "role": "planner"
+    },
+    {
+      "depends_on": [
+        "design",
+        "dispatcher",
+        "overlap"
+      ],
+      "id": "analyses",
+      "join": "all"
+    },
+    {
+      "depends_on": [
+        "analyses"
+      ],
+      "id": "kernel",
+      "inputs": {
+        "task": {
+          "node": "analyses",
+          "output": "result"
+        }
+      },
+      "permissions": {
+        "network": [],
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "shell": false,
+        "write": []
+      },
+      "ref": {
+        "digest": "05d1a0ca7e33f01945dc5f58825413ac514514059a2f60c52113bc18d50f64f1",
+        "id": "ergora-kernel-designer",
+        "kind": "agent",
+        "version": "2.2.0"
+      },
+      "role": "planner"
+    },
+    {
+      "depends_on": [
+        "analyses",
+        "kernel"
+      ],
+      "id": "assessment",
+      "join": "all"
+    },
+    {
+      "depends_on": [
+        "assessment"
+      ],
+      "id": "coordinator",
+      "inputs": {
+        "task": {
+          "node": "assessment",
+          "output": "result"
+        }
+      },
+      "permissions": {
+        "network": [],
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "shell": false,
+        "write": []
+      },
+      "ref": {
+        "digest": "bcb90daaffbd8251c21e1aca5614eeb9aac563dba6da6485203e838ea0f7960c",
+        "id": "ergora-development-preparer",
+        "kind": "agent",
+        "version": "1.0.1"
+      },
+      "role": "planner"
+    },
+    {
+      "depends_on": [
+        "coordinator"
+      ],
+      "id": "done",
+      "join": "all"
+    }
+  ],
+  "outputs": {
+    "result": {
+      "node": "done",
+      "output": "result"
+    }
+  },
+  "permissions": {
+    "network": [],
+    "read": [
+      "workspace",
+      "definitions"
+    ],
+    "shell": false,
+    "write": []
+  },
+  "resources": [
+    {
+      "id": "ergora-optimization-plan-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "8caf20b3d71042124b02cdb557836c3053e12e721b7f3cf380ef66fe95a81aef"
+    }
+  ],
+  "schema_version": 2,
+  "version": "1.0.0"
+}

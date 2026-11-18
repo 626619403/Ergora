@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "id": "ergora-opt-parallelism-proposal",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Limited readonly parallelism proposal; complete optimization requires a shared training-proposal ancestor.",
   "resources": [
     {
@@ -41,8 +41,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-opt-parallelism-expert",
-        "version": "1.0.0",
-        "digest": "553f209dd7c4d1440199a7abe8d612a72a94d2cc6f96a1f6f54a3148343c2f5d"
+        "version": "1.1.0",
+        "digest": "b907b164b90ad949cd13c9698d1723094d8f25ef46ef967cb03ed9cff2b2dd8f"
       },
       "role": "performance-analyst",
       "depends_on": [],
@@ -66,8 +66,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-experiment-designer",
-        "version": "2.0.1",
-        "digest": "cb2f8919ee58521eaf74e4c813cb81cbe570380decb7e9433171dca3429bc1df"
+        "version": "2.1.0",
+        "digest": "3b0ab4852241f20d62c8562129238bee89364f959c3e8d6055ce512fbfed5c1f"
       },
       "role": "experiment-planner",
       "depends_on": [],

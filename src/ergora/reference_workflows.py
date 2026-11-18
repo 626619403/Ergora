@@ -10,10 +10,11 @@ from temporalio.exceptions import ApplicationError
 
 with workflow.unsafe.imports_passed_through():
     from dev_platform.activities import Activities
-    from dev_platform.adapter import FileAdapter, ContractViolation, identifier, read_json, sha
+    from dev_platform.adapter import FileAdapter, ContractViolation, identifier, sha
     from dev_platform.workflow import DevelopmentWorkflow, RETRY, StopWork
     from ergora import reference_budget, task_envelopes
     from ergora.reference_review_opinions import review_observation
+    from ergora.review_dags import preparation_stages
 
 
 class CompositionAdapter(FileAdapter):
@@ -72,8 +73,8 @@ class CompositionDevelopmentWorkflow(DevelopmentWorkflow):
                 raise StopWork(str(error)) from error
         context = {**super().context(stage, expected_sha, unit, dependencies), "admission": self.admission}
         content = json.dumps(context, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False).encode("utf-8")
-        if len(content) > 1_000_000:
-            raise StopWork("Complete composition stage context exceeds 1,000,000 bytes; split the task")
+        if len(content) > task_envelopes.context_limit(self.admission):
+            raise StopWork("Complete composition stage context exceeds its wire byte limit; split the task")
         return context
 
     def authors(self):
@@ -251,8 +252,8 @@ class ReviewDAGWorkflow(ReviewRequirementsWorkflow):
             context['review_ports'] = {'schema_version': 1, 'kind': 'formal-review-ports', 'ports': ports,
                 'producers': {path: self.results[self.source_stage(path)] for path in ports['sources']}}
             if len(json.dumps(context, ensure_ascii=False, sort_keys=True, separators=(',', ':'),
-                              allow_nan=False).encode('utf-8')) > 1_000_000:
-                raise StopWork('Complete review DAG context exceeds 1,000,000 bytes; split the task')
+                              allow_nan=False).encode('utf-8')) > task_envelopes.context_limit(self.admission):
+                raise StopWork('Complete review DAG context exceeds its wire byte limit; split the task')
         return context
 
     def source_stage(self, path):
@@ -316,12 +317,11 @@ class WorkDeliveryActivities(ReviewDAGActivities):
     async def submit(self, context: dict) -> dict:
         return await super().submit(context)
 
-    @activity.defn(name=task_envelopes.WORK_POLL)
-    async def poll(self, job: dict) -> dict | None:
+    def original_job(self, job: dict) -> dict:
         if 'context' not in job:
             try:
                 relative = identifier(job['task_id']) + '/' + identifier(job['job_id']) + '.json'
-                envelope = read_json(self.adapter.path('requests', relative))
+                envelope = self.adapter.read_job(self.adapter.path('requests', relative))
                 context = envelope['context']
                 reference = {'task_id': context['task_id'], 'job_id': context['job_id'], 'job_sha256': sha(context)}
                 expected = {'schema_version': 1, 'job_id': reference['job_id'],
@@ -331,7 +331,11 @@ class WorkDeliveryActivities(ReviewDAGActivities):
                 job = {**reference, 'context': context}
             except (ContractViolation, KeyError, TypeError, ValueError) as error:
                 raise ApplicationError(str(error), type='ContractViolation', non_retryable=True) from error
-        return await super().poll(job)
+        return job
+
+    @activity.defn(name=task_envelopes.WORK_POLL)
+    async def poll(self, job: dict) -> dict | None:
+        return await super().poll(self.original_job(job))
 
 
 @workflow.defn(name='ErgoraCompositionWorkflowV5')
@@ -355,8 +359,8 @@ class WorkDeliveryWorkflow(ReviewDAGWorkflow):
             context['work_ports'] = {'schema_version': 1, 'kind': 'formal-work-ports', 'member': member,
                 'ports': ports, 'producers': {path: self.results[self.source_stage(path)] for path in ports['sources']}}
             if len(json.dumps(context, ensure_ascii=False, sort_keys=True, separators=(',', ':'),
-                              allow_nan=False).encode('utf-8')) > 1_000_000:
-                raise StopWork('Complete work stage context exceeds 1,000,000 bytes; split the task')
+                              allow_nan=False).encode('utf-8')) > task_envelopes.context_limit(self.admission):
+                raise StopWork('Complete work stage context exceeds its wire byte limit; split the task')
         return context
 
     async def units(self):
@@ -441,25 +445,10 @@ class IssueSourceWorkflow(StageResultsWorkflow):
         return await self._run_document(document)
 
 
-class FullStageMaterialsAdapter(StageResultsAdapter):
-    envelope_version = 8
-
-
-@workflow.defn(name='ErgoraCompositionWorkflowV8')
-class FullStageMaterialsWorkflow(StageResultsWorkflow):
-    """Select complete preparation materials within the original six-stage run."""
-
-    envelope_version = 8
-
-    complete_inventory_context = True
-
-    @workflow.run
-    async def run(self, document: dict) -> dict:
-        return await self._run_document(document)
-
-
-class BudgetedAdapter(FullStageMaterialsAdapter):
-    envelope_version = 9
+class PreparationDAGAdapter(StageResultsAdapter):
+    envelope_version = 12
+    context_limit_bytes = task_envelopes.WIRE_LIMIT
+    job_limit_bytes = task_envelopes.WIRE_LIMIT
 
     def validate_submission(self, context):
         super().validate_submission(context)
@@ -469,11 +458,114 @@ class BudgetedAdapter(FullStageMaterialsAdapter):
             raise ContractViolation(str(error)) from error
 
 
-@workflow.defn(name='ErgoraCompositionWorkflowV9')
-class BudgetedWorkflow(FullStageMaterialsWorkflow):
-    """Bound the original orchestration, including waits outside stage polling."""
+class PreparationDAGActivities(WorkDeliveryActivities):
+    context_limit_bytes = task_envelopes.WIRE_LIMIT
 
-    envelope_version = 9
+    @activity.defn(name=task_envelopes.WORK_POLL)
+    async def poll(self, job: dict) -> dict | None:
+        job = self.original_job(job)
+        context = job['context']
+        preparation = context['admission']['composition']['preparation']
+        member = preparation_stages(preparation).get(context['stage'])
+        specialist = member is not None and context['stage'] != 'inventory' and (
+            member in task_envelopes.preparation_dags(context['admission']['composition'])['inventory']['dag'].members)
+        try:
+            if specialist:
+                async with asyncio.timeout(20):
+                    result = await self.adapter.poll(job)
+            else:
+                result = await super().poll(job)
+            if member is None or result is None or result['state'] != 'SUCCEEDED':
+                return result
+            selected = preparation['members'][member]
+            actor, names = result['actor'], {item['name'] for item in result['artifacts']}
+            if (actor['id'] != selected['binding']['tool'] + ':' + selected['role']
+                    or actor['role'] != selected['role'] or actor['kind'] != 'agent'
+                    or actor['session_id'] in context['author_sessions']
+                    or result['candidate_sha'] != context['expected_candidate_sha']
+                    or any(check['status'] != 'pass' for check in result['checks'])):
+                raise ContractViolation('Preparation result differs from its selected actor, independent session or candidate')
+            if specialist:
+                if 'inventory' not in names or names & {'behavior-baseline', 'preparation-sources'}:
+                    raise ContractViolation('Preparation inspector specialist must provide only its declared inventory result')
+            elif context['stage'] in ('inventory', 'plan') and 'preparation-sources' not in names:
+                raise ContractViolation('Canonical preparation result is missing its trusted sources')
+            return result
+        except (ContractViolation, KeyError, TypeError, ValueError) as error:
+            raise ApplicationError(str(error), type='ContractViolation', non_retryable=True) from error
+
+
+@workflow.defn(name='ErgoraCompositionWorkflowV12')
+class PreparationDAGWorkflow(StageResultsWorkflow):
+    """Run frozen preparation DAGs inside the original budget and six stages."""
+
+    envelope_version = 12
+
+    def source_stage(self, path):
+        stages = {member: stage for stage, member in
+                  preparation_stages(self.admission['composition']['preparation']).items()}
+        return stages[path] if path in stages else super().source_stage(path)
+
+    def context(self, stage, expected_sha=None, unit=None, dependencies=None):
+        context = super().context(stage, expected_sha, unit, dependencies)
+        composition = self.admission['composition']
+        member = preparation_stages(composition['preparation']).get(stage)
+        if member is not None:
+            group = next(group for group in task_envelopes.preparation_dags(composition).values()
+                         if member in group['dag'].members)
+            ports = group['dag'].input_ports(member)
+            context['preparation_ports'] = {'schema_version': 1, 'kind': 'formal-preparation-ports',
+                'member': member, 'ports': ports,
+                'producers': {path: self.results[self.source_stage(path)] for path in ports['sources']}}
+            if len(json.dumps(context, ensure_ascii=False, sort_keys=True, separators=(',', ':'),
+                              allow_nan=False).encode('utf-8')) > task_envelopes.context_limit(self.admission):
+                raise StopWork('Complete preparation DAG context exceeds its wire byte limit; split the task')
+        return context
+
+    async def stage(self, stage, expected_sha=None, unit=None, dependencies=None):
+        if stage not in ('inventory', 'plan'):
+            return await super().stage(stage, expected_sha, unit, dependencies)
+        group = task_envelopes.preparation_dags(self.admission['composition'])[stage]
+        dag = group['dag']
+        scopes = {scope['path']: asyncio.Semaphore(scope['limit'])
+                  for leaf in dag.members.values() for scope in leaf['concurrency_scopes']}
+        remaining, completed, running = set(dag.members), set(), {}
+        sessions = set(self.authors()[1])
+
+        async def prepare(path):
+            async with AsyncExitStack() as stack:
+                for scope in reversed(dag.members[path]['concurrency_scopes']):
+                    await stack.enter_async_context(scopes[scope['path']])
+                # The coordinator owns the original bare stage. Call the parent
+                # leaf operation directly so it cannot recursively start a group.
+                return await super(PreparationDAGWorkflow, self).stage(
+                    self.source_stage(path), expected_sha, unit, dependencies)
+
+        try:
+            while remaining or running:
+                if self.cancel_reason:
+                    raise StopWork(self.cancel_reason)
+                for path in sorted(remaining):
+                    if set(dag.predecessors[path]) <= completed:
+                        running[path] = asyncio.create_task(prepare(path))
+                        remaining.remove(path)
+                await workflow.wait(running.values(), return_when=asyncio.FIRST_COMPLETED)
+                for path in sorted(list(running)):
+                    if running[path].done():
+                        receipt = await running.pop(path)
+                        if self.cancel_reason:
+                            raise StopWork(self.cancel_reason)
+                        session = receipt['actor']['session_id']
+                        if session in sessions:
+                            raise StopWork('Preparation instances require distinct original sessions')
+                        sessions.add(session)
+                        completed.add(path)
+            return self.results[stage]
+        finally:
+            for task in running.values():
+                task.cancel()
+            if running:
+                await asyncio.gather(*running.values(), return_exceptions=True)
 
     def remaining(self, *, cleanup=False):
         instance = self.admission['budget']['instance']
@@ -488,6 +580,7 @@ class BudgetedWorkflow(FullStageMaterialsWorkflow):
         if self.admission is not None:
             instance = self.admission['budget']['instance']
             result['budget'] = {key: instance[key] for key in ('id', 'sha256', 'authorized_at', 'deadline_at')}
+            result['native_invocation'] = self.admission['composition']['native']
         return result
 
     async def call(self, name, value, result_type=dict):
@@ -499,9 +592,9 @@ class BudgetedWorkflow(FullStageMaterialsWorkflow):
         # reserve elapsed, the bounded attempt may remain unconfirmed; the job
         # owner still owns its independent stop and cleanup.
         timeout = max(.001, remaining)
-        if name == 'dev_poll' and workflow.patched('ergora-budgeted-poll-reference-v1'):
+        if name == 'dev_poll':
             # Keep full material in the original immutable request, outside the
-            # repeatedly recorded poll payload. Older histories keep their input.
+            # repeatedly recorded poll payload.
             value = {key: value[key] for key in ('task_id', 'job_id', 'job_sha256')}
         return await workflow.execute_activity(self.operations.get(name, name), value, result_type=result_type,
             start_to_close_timeout=timedelta(seconds=min(30, timeout)),
@@ -543,45 +636,8 @@ class BudgetedWorkflow(FullStageMaterialsWorkflow):
     async def run(self, document: dict) -> dict:
         outcome = await self._run_document(document)
         instance = self.admission['budget']['instance']
-        return {**outcome, 'budget': {'id': instance['id'], 'sha256': instance['sha256'],
+        return {**outcome, 'native_invocation': self.admission['composition']['native'],
+            'budget': {'id': instance['id'], 'sha256': instance['sha256'],
             'deadline_at': instance['deadline_at'], 'utc_observed_at': workflow.now().isoformat(),
             'work_exhausted': self.remaining() <= 0,
             'utc_overrun_seconds': max(0, -self.remaining(cleanup=True))}}
-
-
-class NativeSixStageAdapter(BudgetedAdapter):
-    envelope_version = 10
-
-
-@workflow.defn(name='ErgoraCompositionWorkflowV10')
-class NativeSixStageWorkflow(BudgetedWorkflow):
-    """Project the parent call onto the same task, run and candidate evidence."""
-
-    envelope_version = 10
-
-    @workflow.query
-    def status(self) -> dict:
-        result = super().status()
-        if self.admission is not None:
-            result['native_invocation'] = self.admission['composition']['native']
-        return result
-
-    @workflow.run
-    async def run(self, document: dict) -> dict:
-        outcome = await super().run(document)
-        return {**outcome, 'native_invocation': self.admission['composition']['native']}
-
-
-class SelectedContextAdapter(NativeSixStageAdapter):
-    envelope_version = 11
-
-
-@workflow.defn(name='ErgoraCompositionWorkflowV11')
-class SelectedContextWorkflow(NativeSixStageWorkflow):
-    """Retain the original native lifecycle for explicitly frozen sources."""
-
-    envelope_version = 11
-
-    @workflow.run
-    async def run(self, document: dict) -> dict:
-        return await super().run(document)

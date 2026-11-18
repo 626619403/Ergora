@@ -11,6 +11,7 @@ from pathlib import Path
 from . import task_envelopes
 
 
+
 class WorkflowInput(ABC):
     """Keep the original document and its compatible six-stage projection."""
 
@@ -276,7 +277,7 @@ class IssueSourceInput(StageResultsInput):
 
 
 def _selected_prerequisites(selected_input, selection: dict, preparation: list) -> dict:
-    """Probe the actual frozen programs, sharing the v7/v8 local admission owner."""
+    """Probe the actual frozen programs, for source and complete preparation inputs."""
     from agent_platform.core import Blocked, CONFIG, PYTHON, settings
     from agent_platform.sandbox import Sandbox
     from . import agent_backends, agents, processes, task_mcp
@@ -328,59 +329,45 @@ def _selected_prerequisites(selected_input, selection: dict, preparation: list) 
                      'authentication, capacity and worker liveness are not checked'}
 
 
-class FullStageMaterialsInput(StageResultsInput):
-    """All four model stages consume frozen leaves; the original schedule remains."""
+class PreparationDAGInput(StageResultsInput):
+    """One native six-stage admission schedules its frozen preparation groups."""
 
-    version = 8
-    queue_suffix = '.composition-v8'
-    requests_suffix = '-composition-v8'
+    version = 12
+    queue_suffix = '.composition-v12'
+    requests_suffix = '-composition-v12'
     complete_resources = True
 
     @classmethod
     def workflow_type(cls):
-        from .reference_workflows import FullStageMaterialsWorkflow
+        from .reference_workflows import PreparationDAGWorkflow
 
-        return FullStageMaterialsWorkflow
+        return PreparationDAGWorkflow
 
     @classmethod
     def adapter(cls, config: dict):
-        from .reference_workflows import FullStageMaterialsAdapter
+        from .reference_workflows import PreparationDAGAdapter
 
-        return FullStageMaterialsAdapter({**config, 'requests': str(cls.request_root(Path(config['requests'])))})
+        return PreparationDAGAdapter({**config, 'requests': str(cls.request_root(Path(config['requests'])))})
+
+    @classmethod
+    def activities(cls, config: dict):
+        from .reference_workflows import PreparationDAGActivities
+
+        return PreparationDAGActivities(cls.adapter(config))
 
     def admission_report(self, original_report, selection: dict) -> dict:
+        from .review_dags import preparation_stages
+
         preparation = self.document['composition']['preparation']
         return _selected_prerequisites(self, selection,
-            [(stage, preparation['members'][preparation[stage]]) for stage in ('inventory', 'plan')])
+            [(stage, preparation['members'][path]) for stage, path in preparation_stages(preparation).items()])
 
     def stage_material(self) -> dict:
-        return {'issue_source': self.document['issue_source']} if 'issue_source' in self.document else {}
+        return {**({'issue_source': self.document['issue_source']} if 'issue_source' in self.document else {}),
+                **({'selected_context': self.document['context']} if 'context' in self.document else {})}
 
     def evidence_contract(self) -> dict:
         return {'original_input': self.document, 'original_input_sha256': task_envelopes.identity(self.document)}
-
-
-class BudgetedInput(FullStageMaterialsInput):
-    """The original six stages share one authorization through all job owners."""
-
-    version = 9
-    queue_suffix = '.composition-v9'
-    requests_suffix = '-composition-v9'
-
-    @classmethod
-    def adapter(cls, config: dict):
-        from .reference_workflows import BudgetedAdapter
-
-        return BudgetedAdapter({**config, 'requests': str(cls.request_root(Path(config['requests'])))})
-
-    @classmethod
-    def workflow_type(cls):
-        from .reference_workflows import BudgetedWorkflow
-
-        return BudgetedWorkflow
-
-    def require_submission(self) -> None:
-        super().require_submission()
 
     def require_dispatch(self) -> None:
         from . import reference_budget
@@ -412,52 +399,8 @@ class BudgetedInput(FullStageMaterialsInput):
         claim_model(self.document, stage, member)
 
 
-class NativeSixStageInput(BudgetedInput):
-    """One selected template call retains the original budgeted task lifecycle."""
-
-    version = 10
-    queue_suffix = '.composition-v10'
-    requests_suffix = '-composition-v10'
-
-    @classmethod
-    def adapter(cls, config: dict):
-        from .reference_workflows import NativeSixStageAdapter
-
-        return NativeSixStageAdapter({**config, 'requests': str(cls.request_root(Path(config['requests'])))})
-
-    @classmethod
-    def workflow_type(cls):
-        from .reference_workflows import NativeSixStageWorkflow
-
-        return NativeSixStageWorkflow
-
-
-class SelectedContextInput(NativeSixStageInput):
-    """Explicit sources use the same native stages, budget and full resources."""
-
-    version = 11
-    queue_suffix = '.composition-v11'
-    requests_suffix = '-composition-v11'
-
-    @classmethod
-    def adapter(cls, config: dict):
-        from .reference_workflows import SelectedContextAdapter
-
-        return SelectedContextAdapter({**config, 'requests': str(cls.request_root(Path(config['requests'])))})
-
-    @classmethod
-    def workflow_type(cls):
-        from .reference_workflows import SelectedContextWorkflow
-
-        return SelectedContextWorkflow
-
-    def stage_material(self) -> dict:
-        return {**super().stage_material(), 'selected_context': self.document['context']}
-
-
 _INPUTS = {1: LegacyInput, 2: CompositionInput, 3: ReviewRequirementsInput, 4: ReviewDAGInput,
-           5: WorkDeliveryInput, 6: StageResultsInput, 7: IssueSourceInput, 8: FullStageMaterialsInput,
-           9: BudgetedInput, 10: NativeSixStageInput, 11: SelectedContextInput}
+           5: WorkDeliveryInput, 6: StageResultsInput, 7: IssueSourceInput, 12: PreparationDAGInput}
 
 
 def workers(client, queue: str, config: dict) -> list:

@@ -71,7 +71,7 @@ def read_json(path):
     return json.loads(read_raw(path))
 
 
-def publish(path, value):
+def publish(path, value, *, read_limit=1_048_576):
     """Create immutable complete JSON. Retrying equal bytes is idempotent."""
     raw = canonical(value) + b"\n"
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -82,7 +82,7 @@ def publish(path, value):
         try:
             os.link(temporary, path)
         except FileExistsError:
-            require(read_raw(path) == raw, "Immutable publication conflicts with existing bytes")
+            require(read_raw(path, read_limit) == raw, "Immutable publication conflicts with existing bytes")
     finally:
         Path(temporary).unlink(missing_ok=True)
 
@@ -96,6 +96,9 @@ class DevelopmentAdapter(Protocol):
 
 class FileAdapter:
     """Bounded operations on trusted mounted directories; no shell execution."""
+    context_limit_bytes = MAX_CONTEXT_BYTES
+    job_limit_bytes = 1_048_576
+
     def __init__(self, config: dict):
         self.config = dict(config)
         keys = ("requests", "receipts", "artifacts", "approvals", "fences")
@@ -116,14 +119,18 @@ class FileAdapter:
     def path(self, key, relative):
         return safe_file(self.roots[key], relative)
 
+    def read_job(self, path):
+        return json.loads(read_raw(path, self.job_limit_bytes))
+
     async def submit(self, context):
-        require(len(canonical(context)) <= MAX_CONTEXT_BYTES, "Stage context exceeds 1,000,000 bytes; put long content in artifacts and split the task")
+        require(len(canonical(context)) <= self.context_limit_bytes, "Stage context exceeds its byte limit; put long content in artifacts and split the task")
         task_id = identifier(context["task_id"])
         job_id = identifier(context["job_id"])
         fence = self.path("fences", task_id + ".json")
         require(not fence.exists(), "Task is fenced; no additional stage may be submitted")
         envelope = {"schema_version": 1, "job_id": job_id, "job_sha256": sha(context), "context": context}
-        publish(self.path("requests", task_id + "/" + job_id + ".json"), envelope)
+        require(len(canonical(envelope)) + 1 <= self.job_limit_bytes, "Complete job envelope exceeds its byte limit")
+        publish(self.path("requests", task_id + "/" + job_id + ".json"), envelope, read_limit=self.job_limit_bytes)
         # A fence racing this write is safe only because the executor checks the fence.
         require(not fence.exists(), "Task fenced during stage publication; executor must suppress it")
         return {"task_id": task_id, "job_id": job_id, "job_sha256": envelope["job_sha256"], "context": context}
@@ -192,7 +199,7 @@ class FileAdapter:
         folder = self.path("requests", task_id)
         if folder.exists():
             for path in sorted(folder.glob("*.json")):
-                envelope = read_json(path)
+                envelope = self.read_job(path)
                 require(envelope["context"]["request_sha256"] == context["request_sha256"], "Task ID collision during fence")
                 job = {"task_id": task_id, "job_id": envelope["job_id"], "job_sha256": envelope["job_sha256"], "context": envelope["context"]}
                 try: receipt = await self.poll(job)
@@ -216,9 +223,31 @@ def main():
     approval = sub.add_parser("publish-approval"); approval.add_argument("receipt_id"); approval.add_argument("approval")
     args = parser.parse_args(); adapter = FileAdapter(read_json(Path(args.config)))
     if args.action == "publish-receipt":
-        envelope = read_json(Path(args.job)); context = envelope["context"]
+        oversized = False
+        try:
+            envelope = adapter.read_job(Path(args.job))
+        except ContractViolation as error:
+            if str(error) != "File exceeds size limit":
+                raise
+            oversized = True
+        admission = envelope["context"].get("admission", {}) if not oversized else {}
+        if oversized or isinstance(admission, dict) and admission.get("schema_version") == 12:
+            # Ordinary native jobs keep their standalone reader. Complete
+            # Ergora jobs require only the pure, current admission contract.
+            try:
+                from ergora import task_envelopes
+            except ImportError as error:
+                raise ContractViolation("Complete current task jobs require Ergora's pure admission reader") from error
+            if oversized:
+                envelope = task_envelopes.decode_job(read_raw(Path(args.job), task_envelopes.WIRE_LIMIT))
+            context = envelope["context"]
+            admission = context["admission"]
+            spec, _ = task_envelopes.unwrap(admission)
+            require(task_envelopes.matches_context(spec, context, admission), "Job context differs from its complete admission")
+            adapter.job_limit_bytes = task_envelopes.wire_limit(admission)
+        context = envelope["context"]
         require(envelope["job_sha256"] == sha(context), "Job context hash mismatch")
-        trusted = read_json(adapter.path("requests", identifier(context["task_id"]) + "/" + identifier(envelope["job_id"]) + ".json"))
+        trusted = adapter.read_job(adapter.path("requests", identifier(context["task_id"]) + "/" + identifier(envelope["job_id"]) + ".json"))
         require(envelope == trusted, "Job differs from trusted published request")
         job = {"task_id": context["task_id"], "job_id": envelope["job_id"], "job_sha256": envelope["job_sha256"], "context": context}
         value = read_json(Path(args.receipt)); adapter.verify_receipt(job, value)

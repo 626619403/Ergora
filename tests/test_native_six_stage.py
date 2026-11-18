@@ -13,7 +13,7 @@ import pytest
 from ergora import memory, reference, skill_assets, task_envelopes, tasks, workflow_definitions as workflows
 from ergora.native_six_stage import invocation
 from ergora.reference_inputs import execution_input
-from test_task_budget import budget_creation, full_creation, full_graph, work_creation, work_graph
+from test_task_budget import budget_creation, budget_graph, full_creation, full_graph, work_creation, work_graph
 from test_registrations import installation, registration
 from test_task_creation import creation_project
 from test_task_submission import native_client, _calls, _resume, _start, _status
@@ -21,12 +21,15 @@ from test_workflow_definitions import EXAMPLES
 
 
 @pytest.fixture
-def native_definition(budget_creation, full_graph, tmp_path, request):
+def native_definition(budget_creation, budget_graph, tmp_path, request):
     state, registered, definition = budget_creation
-    library, grant, _, _, _, _ = full_graph
+    library, grant, _, _, _, _ = budget_graph
     source = tmp_path / 'native-parent'
     shutil.copytree(EXAMPLES / 'composition/native-development', source)
     document = json.loads((source / 'workflow.json').read_bytes())
+    document['version'] = '1.2.0'
+    child = workflows.get(library, 'prepared-delivery', '1.1.0')
+    document['nodes'][0]['ref'].update(version='1.1.0', digest=child['digest'])
     variant = getattr(request, 'param', 'normal')
     if variant == 'sibling':
         document['nodes'].append({'id': 'unused', 'depends_on': ['development'], 'join': 'all'})
@@ -40,24 +43,24 @@ def native_definition(budget_creation, full_graph, tmp_path, request):
     if variant == 'nested':
         document['id'] = 'outer-parent'
         document['nodes'] = [{'id': 'delegation', 'ref': {'kind': 'workflow', 'id': 'native-development',
-            'version': '1.0.0', 'digest': parent['digest']}, 'depends_on': [], 'inputs': {'task': {'input': 'task'}}}]
+            'version': '1.2.0', 'digest': parent['digest']}, 'depends_on': [], 'inputs': {'task': {'input': 'task'}}}]
         document['outputs'] = {'result': {'node': 'delegation', 'output': 'result'}}
         (source / 'workflow.json').write_text(json.dumps(document))
         workflows.import_bundle(library, source)
         position = 'root/delegation/development'
-    manifest = workflows.prepare_manifest(library.root, document['id'], '1.0.0', grant, tmp_path / 'native-manifest')
+    manifest = workflows.prepare_manifest(library.root, document['id'], document['version'], grant, tmp_path / 'native-manifest')
     option = definition['composition']
     def nested(path):
-        return position + '/' + path.removeprefix('root/')
+        return position + '/' + path.removeprefix('root/development/')
     option['review_instance'] = nested(option['review_instance'])
     option['execution']['instance'] = nested(option['execution']['instance'])
     option['execution']['assignments'] = {key: nested(path) for key, path in option['execution']['assignments'].items()}
     for stage in ('inventory', 'plan'):
-        option['preparation'][stage] = nested(option['preparation'][stage])
+        option['preparation'][stage] = {key: nested(path) for key, path in option['preparation'][stage].items()}
     option['backend_overrides'] = {nested(path): value for path, value in option['backend_overrides'].items()}
     option.update(manifest=manifest['path'], manifest_digest=manifest['digest'],
                   native={'protocol': 'six-stage-v1', 'instance': position})
-    definition['schema_version'] = 6
+    definition['schema_version'] = 8
     return state, registered, definition
 
 
@@ -79,7 +82,7 @@ def selected_context_task(native_definition, tmp_path):
     (source / 'references/contract.md').write_text('Original attachment: complete evidence, no automatic adoption.\n')
     imported = skill_assets.import_bundle(state, 'demo', source)
     head = next(item for item in skill_assets.versions(state, 'demo')['active'] if item['name'] == imported['name'])
-    definition.update(schema_version=7, context={'root_version': '1.0.1',
+    definition.update(schema_version=8, context={'root_version': '1.2.1',
         'memories': [{'id': record['id'], 'revision': record['revision']}],
         'skills': [{key: head[key] for key in ('name', 'digest', 'revision')}]})
     definition['composition']['mode'] = 'task-mcp'
@@ -95,14 +98,14 @@ def test_selected_sources_are_inherited_complete_and_sdk_free(selected_context_t
     before = skill_assets.versions(state, 'demo')
     preview, document = _prepared(selected_context_task)
     selected = execution_input(document)
-    assert document['schema_version'] == 11 and selected.task_queue('dev') == 'dev.composition-v11'
-    assert _Definition.must_from_run_fn(selected.entrypoint).name == 'ErgoraCompositionWorkflowV11'
+    assert document['schema_version'] == 12 and selected.task_queue('dev') == 'dev.composition-v12'
+    assert _Definition.must_from_run_fn(selected.entrypoint).name == 'ErgoraCompositionWorkflowV12'
     frozen = task_envelopes.selected_context(document)
     assert frozen['selection'] == definition['context']
     assert frozen['base_manifest_digest'] == definition['composition']['manifest_digest']
     assert skill_assets.versions(state, 'demo') == before
     graph = task_envelopes.manifest_graph(document['composition']['manifest'])
-    assert graph['root']['version'] == '1.0.1' and graph['root']['id'] == frozen['base_root']['id']
+    assert graph['root']['version'] == '1.2.1' and graph['root']['id'] == frozen['base_root']['id']
     assert document['composition']['native']['instance'] == definition['composition']['native']['instance']
     for leaf in [item for item in graph['instances'] if item['kind'] == 'agent']:
         assert frozen['memories'][0]['text'] in leaf['prompt']
@@ -115,7 +118,7 @@ def test_selected_sources_are_inherited_complete_and_sdk_free(selected_context_t
     child = subprocess.run([sys.executable, '-I', '-S', '-B', '-c', code], input=json.dumps(document),
                            capture_output=True, text=True, timeout=20)
     assert child.returncode == 0, child.stderr
-    assert child.stdout.strip() == 'dev.composition-v11'
+    assert child.stdout.strip() == 'dev.composition-v12'
     changed = deepcopy(document)
     changed['context']['selection']['skills'][0]['revision'] += 1
     changed['sha256'] = task_envelopes.identity({key: value for key, value in changed.items() if key != 'sha256'})
@@ -235,9 +238,9 @@ def test_native_call_freezes_parent_chain_and_recovers_without_source(native_def
     state, registered, definition = native_definition
     preview, document = _prepared(native_definition)
     selected = execution_input(document)
-    assert document['schema_version'] == 10 and selected.task_queue('dev') == 'dev.composition-v10'
-    assert selected.request_root(Path('requests')) == Path('requests-composition-v10')
-    assert _Definition.must_from_run_fn(selected.entrypoint).name == 'ErgoraCompositionWorkflowV10'
+    assert document['schema_version'] == 12 and selected.task_queue('dev') == 'dev.composition-v12'
+    assert selected.request_root(Path('requests')) == Path('requests-composition-v12')
+    assert _Definition.must_from_run_fn(selected.entrypoint).name == 'ErgoraCompositionWorkflowV12'
     native = document['composition']['native']
     graph = task_envelopes.manifest_graph(document['composition']['manifest'])
     position = definition['composition']['native']['instance']
@@ -263,7 +266,7 @@ def test_native_call_freezes_parent_chain_and_recovers_without_source(native_def
     child = subprocess.run([sys.executable, '-I', '-S', '-B', '-c', code], input=json.dumps(document),
                            capture_output=True, text=True, timeout=20)
     assert child.returncode == 0, child.stderr
-    assert child.stdout.strip() == 'dev.composition-v10'
+    assert child.stdout.strip() == 'dev.composition-v12'
     changed = deepcopy(document)
     changed['composition']['native']['lineage'][0]['definition']['version'] = '9.0.0'
     changed['sha256'] = task_envelopes.identity({key: value for key, value in changed.items() if key != 'sha256'})
@@ -308,7 +311,13 @@ def test_native_lost_start_reuses_original_run_and_full_input(native_definition,
     codex.symlink_to(sys.executable)
     (config / 'claude').symlink_to(sys.executable)
     monkeypatch.setenv('PATH', str(config) + os.pathsep + os.environ.get('PATH', ''))
-    (config / 'platform.json').write_text(json.dumps({'execution_enabled': True, 'codex_bin': str(codex)}))
+    monkeypatch.syspath_prepend(str(reference.ROOT / 'platform/local'))
+    from agent_platform.sandbox import container_identity
+    identity = container_identity()
+    if identity is None:
+        pytest.skip('Reference task admission requires an acknowledged container boundary')
+    (config / 'platform.json').write_text(json.dumps({'execution_enabled': True, 'codex_bin': str(codex),
+        'current_container_trust_acknowledged': True, 'container_boundary': identity}))
     (config / 'codex.toml').write_text('model = "native-input-probe-only"\n')
     preview, document = _prepared(native_definition)
     created = tasks.create(state, 'demo', definition, 1, preview['preview_sha256'],

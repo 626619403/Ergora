@@ -1,53 +1,39 @@
-# Selected MoE optimization proposals
+# Stage-specific MoE experts through the original six stages
 
-This example publishes an exact revision of the shared training proposal with MoE dispatcher and overlap workflows as real descendants. All eleven leaves inherit both shared optimization Skills and the environment-change record. Topic specialists carry their complete topic methods. The single current resource tree remains in `src/ergora/data/presets`; this directory contains a standard revision document, not a duplicate resource bundle.
+This current example selects a fixed MoE dispatcher/overlap workload. A single ordinary parent invokes `root/development`, whose original six-stage owner runs inventory and plan groups, waits for exact owner plan approval, and retains work, trusted integrate/verify and independent final review. It does not choose among the nineteen directions automatically or execute training experiments.
 
-The inherited [GPU comparison policy](../../../src/ergora/data/presets/workflows/ergora-training-proposal/skills/ergora-bottleneck-optimization/SKILL.md#gpu-comparisons-and-pool-validation) guides the authorized execution supervisor's small comparisons, candidate batches and target-scale acceptance through available `igs` pool operations. These readonly proposal calls retain their existing permissions.
+[publication.json](publication.json) pins every current revision base, published reference and policy file. The shared source is `ergora-training-proposal@4.2.1`; its complete two Skills and environment record are added to the development ancestor through the existing resource-preview/accepted-candidate/revise interface. The bottleneck Skill tree is `90aaeb7c6041ac0f10fa8eebae48978a504a1cb213fafc0a537078fb8961ea17`. The source tree contains one policy copy. Stored immutable revisions preserve their original bytes and executable bits.
 
-Install the three dependency closures in your chosen control home, then check and publish the supplied document. These commands pin the shipped references; a conflicting published version is never overwritten.
+The exact root is `ergora-selected-moe-development@1.0.1`, digest `62eeeaf259d179cc0276050b2bae6ea9b23d44d17e0a64aa4ab55b87fa8a3201`. The [fixed revision documents](root.revision.example.json) use current preparation/delivery and native-parent bases; fresh publication needs no older source tree.
 
-```bash
-ergora composition install-preset training-optimization
-ergora composition install-preset optimization-moe-dispatcher
-ergora composition install-preset optimization-moe-overlap
-ergora composition revise ergora-training-proposal 4.1.3 --base-digest 29f5a66e650678ea34d1445a4138bca8f7aa84d2777d141f6edbb6990f317a8c --document examples/composition/optimization-selected-moe/root.revision.example.json --check
-ergora composition revise ergora-training-proposal 4.1.3 --base-digest 29f5a66e650678ea34d1445a4138bca8f7aa84d2777d141f6edbb6990f317a8c --document examples/composition/optimization-selected-moe/root.revision.example.json
-ergora composition preview ergora-training-proposal 4.1.4 --grant examples/composition/optimization-selected-moe/grant.json
+```text
+root/development
+├─preparation/inventory
+│ ├─flow, profile, dispatcher, overlap  inspector; independent
+│ └─coordinator                       inspector; consumes all four
+├─preparation/plan
+│ ├─design, dispatcher, overlap        planner; independent
+│ ├─kernel                            planner; consumes all three
+│ └─coordinator                       planner; consumes all four
+├─work
+│ ├─contract → server, client → integration-tests
+└─review
+  ├─structure/review, correctness/review, test-value/review
+  └─measurement/review                 four required independent reviewers
 ```
 
-The base digest in these commands is the exact shipped root. The check resolves every reference and validates the whole graph. Use the returned `preview_sha256` in the existing freeze call, then use its returned complete manifest path:
+Every listed path is prefixed by `root/development/`; there are 18 model leaves. Every leaf inherits the same complete policy resources from the development ancestor. Inventory specialists use supplied source/profile/oracle evidence; only its canonical coordinator owns the original trusted baseline checks. Every planner receives the complete canonical inventory. Kernel assessment is required and can report an evidence-backed no-change decision. Its full original result reaches the canonical plan, approved-plan material reader and final measurement review. The canonical coordinators are actual model calls and do not approve their own plans.
+
+Preparation and review remain readonly with no shell or network. The original four work leaves retain their declared writable shell capability and explicit trusted-container requirement. Planner definitions request and require `gpt-6.1-sol/max`; flow inspection and final measurement review retain high. No role extension grants training or iGS authority. The shared GPU policy directs the authorized supervisor to compare on 2 GPUs (4 when needed), accumulate measured improvements, then validate at every intended 8-GPU or larger cross-node scale using actually available pool operations. It does not claim iGS submission, GPU execution or measured gains from this example.
+
+To publish the fixed example into an explicit isolated library, use the current installed Ergora and run from this checkout:
 
 ```bash
-ergora composition freeze-manifest ergora-training-proposal 4.1.4 --grant examples/composition/optimization-selected-moe/grant.json --preview-sha256 PREVIEW_SHA256
-ergora composition show-manifest PREVIEW_SHA256 --material
-ergora composition prepare-from-manifest FROZEN_MANIFEST_PATH root/moe-dispatcher/specialist --task analysis-task.txt --directory dispatcher-input --max-prompt-bytes 1000000
-ergora composition prepare-from-manifest FROZEN_MANIFEST_PATH root/moe-overlap/specialist --task analysis-task.txt --directory overlap-input --max-prompt-bytes 1000000
-ergora composition check-input PROJECT dispatcher-input --mode task-mcp
-ergora composition check-input PROJECT overlap-input --mode task-mcp
-ergora composition run-input PROJECT dispatcher-input --mode task-mcp --timeout 120
-ergora composition run-input PROJECT overlap-input --mode task-mcp --timeout 120
+python examples/composition/optimization-selected-moe/publish.py --home ./moe-example-control
 ```
 
-Replace PROJECT with an admitted project; check actual backend authentication and task-MCP availability. Unsupported modes fail visibly. The task file includes the original requirements, exact workload/source/baseline/candidate/environment, the same existing profile and the complete flow/common-analysis result envelopes. These leaf calls do not execute predecessors or fill ports. No new profile, training, installation, adoption or GPU permission follows from preparation.
+[publish.py](publish.py) imports the current dependency closure, checks the exact policy source, applies the six fixed revision documents through `DefinitionLibrary`, previews and explicitly accepts the complete resource candidate, verifies the published refs, then freezes the manifest. It prints the actual root and manifest path/digest. Repeating it retains immutable identities; conflicting versions fail visibly. It performs no model, service, training or GPU operation.
 
-Run every required leaf in the following groups, preparing each input with the original task and complete preceding artifacts. Within a group the operator may run independent calls concurrently. Readonly specialists first receive the same evidence without sibling conclusions; dependent review receives complete original results.
+Copy [task.example.json](task.example.json), replace its placeholders and illustrative scope/work split with the real registered project contract, and use the printed manifest path/digest. It is current task-definition schema8, producing formal input12. Preparation selects two `{instance, coordinator}` groups with `preparation-dag-v1`; native selection is `root/development`. The 18-slot authorization includes every preparation, work and review leaf. The 1,000,000-byte static material ceiling and concurrency4 are explicit in [grant.json](grant.json) and the structural wrappers; the project may narrow concurrency to1/2. Oversized complete materials fail without truncation or grant expansion.
 
-|Group|Exact leaves|Role / definition|
-|---|---|---|
-|1|`root/flow/map`|performance-analyst / training-flow-analyst@1.0.1, high|
-|2|`root/analysis/design`, `root/analysis/profile`|experiment-planner / experiment-designer@2.0.1, max; performance-analyst / performance-analyst@2.1.0, high|
-|3|`root/moe-dispatcher/specialist`, `root/moe-overlap/specialist`|performance-analyst / each opt-…-expert@1.0.0, high|
-|3|`root/moe-dispatcher/design`, `root/moe-overlap/design`|experiment-planner / experiment-designer@2.0.1, max|
-|4|`root/moe-dispatcher/measurement/review`, `root/moe-overlap/measurement/review`|reviewer / measurement-reviewer@2.0.1, high|
-|5|`root/kernel/assess`|kernel-tuner / kernel-designer@2.1.0, max|
-|6|`root/measurement/review`|reviewer / measurement-reviewer@2.0.1, high|
-
-All Agent IDs above have prefix `ergora-`; all models are `gpt-6.1-sol`. The manifest contains the complete exact references and minimum efforts. The shared designer owns the whole-workload contract; the two local designers check finite topic tests against it. All use the same baseline, trace and oracle, collected once by their original owner.
-
-Each topic measurement requires both of its complete analysis results. Global kernel requires flow, both common analyses and both complete topic results. Final measurement additionally requires global kernel. Preserve every original input/output identity, counter-evidence, failure, no_gain, noise and unknown. A reasoned no-kernel-change assessment completes assessment; a missing assessment does not.
-
-There are eleven calls. Reserve eleven model-call slots, at most four concurrent model processes, an explicit total wall limit and cleanup reserve within the actual authorization. Independent `run-input` enforces its own timeout; it does not enforce the group's total budget, concurrency, recovery or all-join. The operator records launches, actual overlap, full results and terminal process state. Insufficient budget or incomplete required predecessors stops the handoff. The product's automatic stage fanout remains a separate required runtime delivery.
-
-The grant permits workspace/definition reads, no writes, no shell and no network. Its explicit material ceiling is 500000 bytes; every subtree ceiling still applies. A capacity failure requires a smaller reviewed selection or an explicitly revised valid ceiling, never truncated material or automatic permission expansion.
-
-The nineteen standalone optimization presets remain limited topic entries. They do not acquire this root's shared policies through a link or a separate invocation. When selecting low-precision, preserve its own specialist/design → kernel → measurement sequence and pass its complete kernel result; the global assessment cannot replace it.
+Use the original `task prepare → preview → create` sequence with both returned SHAs, followed by original start, owner plan approval, cancellation and recovery. Material reading, queues, human waiting, models, checks and cleanup consume the one original clock. Unknown attempts are reconciled under their original identity. The fixed graph is a development/optimization-planning example; actual training/search/profile collection and business-quality acceptance remain with their original authorized owners. Independent `prepare-from-manifest`/`run-input` still invokes one leaf and requires caller-supplied complete predecessor material.

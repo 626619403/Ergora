@@ -23,13 +23,13 @@ from agent_platform.core import Blocked, CONFIG, ROOT, STATE, UPSTREAM, read, re
 from dev_platform.adapter import FileAdapter, MAX_RECEIPT_BYTES, identifier, publish, read_raw
 from dev_platform.contracts import canonical_sha
 
-from . import processes, reference_budget
+from . import processes, reference_budget, task_envelopes
 
 
 class Job(ABC):
     def __init__(self, path: Path, home: Path, document: dict):
         self.path, self.home, self.document = path.resolve(), home, document
-        self.envelope = read(self.path)
+        self.envelope = task_envelopes.decode_job(read_raw(self.path, task_envelopes.WIRE_LIMIT))
         self.context = self.envelope['context']
         self.task_id = slug(self.context['spec']['request']['task_id'])
         self.job_id = identifier(self.envelope['job_id'])
@@ -278,7 +278,7 @@ def claim_model(document: dict, stage: str, member: str | None) -> None:
 
 def collect() -> None:
     payload = json.load(sys.stdin)
-    envelope = read(Path(payload['request']))
+    envelope = task_envelopes.decode_job(read_raw(Path(payload['request']), task_envelopes.WIRE_LIMIT))
     receipt = json.loads(read_raw(Path(payload['pending']), MAX_RECEIPT_BYTES))
     FileAdapter(read(CONFIG / 'adapter.json')).verify_receipt(envelope, receipt)
     publish(Path(payload['output']), receipt)
@@ -287,9 +287,9 @@ def collect() -> None:
 def main() -> None:
     payload = json.load(sys.stdin)
     path, home = Path(payload['request']), Path(payload['home'])
-    envelope = read(path)
+    envelope = task_envelopes.decode_job(read_raw(path, task_envelopes.WIRE_LIMIT))
     task_id = slug(envelope['context']['spec']['request']['task_id'])
-    document = read(STATE / 'tasks' / task_id / 'task.spec.json')
+    document = task_envelopes.decode_admission(read_raw(STATE / 'tasks' / task_id / 'task.spec.json', task_envelopes.WIRE_LIMIT))
     job = BudgetedJob(path, home, document)
     require(all(payload[key] == value for key, value in job.identity.items()), 'Budget owner received a different original job')
     print(json.dumps(job.own(), ensure_ascii=False, allow_nan=False))

@@ -1,0 +1,1 @@
+Readonly inventory experts assess the supplied task and original evidence. The coordinator consumes both complete predecessor results and emits the canonical stage artifacts. Only the inventory coordinator owns trusted baseline checks; the original six-stage owner passes canonical inventory to every planner and approves the canonical plan.

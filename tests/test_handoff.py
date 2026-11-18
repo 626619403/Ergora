@@ -12,6 +12,7 @@ import zipfile
 import pytest
 
 from ergora import cli, handoff
+from test_registrations import installation, registration
 
 
 def canonical(value):
@@ -59,6 +60,46 @@ def collect(evidence, tmp_path):
     path = tmp_path / 'handoff.zip'
     result = handoff.create(index, lambda artifact: binary, path)
     return path, result
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Budgeted native preparation requires Linux/WSL2')
+def test_complete_current_admission_roundtrips_in_portable_evidence(evidence, registration, tmp_path):
+    """A real frozen admission survives the existing portable packet format."""
+    from ergora import registrations, task_envelopes, tasks
+    from test_presets import _publish_selected_moe
+
+    state, project = registration
+    example, published = _publish_selected_moe(state)
+    definition = json.loads((example / 'task.example.json').read_bytes())
+    definition['starting_sha'] = subprocess.check_output(
+        ['git', '-C', project['repo'], 'rev-parse', 'HEAD'], text=True).strip()
+    definition['issue_id'] = '1'
+    definition['composition'].update(manifest=published['manifest']['path'], manifest_digest=published['manifest']['digest'])
+    project['allowed_paths'] = definition['input']['allowed_paths']
+    registrations.register(state, project, 0)
+    assert tasks.prepare(state, 'demo', definition, 1)['status'] == 'prepared'
+    preview = tasks.preview(state, 'demo', definition, 1)
+    document = preview['files']['task.spec.json']
+    assert 1_048_576 < len(canonical(document)) < task_envelopes.WIRE_LIMIT
+    index, binary = evidence
+    spec = document['legacy_spec']
+    index.update(task_id=definition['task_id'], workflow_id='dev-task/' + definition['task_id'],
+        request_sha256=spec['request_sha256'], profile_sha256=spec['profile_sha256'],
+        temporal_status='FAILED', original_outcome=None, original_outcome_sha256=None)
+    selection = preview['files']['agent-bindings.json']
+    index['contract'].update(spec=spec, spec_sha256=sha(spec), original_input=document,
+        original_input_sha256=sha(document), creation_sha256=preview['preview_sha256'],
+        agent_bindings=selection, agent_bindings_sha256=sha(selection))
+    index['jobs'][0]['outcome_reference_state'] = 'not_recorded'
+    path, receipt = collect((index, binary), tmp_path)
+    assert handoff.verify(path, sha256=receipt['sha256'])['status'] == 'verified'
+    selected = handoff.evidence(path, sha256=receipt['sha256'])
+    assert selected['index'] == index and len(canonical(selected)) > 1_048_576
+    invalid = deepcopy(index)
+    invalid['contract']['original_input']['sha256'] = '0' * 64
+    with pytest.raises(ValueError, match='digest mismatch'):
+        handoff.create(invalid, lambda artifact: binary, tmp_path / 'invalid-family.zip')
+    assert not (tmp_path / 'invalid-family.zip').exists()
 
 
 def rewrite(path, change):

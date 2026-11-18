@@ -43,7 +43,7 @@ def test_control_plane_import_graph_is_acyclic(local_dependencies):
 @pytest.mark.parametrize("module,allowed", [
     ("components", set()), ("contracts", set()), ("state", set()), ("git_materials", set()),
     ("asset_trees", set()), ("training_materials", {"asset_trees"}), ("review_dags", set()), ("issue_sources", set()), ("budget_clock", set()),
-    ("reference_budget", {"budget_clock"}), ("native_six_stage", set()),
+    ("reference_budget", {"budget_clock", "review_dags"}), ("native_six_stage", set()),
     ("task_envelopes", {"components", "review_dags", "issue_sources", "reference_budget", "native_six_stage"}),
     ("handoff", {"contracts", "task_envelopes", "issue_sources"}),
     ("windows_job", set()), ("processes", {"windows_job"}),

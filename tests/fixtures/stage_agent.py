@@ -7,6 +7,7 @@ from pathlib import Path
 import sys
 
 
+model_started_ns = time.time_ns()
 raw = sys.stdin.read()
 if "--wait-for-cancellation" in sys.argv:
     ready, late = sys.argv[-2:]
@@ -67,6 +68,12 @@ if any(model in sys.argv for model in ('fixture-complete-inventory', 'fixture-ca
     name = next(iter(result['artifacts']))
     result['artifacts'][name] = ('I' * (1100000 if 'fixture-capacity-inventory' in sys.argv else 75000)
                                 + '\nComplete inventory tail beyond the legacy truncation.\n')
+if 'fixture-complete-plan' in sys.argv:
+    name = next(iter(result['artifacts']))
+    result['artifacts'][name] = 'K' * 75000 + '\nComplete planner original tail: kernel 原文，未截断。\r\n'
+if '"kind": "formal-preparation-materials"' in prompt:
+    result['summary'] = json.dumps({'fixture': mode, 'model_started_ns': model_started_ns,
+                                   'model_finished_ns': time.time_ns()})
 if "decision" in schema["required"]:
     result["decision"] = "request-changes" if "fixture-reject" in sys.argv else "approve"
     # Same-group background work must stop before the formal read-only check.

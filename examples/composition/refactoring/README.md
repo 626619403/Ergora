@@ -8,7 +8,7 @@ This example requires a registered Linux/WSL2 project with the original executio
 
    ```bash
    ergora composition install-preset refactoring
-   ergora composition prepare-manifest ergora-refactoring-template 1.1.1 \
+   ergora composition prepare-manifest ergora-refactoring-template 1.2.0 \
      --grant examples/composition/refactoring/grant.json \
      --directory ./refactoring-manifest
    ```
@@ -21,7 +21,7 @@ This example requires a registered Linux/WSL2 project with the original executio
 
 3. Use the existing `ergora task prepare`, `preview` and dual-digest `create` sequence described in the formal lifecycle, then the original start and plan-approval operations. Keep the original task/run when observing, cancelling or reconciling an unknown result. Complete when the original evidence identifies the actual final candidate, executed checks, migration and rollback results and all unverified conditions.
 
-The two writers and three reviewers are defaults. Use the existing definition revision and exact-reference mechanisms to change their number, expertise or dependencies, and update original work-unit assignments accordingly. One writer must cover each original unit; preparation still selects one inspector and one planner. Original task/profile and material limits apply.
+The two writers and three reviewers are defaults. Use the existing definition revision and exact-reference mechanisms to change their number, expertise or dependencies, and update original work-unit assignments accordingly. One writer must cover each original unit; preparation selects one inspector coordinator group and one planner coordinator group through the same preparation-DAG shape. Original task/profile and material limits apply.
 
 All specialists select Codex gpt-6.1-sol: preparation/planning max, refactoring xhigh, compatibility validation and final review high. `backend_overrides` supplies complete bindings satisfying those minimums; the example also selects current-container for writers. Same-backend review retains separate sessions and the declared `diversity.reason`; `require-distinct` rejects it. Actual provider configuration and environment credential references come from the operator's inference configuration, outside the template.
 

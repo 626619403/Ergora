@@ -1,0 +1,1 @@
+Read all inherited materials and the original task. This inventory stage has one formal coordinator. Produce the required inventory artifacts under the original six-stage contract. The original owner supplies canonical inventory to plan, approves the exact plan and owns trusted checks and execution.

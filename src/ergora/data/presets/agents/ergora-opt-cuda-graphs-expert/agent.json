@@ -1,10 +1,11 @@
 {
   "schema_version": 1,
   "id": "ergora-opt-cuda-graphs-expert",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Readonly cuda graphs specialist: Verify capture versus actual replay, caller launch gaps, address/state lifetimes and the exact capture scope/backend.",
   "roles": [
-    "performance-analyst"
+    "performance-analyst",
+    "planner"
   ],
   "specialties": [
     "cuda-graphs",
@@ -13,14 +14,14 @@
   "backend": {
     "tool": "codex",
     "model": "gpt-6.1-sol",
-    "reasoning_effort": "high"
+    "reasoning_effort": "max"
   },
   "resources": [
     {
       "id": "ergora-opt-cuda-graphs-expert-instructions",
       "kind": "instructions",
       "path": "instructions.md",
-      "sha256": "e1b3462a47f218f1865954b3ce2a5fcb2ea9296e16aadf2608d3fdc86ac207e3"
+      "sha256": "8d68ad6f6c8b6e69be99f33956bbdd37a69023f53718a6b92cc0b56e4c5e73f7"
     },
     {
       "id": "ergora-opt-cuda-graphs-proposal-context",
@@ -31,6 +32,6 @@
   ],
   "invocation_minimum": {
     "model": "gpt-6.1-sol",
-    "reasoning_effort": "high"
+    "reasoning_effort": "max"
   }
 }

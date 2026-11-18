@@ -11,7 +11,7 @@ import stat
 import tempfile
 import zipfile
 
-from .task_envelopes import outcome_reference_state
+from .task_envelopes import WIRE_LIMIT, outcome_reference_state, wire_limit
 
 MANIFEST_LIMIT = 1_048_576
 BLOB_LIMIT = 16_777_216
@@ -28,6 +28,12 @@ def _canonical(value) -> bytes:
 
 def _sha(value) -> str:
     return hashlib.sha256(_canonical(value)).hexdigest()
+
+
+def _manifest_limit(index: dict) -> int:
+    # Call only after _references has verified the complete original contract.
+    document = index['contract'].get('original_input', {})
+    return WIRE_LIMIT if wire_limit(document) == WIRE_LIMIT else MANIFEST_LIMIT
 
 
 def _references(index: dict) -> dict:
@@ -125,8 +131,8 @@ def create(index: dict, read_artifact: Callable[[dict], bytes], destination: Pat
                 manifest = {'schema_version': 1, 'format': 'ergora-task-handoff',
                             'index': index, 'index_sha256': _sha(index), 'blobs': blobs}
                 encoded = _canonical(manifest)
-                if len(encoded) > MANIFEST_LIMIT:
-                    raise ValueError('Handoff manifest exceeds 1 MiB')
+                if len(encoded) > _manifest_limit(index):
+                    raise ValueError('Handoff manifest exceeds its wire byte limit')
                 archive.writestr(zipfile.ZipInfo('manifest.json'), encoded)
             if stream.tell() > PACKET_LIMIT:
                 raise ValueError('Handoff packet exceeds 72 MiB')
@@ -181,15 +187,17 @@ def _verified_packet(path: Path, sha256: str | None) -> tuple[bytes, dict, dict]
                 mode = stat.S_IFMT(entry.external_attr >> 16)
                 if (entry.filename != entry.orig_filename or entry.is_dir() or mode not in (0, stat.S_IFREG)
                         or entry.flag_bits & 1 or entry.compress_type != zipfile.ZIP_STORED
-                        or entry.file_size > (MANIFEST_LIMIT if entry.filename == 'manifest.json' else BLOB_LIMIT)):
+                        or entry.file_size > (WIRE_LIMIT if entry.filename == 'manifest.json' else BLOB_LIMIT)):
                     raise ValueError('Handoff has an unsupported or oversized ZIP member')
             encoded = archive.read('manifest.json')
-            if len(encoded) > MANIFEST_LIMIT:
-                raise ValueError('Handoff manifest exceeds 1 MiB')
+            if len(encoded) > WIRE_LIMIT:
+                raise ValueError('Handoff manifest exceeds its wire byte limit')
             manifest = json.loads(encoded.decode('utf-8'), object_pairs_hook=unique_object)
             contracts.validate(manifest, _SCHEMA, 'Handoff manifest')
             index = manifest['index']
             artifacts = _references(index)
+            if len(encoded) > _manifest_limit(index):
+                raise ValueError('Handoff manifest exceeds its wire byte limit')
             if manifest['index_sha256'] != _sha(index) or set(manifest['blobs']) != set(artifacts):
                 raise ValueError('Handoff manifest differs from its indexed evidence references')
             expected = {'manifest.json', *('blobs/' + key for key in artifacts)}
@@ -265,6 +273,6 @@ def evidence(path: Path, selection: list[dict] | None = None, *, sha256: str | N
               'verification_scope': verified['verification_scope'], 'execution_success': None,
               'index': manifest['index'], 'index_sha256': manifest['index_sha256'], 'artifacts': selected}
     result['sha256'] = _sha(result)
-    if len(_canonical(result)) > MANIFEST_LIMIT:
-        raise ValueError('Complete handoff selection exceeds 1 MiB canonical JSON; select fewer or smaller artifacts')
+    if len(_canonical(result)) > _manifest_limit(manifest['index']):
+        raise ValueError('Complete handoff selection exceeds its wire byte limit; select fewer or smaller artifacts')
     return result

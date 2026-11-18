@@ -180,11 +180,11 @@ async def main():
                 task_definition['composition']['backend_overrides'] = {
                     'root/review': {'binding': {'tool': 'codex', 'model': model}, 'reason': 'Explicit native protocol failure fixture'}}
         revision = state.project('demo')['revision']
-        if task_definition['schema_version'] in (5, 6, 7):
+        if task_definition['schema_version'] == 8:
             assert tasks.prepare(state, 'demo', task_definition, revision)['status'] == 'prepared'
         preview = tasks.preview(state, 'demo', task_definition, revision)
         tasks.create(state, 'demo', task_definition, revision, preview['preview_sha256'],
-                     **({'prepare_sha256': preview['prepare_sha256']} if task_definition['schema_version'] in (5, 6, 7) else {}))
+                     **({'prepare_sha256': preview['prepare_sha256']} if task_definition['schema_version'] == 8 else {}))
         if mode == 'composition-work-materials-context':
             from ergora import memory, skill_assets
 

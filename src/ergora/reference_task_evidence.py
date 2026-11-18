@@ -57,7 +57,7 @@ async def _job(payload: dict) -> dict:
     job_id = identifier(context['job_id'])
     job_sha = creation.sha(context)
     adapter = creation.file_adapter(submission.input)
-    envelope = creation.document(adapter.path('requests', creation.task_id + '/' + job_id + '.json'))
+    envelope = adapter.read_job(adapter.path('requests', creation.task_id + '/' + job_id + '.json'))
     if creation.sha(envelope) != creation.sha({'schema_version': 1, 'job_id': job_id,
                                              'job_sha256': job_sha, 'context': context}):
         raise ValueError('Job request envelope differs from its original history context')

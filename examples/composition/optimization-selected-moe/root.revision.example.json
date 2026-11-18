@@ -1,193 +1,57 @@
 {
-  "schema_version": 2,
-  "id": "ergora-training-proposal",
-  "version": "4.1.4",
-  "description": "Selected MoE dispatcher/overlap proposals under one shared optimization ancestor; eleven explicit readonly leaf calls.",
-  "resources": [
+  "description": "Single native six-stage development invocation with shared source-bound MoE optimization policy.",
+  "id": "ergora-selected-moe-development",
+  "inputs": [
+    "task"
+  ],
+  "limits": {
+    "concurrency": 4,
+    "depth": 8,
+    "instances": 128,
+    "material_bytes": 1000000
+  },
+  "nodes": [
     {
-      "id": "ergora-training-proposal-v4-instructions",
-      "kind": "instructions",
-      "path": "instructions.md",
-      "sha256": "9466ff5bc1073da6010b600b4443e8850a065b404facffb643d62eacc45c213a"
-    },
-    {
-      "id": "ergora-bottleneck-optimization-skill",
-      "kind": "skill",
-      "path": "skills/ergora-bottleneck-optimization",
-      "digest": "d9629536874a5f2c9a176e8540e3f9f96126557d0c324fb2b64f01185b7e01d1"
-    },
-    {
-      "id": "ergora-library-environment-optimization-skill",
-      "kind": "skill",
-      "path": "skills/ergora-library-environment-optimization",
-      "digest": "4a04f0512feaf8d6067409bddb233b06764193d616c632fe9f3f53166027b805"
-    },
-    {
-      "id": "ergora-environment-change-record",
-      "kind": "context",
-      "path": "context/environment-change-record.md",
-      "sha256": "575a61cbdf22e0192ebac3db22641356f4a39901707a67eb648356539c587eaf"
+      "depends_on": [],
+      "id": "development",
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "ref": {
+        "digest": "8e8c114f7d4bab85c25ac4390e8aead022328ed27c7893c033db86ab16e744cc",
+        "id": "ergora-large-change-delivery",
+        "kind": "workflow",
+        "version": "1.2.1"
+      }
     }
   ],
+  "outputs": {
+    "result": {
+      "node": "development",
+      "output": "result"
+    }
+  },
   "permissions": {
+    "network": [],
     "read": [
       "workspace",
       "definitions"
     ],
-    "write": [],
-    "shell": false,
-    "network": []
+    "shell": true,
+    "write": [
+      "workspace"
+    ]
   },
-  "limits": {
-    "depth": 8,
-    "instances": 128,
-    "concurrency": 4,
-    "material_bytes": 500000
-  },
-  "inputs": [
-    "task"
+  "resources": [
+    {
+      "id": "native-parent-context",
+      "kind": "context",
+      "path": "instructions.md",
+      "sha256": "d02aa5023a04b59156dabbb4542f0233f39b45869789a0ceb9e05ff24efc7ab3"
+    }
   ],
-  "outputs": {
-    "result": {
-      "node": "gather",
-      "output": "result"
-    }
-  },
-  "nodes": [
-    {
-      "id": "flow",
-      "ref": {
-        "kind": "workflow",
-        "id": "ergora-training-flow-map",
-        "version": "1.0.1",
-        "digest": "2e78a683b097bc4e3c08d0a3b5ed172584b4eda91de4dc783b10275cd3d0f0c7"
-      },
-      "depends_on": [],
-      "inputs": {
-        "task": {
-          "input": "task"
-        }
-      }
-    },
-    {
-      "id": "analysis",
-      "ref": {
-        "kind": "workflow",
-        "id": "ergora-training-analysis",
-        "version": "2.1.0",
-        "digest": "902c3aed84aa4b20c1d3e44f6ff9e862c9b25557ae46598621b76bb3456a8337"
-      },
-      "depends_on": [
-        "flow"
-      ],
-      "inputs": {
-        "task": {
-          "input": "task"
-        }
-      }
-    },
-    {
-      "id": "kernel",
-      "ref": {
-        "kind": "workflow",
-        "id": "ergora-kernel-assessment",
-        "version": "1.1.0",
-        "digest": "542bf4ff8d6a01d0a3271b7c57947096b06a713d7629bfce13d82cb6d5c45524"
-      },
-      "depends_on": [
-        "planning-results"
-      ],
-      "inputs": {
-        "task": {
-          "node": "planning-results",
-          "output": "result"
-        }
-      }
-    },
-    {
-      "id": "measurement",
-      "ref": {
-        "kind": "workflow",
-        "id": "ergora-measurement-review",
-        "version": "2.0.1",
-        "digest": "d8b8e8abb2dd462b32d78d0b878c15f9c702448b386162426c28f4ff871ab914"
-      },
-      "depends_on": [
-        "measurement-inputs"
-      ],
-      "inputs": {
-        "task": {
-          "node": "measurement-inputs",
-          "output": "result"
-        }
-      }
-    },
-    {
-      "id": "gather",
-      "join": "all",
-      "depends_on": [
-        "flow",
-        "analysis",
-        "moe-dispatcher",
-        "moe-overlap",
-        "kernel",
-        "measurement"
-      ]
-    },
-    {
-      "id": "moe-dispatcher",
-      "ref": {
-        "kind": "workflow",
-        "id": "ergora-opt-moe-dispatcher-proposal",
-        "version": "1.1.0",
-        "digest": "7306d36504d835bc4a0de79940a96018d2bca90ee8a29af90d9bd74ed5fa9ff4"
-      },
-      "depends_on": [
-        "analysis"
-      ],
-      "inputs": {
-        "task": {
-          "input": "task"
-        }
-      }
-    },
-    {
-      "id": "moe-overlap",
-      "ref": {
-        "kind": "workflow",
-        "id": "ergora-opt-moe-overlap-proposal",
-        "version": "1.1.0",
-        "digest": "76375b774b9d5604d32a46ea045aeb437d65d17a4f14be4b86b04a749f0fefba"
-      },
-      "depends_on": [
-        "analysis"
-      ],
-      "inputs": {
-        "task": {
-          "input": "task"
-        }
-      }
-    },
-    {
-      "id": "planning-results",
-      "join": "all",
-      "depends_on": [
-        "flow",
-        "analysis",
-        "moe-dispatcher",
-        "moe-overlap"
-      ]
-    },
-    {
-      "id": "measurement-inputs",
-      "join": "all",
-      "depends_on": [
-        "flow",
-        "analysis",
-        "moe-dispatcher",
-        "moe-overlap",
-        "kernel"
-      ]
-    }
-  ]
+  "schema_version": 2,
+  "version": "1.0.1"
 }

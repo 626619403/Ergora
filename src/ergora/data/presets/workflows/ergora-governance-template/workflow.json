@@ -1,0 +1,57 @@
+{
+  "schema_version": 2,
+  "id": "ergora-governance-template",
+  "version": "1.0.0",
+  "description": "Native parent for the governance six-stage delivery.",
+  "resources": [
+    {
+      "id": "ergora-governance-template-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "5e16dcde9113129cc7840b076c041876fd53e4cdcaf2d08f471a0e00c0c8e14f"
+    }
+  ],
+  "permissions": {
+    "read": [
+      "workspace",
+      "definitions"
+    ],
+    "write": [
+      "workspace"
+    ],
+    "shell": true,
+    "network": []
+  },
+  "limits": {
+    "depth": 8,
+    "instances": 128,
+    "concurrency": 4,
+    "material_bytes": 262144
+  },
+  "inputs": [
+    "task"
+  ],
+  "outputs": {
+    "result": {
+      "node": "development",
+      "output": "result"
+    }
+  },
+  "nodes": [
+    {
+      "id": "development",
+      "ref": {
+        "kind": "workflow",
+        "id": "ergora-governance-delivery",
+        "version": "1.1.0",
+        "digest": "45dffe7ba22601aac0c4603ba3697e85ad0be9641a04b8c442982184d2d08ffa"
+      },
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      }
+    }
+  ]
+}

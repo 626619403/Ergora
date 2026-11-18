@@ -4,7 +4,7 @@
     "repository-governance": {
       "description": "Parallel repository mapping and architecture regression, followed by complementary final review.",
       "runtime": "development-v5",
-      "root": "ergora-governance-delivery",
+      "root": "ergora-governance-template",
       "agents": [
         "ergora-structure-reviewer",
         "ergora-correctness-reviewer",
@@ -14,19 +14,22 @@
         "ergora-development-preparer"
       ],
       "workflows": [
+        "ergora-development-inventory",
+        "ergora-development-plan",
         "ergora-development-preparation",
         "ergora-structure-review",
         "ergora-correctness-review",
         "ergora-test-value-review",
         "ergora-delivery-review",
         "ergora-governance-work",
-        "ergora-governance-delivery"
+        "ergora-governance-delivery",
+        "ergora-governance-template"
       ]
     },
     "large-change": {
       "description": "Contract, parallel client/server, integration validation and complementary final review.",
       "runtime": "development-v5",
-      "root": "ergora-large-change-delivery",
+      "root": "ergora-large-change-template",
       "agents": [
         "ergora-structure-reviewer",
         "ergora-correctness-reviewer",
@@ -38,13 +41,16 @@
         "ergora-development-preparer"
       ],
       "workflows": [
+        "ergora-development-inventory",
+        "ergora-development-plan",
         "ergora-development-preparation",
         "ergora-structure-review",
         "ergora-correctness-review",
         "ergora-test-value-review",
         "ergora-delivery-review",
         "ergora-large-change-work",
-        "ergora-large-change-delivery"
+        "ergora-large-change-delivery",
+        "ergora-large-change-template"
       ]
     },
     "training-optimization": {
@@ -83,6 +89,8 @@
         "ergora-correctness-review",
         "ergora-test-value-review",
         "ergora-delivery-review",
+        "ergora-development-inventory",
+        "ergora-development-plan",
         "ergora-development-preparation",
         "ergora-refactoring-work",
         "ergora-refactoring-delivery",

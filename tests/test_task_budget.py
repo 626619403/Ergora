@@ -2,6 +2,7 @@
 
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
+import asyncio
 import json
 import os
 from pathlib import Path
@@ -12,23 +13,333 @@ import time
 
 import pytest
 
-from ergora import projects, reference, registrations, task_envelopes, tasks
+from ergora import agent_definitions, issues, memory, projects, reference, registrations, skill_assets, task_envelopes, tasks, workflow_definitions
 from ergora.reference_inputs import execution_input, request_roots
 from ergora.state import State
 from test_full_stage_materials import full_creation, full_graph
 from test_work_agents import work_creation, work_graph
 from test_registrations import design_policy, installation, registration
 from test_task_creation import creation_project, _files
+from test_project_issues import bind, native, source
+from test_workflow_definitions import EXAMPLES, child, definition as workflow_document, leaf, ref, write_bundle
 
 
 pytestmark = pytest.mark.skipif(sys.platform != 'linux', reason='Budgeted native preparation requires Linux/WSL2')
 
 
 @pytest.fixture
-def budget_creation(full_creation):
-    state, registered, definition = full_creation
-    definition.update(schema_version=5, budget={'wall_seconds': 120, 'cleanup_seconds': 5, 'model_invocations': 258})
+def budget_graph(work_graph, tmp_path):
+    library, grant, _, execution, units = work_graph
+    preparer = agent_definitions.get(library, 'development-preparer', '1.0.0')
+    groups = {}
+    for stage, role in (('inventory', 'inspector'), ('plan', 'planner')):
+        nodes = [{**leaf('expert', ref(preparer, 'agent')), 'role': role},
+            {**leaf('coordinator', ref(preparer, 'agent')), 'role': role, 'depends_on': ['expert'],
+             'inputs': {'task': {'node': 'expert', 'output': 'result'}}},
+            {'id': 'done', 'join': 'all', 'depends_on': ['coordinator']}]
+        doc = workflow_document('budget-' + stage, nodes)
+        groups[stage] = workflow_definitions.import_bundle(library, write_bundle(tmp_path / stage, doc))
+    saved = {}
+    for name in ('preparation-guide', 'prepared-delivery', 'native-development'):
+        target = tmp_path / name
+        shutil.copytree(EXAMPLES / 'composition' / name, target)
+        doc = json.loads((target / 'workflow.json').read_bytes())
+        doc['version'] = '1.1.0'
+        if name == 'preparation-guide':
+            doc['nodes'] = [child(stage, ref(group, 'workflow')) for stage, group in groups.items()]
+        else:
+            doc['nodes'][0]['ref'] = ref(saved['preparation-guide' if name == 'prepared-delivery' else 'prepared-delivery'], 'workflow')
+        (target / 'workflow.json').write_text(json.dumps(doc))
+        saved[name] = workflow_definitions.import_bundle(library, target)
+    position = 'root/development'
+    def nested(path):
+        return position + '/' + path.removeprefix('root/')
+    execution = {**execution, 'protocol': 'work-units-v2', 'instance': nested(execution['instance']),
+                 'assignments': {key: nested(path) for key, path in execution['assignments'].items()}}
+    preparation = {'protocol': 'preparation-dag-v1', 'mode': 'task-mcp', 'repository_paths': ['src'],
+        **{stage: {'instance': position + '/preparation/' + stage,
+                   'coordinator': position + '/preparation/' + stage + '/coordinator'} for stage in groups}}
+    return library, grant, saved['native-development'], execution, units, preparation
+
+
+@pytest.fixture
+def budget_creation(work_creation, budget_graph, tmp_path):
+    state, registered, definition = work_creation
+    library, grant, parent, execution, _, preparation = budget_graph
+    manifest = workflow_definitions.prepare_manifest(library.root, parent['definition']['id'], parent['definition']['version'],
+                                                      grant, tmp_path / 'budget-manifest')
+    option = definition['composition']
+    option.update(manifest=manifest['path'], manifest_digest=manifest['digest'], execution=execution,
+                  preparation=preparation, review_instance='root/development/review',
+                  native={'protocol': 'six-stage-v1', 'instance': 'root/development'})
+    option['backend_overrides'] = {'root/development/' + path.removeprefix('root/'): value
+                                   for path, value in option['backend_overrides'].items()}
+    definition.update(schema_version=8, budget={'wall_seconds': 120, 'cleanup_seconds': 5, 'model_invocations': 258})
     return state, registered, definition
+
+
+def _select_context(state, definition, directory):
+    record = memory.save(state, 'demo', 'Original selected source. 完整原文。', {'uri': 'repo://design', 'revision': '1'})
+    source = directory / 'selected-guide'
+    (source / 'references').mkdir(parents=True)
+    (source / 'SKILL.md').write_text('---\nname: selected-guide\ndescription: Frozen source contract\n---\nRead references/contract.md.\n')
+    (source / 'references/contract.md').write_bytes(b'Original selected attachment.\r\n')
+    imported = skill_assets.import_bundle(state, 'demo', source)
+    head = next(item for item in skill_assets.versions(state, 'demo')['active'] if item['name'] == imported['name'])
+    definition['context'] = {'root_version': '1.1.1',
+        'memories': [{'id': record['id'], 'revision': record['revision']}],
+        'skills': [{key: head[key] for key in ('name', 'digest', 'revision')}]}
+    definition['composition']['mode'] = 'task-mcp'
+
+
+@pytest.mark.parametrize('with_context', [False, True])
+@pytest.mark.parametrize('with_source', [False, True])
+def test_current_public_creation_preserves_one_frame_for_source_context_combinations(
+        budget_creation, request, tmp_path, with_context, with_source):
+    state, registered, definition = budget_creation
+    if with_source:
+        service = request.getfixturevalue('source')
+        state = State(tmp_path / 'source-task-control')
+        registered = {**registered, 'tracker': {'kind': 'github', 'project': 'team/repo'},
+            'execution': {**registered['execution'], 'config_directory': str(tmp_path / 'source-task-config'),
+                          'state_directory': str(tmp_path / 'source-task-runtime')}}
+        registrations.register(state, registered, 0)
+        service.state = state
+        bind(service, 'github')
+        service.raw = json.dumps(native('github', 'Original issue. 完整正文。')).encode()
+        saved = issues.capture(state, 'demo', '7', state.project('demo')['revision'])['snapshot']
+        definition['issue_id'] = '7'
+        definition['source'] = {'snapshot_sha256': saved['sha256']}
+    if with_context:
+        _select_context(state, definition, tmp_path)
+    revision = state.project('demo')['revision']
+    prepared = tasks.prepare(state, 'demo', definition, revision)
+    assert prepared['status'] == 'prepared'
+    preview = tasks.preview(state, 'demo', definition, revision)
+    document = preview['files']['task.spec.json']
+    spec, composition = task_envelopes.unwrap(document)
+    assert preview['schema_version'] == 8 and document['schema_version'] == 12
+    assert ('context' in document) is with_context and ('issue_source' in document) is with_source
+    assert document['budget']['instance'] == prepared['budget']
+    initial = task_envelopes.initial_preparation_contexts(document, spec['request']['repository']['starting_sha'])
+    inventory = task_envelopes.preparation_dags(composition)['inventory']['dag']
+    assert {frame['preparation_ports']['member'] for frame in initial} == {
+        path for path in inventory.members if not inventory.predecessors[path]}
+    assert all(frame['preparation_ports']['producers'] == {} and frame['stage'].startswith('inventory:') for frame in initial)
+    created = tasks.create(state, 'demo', definition, revision, preview['preview_sha256'],
+                           prepare_sha256=prepared['prepare_sha256'])
+    assert created['status'] == 'published' and created['composition']['budget'] == document['budget']
+    assert created['composition'].get('context') == document.get('context')
+    assert ('issue_source' in created['composition']) is with_source
+    assert tasks.show(state, 'demo', definition['task_id'])['admission_envelope'] == document
+    assert tasks.creation(state, 'demo', definition['task_id']) == created
+    assert tasks.resume_create(state, 'demo', definition['task_id'], revision, created['intent_sha256']) == created
+
+
+@pytest.mark.parametrize('change', ['memory', 'skill-head'])
+def test_current_source_changes_block_preview_and_first_intent(budget_creation, tmp_path, change):
+    state, registered, definition = budget_creation
+    _select_context(state, definition, tmp_path)
+    assert tasks.prepare(state, 'demo', definition, 1)['status'] == 'prepared'
+    preview = tasks.preview(state, 'demo', definition, 1)
+    if change == 'memory':
+        selected = definition['context']['memories'][0]
+        memory.save(state, 'demo', 'Corrected source', {'uri': 'repo://design', 'revision': '2'},
+                    selected['id'], selected['revision'])
+    else:
+        selected = definition['context']['skills'][0]
+        skill_assets.move_head(state, 'demo', selected['name'], selected['digest'], selected['revision'],
+                               'rollback', 'Explicit same-digest revision event')
+    with pytest.raises(ValueError, match='changed'):
+        tasks.preview(state, 'demo', definition, 1)
+    with pytest.raises(ValueError, match='changed'):
+        tasks.create(state, 'demo', definition, 1, preview['preview_sha256'],
+                     prepare_sha256=preview['prepare_sha256'])
+    assert tasks.creation(state, 'demo', definition['task_id'])['status'] == 'not_recorded'
+    assert not (_root(registered) / 'tasks').exists()
+
+
+def test_saved_current_intent_recovers_frozen_context_after_head_changes(budget_creation, monkeypatch, tmp_path):
+    state, registered, definition = budget_creation
+    _select_context(state, definition, tmp_path)
+    assert tasks.prepare(state, 'demo', definition, 1)['status'] == 'prepared'
+    preview = tasks.preview(state, 'demo', definition, 1)
+    marker = tmp_path / 'first-publication-interrupted'
+    _worker_injection(monkeypatch, '', f'''
+from pathlib import Path
+from agent_platform import core
+original_write = core.write
+def interrupted(path, value, **kwargs):
+    result = original_write(path, value, **kwargs)
+    marker = Path({str(marker)!r})
+    if path.name == 'agent-bindings.json' and '/tasks/' in str(path) and not marker.exists():
+        marker.write_text('Original intent and first file were saved')
+        raise ValueError('Injected first publication interruption')
+    return result
+core.write = interrupted
+''')
+    with pytest.raises(ValueError, match='Injected first publication interruption'):
+        tasks.create(state, 'demo', definition, 1, preview['preview_sha256'],
+                     prepare_sha256=preview['prepare_sha256'])
+    pending = tasks.creation(state, 'demo', definition['task_id'])
+    assert pending['status'] == 'pending' and marker.exists()
+    selected = definition['context']['memories'][0]
+    memory.save(state, 'demo', 'New current source', {'uri': 'repo://design', 'revision': '2'},
+                selected['id'], selected['revision'])
+    restored = tasks.resume_create(state, 'demo', definition['task_id'], 1, pending['intent_sha256'])
+    assert restored['status'] == 'published'
+    assert tasks.show(state, 'demo', definition['task_id'])['admission_envelope'] == preview['files']['task.spec.json']
+
+
+def test_complete_eighteen_leaf_wire_recovers_original_publication_and_job(registration, monkeypatch, tmp_path):
+    """The shipped complete graph crosses every persisted request reader."""
+    pytest.importorskip('temporalio')
+    from temporalio.converter import DataConverter
+    from test_presets import _publish_selected_moe
+    from test_budget_jobs import _launch, _PENDING, _result
+
+    monkeypatch.syspath_prepend(str(reference.ROOT / 'platform/upstream/platform'))
+    from dev_platform.adapter import read_raw
+
+    state, registered = registration
+    example, published = _publish_selected_moe(state)
+    definition = json.loads((example / 'task.example.json').read_bytes())
+    definition['starting_sha'] = subprocess.check_output(
+        ['git', '-C', registered['repo'], 'rev-parse', 'HEAD'], text=True).strip()
+    definition['issue_id'] = '1'
+    definition['budget'].update(wall_seconds=120, cleanup_seconds=5)
+    definition['composition'].update(manifest=published['manifest']['path'], manifest_digest=published['manifest']['digest'])
+    registered['allowed_paths'] = definition['input']['allowed_paths']
+    registrations.register(state, registered, 0)
+    prepared = tasks.prepare(state, 'demo', definition, 1)
+    assert prepared['status'] == 'prepared'
+    preview = tasks.preview(state, 'demo', definition, 1)
+    document = preview['files']['task.spec.json']
+    encoded = json.dumps(document, ensure_ascii=False, separators=(',', ':')).encode()
+    assert 1_048_576 < len(encoded) < task_envelopes.WIRE_LIMIT
+    assert len(document['budget']['slots']) == 18
+    marker = tmp_path / 'interrupted-large-publication'
+    _worker_injection(monkeypatch, '', f'''
+from pathlib import Path
+from agent_platform import core
+original_write = core.write
+def interrupted(path, value, **kwargs):
+    result = original_write(path, value, **kwargs)
+    marker = Path({str(marker)!r})
+    if path.name == 'agent-bindings.json' and '/tasks/' in str(path) and not marker.exists():
+        marker.write_text('Original complete intent was saved')
+        raise ValueError('Injected complete publication interruption')
+    return result
+core.write = interrupted
+''')
+    with pytest.raises(ValueError, match='Injected complete publication interruption'):
+        tasks.create(state, 'demo', definition, 1, preview['preview_sha256'],
+                     prepare_sha256=prepared['prepare_sha256'])
+    pending = tasks.creation(state, 'demo', definition['task_id'])
+    assert pending['status'] == 'pending'
+    shutil.rmtree(definition['composition']['manifest'])
+    shutil.rmtree(state.root / 'agent-definitions')
+    shutil.rmtree(state.root / 'workflow-definitions')
+    restored = tasks.resume_create(state, 'demo', definition['task_id'], 1, pending['intent_sha256'])
+    assert restored['status'] == 'published'
+    assert tasks.show(state, 'demo', definition['task_id'])['admission_envelope'] == document
+    assert tasks.preparation(state, 'demo', definition['task_id'])['budget'] == prepared['budget']
+    runtime, config = (Path(registered['execution'][key]) for key in ('state_directory', 'config_directory'))
+    assert task_envelopes.decode_admission(read_raw(
+        runtime / 'tasks' / definition['task_id'] / 'task.spec.json', task_envelopes.WIRE_LIMIT)) == document
+    roots = {name: str(runtime / name) for name in ('requests', 'receipts', 'artifacts', 'approvals', 'fences')}
+    adapter_config = {**roots, 'trusted_receipts': True}
+    (config / 'adapter.json').write_text(json.dumps(adapter_config))
+    selected = execution_input(document)
+    operations = selected.activities(adapter_config)
+    workflow = selected.workflow_type()()
+    workflow.spec, workflow.admission = selected.spec, document
+    initial = task_envelopes.initial_preparation_contexts(document, definition['starting_sha'])[0]
+    context = workflow.context(initial['stage'], definition['starting_sha'])
+    assert context == initial
+
+    async def submit():
+        for value in (document, context):
+            payloads = await DataConverter.default.encode([value])
+            assert await DataConverter.default.decode(payloads) == [value]
+        job = await operations.submit(context)
+        assert await operations.submit(context) == job
+        assert await operations.poll({key: job[key] for key in ('task_id', 'job_id', 'job_sha256')}) is None
+        return job
+
+    job = asyncio.run(submit())
+    path = operations.adapter.path('requests', definition['task_id'] + '/' + job['job_id'] + '.json')
+    assert path.stat().st_size > 1_048_576 and task_envelopes.decode_job(read_raw(path, task_envelopes.WIRE_LIMIT))['context'] == context
+    environment = dict(os.environ, AGENTFLOW_CONFIG_DIR=str(config), AGENTFLOW_STATE_DIR=str(runtime),
+        PYTHONPATH=os.pathsep.join(map(str, (Path(tasks.__file__).parent.parent,
+            Path(registered['execution']['installation']) / 'local',
+            Path(registered['execution']['installation']) / 'upstream/platform'))))
+    receipt = _result(_launch(state, path, environment, worker=_PENDING))
+    assert receipt['state'] == 'SUCCEEDED'
+    assert _result(_launch(state, path, environment, worker="raise AssertionError('Unknown job body was replayed')")) == receipt
+    fenced = asyncio.run(operations.adapter.fence(context))
+    assert fenced['confirmed'] is True and fenced['unresolved_jobs'] == []
+    # The public publisher is a separate SDK-free consumer of this same job.
+    publisher_config = tmp_path / 'publisher.json'
+    publisher_config.write_text(json.dumps({**adapter_config, 'requests': str(operations.adapter.roots['requests'])}))
+    terminal = runtime / 'receipts' / definition['task_id'] / (job['job_id'] + '.json')
+    publisher = '''
+import importlib.abc, runpy, sys
+class PureOnly(importlib.abc.MetaPathFinder):
+    def find_spec(self, fullname, path=None, target=None):
+        if fullname.split('.')[0] in {'temporalio', 'mcp', 'jsonschema'} or fullname in {
+                'ergora.state', 'ergora.reference_inputs', 'ergora.reference_workflows'}:
+            raise AssertionError('Publisher imported a runtime dependency: ' + fullname)
+sys.meta_path.insert(0, PureOnly())
+runpy.run_module('dev_platform.adapter', run_name='__main__')
+'''
+    published = subprocess.run([sys.executable, '-P', '-S', '-c', publisher, '--config', str(publisher_config),
+        'publish-receipt', str(path), str(terminal)], env=environment, capture_output=True, text=True, timeout=20)
+    assert published.returncode == 0, published.stdout + published.stderr
+    assert json.loads(terminal.read_bytes()) == receipt
+
+
+def test_complete_wire_rejects_overflow_without_widening_plain_contracts(budget_creation, monkeypatch, tmp_path):
+    pytest.importorskip('temporalio')
+    monkeypatch.syspath_prepend(str(reference.ROOT / 'platform/upstream/platform'))
+    from dev_platform.adapter import ContractViolation, FileAdapter
+    from dev_platform.adapter import read_raw
+    from temporalio.exceptions import ApplicationError
+
+    state, _, definition = budget_creation
+    assert tasks.prepare(state, 'demo', definition, 1)['status'] == 'prepared'
+    document = tasks.preview(state, 'demo', definition, 1)['files']['task.spec.json']
+    roots = {name: str(tmp_path / name) for name in ('requests', 'receipts', 'artifacts', 'approvals', 'fences')}
+    config = {**roots, 'trusted_receipts': True}
+    ordinary = FileAdapter(config)
+    with pytest.raises(ContractViolation, match='Stage context exceeds'):
+        asyncio.run(ordinary.submit({'padding': 'x' * 1_000_000}))
+    plain = tmp_path / 'ordinary.json'
+    plain.write_text(json.dumps({'padding': 'x' * 1_048_576}))
+    with pytest.raises(ValueError, match='wire byte limit'):
+        task_envelopes.decode_admission(read_raw(plain, task_envelopes.WIRE_LIMIT))
+    plain.write_text(json.dumps({'context': {'padding': 'x' * 1_048_576}}))
+    with pytest.raises(ValueError, match='wire byte limit'):
+        task_envelopes.decode_job(read_raw(plain, task_envelopes.WIRE_LIMIT))
+    oversized = {**document, 'padding': 'x' * task_envelopes.WIRE_LIMIT}
+    with pytest.raises(ValueError, match='admission exceeds 4 MiB'):
+        execution_input(oversized)
+    # Bound actual file bytes, including otherwise valid JSON whitespace.
+    for value, reader in ((document, task_envelopes.decode_admission),
+                          ({'context': {'admission': document}}, task_envelopes.decode_job)):
+        raw = json.dumps(value, ensure_ascii=False, separators=(',', ':')).encode()
+        plain.write_bytes(raw + b' ' * (task_envelopes.WIRE_LIMIT - len(raw)))
+        assert reader(read_raw(plain, task_envelopes.WIRE_LIMIT)) == value
+        with plain.open('ab') as stream:
+            stream.write(b' ')
+        with pytest.raises(ValueError, match='size limit'):
+            reader(read_raw(plain, task_envelopes.WIRE_LIMIT))
+    operations = execution_input(document).activities(config)
+    context = task_envelopes.initial_preparation_contexts(document, definition.get('starting_sha'))[0]
+    context['author_ids'] = ['x' * task_envelopes.WIRE_LIMIT]
+    with pytest.raises(ApplicationError, match='control-plane payload limit'):
+        asyncio.run(operations.submit(context))
+    assert not Path(roots['requests']).exists()
 
 
 def test_v2_old_budgeted_definition_is_rejected_without_authorization_or_intent(budget_creation, monkeypatch):
@@ -114,10 +425,11 @@ def test_lost_preparation_reply_keeps_one_budget_and_preview_is_read_only(budget
     assert _files(prefix.parent) == original and not (_root(registered) / 'tasks').exists()
     document = preview['files']['task.spec.json']
     selected = execution_input(document)
-    assert selected.document == document and document['schema_version'] == 9
+    assert selected.document == document and document['schema_version'] == 12
     assert document['budget']['instance'] == result['budget']
-    assert len(document['budget']['slots']) == 2 + len(definition['input']['work_units']) + len(document['composition']['members'])
-    assert Path('requests-composition-v9') in request_roots(Path('requests'))
+    assert len(document['budget']['slots']) == (len(document['composition']['preparation']['members'])
+        + len(definition['input']['work_units']) + len(document['composition']['members']))
+    assert Path('requests-composition-v12') in request_roots(Path('requests'))
     selected.require_submission()
     assert preview['prepare_sha256'] == restored['prepare_sha256']
     for prepare_sha, preview_sha in [('0' * 64, preview['preview_sha256']), (preview['prepare_sha256'], '0' * 64)]:
@@ -127,7 +439,7 @@ def test_lost_preparation_reply_keeps_one_budget_and_preview_is_read_only(budget
     created = tasks.create(state, 'demo', definition, 1, preview['preview_sha256'], prepare_sha256=preview['prepare_sha256'])
     assert created['status'] == 'published' and created['composition']['runtime_supported'] is True
     assert tasks.resume_create(state, 'demo', definition['task_id'], 1, created['intent_sha256']) == created
-    assert not any((_root(registered) / name).exists() for name in ('ergora/task-submissions', 'requests-composition-v9', 'ingress'))
+    assert not any((_root(registered) / name).exists() for name in ('ergora/task-submissions', 'requests-composition-v12', 'ingress'))
     environment = dict(os.environ, AGENTFLOW_CONFIG_DIR=registered['execution']['config_directory'],
                        AGENTFLOW_STATE_DIR=registered['execution']['state_directory'],
                        PYTHONPATH=os.pathsep.join((str(Path(tasks.__file__).parent.parent),

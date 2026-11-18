@@ -1,10 +1,12 @@
 {
   "schema_version": 1,
   "id": "ergora-performance-analyst",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Diagnose a supplied critical path across traces, memory, ranks, communication and data flow without inventing a profile.",
   "roles": [
-    "performance-analyst"
+    "performance-analyst",
+    "inspector",
+    "planner"
   ],
   "specialties": [
     "critical-path-diagnosis",
@@ -15,14 +17,14 @@
   "backend": {
     "tool": "codex",
     "model": "gpt-6.1-sol",
-    "reasoning_effort": "high"
+    "reasoning_effort": "max"
   },
   "resources": [
     {
       "id": "ergora-performance-analyst-instructions",
       "kind": "instructions",
       "path": "instructions.md",
-      "sha256": "852e1cff3f0eee0e7c2401d176954061e280f6a1bc825f1b2bc5683ab866230e"
+      "sha256": "ec525ffb6d0e2990f1a7f3ceebb9b1e082dd97243bfb215a1b71230560a65929"
     },
     {
       "id": "ergora-performance-analyst-skill",
@@ -45,6 +47,6 @@
   ],
   "invocation_minimum": {
     "model": "gpt-6.1-sol",
-    "reasoning_effort": "high"
+    "reasoning_effort": "max"
   }
 }

@@ -1379,13 +1379,17 @@ def _task_files_main():
             path = adapter.safe_file(root, 'tasks/' + slug(task_id) + '/' + filename)
             if not path.is_file():
                 raise ValueError('Task contract must be an existing regular file: ' + filename)
-            raw = adapter.read_raw(path)
+            raw = adapter.read_raw(path, task_envelopes.WIRE_LIMIT if filename == 'task.spec.json' else 1_048_576)
             try:
                 value = json.loads(raw.decode('utf-8'))
             except ValueError as error:
+                if len(raw) > 1_048_576:
+                    raise ValueError('Task contract exceeds size limit: ' + filename) from error
                 raise ValueError('Invalid task JSON: ' + filename) from error
             if not isinstance(value, dict):
                 raise ValueError('Task JSON must be an object: ' + filename)
+            if filename == 'task.spec.json' and len(raw) > task_envelopes.wire_limit(value):
+                raise ValueError('Task admission exceeds its wire byte limit')
             if filename == 'project.json' and not all(isinstance(value.get(key), str) and value[key]
                                                       for key in ('name', 'repo')):
                 raise ValueError('Task project ownership fields are missing or invalid')

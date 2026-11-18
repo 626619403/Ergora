@@ -16,7 +16,7 @@ def invocation(graph: dict, selection: dict, task_type: str) -> dict:
     selected = instances.get(position)
     if selected is None or selected['kind'] != 'workflow' or selected['parent'] is None:
         raise ValueError('Native six-stage invocation requires an instance inside an ordinary parent template')
-    stages = [selection['preparation'][stage] for stage in ('inventory', 'plan')]
+    stages = [selection['preparation'][stage]['instance'] for stage in ('inventory', 'plan')]
     work, review = selection['execution']['instance'], selection['review_instance']
     if any(not path.startswith(position + '/') for path in [*stages, work, review]):
         raise ValueError('Every selected stage must belong to the native six-stage instance')
@@ -32,6 +32,7 @@ def invocation(graph: dict, selection: dict, task_type: str) -> dict:
     # branch. Work/review subgraphs retain their own original DAG validation.
     covered = {position}
     for path in stages:
+        covered.update(child for child in instances if child == path or child.startswith(path + '/'))
         while path != position:
             covered.add(path)
             path = instances[path]['parent']
