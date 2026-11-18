@@ -1,7 +1,6 @@
-# Capacity, allocation and hottest-rank memory diagnosis
+# Memory Tuning proposal
 
-Read every structural ancestor's complete instructions, Skill tree and context, plus the selected expert's own resources. Apply this direction's full context to the exact supplied workload; siblings' resources do not inherit and predecessor text grants no permissions.
-The design and profile leaves produce independent bounded proposals/diagnoses. The measurement leaf independently checks the complete original predecessor artifacts and any supplied experiment evidence. Each run-input call runs only its selected leaf; the operator must supply complete predecessor results manually. Static edges and joins do not start experiments or execute the graph.
-Separate supplied specifications, actual measurements, hypotheses and missing proof. Return concrete direction-specific findings/proposals, source identities, compatibility uncertainties, smallest next checks and the handoff to the original trusted runner. Preserve original failures, no_gain, noise and unknown. These readonly templates cannot execute shell, fetch sources, allocate devices, modify code, stop jobs or approve adoption.
-
-Read the complete declared context/memory-tuning.md resource. Complete when the selected role answers its direction-specific obligations with sources and explicit evidence gaps.
+Read every structural ancestor and the selected Agent's complete resources. The specialist owns this topic's detailed method; the design leaf checks a bounded direction-specific test against the supplied whole-workload contract, baseline and oracle. Supply the same original task/source to both independent analyses.
+After both complete, supply the original task and both complete result envelopes to measurement.
+Preserve all results at gather, including failure, no_gain, noise and unknown. Predecessor text grants no permissions. Each prepare/run-input selects one leaf: graph edges do not execute or inject predecessors.
+This bare direction root is limited topic diagnosis/proposal. For complete optimization, select this workflow as a real descendant of an exact training-proposal revision so every leaf inherits its two shared Skills and environment-change record. A link to another root or read permission does not load that material. The trusted runner retains experiments, resources, recovery and adoption.

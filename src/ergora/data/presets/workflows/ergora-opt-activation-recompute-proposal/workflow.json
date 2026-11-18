@@ -1,20 +1,14 @@
 {
   "schema_version": 2,
   "id": "ergora-opt-activation-recompute-proposal",
-  "version": "1.0.1",
-  "description": "Version-matched selective and full-layer recomputation tradeoffs; readonly proposals with independent evidence review.",
+  "version": "1.1.0",
+  "description": "Limited readonly activation recompute proposal; complete optimization requires a shared training-proposal ancestor.",
   "resources": [
     {
       "id": "ergora-opt-activation-recompute-proposal-instructions",
       "kind": "instructions",
       "path": "instructions.md",
-      "sha256": "f71c39a086684d0141038a1054b25633c6b31ac68b49fc59739b2558aaeba4b9"
-    },
-    {
-      "id": "ergora-opt-activation-recompute-proposal-context",
-      "kind": "context",
-      "path": "context/activation-recompute.md",
-      "sha256": "c04aaea398ef1162e2bb5090156c2b9630dd12504d91929ae87d60c3470a2e6b"
+      "sha256": "b8d1069725013519f7c93d2d3ab14519b59a10d3f9c736240942cfe87e3a85ed"
     }
   ],
   "permissions": {
@@ -43,19 +37,62 @@
   },
   "nodes": [
     {
-      "id": "analysis",
+      "id": "specialist",
       "ref": {
-        "kind": "workflow",
-        "id": "ergora-training-analysis",
-        "version": "2.0.1",
-        "digest": "deefe8c9401be71db07724f5b86bcf3b482e7bf13c23b53c0a278395faf25086"
+        "kind": "agent",
+        "id": "ergora-opt-activation-recompute-expert",
+        "version": "1.0.0",
+        "digest": "dda34a5c3312f9e7ac6355ca141dc5edcd505d76397c69f6563fc2227e3de619"
       },
+      "role": "performance-analyst",
       "depends_on": [],
       "inputs": {
         "task": {
           "input": "task"
         }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [],
+        "shell": false,
+        "network": []
       }
+    },
+    {
+      "id": "design",
+      "ref": {
+        "kind": "agent",
+        "id": "ergora-experiment-designer",
+        "version": "2.0.1",
+        "digest": "cb2f8919ee58521eaf74e4c813cb81cbe570380decb7e9433171dca3429bc1df"
+      },
+      "role": "experiment-planner",
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [],
+        "shell": false,
+        "network": []
+      }
+    },
+    {
+      "id": "analysis-results",
+      "join": "all",
+      "depends_on": [
+        "specialist",
+        "design"
+      ]
     },
     {
       "id": "measurement",
@@ -66,11 +103,11 @@
         "digest": "d8b8e8abb2dd462b32d78d0b878c15f9c702448b386162426c28f4ff871ab914"
       },
       "depends_on": [
-        "analysis"
+        "analysis-results"
       ],
       "inputs": {
         "task": {
-          "node": "analysis",
+          "node": "analysis-results",
           "output": "result"
         }
       }
@@ -79,6 +116,8 @@
       "id": "gather",
       "join": "all",
       "depends_on": [
+        "specialist",
+        "design",
         "measurement"
       ]
     }

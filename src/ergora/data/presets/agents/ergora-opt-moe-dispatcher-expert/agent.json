@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "id": "ergora-opt-moe-dispatcher-expert",
+  "version": "1.0.0",
+  "description": "Readonly moe dispatcher specialist: Verify the initialized dispatcher/backend, token routing/alignment, load distribution and topology before comparing alternatives.",
+  "roles": [
+    "performance-analyst"
+  ],
+  "specialties": [
+    "moe-dispatcher",
+    "source-bound-optimization"
+  ],
+  "backend": {
+    "tool": "codex",
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
+  },
+  "resources": [
+    {
+      "id": "ergora-opt-moe-dispatcher-expert-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "fafad28f097b249c6ffbc0cc369893a36c0ec57f4962b2b615db81507947b78b"
+    },
+    {
+      "id": "ergora-opt-moe-dispatcher-proposal-context",
+      "kind": "context",
+      "path": "context/moe-dispatcher.md",
+      "sha256": "1b1bfe90d04d0cfb9a0a450e58be408a09003e5a2bc112d9c11daa621a90f145"
+    }
+  ],
+  "invocation_minimum": {
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
+  }
+}

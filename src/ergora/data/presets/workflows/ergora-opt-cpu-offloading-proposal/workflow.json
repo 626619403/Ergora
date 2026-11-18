@@ -1,20 +1,14 @@
 {
   "schema_version": 2,
   "id": "ergora-opt-cpu-offloading-proposal",
-  "version": "1.0.1",
-  "description": "Distinct layer, fine-grained activation and optimizer offload contracts; readonly proposals with independent evidence review.",
+  "version": "1.1.0",
+  "description": "Limited readonly cpu offloading proposal; complete optimization requires a shared training-proposal ancestor.",
   "resources": [
     {
       "id": "ergora-opt-cpu-offloading-proposal-instructions",
       "kind": "instructions",
       "path": "instructions.md",
-      "sha256": "83eaf48b1a8c819ab205d03e4a53e4584a6e5ff8074eb5b4e2996cb4ebcfcaac"
-    },
-    {
-      "id": "ergora-opt-cpu-offloading-proposal-context",
-      "kind": "context",
-      "path": "context/cpu-offloading.md",
-      "sha256": "f80f1f50803cee7c19f0fac4487214488ab2e7dfead7d52abc8570e253bf6673"
+      "sha256": "56c37359cbcbeaba1e5ba1f8f9000c82517b7543e39e6831d8f1b70a1fda6ff4"
     }
   ],
   "permissions": {
@@ -43,19 +37,62 @@
   },
   "nodes": [
     {
-      "id": "analysis",
+      "id": "specialist",
       "ref": {
-        "kind": "workflow",
-        "id": "ergora-training-analysis",
-        "version": "2.0.1",
-        "digest": "deefe8c9401be71db07724f5b86bcf3b482e7bf13c23b53c0a278395faf25086"
+        "kind": "agent",
+        "id": "ergora-opt-cpu-offloading-expert",
+        "version": "1.0.0",
+        "digest": "3f633b4339e7a369e554bceaff59df084d1a0d69d924e481b741750f004145ef"
       },
+      "role": "performance-analyst",
       "depends_on": [],
       "inputs": {
         "task": {
           "input": "task"
         }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [],
+        "shell": false,
+        "network": []
       }
+    },
+    {
+      "id": "design",
+      "ref": {
+        "kind": "agent",
+        "id": "ergora-experiment-designer",
+        "version": "2.0.1",
+        "digest": "cb2f8919ee58521eaf74e4c813cb81cbe570380decb7e9433171dca3429bc1df"
+      },
+      "role": "experiment-planner",
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [],
+        "shell": false,
+        "network": []
+      }
+    },
+    {
+      "id": "analysis-results",
+      "join": "all",
+      "depends_on": [
+        "specialist",
+        "design"
+      ]
     },
     {
       "id": "measurement",
@@ -66,11 +103,11 @@
         "digest": "d8b8e8abb2dd462b32d78d0b878c15f9c702448b386162426c28f4ff871ab914"
       },
       "depends_on": [
-        "analysis"
+        "analysis-results"
       ],
       "inputs": {
         "task": {
-          "node": "analysis",
+          "node": "analysis-results",
           "output": "result"
         }
       }
@@ -79,6 +116,8 @@
       "id": "gather",
       "join": "all",
       "depends_on": [
+        "specialist",
+        "design",
         "measurement"
       ]
     }

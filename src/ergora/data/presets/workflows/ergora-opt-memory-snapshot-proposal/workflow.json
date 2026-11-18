@@ -1,20 +1,14 @@
 {
   "schema_version": 2,
   "id": "ergora-opt-memory-snapshot-proposal",
-  "version": "1.0.1",
-  "description": "Trusted allocator summaries, retained-history limits and aligned memory-snapshot difference proposals.",
+  "version": "1.1.0",
+  "description": "Limited readonly memory snapshot proposal; complete optimization requires a shared training-proposal ancestor.",
   "resources": [
     {
       "id": "ergora-opt-memory-snapshot-proposal-instructions",
       "kind": "instructions",
       "path": "instructions.md",
-      "sha256": "6c86220ac4143935b51efd4468523dece9a782d3f835044840dc4723b74311c7"
-    },
-    {
-      "id": "ergora-opt-memory-snapshot-proposal-context",
-      "kind": "context",
-      "path": "context/memory-snapshot.md",
-      "sha256": "96a17f4f4789900bf266f758e9cad835a08792f68e1120af3c47afe81e590bad"
+      "sha256": "e65e28392fe60dd6b89330cef4343970167b449c8149cc0c27ee097d88856eb8"
     }
   ],
   "permissions": {
@@ -43,19 +37,62 @@
   },
   "nodes": [
     {
-      "id": "analysis",
+      "id": "specialist",
       "ref": {
-        "kind": "workflow",
-        "id": "ergora-training-analysis",
-        "version": "2.0.1",
-        "digest": "deefe8c9401be71db07724f5b86bcf3b482e7bf13c23b53c0a278395faf25086"
+        "kind": "agent",
+        "id": "ergora-opt-memory-snapshot-expert",
+        "version": "1.0.0",
+        "digest": "8d23a7920b6b6dba78cde710d0d28bd681756539f448b89ae8d159fdf010fa43"
       },
+      "role": "performance-analyst",
       "depends_on": [],
       "inputs": {
         "task": {
           "input": "task"
         }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [],
+        "shell": false,
+        "network": []
       }
+    },
+    {
+      "id": "design",
+      "ref": {
+        "kind": "agent",
+        "id": "ergora-experiment-designer",
+        "version": "2.0.1",
+        "digest": "cb2f8919ee58521eaf74e4c813cb81cbe570380decb7e9433171dca3429bc1df"
+      },
+      "role": "experiment-planner",
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [],
+        "shell": false,
+        "network": []
+      }
+    },
+    {
+      "id": "analysis-results",
+      "join": "all",
+      "depends_on": [
+        "specialist",
+        "design"
+      ]
     },
     {
       "id": "measurement",
@@ -66,11 +103,11 @@
         "digest": "d8b8e8abb2dd462b32d78d0b878c15f9c702448b386162426c28f4ff871ab914"
       },
       "depends_on": [
-        "analysis"
+        "analysis-results"
       ],
       "inputs": {
         "task": {
-          "node": "analysis",
+          "node": "analysis-results",
           "output": "result"
         }
       }
@@ -79,6 +116,8 @@
       "id": "gather",
       "join": "all",
       "depends_on": [
+        "specialist",
+        "design",
         "measurement"
       ]
     }

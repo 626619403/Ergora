@@ -1,20 +1,14 @@
 {
   "schema_version": 2,
   "id": "ergora-opt-model-verification-proposal",
-  "version": "1.0.1",
-  "description": "Per-claim model conversion, forward, training, resume and independent quality evidence review proposals.",
+  "version": "1.1.0",
+  "description": "Limited readonly model verification proposal; complete optimization requires a shared training-proposal ancestor.",
   "resources": [
     {
       "id": "ergora-opt-model-verification-proposal-instructions",
       "kind": "instructions",
       "path": "instructions.md",
-      "sha256": "9e5f7a4ddde1c99c4ac66153f9be5d04aaeb2d61095fdfb9257dae3439fb0066"
-    },
-    {
-      "id": "ergora-opt-model-verification-proposal-context",
-      "kind": "context",
-      "path": "context/model-verification.md",
-      "sha256": "d7f6e987632d57cf51ae28229e669c7905d463ede841bc97fdbe8168a0458012"
+      "sha256": "2574db6363510c6042c8006ee19291521b1ce114ef0884dc6116d7a9066a04f1"
     }
   ],
   "permissions": {
@@ -43,19 +37,62 @@
   },
   "nodes": [
     {
-      "id": "analysis",
+      "id": "specialist",
       "ref": {
-        "kind": "workflow",
-        "id": "ergora-training-analysis",
-        "version": "2.0.1",
-        "digest": "deefe8c9401be71db07724f5b86bcf3b482e7bf13c23b53c0a278395faf25086"
+        "kind": "agent",
+        "id": "ergora-opt-model-verification-expert",
+        "version": "1.0.0",
+        "digest": "660022c82ec9ce8c736335c30e1835baf282b1e4f6146c8127b618eaf0171cf0"
       },
+      "role": "performance-analyst",
       "depends_on": [],
       "inputs": {
         "task": {
           "input": "task"
         }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [],
+        "shell": false,
+        "network": []
       }
+    },
+    {
+      "id": "design",
+      "ref": {
+        "kind": "agent",
+        "id": "ergora-experiment-designer",
+        "version": "2.0.1",
+        "digest": "cb2f8919ee58521eaf74e4c813cb81cbe570380decb7e9433171dca3429bc1df"
+      },
+      "role": "experiment-planner",
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [],
+        "shell": false,
+        "network": []
+      }
+    },
+    {
+      "id": "analysis-results",
+      "join": "all",
+      "depends_on": [
+        "specialist",
+        "design"
+      ]
     },
     {
       "id": "measurement",
@@ -66,11 +103,11 @@
         "digest": "d8b8e8abb2dd462b32d78d0b878c15f9c702448b386162426c28f4ff871ab914"
       },
       "depends_on": [
-        "analysis"
+        "analysis-results"
       ],
       "inputs": {
         "task": {
-          "node": "analysis",
+          "node": "analysis-results",
           "output": "result"
         }
       }
@@ -79,6 +116,8 @@
       "id": "gather",
       "join": "all",
       "depends_on": [
+        "specialist",
+        "design",
         "measurement"
       ]
     }

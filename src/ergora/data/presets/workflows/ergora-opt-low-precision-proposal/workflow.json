@@ -1,20 +1,14 @@
 {
   "schema_version": 2,
   "id": "ergora-opt-low-precision-proposal",
-  "version": "1.0.1",
-  "description": "Bounded PTQ, QAT/QAD and TE training proposals with exact format/runtime coverage and independent quality/performance gates.",
+  "version": "1.1.0",
+  "description": "Limited readonly low precision proposal; complete optimization requires a shared training-proposal ancestor.",
   "resources": [
     {
       "id": "ergora-opt-low-precision-proposal-instructions",
       "kind": "instructions",
       "path": "instructions.md",
-      "sha256": "be20133577c447f3dc5b4795149b96194dd8ad0c149f67db381433e5b2cabdff"
-    },
-    {
-      "id": "ergora-opt-low-precision-proposal-context",
-      "kind": "context",
-      "path": "context/low-precision.md",
-      "sha256": "11d3b23ba31f17a406f0d4d65c1ede6fbc0926b339bf75bb6e1996846c023afa"
+      "sha256": "5145c7f5d263e95e459d4b569419cb77319f715c8fe06771aebc239507904da0"
     }
   ],
   "permissions": {
@@ -43,35 +37,78 @@
   },
   "nodes": [
     {
-      "id": "analysis",
+      "id": "specialist",
       "ref": {
-        "kind": "workflow",
-        "id": "ergora-training-analysis",
-        "version": "2.0.1",
-        "digest": "deefe8c9401be71db07724f5b86bcf3b482e7bf13c23b53c0a278395faf25086"
+        "kind": "agent",
+        "id": "ergora-opt-low-precision-expert",
+        "version": "1.0.0",
+        "digest": "7bb1b280cd6fae9db9d504dc44824eef98d13b7b0c6e809a3540e7a1e5db654b"
       },
+      "role": "performance-analyst",
       "depends_on": [],
       "inputs": {
         "task": {
           "input": "task"
         }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [],
+        "shell": false,
+        "network": []
       }
+    },
+    {
+      "id": "design",
+      "ref": {
+        "kind": "agent",
+        "id": "ergora-experiment-designer",
+        "version": "2.0.1",
+        "digest": "cb2f8919ee58521eaf74e4c813cb81cbe570380decb7e9433171dca3429bc1df"
+      },
+      "role": "experiment-planner",
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [],
+        "shell": false,
+        "network": []
+      }
+    },
+    {
+      "id": "analysis-results",
+      "join": "all",
+      "depends_on": [
+        "specialist",
+        "design"
+      ]
     },
     {
       "id": "kernel",
       "ref": {
         "kind": "agent",
         "id": "ergora-kernel-designer",
-        "version": "2.0.1",
-        "digest": "e6e344c2655df61bd639fb9adb0483a7764241e3fa592972b6840677378ca9cb"
+        "version": "2.1.0",
+        "digest": "66bf825450e0d9fa1d1cfbcd136fff179c9ba9095cbd3ba4d0140cb288ae4428"
       },
       "role": "kernel-tuner",
       "depends_on": [
-        "analysis"
+        "analysis-results"
       ],
       "inputs": {
         "task": {
-          "node": "analysis",
+          "node": "analysis-results",
           "output": "result"
         }
       },
@@ -107,6 +144,9 @@
       "id": "gather",
       "join": "all",
       "depends_on": [
+        "specialist",
+        "design",
+        "kernel",
         "measurement"
       ]
     }

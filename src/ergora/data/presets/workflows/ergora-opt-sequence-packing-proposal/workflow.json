@@ -1,20 +1,14 @@
 {
   "schema_version": 2,
   "id": "ergora-opt-sequence-packing-proposal",
-  "version": "1.0.1",
-  "description": "Native packing path, sample/loss boundaries and valid-token proposals with independent evidence review.",
+  "version": "1.1.0",
+  "description": "Limited readonly sequence packing proposal; complete optimization requires a shared training-proposal ancestor.",
   "resources": [
     {
       "id": "ergora-opt-sequence-packing-proposal-instructions",
       "kind": "instructions",
       "path": "instructions.md",
-      "sha256": "0125a86288d8d9ab54c3fcae9c9eb93b3f0d1c4802cc940bfdc3a2562a4a18db"
-    },
-    {
-      "id": "ergora-opt-sequence-packing-proposal-context",
-      "kind": "context",
-      "path": "context/sequence-packing.md",
-      "sha256": "1c43298787760bacfb43150798fbac599d6613ba2e09c994a417d5dc5316b1b5"
+      "sha256": "2c21f41184c75bcc9fd1ccb9a7abb2f2cbe44b228cbf5920f40511c1d52fb296"
     }
   ],
   "permissions": {
@@ -43,19 +37,62 @@
   },
   "nodes": [
     {
-      "id": "analysis",
+      "id": "specialist",
       "ref": {
-        "kind": "workflow",
-        "id": "ergora-training-analysis",
-        "version": "2.0.1",
-        "digest": "deefe8c9401be71db07724f5b86bcf3b482e7bf13c23b53c0a278395faf25086"
+        "kind": "agent",
+        "id": "ergora-opt-sequence-packing-expert",
+        "version": "1.0.0",
+        "digest": "391e4947143bb093fc52d060fc9c5ceca383555a743cc8bd21df84806aeb1573"
       },
+      "role": "performance-analyst",
       "depends_on": [],
       "inputs": {
         "task": {
           "input": "task"
         }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [],
+        "shell": false,
+        "network": []
       }
+    },
+    {
+      "id": "design",
+      "ref": {
+        "kind": "agent",
+        "id": "ergora-experiment-designer",
+        "version": "2.0.1",
+        "digest": "cb2f8919ee58521eaf74e4c813cb81cbe570380decb7e9433171dca3429bc1df"
+      },
+      "role": "experiment-planner",
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [],
+        "shell": false,
+        "network": []
+      }
+    },
+    {
+      "id": "analysis-results",
+      "join": "all",
+      "depends_on": [
+        "specialist",
+        "design"
+      ]
     },
     {
       "id": "measurement",
@@ -66,11 +103,11 @@
         "digest": "d8b8e8abb2dd462b32d78d0b878c15f9c702448b386162426c28f4ff871ab914"
       },
       "depends_on": [
-        "analysis"
+        "analysis-results"
       ],
       "inputs": {
         "task": {
-          "node": "analysis",
+          "node": "analysis-results",
           "output": "result"
         }
       }
@@ -79,6 +116,8 @@
       "id": "gather",
       "join": "all",
       "depends_on": [
+        "specialist",
+        "design",
         "measurement"
       ]
     }

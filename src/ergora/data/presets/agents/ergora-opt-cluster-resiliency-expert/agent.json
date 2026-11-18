@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "id": "ergora-opt-cluster-resiliency-expert",
+  "version": "1.0.0",
+  "description": "Readonly cluster resiliency specialist: Identify the unique rank/job owner, first supported failure, checkpoint completion and actual restart/stop capabilities using original identities.",
+  "roles": [
+    "performance-analyst"
+  ],
+  "specialties": [
+    "cluster-resiliency",
+    "source-bound-optimization"
+  ],
+  "backend": {
+    "tool": "codex",
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
+  },
+  "resources": [
+    {
+      "id": "ergora-opt-cluster-resiliency-expert-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "1d3cb572b37243af0dc3a2c39c7b33e2dd7cdef4e5ea0c5d72ca1bea05412860"
+    },
+    {
+      "id": "ergora-opt-cluster-resiliency-proposal-context",
+      "kind": "context",
+      "path": "context/cluster-resiliency.md",
+      "sha256": "bef050adbcc217f6e2f8b324781ecb94fa5a35e55ab94b1db5bfb360cf0ff306"
+    }
+  ],
+  "invocation_minimum": {
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
+  }
+}

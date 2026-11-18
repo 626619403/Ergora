@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "id": "ergora-opt-memory-snapshot-expert",
+  "version": "1.0.0",
+  "description": "Readonly memory snapshot specialist: Use trusted allocator summaries, align allocation timelines and account for retained-history gaps; separate reserved, allocated and live peak memory.",
+  "roles": [
+    "performance-analyst"
+  ],
+  "specialties": [
+    "memory-snapshot",
+    "source-bound-optimization"
+  ],
+  "backend": {
+    "tool": "codex",
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
+  },
+  "resources": [
+    {
+      "id": "ergora-opt-memory-snapshot-expert-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "3c6a532b4b0b0322cc088639fac2b0107f45c94d025bc6a0becff5f87361faeb"
+    },
+    {
+      "id": "ergora-opt-memory-snapshot-proposal-context",
+      "kind": "context",
+      "path": "context/memory-snapshot.md",
+      "sha256": "96a17f4f4789900bf266f758e9cad835a08792f68e1120af3c47afe81e590bad"
+    }
+  ],
+  "invocation_minimum": {
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
+  }
+}

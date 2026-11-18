@@ -19,7 +19,7 @@ from test_registrations import installation, registration
 @pytest.mark.parametrize('direction', ['memory-tuning', 'activation-recompute', 'cpu-offloading',
     'cuda-graphs', 'sequence-packing', 'parallelism', 'megatron-fsdp', 'hierarchical-cp',
     'tp-dp-overlap', 'moe-dispatcher', 'moe-overlap', 'profiling', 'memory-snapshot', 'recipe-model', 'model-verification', 'cluster-resiliency', 'low-precision', 'kernel', 'performance-diagnosis'])
-def test_direction_roots_keep_full_context_when_reusing_v2_experts(tmp_path, direction):
+def test_direction_roots_select_scoped_experts_and_freeze_their_complete_method(tmp_path, direction):
     state = State(tmp_path / 'state')
     installed = workflows.install_preset(state, 'optimization-' + direction)
     specialists = {item['id']: item for item in installed['agents']}
@@ -28,16 +28,25 @@ def test_direction_roots_keep_full_context_when_reusing_v2_experts(tmp_path, dir
     grant = {'schema_version': 1, 'permissions': root['permissions'], 'limits': root['limits']}
     manifest = workflows.prepare_manifest(state.root, root['id'], root['version'], grant, tmp_path / 'manifest')
     graph = workflows.inspect_manifest(Path(manifest['path']), material=True)['composition']
-    expected = {'root/analysis/design': 'ergora-experiment-designer',
-                'root/analysis/profile': 'ergora-performance-analyst',
+    expert = {'profiling': 'ergora-performance-analyst', 'performance-diagnosis': 'ergora-performance-analyst',
+              'kernel': 'ergora-kernel-designer'}.get(direction, 'ergora-opt-' + direction + '-expert')
+    expected = {'root/design': 'ergora-experiment-designer', 'root/specialist': expert,
                 'root/measurement/review': 'ergora-measurement-reviewer'}
-    if direction in ('low-precision', 'kernel'):
+    if direction == 'low-precision':
         expected['root/kernel'] = 'ergora-kernel-designer'
     leaves = {item['path']: item for item in graph['instances'] if item['kind'] == 'agent'}
     assert set(leaves) == set(expected)
-    materials = workflows.get(state, root['id'], root['version'], material=True)['resources']
-    parent_materials = [resource for resource in materials if resource['kind'] in ('context', 'skill')]
-    assert parent_materials
+    reference = specialists[expert]
+    method = agent_definitions.get(state, reference['id'], reference['version'], material=True)['resources']
+    method = [resource for resource in method if resource['kind'] in ('context', 'skill')]
+    assert method
+    nodes = {item['id']: item for item in root['nodes']}
+    assert nodes['analysis-results']['depends_on'] == ['specialist', 'design']
+    if direction == 'low-precision':
+        assert nodes['kernel']['inputs'] == {'task': {'node': 'analysis-results', 'output': 'result'}}
+        assert nodes['measurement']['depends_on'] == ['kernel']
+        assert nodes['measurement']['inputs'] == {'task': {'node': 'kernel', 'output': 'result'}}
+        assert set(nodes['gather']['depends_on']) == {'specialist', 'design', 'kernel', 'measurement'}
     shutil.rmtree(state.root / 'agent-definitions')
     shutil.rmtree(state.root / 'workflow-definitions')
     for path, leaf in leaves.items():
@@ -47,11 +56,56 @@ def test_direction_roots_keep_full_context_when_reusing_v2_experts(tmp_path, dir
             b'Use supplied original experiment evidence; retain missing measurements.',
             tmp_path / path.replace('/', '-'), 100000)
         actual = workflows.inspect_input(Path(prepared['path']), material=True)
-        for material in parent_materials:
-            assert material['text'] in actual['prompt']
-            inherited = next(resource for resource in leaf['resources'] if resource['id'] == material['id'])
-            assert inherited['text'] == material['text']
+        assert all(resource['text'] in actual['prompt'] for resource in leaf['resources'])
+        if path == 'root/specialist':
+            for material in method:
+                assert material['text'] in actual['prompt']
+                inherited = next(resource for resource in leaf['resources'] if resource['id'] == material['id'])
+                assert inherited['text'] == material['text']
+                assert {source['instance'] for source in inherited['sources']} == {path}
+
+
+def test_selected_moe_revision_freezes_shared_policy_for_every_actual_leaf(tmp_path):
+    state = State(tmp_path / 'state')
+    installed = workflows.install_preset(state, 'training-optimization')
+    for name in ('optimization-moe-dispatcher', 'optimization-moe-overlap'):
+        workflows.install_preset(state, name)
+    example = Path(__file__).resolve().parents[1] / 'examples/composition/optimization-selected-moe'
+    definition = json.loads((example / 'root.revision.example.json').read_text())
+    original = workflows.get(state, installed['root']['id'], installed['root']['version'], material=True)
+    revised = workflows.revise(state, installed['root']['id'], installed['root']['version'],
+        installed['root']['digest'], definition, publish=True)
+    assert revised['published']
+    assert workflows.get(state, installed['root']['id'], installed['root']['version'])['digest'] == original['digest']
+    grant = json.loads((example / 'grant.json').read_text())
+    graph = workflows.preview(state.root, definition['id'], definition['version'], grant)
+    frozen = workflows.freeze_manifest(state.root, definition['id'], definition['version'], grant, graph['preview_sha256'])
+    manifest = Path(frozen['path'])
+    leaves = {item['path']: item for item in graph['instances'] if item['kind'] == 'agent'}
+    expected = {'root/flow/map', 'root/analysis/design', 'root/analysis/profile',
+        'root/kernel/assess', 'root/measurement/review'}
+    expected.update('root/' + topic + '/' + leaf for topic in ('moe-dispatcher', 'moe-overlap')
+                    for leaf in ('specialist', 'design', 'measurement/review'))
+    assert set(leaves) == expected
+    common = [resource for resource in original['resources'] if resource['kind'] != 'instructions']
+    assert {resource['kind'] for resource in common} == {'skill', 'context'}
+    nodes = {node['id']: node for node in definition['nodes']}
+    assert nodes['kernel']['inputs'] == {'task': {'node': 'planning-results', 'output': 'result'}}
+    assert nodes['measurement']['inputs'] == {'task': {'node': 'measurement-inputs', 'output': 'result'}}
+    assert set(nodes['measurement-inputs']['depends_on']) == {'flow', 'analysis', 'moe-dispatcher', 'moe-overlap', 'kernel'}
+    shutil.rmtree(state.root / 'agent-definitions')
+    shutil.rmtree(state.root / 'workflow-definitions')
+    for path, leaf in leaves.items():
+        prepared = workflows.prepare_input_from_manifest(manifest, path,
+            b'Original workload and source; caller supplies every complete required predecessor result.',
+            tmp_path / path.replace('/', '-'), 1000000)
+        actual = workflows.inspect_input(Path(prepared['path']), material=True)
+        assert actual['composition'] == graph
+        for resource in common:
+            inherited = next(item for item in leaf['resources'] if resource['id'] == item['id'])
+            assert inherited['text'] == resource['text'] and resource['text'] in actual['prompt']
             assert {source['instance'] for source in inherited['sources']} == {'root'}
+        assert not leaf['permissions']['write'] and not leaf['permissions']['shell'] and not leaf['permissions']['network']
 
 
 @pytest.mark.parametrize('kind', reference.TEMPLATES)

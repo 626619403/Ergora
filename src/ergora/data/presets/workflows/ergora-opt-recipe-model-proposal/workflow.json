@@ -1,20 +1,14 @@
 {
   "schema_version": 2,
   "id": "ergora-opt-recipe-model-proposal",
-  "version": "1.0.1",
-  "description": "Exact model and recipe selection, convergence invariants and bounded adaptation evidence proposals.",
+  "version": "1.1.0",
+  "description": "Limited readonly recipe model proposal; complete optimization requires a shared training-proposal ancestor.",
   "resources": [
     {
       "id": "ergora-opt-recipe-model-proposal-instructions",
       "kind": "instructions",
       "path": "instructions.md",
-      "sha256": "4ad9b39186a1d16044a2ffb0d98ee1dfa3b455c014a2aec31311280c456cb3f0"
-    },
-    {
-      "id": "ergora-opt-recipe-model-proposal-context",
-      "kind": "context",
-      "path": "context/recipe-model.md",
-      "sha256": "4310dbcced5c62390aa51cae79246d278b27441b37b9acdc0b1173b9229afca3"
+      "sha256": "b28f32d222670fb2c14afdc9ffab059dcc0ceede68a334c3c992355f6e526102"
     }
   ],
   "permissions": {
@@ -43,19 +37,62 @@
   },
   "nodes": [
     {
-      "id": "analysis",
+      "id": "specialist",
       "ref": {
-        "kind": "workflow",
-        "id": "ergora-training-analysis",
-        "version": "2.0.1",
-        "digest": "deefe8c9401be71db07724f5b86bcf3b482e7bf13c23b53c0a278395faf25086"
+        "kind": "agent",
+        "id": "ergora-opt-recipe-model-expert",
+        "version": "1.0.0",
+        "digest": "ba49096ecc74721abe6eea7ac720e21d2b8e36d4e99d33c560790d26201a8feb"
       },
+      "role": "performance-analyst",
       "depends_on": [],
       "inputs": {
         "task": {
           "input": "task"
         }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [],
+        "shell": false,
+        "network": []
       }
+    },
+    {
+      "id": "design",
+      "ref": {
+        "kind": "agent",
+        "id": "ergora-experiment-designer",
+        "version": "2.0.1",
+        "digest": "cb2f8919ee58521eaf74e4c813cb81cbe570380decb7e9433171dca3429bc1df"
+      },
+      "role": "experiment-planner",
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [],
+        "shell": false,
+        "network": []
+      }
+    },
+    {
+      "id": "analysis-results",
+      "join": "all",
+      "depends_on": [
+        "specialist",
+        "design"
+      ]
     },
     {
       "id": "measurement",
@@ -66,11 +103,11 @@
         "digest": "d8b8e8abb2dd462b32d78d0b878c15f9c702448b386162426c28f4ff871ab914"
       },
       "depends_on": [
-        "analysis"
+        "analysis-results"
       ],
       "inputs": {
         "task": {
-          "node": "analysis",
+          "node": "analysis-results",
           "output": "result"
         }
       }
@@ -79,6 +116,8 @@
       "id": "gather",
       "join": "all",
       "depends_on": [
+        "specialist",
+        "design",
         "measurement"
       ]
     }

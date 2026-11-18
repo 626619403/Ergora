@@ -1,20 +1,14 @@
 {
   "schema_version": 2,
   "id": "ergora-opt-cluster-resiliency-proposal",
-  "version": "1.0.1",
-  "description": "Unique rank and job ownership, bounded diagnosis and independently verified distributed recovery proposals.",
+  "version": "1.1.0",
+  "description": "Limited readonly cluster resiliency proposal; complete optimization requires a shared training-proposal ancestor.",
   "resources": [
     {
       "id": "ergora-opt-cluster-resiliency-proposal-instructions",
       "kind": "instructions",
       "path": "instructions.md",
-      "sha256": "be500df049c7ecab4853f9b24186b966deea25453e5313c7bbf6e31eaefb56c5"
-    },
-    {
-      "id": "ergora-opt-cluster-resiliency-proposal-context",
-      "kind": "context",
-      "path": "context/cluster-resiliency.md",
-      "sha256": "bef050adbcc217f6e2f8b324781ecb94fa5a35e55ab94b1db5bfb360cf0ff306"
+      "sha256": "741a8611c6180d8d91c7cc12532dee722a92ef20c71708cb506a3ad68f15423f"
     }
   ],
   "permissions": {
@@ -43,19 +37,62 @@
   },
   "nodes": [
     {
-      "id": "analysis",
+      "id": "specialist",
       "ref": {
-        "kind": "workflow",
-        "id": "ergora-training-analysis",
-        "version": "2.0.1",
-        "digest": "deefe8c9401be71db07724f5b86bcf3b482e7bf13c23b53c0a278395faf25086"
+        "kind": "agent",
+        "id": "ergora-opt-cluster-resiliency-expert",
+        "version": "1.0.0",
+        "digest": "4096bbd2968d44121284840eadec69d9e1b0b055a4aa7b86f5fea9bde124b462"
       },
+      "role": "performance-analyst",
       "depends_on": [],
       "inputs": {
         "task": {
           "input": "task"
         }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [],
+        "shell": false,
+        "network": []
       }
+    },
+    {
+      "id": "design",
+      "ref": {
+        "kind": "agent",
+        "id": "ergora-experiment-designer",
+        "version": "2.0.1",
+        "digest": "cb2f8919ee58521eaf74e4c813cb81cbe570380decb7e9433171dca3429bc1df"
+      },
+      "role": "experiment-planner",
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [],
+        "shell": false,
+        "network": []
+      }
+    },
+    {
+      "id": "analysis-results",
+      "join": "all",
+      "depends_on": [
+        "specialist",
+        "design"
+      ]
     },
     {
       "id": "measurement",
@@ -66,11 +103,11 @@
         "digest": "d8b8e8abb2dd462b32d78d0b878c15f9c702448b386162426c28f4ff871ab914"
       },
       "depends_on": [
-        "analysis"
+        "analysis-results"
       ],
       "inputs": {
         "task": {
-          "node": "analysis",
+          "node": "analysis-results",
           "output": "result"
         }
       }
@@ -79,6 +116,8 @@
       "id": "gather",
       "join": "all",
       "depends_on": [
+        "specialist",
+        "design",
         "measurement"
       ]
     }

@@ -1,20 +1,14 @@
 {
   "schema_version": 2,
   "id": "ergora-opt-parallelism-proposal",
-  "version": "1.0.1",
-  "description": "Finite parallel meshes, topology constraints and independently verified training proposals.",
+  "version": "1.1.0",
+  "description": "Limited readonly parallelism proposal; complete optimization requires a shared training-proposal ancestor.",
   "resources": [
     {
       "id": "ergora-opt-parallelism-proposal-instructions",
       "kind": "instructions",
       "path": "instructions.md",
-      "sha256": "dc9943c417f869690cacf509e67191e72e91c6e59e833f7ecbf6fbf1ecfc63d5"
-    },
-    {
-      "id": "ergora-opt-parallelism-proposal-context",
-      "kind": "context",
-      "path": "context/parallelism.md",
-      "sha256": "12b17a8539288a1143a3300a261db9dafeb9b5320dde7b10499ea1a6ce51453e"
+      "sha256": "aad0b961250d616f49f4cd40df274753bd7063a8ca32c198eff67e2803e8f773"
     }
   ],
   "permissions": {
@@ -43,19 +37,62 @@
   },
   "nodes": [
     {
-      "id": "analysis",
+      "id": "specialist",
       "ref": {
-        "kind": "workflow",
-        "id": "ergora-training-analysis",
-        "version": "2.0.1",
-        "digest": "deefe8c9401be71db07724f5b86bcf3b482e7bf13c23b53c0a278395faf25086"
+        "kind": "agent",
+        "id": "ergora-opt-parallelism-expert",
+        "version": "1.0.0",
+        "digest": "553f209dd7c4d1440199a7abe8d612a72a94d2cc6f96a1f6f54a3148343c2f5d"
       },
+      "role": "performance-analyst",
       "depends_on": [],
       "inputs": {
         "task": {
           "input": "task"
         }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [],
+        "shell": false,
+        "network": []
       }
+    },
+    {
+      "id": "design",
+      "ref": {
+        "kind": "agent",
+        "id": "ergora-experiment-designer",
+        "version": "2.0.1",
+        "digest": "cb2f8919ee58521eaf74e4c813cb81cbe570380decb7e9433171dca3429bc1df"
+      },
+      "role": "experiment-planner",
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [],
+        "shell": false,
+        "network": []
+      }
+    },
+    {
+      "id": "analysis-results",
+      "join": "all",
+      "depends_on": [
+        "specialist",
+        "design"
+      ]
     },
     {
       "id": "measurement",
@@ -66,11 +103,11 @@
         "digest": "d8b8e8abb2dd462b32d78d0b878c15f9c702448b386162426c28f4ff871ab914"
       },
       "depends_on": [
-        "analysis"
+        "analysis-results"
       ],
       "inputs": {
         "task": {
-          "node": "analysis",
+          "node": "analysis-results",
           "output": "result"
         }
       }
@@ -79,6 +116,8 @@
       "id": "gather",
       "join": "all",
       "depends_on": [
+        "specialist",
+        "design",
         "measurement"
       ]
     }

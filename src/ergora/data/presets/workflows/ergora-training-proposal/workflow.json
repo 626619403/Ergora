@@ -1,20 +1,20 @@
 {
   "schema_version": 2,
   "id": "ergora-training-proposal",
-  "version": "4.0.1",
-  "description": "Readonly bottleneck-led proposals with early framework/library choices and reproducible environment-change handoffs; original execution owners and evidence contracts remain separate.",
+  "version": "4.1.0",
+  "description": "Readonly shared optimization policy and explicit stage handoffs; selected topic descendants inherit complete methods and environment records. Independent leaves require caller-supplied predecessors.",
   "resources": [
     {
       "id": "ergora-training-proposal-v4-instructions",
       "kind": "instructions",
       "path": "instructions.md",
-      "sha256": "078bef5f1db6cc31620fb0f1f76e82da40a3fe69cf1f7c3c67f83a9dc9184f67"
+      "sha256": "9466ff5bc1073da6010b600b4443e8850a065b404facffb643d62eacc45c213a"
     },
     {
       "id": "ergora-bottleneck-optimization-skill",
       "kind": "skill",
       "path": "skills/ergora-bottleneck-optimization",
-      "digest": "907364c2193125b29d681476d6e88f79c8234b39599d9e2c754817727e006bd5"
+      "digest": "802487c8d53d6c3900d80323aeca7387fa4aee50540658ba6896ccd92a42f078"
     },
     {
       "id": "ergora-library-environment-optimization-skill",
@@ -74,8 +74,8 @@
       "ref": {
         "kind": "workflow",
         "id": "ergora-training-analysis",
-        "version": "2.0.1",
-        "digest": "deefe8c9401be71db07724f5b86bcf3b482e7bf13c23b53c0a278395faf25086"
+        "version": "2.1.0",
+        "digest": "902c3aed84aa4b20c1d3e44f6ff9e862c9b25557ae46598621b76bb3456a8337"
       },
       "depends_on": [
         "flow"
@@ -91,8 +91,8 @@
       "ref": {
         "kind": "workflow",
         "id": "ergora-kernel-assessment",
-        "version": "1.0.1",
-        "digest": "11121fb833a7bfdc0cc715841886a70e2e48fae450b6df7c29174a8754ac5a06"
+        "version": "1.1.0",
+        "digest": "542bf4ff8d6a01d0a3271b7c57947096b06a713d7629bfce13d82cb6d5c45524"
       },
       "depends_on": [
         "analysis"

@@ -1,20 +1,14 @@
 {
   "schema_version": 2,
   "id": "ergora-opt-megatron-fsdp-proposal",
-  "version": "1.0.1",
-  "description": "Version-matched state sharding, checkpoint compatibility and recovery proposals.",
+  "version": "1.1.0",
+  "description": "Limited readonly megatron fsdp proposal; complete optimization requires a shared training-proposal ancestor.",
   "resources": [
     {
       "id": "ergora-opt-megatron-fsdp-proposal-instructions",
       "kind": "instructions",
       "path": "instructions.md",
-      "sha256": "cfd015f37278ada6bbcbb4d90fe047595741b28848a1975d82b6e089b894d1fd"
-    },
-    {
-      "id": "ergora-opt-megatron-fsdp-proposal-context",
-      "kind": "context",
-      "path": "context/megatron-fsdp.md",
-      "sha256": "a0d3762f3cb21570bfc04b4f51f91ab6da22b35134374acb220dc429d78dd6ea"
+      "sha256": "64b22623e258d5b874a537f6a46d5e1f75cb2df358d8e9e5cdde64c470b55759"
     }
   ],
   "permissions": {
@@ -43,19 +37,62 @@
   },
   "nodes": [
     {
-      "id": "analysis",
+      "id": "specialist",
       "ref": {
-        "kind": "workflow",
-        "id": "ergora-training-analysis",
-        "version": "2.0.1",
-        "digest": "deefe8c9401be71db07724f5b86bcf3b482e7bf13c23b53c0a278395faf25086"
+        "kind": "agent",
+        "id": "ergora-opt-megatron-fsdp-expert",
+        "version": "1.0.0",
+        "digest": "e45d4738d4607213ed680e09534194b4104cec53252597a363ab3a1ad18cd854"
       },
+      "role": "performance-analyst",
       "depends_on": [],
       "inputs": {
         "task": {
           "input": "task"
         }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [],
+        "shell": false,
+        "network": []
       }
+    },
+    {
+      "id": "design",
+      "ref": {
+        "kind": "agent",
+        "id": "ergora-experiment-designer",
+        "version": "2.0.1",
+        "digest": "cb2f8919ee58521eaf74e4c813cb81cbe570380decb7e9433171dca3429bc1df"
+      },
+      "role": "experiment-planner",
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [],
+        "shell": false,
+        "network": []
+      }
+    },
+    {
+      "id": "analysis-results",
+      "join": "all",
+      "depends_on": [
+        "specialist",
+        "design"
+      ]
     },
     {
       "id": "measurement",
@@ -66,11 +103,11 @@
         "digest": "d8b8e8abb2dd462b32d78d0b878c15f9c702448b386162426c28f4ff871ab914"
       },
       "depends_on": [
-        "analysis"
+        "analysis-results"
       ],
       "inputs": {
         "task": {
-          "node": "analysis",
+          "node": "analysis-results",
           "output": "result"
         }
       }
@@ -79,6 +116,8 @@
       "id": "gather",
       "join": "all",
       "depends_on": [
+        "specialist",
+        "design",
         "measurement"
       ]
     }

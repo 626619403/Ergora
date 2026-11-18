@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "id": "ergora-opt-model-verification-expert",
+  "version": "1.0.0",
+  "description": "Readonly model verification specialist: Audit conversion, forward, gradient, optimizer update, resume and quality as separate claims with independent owner-supplied oracles and tolerances.",
+  "roles": [
+    "performance-analyst"
+  ],
+  "specialties": [
+    "model-verification",
+    "source-bound-optimization"
+  ],
+  "backend": {
+    "tool": "codex",
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
+  },
+  "resources": [
+    {
+      "id": "ergora-opt-model-verification-expert-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "f84bf5d3c6838226e15878fe4fa47a723c39cf3ba61c7740bb19524c817ca30c"
+    },
+    {
+      "id": "ergora-opt-model-verification-proposal-context",
+      "kind": "context",
+      "path": "context/model-verification.md",
+      "sha256": "d7f6e987632d57cf51ae28229e669c7905d463ede841bc97fdbe8168a0458012"
+    }
+  ],
+  "invocation_minimum": {
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
+  }
+}

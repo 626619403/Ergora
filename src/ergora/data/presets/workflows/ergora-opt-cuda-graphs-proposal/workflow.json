@@ -1,20 +1,14 @@
 {
   "schema_version": 2,
   "id": "ergora-opt-cuda-graphs-proposal",
-  "version": "1.0.1",
-  "description": "Version-matched capture, replay, lifetime and caller-cost proposals with independent evidence review.",
+  "version": "1.1.0",
+  "description": "Limited readonly cuda graphs proposal; complete optimization requires a shared training-proposal ancestor.",
   "resources": [
     {
       "id": "ergora-opt-cuda-graphs-proposal-instructions",
       "kind": "instructions",
       "path": "instructions.md",
-      "sha256": "dd4915d2402453a02e9371e3bdbbc5c54f78f90ed57763aefe1c3e2407ed7ed8"
-    },
-    {
-      "id": "ergora-opt-cuda-graphs-proposal-context",
-      "kind": "context",
-      "path": "context/cuda-graphs.md",
-      "sha256": "0a7c73d789cac76bf7b4dc60044eef56cf8214df534039011c592b1cd6685e9a"
+      "sha256": "a2aab5604638fb842435b9358867c4c519762341856617b4f65e4682d579f30f"
     }
   ],
   "permissions": {
@@ -43,19 +37,62 @@
   },
   "nodes": [
     {
-      "id": "analysis",
+      "id": "specialist",
       "ref": {
-        "kind": "workflow",
-        "id": "ergora-training-analysis",
-        "version": "2.0.1",
-        "digest": "deefe8c9401be71db07724f5b86bcf3b482e7bf13c23b53c0a278395faf25086"
+        "kind": "agent",
+        "id": "ergora-opt-cuda-graphs-expert",
+        "version": "1.0.0",
+        "digest": "0139196dfcd9c8ba50385d94ae413caf69cb0207dad2cf467332e1588f99e6e2"
       },
+      "role": "performance-analyst",
       "depends_on": [],
       "inputs": {
         "task": {
           "input": "task"
         }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [],
+        "shell": false,
+        "network": []
       }
+    },
+    {
+      "id": "design",
+      "ref": {
+        "kind": "agent",
+        "id": "ergora-experiment-designer",
+        "version": "2.0.1",
+        "digest": "cb2f8919ee58521eaf74e4c813cb81cbe570380decb7e9433171dca3429bc1df"
+      },
+      "role": "experiment-planner",
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [],
+        "shell": false,
+        "network": []
+      }
+    },
+    {
+      "id": "analysis-results",
+      "join": "all",
+      "depends_on": [
+        "specialist",
+        "design"
+      ]
     },
     {
       "id": "measurement",
@@ -66,11 +103,11 @@
         "digest": "d8b8e8abb2dd462b32d78d0b878c15f9c702448b386162426c28f4ff871ab914"
       },
       "depends_on": [
-        "analysis"
+        "analysis-results"
       ],
       "inputs": {
         "task": {
-          "node": "analysis",
+          "node": "analysis-results",
           "output": "result"
         }
       }
@@ -79,6 +116,8 @@
       "id": "gather",
       "join": "all",
       "depends_on": [
+        "specialist",
+        "design",
         "measurement"
       ]
     }

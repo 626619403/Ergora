@@ -1,20 +1,14 @@
 {
   "schema_version": 2,
   "id": "ergora-opt-tp-dp-overlap-proposal",
-  "version": "1.0.1",
-  "description": "Effective TP/DP/PP overlap, critical-path contention and independent training evidence proposals.",
+  "version": "1.1.0",
+  "description": "Limited readonly tp dp overlap proposal; complete optimization requires a shared training-proposal ancestor.",
   "resources": [
     {
       "id": "ergora-opt-tp-dp-overlap-proposal-instructions",
       "kind": "instructions",
       "path": "instructions.md",
-      "sha256": "3655eacaf720b9c51cfe29986c5fb823e84c84de27d275eef18ac88265e0881a"
-    },
-    {
-      "id": "ergora-opt-tp-dp-overlap-proposal-context",
-      "kind": "context",
-      "path": "context/tp-dp-overlap.md",
-      "sha256": "cb4a0ffa0bcff716f921a7ce1f342fb43ed7c6ef38726889c7fd55d0eb460fdd"
+      "sha256": "aaeb75d46899fa4b756d6b056e3a123347650adab673111826ceeb888f0dea92"
     }
   ],
   "permissions": {
@@ -43,19 +37,62 @@
   },
   "nodes": [
     {
-      "id": "analysis",
+      "id": "specialist",
       "ref": {
-        "kind": "workflow",
-        "id": "ergora-training-analysis",
-        "version": "2.0.1",
-        "digest": "deefe8c9401be71db07724f5b86bcf3b482e7bf13c23b53c0a278395faf25086"
+        "kind": "agent",
+        "id": "ergora-opt-tp-dp-overlap-expert",
+        "version": "1.0.0",
+        "digest": "8388b345bde6fe15c2d7a7691f7c9081b8f1edd4f6d6f6504a5e0fbf75b9962b"
       },
+      "role": "performance-analyst",
       "depends_on": [],
       "inputs": {
         "task": {
           "input": "task"
         }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [],
+        "shell": false,
+        "network": []
       }
+    },
+    {
+      "id": "design",
+      "ref": {
+        "kind": "agent",
+        "id": "ergora-experiment-designer",
+        "version": "2.0.1",
+        "digest": "cb2f8919ee58521eaf74e4c813cb81cbe570380decb7e9433171dca3429bc1df"
+      },
+      "role": "experiment-planner",
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [],
+        "shell": false,
+        "network": []
+      }
+    },
+    {
+      "id": "analysis-results",
+      "join": "all",
+      "depends_on": [
+        "specialist",
+        "design"
+      ]
     },
     {
       "id": "measurement",
@@ -66,11 +103,11 @@
         "digest": "d8b8e8abb2dd462b32d78d0b878c15f9c702448b386162426c28f4ff871ab914"
       },
       "depends_on": [
-        "analysis"
+        "analysis-results"
       ],
       "inputs": {
         "task": {
-          "node": "analysis",
+          "node": "analysis-results",
           "output": "result"
         }
       }
@@ -79,6 +116,8 @@
       "id": "gather",
       "join": "all",
       "depends_on": [
+        "specialist",
+        "design",
         "measurement"
       ]
     }

@@ -1,20 +1,14 @@
 {
   "schema_version": 2,
   "id": "ergora-opt-performance-diagnosis-proposal",
-  "version": "1.0.1",
-  "description": "Symptom-preserving feedback commands, compatible report readers and bounded performance proposals with independent evidence review.",
+  "version": "1.1.0",
+  "description": "Limited readonly performance diagnosis proposal; complete optimization requires a shared training-proposal ancestor.",
   "resources": [
     {
       "id": "ergora-opt-performance-diagnosis-proposal-instructions",
       "kind": "instructions",
       "path": "instructions.md",
-      "sha256": "c296259ededfa37237a09664db64b706990054dd922f0a091f59ab47c4d5d966"
-    },
-    {
-      "id": "ergora-performance-diagnosis-skill",
-      "kind": "skill",
-      "path": "skills/ergora-performance-diagnosis",
-      "digest": "88017dbf291214dcfe387603038b9ad3282184a7dc6fe02593d3c1abb838f5e1"
+      "sha256": "4aaf395fca252a45bdaa8255bb13132e2f9e8fa6d24eb6ca7737e58758544d13"
     }
   ],
   "permissions": {
@@ -43,19 +37,62 @@
   },
   "nodes": [
     {
-      "id": "analysis",
+      "id": "specialist",
       "ref": {
-        "kind": "workflow",
-        "id": "ergora-training-analysis",
-        "version": "2.0.1",
-        "digest": "deefe8c9401be71db07724f5b86bcf3b482e7bf13c23b53c0a278395faf25086"
+        "kind": "agent",
+        "id": "ergora-performance-analyst",
+        "version": "2.1.0",
+        "digest": "f973b1165314ef944649b5a20846a978534e2bf722f49c5cb13850bad1ed37c3"
       },
+      "role": "performance-analyst",
       "depends_on": [],
       "inputs": {
         "task": {
           "input": "task"
         }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [],
+        "shell": false,
+        "network": []
       }
+    },
+    {
+      "id": "design",
+      "ref": {
+        "kind": "agent",
+        "id": "ergora-experiment-designer",
+        "version": "2.0.1",
+        "digest": "cb2f8919ee58521eaf74e4c813cb81cbe570380decb7e9433171dca3429bc1df"
+      },
+      "role": "experiment-planner",
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [],
+        "shell": false,
+        "network": []
+      }
+    },
+    {
+      "id": "analysis-results",
+      "join": "all",
+      "depends_on": [
+        "specialist",
+        "design"
+      ]
     },
     {
       "id": "measurement",
@@ -66,11 +103,11 @@
         "digest": "d8b8e8abb2dd462b32d78d0b878c15f9c702448b386162426c28f4ff871ab914"
       },
       "depends_on": [
-        "analysis"
+        "analysis-results"
       ],
       "inputs": {
         "task": {
-          "node": "analysis",
+          "node": "analysis-results",
           "output": "result"
         }
       }
@@ -79,6 +116,8 @@
       "id": "gather",
       "join": "all",
       "depends_on": [
+        "specialist",
+        "design",
         "measurement"
       ]
     }

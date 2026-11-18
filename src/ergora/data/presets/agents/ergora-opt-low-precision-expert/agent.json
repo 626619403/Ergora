@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "id": "ergora-opt-low-precision-expert",
+  "version": "1.0.0",
+  "description": "Readonly low precision specialist: Separate PTQ, QAT/QAD and TE training, numerical-format coverage and authorized precision changes; retain independent quality and performance gates.",
+  "roles": [
+    "performance-analyst"
+  ],
+  "specialties": [
+    "low-precision",
+    "source-bound-optimization"
+  ],
+  "backend": {
+    "tool": "codex",
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
+  },
+  "resources": [
+    {
+      "id": "ergora-opt-low-precision-expert-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "3e1ccabf5bd59747cc27ec9528f2dd030fbb15b0977412bdb4454b9acf3a54d8"
+    },
+    {
+      "id": "ergora-opt-low-precision-proposal-context",
+      "kind": "context",
+      "path": "context/low-precision.md",
+      "sha256": "11d3b23ba31f17a406f0d4d65c1ede6fbc0926b339bf75bb6e1996846c023afa"
+    }
+  ],
+  "invocation_minimum": {
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
+  }
+}

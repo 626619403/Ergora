@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "id": "ergora-opt-recipe-model-expert",
+  "version": "1.0.0",
+  "description": "Readonly recipe model specialist: Resolve the actual model/provider/recipe configuration and separate convergence invariants from legal execution-control changes.",
+  "roles": [
+    "performance-analyst"
+  ],
+  "specialties": [
+    "recipe-model",
+    "source-bound-optimization"
+  ],
+  "backend": {
+    "tool": "codex",
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
+  },
+  "resources": [
+    {
+      "id": "ergora-opt-recipe-model-expert-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "1b3fa4ed09042754827ec47f48f396df6ac2a03fc3e42c75238244b1e4828b84"
+    },
+    {
+      "id": "ergora-opt-recipe-model-proposal-context",
+      "kind": "context",
+      "path": "context/recipe-model.md",
+      "sha256": "4310dbcced5c62390aa51cae79246d278b27441b37b9acdc0b1173b9229afca3"
+    }
+  ],
+  "invocation_minimum": {
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
+  }
+}

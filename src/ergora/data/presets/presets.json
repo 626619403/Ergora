@@ -48,7 +48,7 @@
       ]
     },
     "training-optimization": {
-      "description": "Readonly flow-first optimization proposals with framework/library/backend alternatives from setup onward and reproducible environment adaptation handoffs; no automatic execution or installation.",
+      "description": "Shared readonly optimization policy, scoped topic composition and complete explicit stage handoffs; independent leaves do not automatically execute the graph or experiments.",
       "runtime": "proposal-leaves",
       "root": "ergora-training-proposal",
       "agents": [
@@ -90,288 +90,268 @@
       ]
     },
     "optimization-memory-tuning": {
-      "description": "Capacity, allocation and hottest-rank memory diagnosis; three readonly v2 experts, no experiment execution or automatic graph runner.",
+      "description": "Limited readonly memory tuning proposal; complete optimization requires a shared training-proposal ancestor.",
       "runtime": "proposal-leaves",
       "root": "ergora-opt-memory-tuning-proposal",
       "agents": [
+        "ergora-opt-memory-tuning-expert",
         "ergora-experiment-designer",
-        "ergora-performance-analyst",
         "ergora-measurement-reviewer"
       ],
       "workflows": [
-        "ergora-training-analysis",
         "ergora-measurement-review",
         "ergora-opt-memory-tuning-proposal"
       ]
     },
     "optimization-activation-recompute": {
-      "description": "Version-matched selective and full-layer recomputation tradeoffs; three readonly v2 experts, no experiment execution or automatic graph runner.",
+      "description": "Limited readonly activation recompute proposal; complete optimization requires a shared training-proposal ancestor.",
       "runtime": "proposal-leaves",
       "root": "ergora-opt-activation-recompute-proposal",
       "agents": [
+        "ergora-opt-activation-recompute-expert",
         "ergora-experiment-designer",
-        "ergora-performance-analyst",
         "ergora-measurement-reviewer"
       ],
       "workflows": [
-        "ergora-training-analysis",
         "ergora-measurement-review",
         "ergora-opt-activation-recompute-proposal"
       ]
     },
     "optimization-cpu-offloading": {
-      "description": "Distinct layer, fine-grained activation and optimizer offload contracts; three readonly v2 experts, no experiment execution or automatic graph runner.",
+      "description": "Limited readonly cpu offloading proposal; complete optimization requires a shared training-proposal ancestor.",
       "runtime": "proposal-leaves",
       "root": "ergora-opt-cpu-offloading-proposal",
       "agents": [
+        "ergora-opt-cpu-offloading-expert",
         "ergora-experiment-designer",
-        "ergora-performance-analyst",
         "ergora-measurement-reviewer"
       ],
       "workflows": [
-        "ergora-training-analysis",
         "ergora-measurement-review",
         "ergora-opt-cpu-offloading-proposal"
       ]
     },
     "optimization-cuda-graphs": {
-      "description": "Readonly CUDA capture/replay scope, lifetime and paired caller-cost proposals; no automatic graph or GPU execution.",
+      "description": "Limited readonly cuda graphs proposal; complete optimization requires a shared training-proposal ancestor.",
       "runtime": "proposal-leaves",
       "root": "ergora-opt-cuda-graphs-proposal",
       "agents": [
+        "ergora-opt-cuda-graphs-expert",
         "ergora-experiment-designer",
-        "ergora-performance-analyst",
         "ergora-measurement-reviewer"
       ],
       "workflows": [
-        "ergora-training-analysis",
         "ergora-measurement-review",
         "ergora-opt-cuda-graphs-proposal"
       ]
     },
     "optimization-sequence-packing": {
-      "description": "Readonly native packing paths, sample/loss boundaries and valid-token proposals; real experiments stay with the trusted runner.",
+      "description": "Limited readonly sequence packing proposal; complete optimization requires a shared training-proposal ancestor.",
       "runtime": "proposal-leaves",
       "root": "ergora-opt-sequence-packing-proposal",
       "agents": [
+        "ergora-opt-sequence-packing-expert",
         "ergora-experiment-designer",
-        "ergora-performance-analyst",
         "ergora-measurement-reviewer"
       ],
       "workflows": [
-        "ergora-training-analysis",
         "ergora-measurement-review",
         "ergora-opt-sequence-packing-proposal"
       ]
     },
     "optimization-parallelism": {
-      "description": "Finite parallel meshes, topology constraints and independently verified training proposals. Readonly v2 experts; original runner owns actual experiments.",
+      "description": "Limited readonly parallelism proposal; complete optimization requires a shared training-proposal ancestor.",
       "runtime": "proposal-leaves",
       "root": "ergora-opt-parallelism-proposal",
       "agents": [
+        "ergora-opt-parallelism-expert",
         "ergora-experiment-designer",
-        "ergora-performance-analyst",
         "ergora-measurement-reviewer"
       ],
       "workflows": [
-        "ergora-training-analysis",
         "ergora-measurement-review",
         "ergora-opt-parallelism-proposal"
       ]
     },
     "optimization-megatron-fsdp": {
-      "description": "Version-matched state sharding, checkpoint compatibility and recovery proposals. Readonly v2 experts; original runner owns actual experiments.",
+      "description": "Limited readonly megatron fsdp proposal; complete optimization requires a shared training-proposal ancestor.",
       "runtime": "proposal-leaves",
       "root": "ergora-opt-megatron-fsdp-proposal",
       "agents": [
+        "ergora-opt-megatron-fsdp-expert",
         "ergora-experiment-designer",
-        "ergora-performance-analyst",
         "ergora-measurement-reviewer"
       ],
       "workflows": [
-        "ergora-training-analysis",
         "ergora-measurement-review",
         "ergora-opt-megatron-fsdp-proposal"
       ]
     },
     "optimization-hierarchical-cp": {
-      "description": "Explicit hierarchical CP transport, active process groups and numerical evidence proposals. Readonly v2 experts; original runner owns actual experiments.",
+      "description": "Limited readonly hierarchical cp proposal; complete optimization requires a shared training-proposal ancestor.",
       "runtime": "proposal-leaves",
       "root": "ergora-opt-hierarchical-cp-proposal",
       "agents": [
+        "ergora-opt-hierarchical-cp-expert",
         "ergora-experiment-designer",
-        "ergora-performance-analyst",
         "ergora-measurement-reviewer"
       ],
       "workflows": [
-        "ergora-training-analysis",
         "ergora-measurement-review",
         "ergora-opt-hierarchical-cp-proposal"
       ]
     },
     "optimization-tp-dp-overlap": {
-      "description": "Effective TP/DP/PP overlap, critical-path contention and independent training evidence proposals. Readonly v2 experts; original runner owns actual experiments.",
+      "description": "Limited readonly tp dp overlap proposal; complete optimization requires a shared training-proposal ancestor.",
       "runtime": "proposal-leaves",
       "root": "ergora-opt-tp-dp-overlap-proposal",
       "agents": [
+        "ergora-opt-tp-dp-overlap-expert",
         "ergora-experiment-designer",
-        "ergora-performance-analyst",
         "ergora-measurement-reviewer"
       ],
       "workflows": [
-        "ergora-training-analysis",
         "ergora-measurement-review",
         "ergora-opt-tp-dp-overlap-proposal"
       ]
     },
     "optimization-moe-dispatcher": {
-      "description": "Pinned MoE dispatcher selection, actual initialization and routing-correctness evidence proposals. Readonly v2 experts; original runner owns actual experiments.",
+      "description": "Limited readonly moe dispatcher proposal; complete optimization requires a shared training-proposal ancestor.",
       "runtime": "proposal-leaves",
       "root": "ergora-opt-moe-dispatcher-proposal",
       "agents": [
+        "ergora-opt-moe-dispatcher-expert",
         "ergora-experiment-designer",
-        "ergora-performance-analyst",
         "ergora-measurement-reviewer"
       ],
       "workflows": [
-        "ergora-training-analysis",
         "ergora-measurement-review",
         "ergora-opt-moe-dispatcher-proposal"
       ]
     },
     "optimization-moe-overlap": {
-      "description": "Plain EP overlap versus delayed wgrad, native constraints and independent measurement proposals. Readonly v2 experts; original runner owns actual experiments.",
+      "description": "Limited readonly moe overlap proposal; complete optimization requires a shared training-proposal ancestor.",
       "runtime": "proposal-leaves",
       "root": "ergora-opt-moe-overlap-proposal",
       "agents": [
+        "ergora-opt-moe-overlap-expert",
         "ergora-experiment-designer",
-        "ergora-performance-analyst",
         "ergora-measurement-reviewer"
       ],
       "workflows": [
-        "ergora-training-analysis",
         "ergora-measurement-review",
         "ergora-opt-moe-overlap-proposal"
       ]
     },
     "optimization-profiling": {
-      "description": "Trace identity, interval-union budgets, dependency evidence and bounded critical-path diagnosis proposals. Readonly v2 experts; original parser, collector and runner retain execution ownership.",
+      "description": "Limited readonly profiling proposal; complete optimization requires a shared training-proposal ancestor.",
       "runtime": "proposal-leaves",
       "root": "ergora-opt-profiling-proposal",
       "agents": [
-        "ergora-experiment-designer",
         "ergora-performance-analyst",
+        "ergora-experiment-designer",
         "ergora-measurement-reviewer"
       ],
       "workflows": [
-        "ergora-training-analysis",
         "ergora-measurement-review",
         "ergora-opt-profiling-proposal"
       ]
     },
     "optimization-memory-snapshot": {
-      "description": "Trusted allocator summaries, retained-history limits and aligned memory-snapshot difference proposals. Readonly v2 experts; original parser, collector and runner retain execution ownership.",
+      "description": "Limited readonly memory snapshot proposal; complete optimization requires a shared training-proposal ancestor.",
       "runtime": "proposal-leaves",
       "root": "ergora-opt-memory-snapshot-proposal",
       "agents": [
+        "ergora-opt-memory-snapshot-expert",
         "ergora-experiment-designer",
-        "ergora-performance-analyst",
         "ergora-measurement-reviewer"
       ],
       "workflows": [
-        "ergora-training-analysis",
         "ergora-measurement-review",
         "ergora-opt-memory-snapshot-proposal"
       ]
     },
     "optimization-recipe-model": {
-      "description": "Exact model and recipe selection, convergence invariants and bounded adaptation evidence proposals. Readonly v2 experts; original parser, collector and runner retain execution ownership.",
+      "description": "Limited readonly recipe model proposal; complete optimization requires a shared training-proposal ancestor.",
       "runtime": "proposal-leaves",
       "root": "ergora-opt-recipe-model-proposal",
       "agents": [
+        "ergora-opt-recipe-model-expert",
         "ergora-experiment-designer",
-        "ergora-performance-analyst",
         "ergora-measurement-reviewer"
       ],
       "workflows": [
-        "ergora-training-analysis",
         "ergora-measurement-review",
         "ergora-opt-recipe-model-proposal"
       ]
     },
     "optimization-model-verification": {
-      "description": "Per-claim model conversion, forward, training, resume and independent quality evidence review proposals. Readonly v2 experts; original parser, collector and runner retain execution ownership.",
+      "description": "Limited readonly model verification proposal; complete optimization requires a shared training-proposal ancestor.",
       "runtime": "proposal-leaves",
       "root": "ergora-opt-model-verification-proposal",
       "agents": [
+        "ergora-opt-model-verification-expert",
         "ergora-experiment-designer",
-        "ergora-performance-analyst",
         "ergora-measurement-reviewer"
       ],
       "workflows": [
-        "ergora-training-analysis",
         "ergora-measurement-review",
         "ergora-opt-model-verification-proposal"
       ]
     },
     "optimization-cluster-resiliency": {
-      "description": "Unique rank and job ownership, bounded diagnosis and independently verified distributed recovery proposals. Readonly v2 experts; original executor, framework and evaluator retain execution ownership.",
+      "description": "Limited readonly cluster resiliency proposal; complete optimization requires a shared training-proposal ancestor.",
       "runtime": "proposal-leaves",
       "root": "ergora-opt-cluster-resiliency-proposal",
       "agents": [
+        "ergora-opt-cluster-resiliency-expert",
         "ergora-experiment-designer",
-        "ergora-performance-analyst",
         "ergora-measurement-reviewer"
       ],
       "workflows": [
-        "ergora-training-analysis",
         "ergora-measurement-review",
         "ergora-opt-cluster-resiliency-proposal"
       ]
     },
     "optimization-low-precision": {
-      "description": "Bounded PTQ, QAT/QAD and TE training proposals with exact format/runtime coverage and independent quality/performance gates. Readonly v2 experts; original runner, native tools and evaluator retain execution ownership.",
+      "description": "Limited readonly low precision proposal; complete optimization requires a shared training-proposal ancestor.",
       "runtime": "proposal-leaves",
       "root": "ergora-opt-low-precision-proposal",
       "agents": [
+        "ergora-opt-low-precision-expert",
         "ergora-experiment-designer",
-        "ergora-performance-analyst",
         "ergora-kernel-designer",
         "ergora-measurement-reviewer"
       ],
       "workflows": [
-        "ergora-training-analysis",
         "ergora-measurement-review",
         "ergora-opt-low-precision-proposal"
       ]
     },
     "optimization-kernel": {
-      "description": "Kernel and wrapper proposals with fair baselines, independent correctness and measurement, and explicit native-workflow admission limits. Readonly v2 experts; original campaigns, runner, evaluator and adoption owners remain separate.",
+      "description": "Limited readonly kernel proposal; complete optimization requires a shared training-proposal ancestor.",
       "runtime": "proposal-leaves",
       "root": "ergora-opt-kernel-proposal",
       "agents": [
-        "ergora-experiment-designer",
-        "ergora-performance-analyst",
         "ergora-kernel-designer",
+        "ergora-experiment-designer",
         "ergora-measurement-reviewer"
       ],
       "workflows": [
-        "ergora-training-analysis",
         "ergora-measurement-review",
         "ergora-opt-kernel-proposal"
       ]
     },
     "optimization-performance-diagnosis": {
-      "description": "Symptom-preserving feedback commands, compatible report readers and bounded performance proposals with independent evidence review. Readonly leaves; original runner retains execution and adoption.",
+      "description": "Limited readonly performance diagnosis proposal; complete optimization requires a shared training-proposal ancestor.",
       "runtime": "proposal-leaves",
       "root": "ergora-opt-performance-diagnosis-proposal",
       "agents": [
-        "ergora-experiment-designer",
         "ergora-performance-analyst",
+        "ergora-experiment-designer",
         "ergora-measurement-reviewer"
       ],
       "workflows": [
-        "ergora-training-analysis",
         "ergora-measurement-review",
         "ergora-opt-performance-diagnosis-proposal"
       ]

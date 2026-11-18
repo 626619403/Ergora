@@ -1,20 +1,14 @@
 {
   "schema_version": 2,
   "id": "ergora-opt-moe-overlap-proposal",
-  "version": "1.0.1",
-  "description": "Plain EP overlap versus delayed wgrad, native constraints and independent measurement proposals.",
+  "version": "1.1.0",
+  "description": "Limited readonly moe overlap proposal; complete optimization requires a shared training-proposal ancestor.",
   "resources": [
     {
       "id": "ergora-opt-moe-overlap-proposal-instructions",
       "kind": "instructions",
       "path": "instructions.md",
-      "sha256": "74bdd1cf074548913393f82c09baa03115edaf57fa4a8cd71c77befa16bb0ea7"
-    },
-    {
-      "id": "ergora-opt-moe-overlap-proposal-context",
-      "kind": "context",
-      "path": "context/moe-overlap.md",
-      "sha256": "3c3fe29815149acf58d7afb8adeb737a95f3d4fc4b4ae042ca33abc252cef6fd"
+      "sha256": "61565467776de1c03dc8d1507fe326849d2ee2512ae3b51e5b95eeedade4bf89"
     }
   ],
   "permissions": {
@@ -43,19 +37,62 @@
   },
   "nodes": [
     {
-      "id": "analysis",
+      "id": "specialist",
       "ref": {
-        "kind": "workflow",
-        "id": "ergora-training-analysis",
-        "version": "2.0.1",
-        "digest": "deefe8c9401be71db07724f5b86bcf3b482e7bf13c23b53c0a278395faf25086"
+        "kind": "agent",
+        "id": "ergora-opt-moe-overlap-expert",
+        "version": "1.0.0",
+        "digest": "66d03aa3055d056dbe0e433d799311f55d96137b01179a79ef187138f0505dbf"
       },
+      "role": "performance-analyst",
       "depends_on": [],
       "inputs": {
         "task": {
           "input": "task"
         }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [],
+        "shell": false,
+        "network": []
       }
+    },
+    {
+      "id": "design",
+      "ref": {
+        "kind": "agent",
+        "id": "ergora-experiment-designer",
+        "version": "2.0.1",
+        "digest": "cb2f8919ee58521eaf74e4c813cb81cbe570380decb7e9433171dca3429bc1df"
+      },
+      "role": "experiment-planner",
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [],
+        "shell": false,
+        "network": []
+      }
+    },
+    {
+      "id": "analysis-results",
+      "join": "all",
+      "depends_on": [
+        "specialist",
+        "design"
+      ]
     },
     {
       "id": "measurement",
@@ -66,11 +103,11 @@
         "digest": "d8b8e8abb2dd462b32d78d0b878c15f9c702448b386162426c28f4ff871ab914"
       },
       "depends_on": [
-        "analysis"
+        "analysis-results"
       ],
       "inputs": {
         "task": {
-          "node": "analysis",
+          "node": "analysis-results",
           "output": "result"
         }
       }
@@ -79,6 +116,8 @@
       "id": "gather",
       "join": "all",
       "depends_on": [
+        "specialist",
+        "design",
         "measurement"
       ]
     }

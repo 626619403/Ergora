@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "id": "ergora-opt-sequence-packing-expert",
+  "version": "1.0.0",
+  "description": "Readonly sequence packing specialist: Follow native sample/attention/loss paths, sample isolation, masks and normalization; propose an equal-valid-token control.",
+  "roles": [
+    "performance-analyst"
+  ],
+  "specialties": [
+    "sequence-packing",
+    "source-bound-optimization"
+  ],
+  "backend": {
+    "tool": "codex",
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
+  },
+  "resources": [
+    {
+      "id": "ergora-opt-sequence-packing-expert-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "b6f78d4edae9454ff39f1465117fbe77c3e7e1d1cfa51695757b10ac0331ed7e"
+    },
+    {
+      "id": "ergora-opt-sequence-packing-proposal-context",
+      "kind": "context",
+      "path": "context/sequence-packing.md",
+      "sha256": "1c43298787760bacfb43150798fbac599d6613ba2e09c994a417d5dc5316b1b5"
+    }
+  ],
+  "invocation_minimum": {
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
+  }
+}
