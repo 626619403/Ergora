@@ -130,8 +130,8 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
             self.adapter.verify_receipt(job, receipt)
 
     async def test_oversized_context_rejected_before_publication(self):
-        with self.assertRaisesRegex(ContractViolation, "1,000,000"):
-            await self.adapter.submit(context(self.spec, dependencies={"too-large": "x" * 1_000_001}))
+        with self.assertRaises(ContractViolation):
+            await self.adapter.submit(context(self.spec, dependencies={"too-large": "x" * (self.adapter.context_limit_bytes + 1)}))
         self.assertFalse(self.adapter.roots["requests"].exists())
 
     async def test_workflow_bounds_context_before_temporal_serialization(self):

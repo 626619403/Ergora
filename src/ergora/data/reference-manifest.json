@@ -1,7 +1,7 @@
 {
   "files": {
     "BUNDLE-MANIFEST.json": "5740f260ba7f578ff6ae74920851776df63a920b1b04fe9272edb80850d53b77",
-    "BUNDLE-SHA256SUMS": "502cf9e7bf4aab87fd73e013dfc7560894e22f3d42d43abd8cd8b1847d54280b",
+    "BUNDLE-SHA256SUMS": "eea2f7e0878452a225b523cacfe806bf17fde066ce27f414da2c98612a0b2de4",
     "INSTALL.zh-CN.md": "2f0d675fc5f4ece90f5236c099faa6462b75f4e1bb8c13b3c095f8c9c7679311",
     "install-from-report.sh": "bed9eeb8ec64b9cf7915435e81521433f7cb710c4d566a53684e52b6deb2d971",
     "platform/README.zh-CN.md": "f69455708006b745eeac7790306a8ae3159deec537d53d49c42f265203a0c8a1",
@@ -225,7 +225,7 @@
     "platform/upstream/platform/tests/test_ingress.py": "fc2867ac35a54c79dff0d232c440a9817d34ff529cd2abc5c7455036899c76b4",
     "platform/upstream/platform/tests/test_portable.py": "b6851f1f8539f940bb57646964a3955f1aafa75ea2c1197d9e5572739856c088",
     "platform/upstream/platform/tests/test_runtime.py": "2fe38526a8e8082525434fd778fcaf079984d862b0ab62c7707a2d09687d1826",
-    "platform/upstream/platform/tests/test_workflow.py": "6e8fd6a70d3849256c3f0750790d3ca95b43eefa63f3760697e430235167ec58",
+    "platform/upstream/platform/tests/test_workflow.py": "5ace75aa1d037d1c4eaf200525631846e4fd116025ee43f70abeedef3d09f8a2",
     "platform/upstream/prompts/auditor.md": "c7bb34c67bc9980e9263582fba6914fd402c3074ce7bda4cabc56665b81968d4",
     "platform/upstream/prompts/coordinator.md": "293c22f49f000331f4180ada74cce478717e8edac70ca15cb11e556c2cc88828",
     "platform/upstream/prompts/integrator.md": "5ad12c76bbbac361ffdf7b338bccb1e600e580a8063fa6850a60d6b8ca9ccd4c",
