@@ -151,7 +151,7 @@ sys.meta_path.insert(0, DenyApplicationImports())
         else:
             descriptor.write_text(json.dumps({**json.loads(original_descriptor), 'unavailable_fixture_descriptor': True}))
         ordinary = training.evidence(state, 'demo', 'alpha', artifact='notes.txt', evidence_sha256=report['evidence_sha256'])
-        assert ordinary['artifact']['text'] == (folder / 'notes.txt').read_text()
+        assert ordinary['artifact']['text'] == (folder / 'notes.txt').read_bytes().decode('utf-8')
         saved = training.baseline_reference(state, 'demo', 'alpha', evidence_sha256=report['evidence_sha256'])
         reference_document = saved['reference']
         assert saved['read_only'] is True and saved['runtime_status'] == 'not_queried'
