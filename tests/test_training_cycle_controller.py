@@ -1121,10 +1121,11 @@ def test_controller_prepare_binds_complete_parent_records_and_original_position(
     isolated = subprocess.run([sys.executable, '-I', '-S', '-c', '''import json,sys
 from pathlib import Path
 sys.path.insert(0,sys.argv[1])
-from ergora.training_execution_protocol import CycleAdmission,decode,read_raw
+from ergora.training_execution_protocol import CycleAdmission,read_raw
+from ergora.training_materials import decode_record
 directory=Path(sys.argv[2])
-parent=CycleAdmission(directory,decode(read_raw(directory/'authorization.json')))
-parent.bind(decode(read_raw(Path(sys.argv[3]))),decode(read_raw(directory/'cycle.json',10_000_000)))
+parent=CycleAdmission(directory,decode_record(read_raw(directory/'authorization.json')))
+parent.bind(decode_record(read_raw(Path(sys.argv[3]))),decode_record(read_raw(directory/'cycle.json',10_000_000)))
 assert not any(name in sys.modules for name in ('yaml','jsonschema','temporalio','dev_platform','ergora.state'))
 print('complete original binding verified without site packages')
 ''', str(Path(reference.__file__).parent.parent), str(admission.directory), str(prefix / 'alpha.intent.json')],

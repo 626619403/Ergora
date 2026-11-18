@@ -36,6 +36,7 @@ with workflow.unsafe.imports_passed_through() if workflow is not None else nullc
     from .reference_training_execution import Execution
     from .state import State, file_lock, now
     from .training_cycles import _CycleCapacityError
+    from .training_materials import decode_record
     if workflow is not None:
         from temporalio.common import RetryPolicy
         from temporalio.converter import DefaultFailureConverter, FailureConverter
@@ -107,7 +108,7 @@ def cycle_request_retention_main() -> None:
     raw = source.readline(_CYCLE_LIMIT + 2)
     if not raw.endswith(b'\n') or len(raw) - 1 > _CYCLE_LIMIT:
         raise ValueError('Request retention requires one bounded control envelope')
-    envelope = protocol.decode(raw[:-1])
+    envelope = decode_record(raw[:-1])
     protocol._exact(envelope, ('protocol', 'identity', 'bytes', 'bootstrap', 'budget', 'deadline_ns'),
                     'Request retention envelope')
     identity, window, budget = envelope['identity'], envelope['bootstrap'], envelope['budget']
@@ -492,7 +493,7 @@ def _cycle_target(plan: dict, admission, ordinal: int):
     if intent is None:
         return operation, None, None
     try:
-        owner = protocol.owner_record(protocol.decode(
+        owner = protocol.owner_record(decode_record(
             protocol.read_raw(operation.path('.budget/owner.json'))))
     except FileNotFoundError:
         return operation, intent, None
@@ -952,7 +953,7 @@ def _round_previous(payload, plan, admission, active):
     from perf_temporal.connection import connect
 
     authorization = admission.authorization
-    ready = protocol.decode(protocol.read_raw(admission.directory / 'ready.json'))
+    ready = decode_record(protocol.read_raw(admission.directory / 'ready.json'))
     binding = {'cycle_id': authorization['cycle_id'], 'authorization_sha256': authorization['sha256'],
                'task_queue': TASK_QUEUE, 'controller': payload['start_context']['controller']}
 
@@ -1142,7 +1143,7 @@ def _candidate_operation(payload: dict, plan: dict, admission, active) -> dict:
             import fcntl
 
             owner_path = budget.path('owner.json')
-            ready = protocol.decode(protocol.read_raw(admission.directory / 'ready.json'))
+            ready = decode_record(protocol.read_raw(admission.directory / 'ready.json'))
             owner_seen = False
             while True:
                 active()
@@ -1158,7 +1159,7 @@ def _candidate_operation(payload: dict, plan: dict, admission, active) -> dict:
                     # Publication may happen during these reads. The real
                     # binding/prepare checks intentionally do not pin None as
                     # this current candidate's future owner or grant readiness.
-                    protocol._match(protocol.decode(protocol.read_raw(operation.path('.intent.json'), 16 * protocol.LIMIT)),
+                    protocol._match(decode_record(protocol.read_raw(operation.path('.intent.json'), 16 * protocol.LIMIT)),
                         intent, 'Complete original current candidate intent')
                     admission.bind(intent, plan)
                     protocol._round_candidate_intent(intent, plan, admission, identity['ordinal'])
@@ -1423,7 +1424,7 @@ def cycle_operation_main(supervisor: bool = True) -> None:
     raw = sys.stdin.buffer.read(_CYCLE_LIMIT + 1)
     if len(raw) > _CYCLE_LIMIT:
         raise ValueError('Complete cycle operation request exceeds 32 KiB')
-    payload = protocol.decode(raw)
+    payload = decode_record(raw)
     protocol.validate_cycle_operation(payload)
     identity = payload['identity']
     expected = identity['parent']

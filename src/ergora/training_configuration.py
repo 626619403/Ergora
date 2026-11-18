@@ -22,36 +22,6 @@ def _exact(value, keys, label):
         raise ValueError(label + ' has unsupported or missing fields')
 
 
-def _sha(value):
-    return hashlib.sha256(_bytes(value)).hexdigest()
-
-
-def _bytes(value, limit=LIMIT):
-    # Bound the complete observation, including arbitrary nested adapter values.
-    pending, count = [(value, 0)], 0
-    while pending:
-        item, depth = pending.pop()
-        count += 1
-        if depth > 64 or count > 100_000:
-            raise ValueError('Configuration observation exceeds its complete bounds')
-        if isinstance(item, dict):
-            if not all(isinstance(key, str) for key in item):
-                raise ValueError('Configuration observation keys must be strings')
-            pending.extend((child, depth + 1) for child in item.values())
-        elif isinstance(item, list):
-            pending.extend((child, depth + 1) for child in item)
-        elif item is not None and type(item) not in (str, bool, int, float):
-            raise ValueError('Configuration observations must be finite JSON values')
-    try:
-        raw = json.dumps(value, sort_keys=True, ensure_ascii=False,
-                         separators=(',', ':'), allow_nan=False).encode('utf-8')
-    except (ValueError, UnicodeError, RecursionError) as error:
-        raise ValueError('Configuration observations must be finite bounded JSON') from error
-    if len(raw) > limit:
-        raise ValueError('Configuration observation exceeds its complete read capacity')
-    return raw
-
-
 def _digest(value, label):
     if not isinstance(value, str) or re.fullmatch('[a-f0-9]{64}', value) is None:
         raise ValueError(label + ' requires a complete SHA-256')
@@ -270,7 +240,7 @@ def stage_request(folder, record, checkouts, manifest, context, active):
                'managed': {name + '_sha256': chain.sha(chain.records[name])
                            for name in ('request', 'launch', 'attempt', 'ack')}}
     path = folder / 'configuration-request.json'
-    _bytes(request, 16 * LIMIT - 1)
+    materials.observation_bytes(request, 16 * LIMIT - 1)
     protocol.publish(path, request, chain.root)
     _chain(request)
     active()
@@ -278,7 +248,9 @@ def stage_request(folder, record, checkouts, manifest, context, active):
 
 
 def _observations(value, request):
-    _bytes(value)
+    from ergora import training_materials as materials
+
+    materials.observation_bytes(value)
     _exact(value, ('baseline', 'candidate'), 'Configuration observations')
     result = {}
     for arm in ('baseline', 'candidate'):
@@ -302,7 +274,7 @@ def _observations(value, request):
         _exact(item['workload'], WORKLOAD, 'Configuration workload')
         if any(field is None for field in item['workload'].values()):
             raise ValueError('Configuration workload observations must be explicit')
-        result[arm] = {**item, 'snapshot_sha256': _sha(item['snapshot'])}
+        result[arm] = {**item, 'snapshot_sha256': materials.observation_sha256(item['snapshot'])}
     if result['baseline']['invariants'] != result['candidate']['invariants']:
         raise ValueError('Configuration changes fixed model, precision or objective invariants')
     return result
@@ -367,7 +339,7 @@ def _inputs(request, original_raw):
 def _publish_receipt(path, value, chain):
     from ergora import training_execution_protocol as protocol, training_materials as materials
 
-    _bytes(value, LIMIT - 1)
+    materials.observation_bytes(value, LIMIT - 1)
     raw = chain.adapter.canonical(value) + b'\n'
     protocol.publish(path, value, chain.root)
     materials.confirm_file(path, raw, chain.root)
@@ -375,83 +347,12 @@ def _publish_receipt(path, value, chain):
 
 
 def _reference_read(projection, selected, request, request_raw, observations):
-    from ergora import training_execution_protocol as protocol
+    from ergora import training_execution_protocol as protocol, training_materials as materials
+    from ergora.reference_training_evidence import _reference_projection
 
     _chain(request)
-    manifest = protocol.decode(protocol.read_raw(Path(request['manifest'])))
+    manifest = materials.decode_record(protocol.read_raw(Path(request['manifest'])))
     return _reference_projection(projection, selected, request, hashlib.sha256(request_raw).hexdigest(), observations, manifest)
-
-
-def _reference_projection(projection, selected, request, request_sha256, observations, manifest):
-    """The source declares its oracle relation; core keeps quality and timing separate."""
-    from ergora import training_execution_protocol as protocol
-    from ergora.reference_training_evidence import _reason
-
-    projection = protocol.decode(_bytes(projection))
-    _exact(projection, ('scheme', 'baseline_observation_sha256', 'candidate_observation_sha256', 'invariants',
-                        'relations', 'allowed_deltas', 'oracle_applicability'), 'Baseline reference projection')
-    reference = selected['reference']
-    anchor = reference['anchor']
-    if (anchor['baseline_commit'] != request['binding']['baseline_sha']
-            or anchor['base_config_sha256'] != manifest['base_config_sha256']
-            or anchor['workload_fingerprint'] != manifest['workload_fingerprint']
-            or anchor['baseline_id'] != manifest['baseline_id']):
-        raise ValueError('Baseline reference anchor differs from the current baseline')
-    if (not isinstance(projection['scheme'], str) or not projection['scheme']
-            or projection['baseline_observation_sha256'] != _sha(observations['baseline'])
-            or projection['candidate_observation_sha256'] != _sha(observations['candidate'])
-            or projection['invariants'] != observations['baseline']['invariants']):
-        raise ValueError('Baseline reference projection differs from the actual configuration observations')
-    relations, deltas = projection['relations'], projection['allowed_deltas']
-    if not isinstance(relations, list) or not isinstance(deltas, list) or not all(isinstance(key, str) for key in deltas):
-        raise ValueError('Baseline reference requires explicit field relations and allowed deltas')
-    fields, different, unsupported_units = set(), set(), []
-    for relation in relations:
-        _exact(relation, ('field', 'relation', 'reference', 'current', 'unit'), 'Baseline reference field relation')
-        if (not isinstance(relation['field'], str) or not relation['field'] or relation['field'] in fields
-                or relation['relation'] not in ('matched', 'different', 'unknown', 'not_applicable')
-                or not isinstance(relation['unit'], str) or not relation['unit']):
-            raise ValueError('Baseline reference has an unsupported field relation')
-        if relation['unit'] not in ('samples', 'tokens', 'updates', 'groups', 'bytes', 'identity', 'not_applicable'):
-            unsupported_units.append(relation['field'])
-        fields.add(relation['field'])
-        if relation['unit'] in ('samples', 'tokens', 'updates', 'groups', 'bytes'):
-            if any(value is not None and (type(value) is not int or value < 0)
-                   for value in (relation['reference'], relation['current'])):
-                raise ValueError('Baseline reference counts must be nonnegative integers in declared units')
-        if relation['relation'] == 'matched' and relation['reference'] != relation['current']:
-            raise ValueError('Baseline reference claims unequal field values match')
-        if relation['relation'] == 'different':
-            different.add(relation['field'])
-    if len(deltas) != len(set(deltas)) or not set(deltas) <= different:
-        raise ValueError('Baseline reference allowed deltas must name actual different fields')
-    applicability = projection['oracle_applicability']
-    _exact(applicability, ('state', 'scheme', 'coverage', 'reasons'), 'Baseline oracle applicability')
-    if applicability['state'] not in ('supported', 'unavailable', 'invalid') or not isinstance(applicability['reasons'], list):
-        raise ValueError('Unsupported baseline oracle applicability')
-    receipt, quality = reference['receipt'], reference['coverage']['quality']
-    if receipt is not None and receipt.get('baseline') and receipt['baseline'].get('invariants') != projection['invariants']:
-        raise ValueError('Baseline reference changes fixed model, precision or objective invariants')
-    if quality.get('state') == 'invalid' or applicability['state'] == 'invalid':
-        raise ValueError('Baseline reference is invalid for this target oracle')
-    reusable = quality['baseline_scope_verified'] and applicability['state'] == 'supported' and not unsupported_units
-    if reusable and (receipt['oracle']['scheme'] != applicability['scheme'] or receipt['oracle']['coverage'] != applicability['coverage']):
-        raise ValueError('Baseline reference applicability does not match its actual baseline oracle scope')
-    reasons = list(quality['reasons'])
-    if unsupported_units:
-        reasons.append(_reason('reader_unsupported', 'projection.relation_units', observed=unsupported_units))
-    if not reusable:
-        reasons.append(_reason('oracle_relation_unsupported', 'projection.oracle_applicability', observed=applicability['state']))
-    return {'schema_version': 1, 'kind': 'baseline-reference-read', 'request_sha256': request_sha256,
-            'binding': request['binding'], 'selector': request['baseline_reference'],
-            'reference_sha256': selected['reference_sha256'], 'anchor_sha256': selected['anchor_sha256'],
-            'inventory_sha256': reference['inventory']['sha256'],
-            'candidate_observation_sha256': _sha(observations['candidate']), 'projection': projection,
-            'quality': {'state': 'reusable' if reusable else 'unavailable', 'coverage': applicability['coverage'] if reusable else None,
-                        'reasons': reasons},
-            'timing': reference['coverage']['timing'], 'resources': reference['coverage']['resources'],
-            'candidate_quality': 'not_evaluated', 'baseline_work_skipped': False,
-            'independent_pair_supplied': False, 'promotion_approved': False}
 
 
 def _record_reference(driver, context, request, output, observations, configuration_raw, request_raw, manifest):
@@ -462,7 +363,7 @@ def _record_reference(driver, context, request, output, observations, configurat
     chain, _ = _inputs(request, request_raw)
     evidence_path = output / 'evidence.json'
     evidence_raw = protocol.read_raw(evidence_path)
-    evidence = protocol.decode(evidence_raw)
+    evidence = materials.decode_record(evidence_raw)
     originals, artifacts = {}, {}
     for item in evidence['artifacts']:
         _exact(item, ('path', 'sha256'), 'Full evidence artifact')
@@ -472,7 +373,7 @@ def _record_reference(driver, context, request, output, observations, configurat
             raise ValueError('Full evidence has duplicate or changed original artifacts')
         originals[path] = original
         artifacts[item['path']] = {**item, 'bytes': len(original)}
-    data = protocol.decode(_bytes(driver['baseline_reference_record'](context, request, output)))
+    data = materials.decode_record(materials.observation_bytes(driver['baseline_reference_record'](context, request, output)))
     _exact(data, ('baseline', 'oracle', 'environment', 'measurement', 'resources'), 'Source baseline record')
     if protocol.read_raw(evidence_path) != evidence_raw:
         raise ValueError('Baseline collection changed original unfinished evidence bytes')
@@ -537,10 +438,10 @@ def _record_reference(driver, context, request, output, observations, configurat
         original = materials.read_raw(path)
         if hashlib.sha256(original).hexdigest() != ref['sha256'] or len(original) != ref['bytes']:
             raise ValueError('Baseline receipt raw report bytes changed')
-        return protocol.decode(original)
+        return materials.decode_record(original)
 
     chain.originals[chain.folder.parent / 'configuration-request.json'] = request_raw
-    _receipt_coverage(receipt, protocol.decode(configuration_raw), request, manifest, request['binding'], artifacts, artifact, chain)
+    _receipt_coverage(receipt, materials.decode_record(configuration_raw), request, manifest, request['binding'], artifacts, artifact, chain)
     _measurement(receipt, evidence, manifest, artifacts, artifact, chain)
     _resource_coverage(receipt['resources'], artifacts, artifact)
     path = output / 'baseline-reference-receipt.json'
@@ -565,7 +466,7 @@ def _record_screen(driver, context, request, output, observations, frozen, raw, 
 
     def record_first_failure(failure):
         nonlocal first
-        _bytes(failure)
+        materials.observation_bytes(failure)
         _exact(failure, ('check_id', 'rank', 'phase', 'window_id', 'work_index', 'observation_order', 'diagnostic_refs'), 'Screen first failure')
         if (first is not None or failure['check_id'] not in {item['id'] for item in request['execution']['plan']['checks']}
                 or any(type(failure[key]) is not int or failure[key] < 0 for key in ('rank', 'work_index', 'observation_order'))
@@ -582,7 +483,7 @@ def _record_screen(driver, context, request, output, observations, frozen, raw, 
             materials.confirm_file(output / ref['path'], original, chain.root)
         first = {'schema_version': 1, 'kind': 'training-screen-first-failure', 'binding': request['binding'],
             'configuration_request_sha256': hashlib.sha256(raw).hexdigest(), 'source': request['configuration_readback']['source'],
-            'failure': protocol.decode(_bytes(failure))}
+            'failure': materials.decode_record(materials.observation_bytes(failure))}
         path = output / 'screen-first-failure.json'
         frozen[path] = _publish_receipt(path, first, chain)
         guards.read(output, path.name, 'screen', hashlib.sha256(frozen[path]).hexdigest())
@@ -596,7 +497,7 @@ def _record_screen(driver, context, request, output, observations, frozen, raw, 
     if protocol.budget_clock.remaining(request['context']['authorization']['clock'], request['context']['policy']['wall_seconds'],
             request['context']['policy']['cleanup_seconds']) < 1:
         raise ValueError('blocked: remaining original work allowance is below supported screen walltime')
-    data = protocol.decode(_bytes(driver['screen'](context, request, output, record_first_failure=record_first_failure)))
+    data = materials.decode_record(materials.observation_bytes(driver['screen'](context, request, output, record_first_failure=record_first_failure)))
     _inputs(request, raw)
     _exact(data, ('workload', 'windows', 'checks', 'checks_not_run', 'resources', 'artifacts', 'reasons'), 'Screen source report')
     path = output / 'screen-source-report.json'
@@ -661,7 +562,7 @@ def _record_screen(driver, context, request, output, observations, frozen, raw, 
             return original
         if len(original) > LIMIT:
             raise ValueError('capacity_exceeded: screen metadata')
-        return protocol.decode(original)
+        return materials.decode_record(original)
 
     checked_request = {**request, '_raw_sha256': hashlib.sha256(raw).hexdigest()}
     derived = _screen_data(data, checked_request, manifest, read, first)
@@ -680,7 +581,7 @@ def _record_screen(driver, context, request, output, observations, frozen, raw, 
     _screen_bundle(output, checked_request, manifest, inventory=guards)
     selected = _baseline_reference(reference_project, request['context']['intent']['control_home'],
         request['baseline_reference'], inventory=guards)
-    if _bytes(selected, 8 * LIMIT) != _bytes(read({'path': 'baseline-reference-projection.json'}), 8 * LIMIT):
+    if materials.observation_bytes(selected, 8 * LIMIT) != materials.observation_bytes(read({'path': 'baseline-reference-projection.json'}), 8 * LIMIT):
         raise ValueError('Original baseline reference changed during candidate screen work')
     guards.confirm()
     _inputs(request, raw)
@@ -691,13 +592,13 @@ def main(request_path):
     from ergora import training_execution_protocol as protocol, training_materials as materials
 
     raw = protocol.read_raw(Path(request_path), 16 * LIMIT)
-    request = protocol.decode(raw)
+    request = materials.decode_record(raw)
     _exact(request, ('schema_version', 'kind', 'binding', 'native_request_sha256', 'runner_sha256',
                      'configuration_readback', 'baseline_reference', 'execution', 'execution_phase_id', 'configurations', 'trusted_repo', 'manifest', 'output', 'context', 'managed'),
            'Configuration driver request')
     if type(request['schema_version']) is not int or request['schema_version'] != 1 or request['kind'] != 'training-configuration-driver-request':
         raise ValueError('Unsupported configuration driver request')
-    _bytes(request, 16 * LIMIT)
+    materials.observation_bytes(request, 16 * LIMIT)
     execution = request['context']['intent']['execution']
     installation = protocol.reference.validate_installation(Path(execution['installation']), training=True)
     if str(installation) != execution['installation']:
@@ -737,7 +638,7 @@ def main(request_path):
     context = driver['prepare'](request)
     observations = _observations(driver['describe'](context), request)
     # Copy the observation now: describe must not retain mutable aliases into it.
-    observations = protocol.decode(_bytes(observations))
+    observations = materials.decode_record(materials.observation_bytes(observations))
     receipt = {'schema_version': 1, 'kind': 'training-configuration-receipt',
                'request_sha256': hashlib.sha256(raw).hexdigest(), 'binding': request['binding'],
                'native_request_sha256': request['native_request_sha256'], 'runner_sha256': request['runner_sha256'],
@@ -745,7 +646,7 @@ def main(request_path):
                'environment_fingerprint': manifest['environment_fingerprint'], 'observations': observations,
                'configuration_inputs': materials.input_descriptor(manifest), 'configurations': request['configurations'],
                'execution_plan_sha256': chain.sha(request['execution'].get('plan'))}
-    _bytes(receipt, LIMIT - 1)
+    materials.observation_bytes(receipt, LIMIT - 1)
     receipt_raw = chain.adapter.canonical(receipt) + b'\n'
     protocol.publish(receipt_path, receipt, chain.root)
     materials.confirm_file(receipt_path, receipt_raw, chain.root)
@@ -766,9 +667,9 @@ def main(request_path):
         if selected['reference_sha256'] != request['baseline_reference']['reference_sha256']:
             raise ValueError('Baseline reference content differs from the frozen selector')
         reference = selected['reference']
-        before_reference = _bytes(reference, 8 * LIMIT)
+        before_reference = materials.observation_bytes(reference, 8 * LIMIT)
         projection = driver['baseline_reference_read'](context, request, reference)
-        if _bytes(reference, 8 * LIMIT) != before_reference:
+        if materials.observation_bytes(reference, 8 * LIMIT) != before_reference:
             raise ValueError('Baseline reference changed during its source-owned read callback')
         read = _reference_read(projection, selected, request, raw, observations)
         read_path = output / 'baseline-reference-read.json'
@@ -782,9 +683,9 @@ def main(request_path):
         # Re-read the same full immutable inventory after the callback and the
         # durable receipt; then the existing last admission follows all I/O.
         again = _baseline_reference(project, request['context']['intent']['control_home'], request['baseline_reference'], inventory=guards)
-        if _bytes(again['reference'], 8 * LIMIT) != before_reference:
+        if materials.observation_bytes(again['reference'], 8 * LIMIT) != before_reference:
             raise ValueError('Baseline reference changed before current full work')
-    if _bytes(_observations(driver['describe'](context), request)) != _bytes(observations):
+    if materials.observation_bytes(_observations(driver['describe'](context), request)) != materials.observation_bytes(observations):
         raise ValueError('Configuration changed after observation and before training work')
     _inputs(request, raw)
     if screen_operation:
@@ -808,7 +709,7 @@ def main(request_path):
         artifacts.append({'path': path.relative_to(output).as_posix(), 'sha256': hashlib.sha256(original).hexdigest()})
     evidence_path = output / 'evidence.json'
     if evidence_path.is_file():
-        evidence = protocol.decode(protocol.read_raw(evidence_path))
+        evidence = materials.decode_record(protocol.read_raw(evidence_path))
         for artifact in artifacts:
             existing = [item for item in evidence['artifacts'] if item['path'] == artifact['path']]
             if existing and existing != [artifact]:
@@ -816,7 +717,7 @@ def main(request_path):
             if not existing:
                 evidence['artifacts'].append(artifact)
         # This is the runner-owned unfinished output, not an immutable archive.
-        evidence_path.write_bytes(_bytes(evidence, LIMIT - 1) + b'\n')
+        evidence_path.write_bytes(materials.observation_bytes(evidence, LIMIT - 1) + b'\n')
     _inputs(request, raw)
 
 

@@ -18,6 +18,7 @@ from .reference_training_submission import _MEMO_KEY, _Submission
 from .reference_training_budget import BudgetedStart
 from . import processes, training_execution_protocol
 from .state import file_lock
+from .training_materials import decode_record
 
 
 class _Cancellation:
@@ -226,7 +227,7 @@ class _Cancellation:
             return None
         budget = BudgetedStart(self.submission, self.start)
         try:
-            owner = training_execution_protocol.owner_record(training_execution_protocol.decode(
+            owner = training_execution_protocol.owner_record(decode_record(
                 training_execution_protocol.read_raw(budget.path('owner.json'))))
             if owner.get('execution_capability') is None:
                 return None

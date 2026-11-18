@@ -51,11 +51,10 @@ class _TrainingProject:
                 raise ValueError('Execution directories must retain their registered canonical paths')
 
     def document(self, root: Path, relative: str, limit: int = 1_048_576) -> dict:
-        from .training_materials import read_raw
-        from .training_execution_protocol import decode
+        from .training_materials import read_raw, decode_record
 
         raw = read_raw(self.adapter.safe_file(root, relative), limit)
-        return decode(raw.removeprefix(b'\xef\xbb\xbf'))
+        return decode_record(raw.removeprefix(b'\xef\xbb\xbf'))
 
     def registration(self, inventory=None) -> None:
         if self.recovery is not None:

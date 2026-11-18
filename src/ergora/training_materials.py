@@ -20,6 +20,61 @@ def _exact(value, fields, label):
         raise ValueError(label + ' has unsupported or missing fields')
 
 
+def decode_record(raw: bytes) -> dict:
+    def pairs(items):
+        value = {}
+        for key, item in items:
+            if key in value:
+                raise ValueError('Duplicate execution record key: ' + key)
+            value[key] = item
+        return value
+
+    def number(text):
+        value = float(text)
+        if not math.isfinite(value):
+            raise ValueError('Execution records require finite JSON numbers')
+        return value
+
+    try:
+        value = json.loads(raw.decode('utf-8'), object_pairs_hook=pairs,
+                           parse_constant=number, parse_float=number)
+    except (UnicodeError, RecursionError) as error:
+        raise ValueError('Execution record is not complete UTF-8 JSON') from error
+    if not isinstance(value, dict):
+        raise ValueError('Execution record must be a JSON object')
+    return value
+
+
+def observation_sha256(value):
+    return hashlib.sha256(observation_bytes(value)).hexdigest()
+
+
+def observation_bytes(value, limit=LIMIT):
+    # Bound the complete observation, including arbitrary nested adapter values.
+    pending, count = [(value, 0)], 0
+    while pending:
+        item, depth = pending.pop()
+        count += 1
+        if depth > 64 or count > 100_000:
+            raise ValueError('Configuration observation exceeds its complete bounds')
+        if isinstance(item, dict):
+            if not all(isinstance(key, str) for key in item):
+                raise ValueError('Configuration observation keys must be strings')
+            pending.extend((child, depth + 1) for child in item.values())
+        elif isinstance(item, list):
+            pending.extend((child, depth + 1) for child in item)
+        elif item is not None and type(item) not in (str, bool, int, float):
+            raise ValueError('Configuration observations must be finite JSON values')
+    try:
+        raw = json.dumps(value, sort_keys=True, ensure_ascii=False,
+                         separators=(',', ':'), allow_nan=False).encode('utf-8')
+    except (ValueError, UnicodeError, RecursionError) as error:
+        raise ValueError('Configuration observations must be finite bounded JSON') from error
+    if len(raw) > limit:
+        raise ValueError('Configuration observation exceeds its complete read capacity')
+    return raw
+
+
 def relative(value):
     if (not isinstance(value, str) or not value or '\\' in value or '\x00' in value
             or PurePosixPath(value).is_absolute() or str(PurePosixPath(value)) != value

@@ -14,13 +14,34 @@ import time
 fault = os.environ.get('ERGORA_TEST_TRAINING_BUDGET')
 light_root = globals().get('light_root', False)
 
+# The controlled blocked observation does not need the SDK service double.
+# Keep the original helper authentication and its real S-owned process lifetime.
+if fault == 'monitor-blocked' and not light_root:
+    blocked_payload = json.load(sys.stdin)
+    sys.stdin = io.StringIO(json.dumps(blocked_payload))
+    if blocked_payload.get('mode') == 'monitor':
+        from ergora import reference_training_budget as budget
+        from ergora.reference_training_submission import _Submission
+
+        context = blocked_payload['cached']
+        operation = _Submission(blocked_payload)
+        if operation.sha(context['intent']) != blocked_payload['intent_sha256']:
+            raise ValueError('Controlled observer differs from the original training intent')
+        active = budget.BudgetedStart(operation, context['intent'])
+        active.validate_cached(context)
+        Path(os.environ['ERGORA_TEST_TRAINING_SERVICE']).with_suffix('.monitor-blocked').write_text(
+            json.dumps(budget._process_identity(os.getpid())))
+        time.sleep(60)
+        raise AssertionError('Controlled observation was not stopped within the original deadline')
+
 
 def install_root_faults(budget, envelope):
     if fault in ('owner-before-publish', 'owner-initialization-held'):
         from ergora import training_execution_protocol as protocol
+        from ergora.training_materials import decode_record
 
         markers = Path(os.environ['ERGORA_TEST_CYCLE_MARKERS'])
-        source = protocol.decode(protocol.read_raw(Path(envelope['submission']['control_home']) / 'operations/training-cycles'
+        source = decode_record(protocol.read_raw(Path(envelope['submission']['control_home']) / 'operations/training-cycles'
             / envelope['origin_operation_id'] / 'request.json', 32768))
         record_owner = budget.training_cycles._record
 
@@ -166,10 +187,6 @@ if fault in ('managed-no-launch', 'managed-launch-failed'):
 
 install_launch_fault(budget, base.payload)
 
-if fault == 'monitor-blocked' and base.payload['mode'] == 'monitor':
-    async def blocked(_self):
-        time.sleep(60)
-    budget.BudgetedStart.completion = blocked
 if fault in ('fence-flush-failed', 'fence-flush-blocked') and base.payload['mode'] == 'fence':
     original = budget.training_cycles._sync_directory
     def flush(directory):
@@ -211,12 +228,12 @@ if fault in ('phase-isolation', 'phase-reap-overrun'):
         worker._cleanup = peer_cleanup
     if base.payload['mode'] == 'monitor':
         completion = budget.BudgetedStart.completion
-        async def with_descendant(active):
+        async def with_descendant(active, adapter, *, timeout=20):
             marker = base.storage.with_suffix('.descendant')
             if not marker.exists():
                 child = subprocess.Popen([sys.executable, '-c', 'import time;time.sleep(60)'], start_new_session=True)
                 marker.write_text(json.dumps(budget._process_identity(child.pid)))
-            return await completion(active)
+            return await completion(active, adapter, timeout=timeout)
         budget.BudgetedStart.completion = with_descendant
     if fault == 'phase-isolation' and base.payload['mode'] == 'owner':
         from ergora import reference_training_execution
@@ -300,13 +317,13 @@ if fault == 'phase-result-blocked' and base.payload['mode'] == 'phase-supervisor
 
 if fault == 'phase-supervisor-killed' and base.payload['mode'] == 'monitor':
     completion = budget.BudgetedStart.completion
-    async def kill_supervisor(active):
+    async def kill_supervisor(active, adapter, *, timeout=20):
         marker = base.storage.with_suffix('.killed-supervisor')
         if not marker.exists():
             marker.write_text(json.dumps({'supervisor': budget._process_identity(os.getppid()),
                                           'helper': budget._process_identity(os.getpid())}))
             os.kill(os.getppid(), signal.SIGKILL)
-        return await completion(active)
+        return await completion(active, adapter, timeout=timeout)
     budget.BudgetedStart.completion = kill_supervisor
 
 if fault == 'phase-stopped-incomplete' and base.payload['mode'] == 'phase-supervisor' and base.payload['phase']['mode'] == 'monitor':

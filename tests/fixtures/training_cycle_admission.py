@@ -6,10 +6,11 @@ from pathlib import Path
 import sys
 
 sys.path.insert(0, sys.argv[1])
-from ergora.training_execution_protocol import CycleAdmission, decode, read_raw
+from ergora.training_execution_protocol import CycleAdmission, read_raw
+from ergora.training_materials import decode_record
 
 directory, marker, mode = Path(sys.argv[2]), Path(sys.argv[3]), sys.argv[4]
-admission = CycleAdmission(directory, decode(read_raw(directory / 'authorization.json')))
+admission = CycleAdmission(directory, decode_record(read_raw(directory / 'authorization.json')))
 
 if mode == 'hold':
     with admission.permission():

@@ -459,12 +459,12 @@ def _training_reader_request(state_directory, config_directory, payload):
 
 
 def _training_reader_response(raw, stderr, returncode):
-    from .training_execution_protocol import decode
+    from .training_materials import decode_record
 
     if returncode:
         lines = stderr.decode('utf-8', errors='replace').strip().splitlines()
         raise ValueError(lines[-1] if lines else f'Training record reader exited with status {returncode}')
-    return decode(raw)
+    return decode_record(raw)
 
 
 def _stop_training_reader(process):

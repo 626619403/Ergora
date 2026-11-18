@@ -8,6 +8,7 @@ from pathlib import Path
 import sys
 
 from .reference import _training_records
+from .training_materials import decode_record
 
 
 def _accepted_archive(project, ident, binding, baseline_id, gate, read):
@@ -22,7 +23,7 @@ def _accepted_archive(project, ident, binding, baseline_id, gate, read):
 
     def document(name):
         raw = read(prefix + name)
-        value = protocol.decode(raw)
+        value = decode_record(raw)
         return value, hashlib.sha256(raw).hexdigest()
 
     archive_gate, _ = document('gate-result.json')
@@ -455,6 +456,77 @@ def _measurement(receipt, evidence, manifest, artifacts, read_artifact, chain):
     return []
 
 
+def _reference_projection(projection, selected, request, request_sha256, observations, manifest):
+    """The source declares its oracle relation; core keeps quality and timing separate."""
+    from . import training_execution_protocol as protocol, training_materials as materials
+
+    projection = decode_record(materials.observation_bytes(projection))
+    materials._exact(projection, ('scheme', 'baseline_observation_sha256', 'candidate_observation_sha256', 'invariants',
+                        'relations', 'allowed_deltas', 'oracle_applicability'), 'Baseline reference projection')
+    reference = selected['reference']
+    anchor = reference['anchor']
+    if (anchor['baseline_commit'] != request['binding']['baseline_sha']
+            or anchor['base_config_sha256'] != manifest['base_config_sha256']
+            or anchor['workload_fingerprint'] != manifest['workload_fingerprint']
+            or anchor['baseline_id'] != manifest['baseline_id']):
+        raise ValueError('Baseline reference anchor differs from the current baseline')
+    if (not isinstance(projection['scheme'], str) or not projection['scheme']
+            or projection['baseline_observation_sha256'] != materials.observation_sha256(observations['baseline'])
+            or projection['candidate_observation_sha256'] != materials.observation_sha256(observations['candidate'])
+            or projection['invariants'] != observations['baseline']['invariants']):
+        raise ValueError('Baseline reference projection differs from the actual configuration observations')
+    relations, deltas = projection['relations'], projection['allowed_deltas']
+    if not isinstance(relations, list) or not isinstance(deltas, list) or not all(isinstance(key, str) for key in deltas):
+        raise ValueError('Baseline reference requires explicit field relations and allowed deltas')
+    fields, different, unsupported_units = set(), set(), []
+    for relation in relations:
+        materials._exact(relation, ('field', 'relation', 'reference', 'current', 'unit'), 'Baseline reference field relation')
+        if (not isinstance(relation['field'], str) or not relation['field'] or relation['field'] in fields
+                or relation['relation'] not in ('matched', 'different', 'unknown', 'not_applicable')
+                or not isinstance(relation['unit'], str) or not relation['unit']):
+            raise ValueError('Baseline reference has an unsupported field relation')
+        if relation['unit'] not in ('samples', 'tokens', 'updates', 'groups', 'bytes', 'identity', 'not_applicable'):
+            unsupported_units.append(relation['field'])
+        fields.add(relation['field'])
+        if relation['unit'] in ('samples', 'tokens', 'updates', 'groups', 'bytes'):
+            if any(value is not None and (type(value) is not int or value < 0)
+                   for value in (relation['reference'], relation['current'])):
+                raise ValueError('Baseline reference counts must be nonnegative integers in declared units')
+        if relation['relation'] == 'matched' and relation['reference'] != relation['current']:
+            raise ValueError('Baseline reference claims unequal field values match')
+        if relation['relation'] == 'different':
+            different.add(relation['field'])
+    if len(deltas) != len(set(deltas)) or not set(deltas) <= different:
+        raise ValueError('Baseline reference allowed deltas must name actual different fields')
+    applicability = projection['oracle_applicability']
+    materials._exact(applicability, ('state', 'scheme', 'coverage', 'reasons'), 'Baseline oracle applicability')
+    if applicability['state'] not in ('supported', 'unavailable', 'invalid') or not isinstance(applicability['reasons'], list):
+        raise ValueError('Unsupported baseline oracle applicability')
+    receipt, quality = reference['receipt'], reference['coverage']['quality']
+    if receipt is not None and receipt.get('baseline') and receipt['baseline'].get('invariants') != projection['invariants']:
+        raise ValueError('Baseline reference changes fixed model, precision or objective invariants')
+    if quality.get('state') == 'invalid' or applicability['state'] == 'invalid':
+        raise ValueError('Baseline reference is invalid for this target oracle')
+    reusable = quality['baseline_scope_verified'] and applicability['state'] == 'supported' and not unsupported_units
+    if reusable and (receipt['oracle']['scheme'] != applicability['scheme'] or receipt['oracle']['coverage'] != applicability['coverage']):
+        raise ValueError('Baseline reference applicability does not match its actual baseline oracle scope')
+    reasons = list(quality['reasons'])
+    if unsupported_units:
+        reasons.append(_reason('reader_unsupported', 'projection.relation_units', observed=unsupported_units))
+    if not reusable:
+        reasons.append(_reason('oracle_relation_unsupported', 'projection.oracle_applicability', observed=applicability['state']))
+    return {'schema_version': 1, 'kind': 'baseline-reference-read', 'request_sha256': request_sha256,
+            'binding': request['binding'], 'selector': request['baseline_reference'],
+            'reference_sha256': selected['reference_sha256'], 'anchor_sha256': selected['anchor_sha256'],
+            'inventory_sha256': reference['inventory']['sha256'],
+            'candidate_observation_sha256': materials.observation_sha256(observations['candidate']), 'projection': projection,
+            'quality': {'state': 'reusable' if reusable else 'unavailable', 'coverage': applicability['coverage'] if reusable else None,
+                        'reasons': reasons},
+            'timing': reference['coverage']['timing'], 'resources': reference['coverage']['resources'],
+            'candidate_quality': 'not_evaluated', 'baseline_work_skipped': False,
+            'independent_pair_supplied': False, 'promotion_approved': False}
+
+
 def _baseline_reference(project, control_home, selector, *, inventory=None):
     """Inventory a fixed accepted archive with the same reader in public and managed processes."""
     from dataclasses import asdict
@@ -483,11 +555,11 @@ def _baseline_reference(project, control_home, selector, *, inventory=None):
         return read_inventory(project.root, relative, 'archive' if relative.startswith(archive_prefix) else 'job')
 
     def document(relative):
-        return protocol.decode(read(relative))
+        return decode_record(read(relative))
 
     manifest_path = prefix + 'manifest.json'
     manifest_raw = read(manifest_path)
-    manifest = protocol.decode(manifest_raw)
+    manifest = decode_record(manifest_raw)
     perfctl.validate(manifest)
     if manifest['experiment_id'] != ident or manifest['local_project'] != project.project['id']:
         raise ValueError('Experiment does not belong to this project and native directory')
@@ -497,7 +569,7 @@ def _baseline_reference(project, control_home, selector, *, inventory=None):
     frozen_raw = read(frozen_path)
     if hashlib.sha256(frozen_raw).hexdigest() != manifest_sha:
         raise ValueError('Frozen manifest bytes differ from the project registry')
-    frozen = protocol.decode(frozen_raw)
+    frozen = decode_record(frozen_raw)
     if frozen['candidate_sha'] != binding['candidate_sha'] or frozen['baseline_sha'] != binding['baseline_sha']:
         raise ValueError('Manifest commit aliases differ from the original binding')
     spec = document('training/specs/' + ident + '.json')
@@ -533,7 +605,7 @@ def _baseline_reference(project, control_home, selector, *, inventory=None):
     gate_raw = read(gate_path)
     if hashlib.sha256(gate_raw).hexdigest() != gate_ref['report_sha256']:
         raise ValueError('Gate report bytes differ from the original result SHA')
-    gate = protocol.decode(gate_raw)
+    gate = decode_record(gate_raw)
     if gate['binding'] != binding or gate['manifest_sha256'] != manifest_sha:
         raise ValueError('Gate report belongs to another experiment manifest')
     if gate['passed'] is not True or gate['evidence_sha256'] != selector['evidence_sha256']:
@@ -549,7 +621,7 @@ def _baseline_reference(project, control_home, selector, *, inventory=None):
                 raise ValueError('Configuration material bytes differ from the original manifest: ' + arm)
             json_configuration(raw)
     fence_raw = read_inventory(project.root, 'training/fences/' + ident + '.json', 'execution', optional=True)
-    fence = None if fence_raw is None else protocol.decode(fence_raw)
+    fence = None if fence_raw is None else decode_record(fence_raw)
     if fence is not None and fence['binding'] != binding:
         raise ValueError('Training fence belongs to another immutable binding')
     artifacts = archive['evidence']['artifacts']
@@ -581,7 +653,7 @@ def _baseline_reference(project, control_home, selector, *, inventory=None):
         raw = inventory.originals[folder / ref['path']][0]
         if len(raw) > 1_048_576:
             raise ValueError('capacity_exceeded: baseline JSON metadata exceeds 1 MiB')
-        return protocol.decode(raw)
+        return decode_record(raw)
 
     saved = protocol.ExecutionRecords(project.project, ident, control_home)
     required = [*(saved.folder / (name + '.json') for name in ('request', 'launch', 'attempt', 'ack')),
@@ -591,7 +663,7 @@ def _baseline_reference(project, control_home, selector, *, inventory=None):
         try:
             original = read_inventory(project.root, path.relative_to(project.root).as_posix(),
                 'execution' if path.is_relative_to(saved.folder) else 'budget', limit=16 * 1_048_576)
-            value = protocol.decode(original)
+            value = decode_record(original)
             if path == saved.budget / 'owner.json':
                 protocol.owner_record(value)
         except FileNotFoundError:
@@ -610,7 +682,7 @@ def _baseline_reference(project, control_home, selector, *, inventory=None):
         raw = read_inventory(saved.folder.parent, 'configuration-request.json', 'job', limit=16 * 1_048_576)
         if chain is not None:
             chain.originals[chain.folder.parent / 'configuration-request.json'] = raw
-        configuration_request = protocol.decode(raw)
+        configuration_request = decode_record(raw)
     except FileNotFoundError:
         pass
     # Cycle paths are derived from the original intent; never follow receipt URIs.
@@ -620,12 +692,12 @@ def _baseline_reference(project, control_home, selector, *, inventory=None):
         for name in ('cycle.json', 'authorization.json', 'ready.json'):
             relative_path = (cycle / name).relative_to(control_home).as_posix()
             try:
-                protocol.decode(read_inventory(Path(control_home), relative_path, 'budget', limit=16 * 1_048_576))
+                decode_record(read_inventory(Path(control_home), relative_path, 'budget', limit=16 * 1_048_576))
             except FileNotFoundError:
                 context_missing.append(relative_path)
         if not context_missing:
-            authorization = protocol.decode(inventory.originals[cycle / 'authorization.json'][0])
-            ready = protocol.decode(inventory.originals[cycle / 'ready.json'][0])
+            authorization = decode_record(inventory.originals[cycle / 'authorization.json'][0])
+            ready = decode_record(inventory.originals[cycle / 'ready.json'][0])
             if (authorization['sha256'] != chain.owner['authorization_sha256']
                     or chain.sha({key: value for key, value in authorization.items() if key != 'sha256'}) != authorization['sha256']
                     or hashlib.sha256(inventory.originals[cycle / 'cycle.json'][0]).hexdigest() != authorization['input_sha256']
@@ -917,12 +989,12 @@ def _screen_data(data, request, manifest, read, first_failure):
 def _screen_bundle(output, request, manifest, *, inventory=None):
     """Read the same immutable typed content for executor and complete historical readers."""
     from . import training_execution_protocol as protocol
-    from .training_configuration import _bytes, _reference_projection
+    from .training_materials import observation_bytes
 
     output = Path(output)
     inventory = _Inventory() if inventory is None else inventory
     raw = inventory.read(output, 'screen-result.json', 'screen')
-    result = protocol.decode(raw)
+    result = decode_record(raw)
     protocol._match(request['execution'], manifest['execution'], 'Screen request operation')
     protocol._exact(result, ('schema_version', 'kind', 'binding', 'native_request_sha256', 'configuration_request_sha256',
         'runner_sha256', 'managed', 'source', 'execution_plan_sha256', 'configuration_receipt_ref', 'baseline_reference_read_ref',
@@ -948,7 +1020,7 @@ def _screen_bundle(output, request, manifest, *, inventory=None):
     projection_path = output / 'baseline-reference-projection.json'
     if projection_path not in inventory.originals:
         raise ValueError('Screen reference projection is missing')
-    projected = protocol.decode(inventory.originals[projection_path][0])
+    projected = decode_record(inventory.originals[projection_path][0])
     protocol._exact(projected, ('reference', 'reference_sha256', 'anchor_sha256', 'read_only', 'runtime_status'), 'Saved baseline reference projection')
     historical_index = {}
     for entry in projected['reference']['inventory']['entries']:
@@ -969,7 +1041,7 @@ def _screen_bundle(output, request, manifest, *, inventory=None):
             return original
         if len(original) > 1_048_576:
             raise ValueError('capacity_exceeded: screen JSON metadata')
-        value = protocol.decode(original)
+        value = decode_record(original)
         if item['path'] == 'baseline-reference-read.json':
             _artifact_refs({key: value[key] for key in ('quality', 'timing', 'resources')}, historical_index)
         elif item['path'] not in ('configuration-receipt.json', 'baseline-reference-projection.json'):
@@ -1011,7 +1083,7 @@ def _screen_bundle(output, request, manifest, *, inventory=None):
     _artifact_refs(data, indexed)
     derived = _screen_data(data, request, manifest, read, first)
     protocol._match({key: result[key] for key in derived}, derived, 'Screen derived result')
-    _bytes(result)
+    observation_bytes(result)
     inventory.confirm()
     return {'result': result, 'raw': raw, 'sha256': hashlib.sha256(raw).hexdigest(),
         'state': 'SCREEN_REJECTED' if result['decision'] == 'rejected' else 'SCREEN_COMPLETED', 'inventory': inventory}
@@ -1033,11 +1105,11 @@ def _screen_result(project, ident, control_home, job):
     complete &= bool(stopped_process and stopped_process['status'] == 'succeeded' and stopped_process['returncode'] == 0)
     def read_guard(path, limit=16 * 1_048_576):
         return guards.read(path.parent, path.name, 'execution', limit=limit)
-    native_result = protocol.decode(read_guard(chain.folder.parent / 'result.json'))
+    native_result = decode_record(read_guard(chain.folder.parent / 'result.json'))
     if native_result['job_id'] != job['job_id'] or native_result['binding'] != job['binding'] or native_result.get('gate') is not None:
         raise ValueError('Screen native result binding or gate is invalid')
     request_raw = read_guard(chain.folder.parent / 'configuration-request.json')
-    request = protocol.decode(request_raw)
+    request = decode_record(request_raw)
     request['_raw_sha256'] = hashlib.sha256(request_raw).hexdigest()
     manifest_raw = read_guard(chain.root / ('training/manifests/' + ident + '.json'))
     if hashlib.sha256(manifest_raw).hexdigest() != job['binding']['manifest_sha']:
@@ -1046,7 +1118,7 @@ def _screen_result(project, ident, control_home, job):
     protocol._match(request['managed'], {name + '_sha256': chain.sha(chain.records[name]) for name in ('request', 'launch', 'attempt', 'ack')}, 'Screen original managed chain')
     if request['native_request_sha256'] != chain.records['request']['native_request_sha256'] or request['runner_sha256'] != chain.sha(chain.native['runner']):
         raise ValueError('Screen original native request or runner changed')
-    bundle = _screen_bundle(chain.folder.parent / 'run-output', request, protocol.decode(manifest_raw), inventory=guards)
+    bundle = _screen_bundle(chain.folder.parent / 'run-output', request, decode_record(manifest_raw), inventory=guards)
     ref = native_result.get('screen')
     expected = {'report': str(chain.folder.parent / 'run-output/screen-result.json'), 'report_sha256': bundle['sha256']}
     if ref != expected or native_result['state'] != bundle['state']:
@@ -1054,7 +1126,7 @@ def _screen_result(project, ident, control_home, job):
     sources = bundle['result']['artifacts']
     indexed = {item['path']: item for item in sources}
     output = chain.folder.parent / 'run-output'
-    source_manifest = protocol.decode(protocol.read_raw(output / 'screen-execution-sources.json'))
+    source_manifest = decode_record(protocol.read_raw(output / 'screen-execution-sources.json'))
     _artifact_refs(source_manifest, indexed)
     observed = protocol.observe_source_manifest(chain.owner['execution_capability'], source_manifest,
         protocol.read_raw(output / 'baseline-reference-protocol-source.py.txt'), protocol.read_raw(output / 'baseline-reference-native-descriptor.json'))
@@ -1066,7 +1138,7 @@ def _screen_result(project, ident, control_home, job):
             raise ValueError('Screen original execution chain changed during collection')
     selected = _baseline_reference(project, control_home, request['baseline_reference'], inventory=guards)
     projection_raw = guards.originals[output / 'baseline-reference-projection.json'][0]
-    protocol._match(selected, protocol.decode(projection_raw), 'Screen original baseline inventory after collection')
+    protocol._match(selected, decode_record(projection_raw), 'Screen original baseline inventory after collection')
     guards.confirm()
     bundle.update(complete=complete, cleanup={**{key: stop[key] for key in ('durable_stop_confirmed', 'executor_stop_confirmed', 'reap_record_observed')},
         'process': stopped_process}, output=str(output))
@@ -1087,11 +1159,11 @@ def _native_screen_read(payload):
     if relative(ident) != ident or '/' in ident:
         raise ValueError('Native reader requires one exact experiment ID')
     folder = root / 'training/jobs' / ident
-    native = protocol.decode(protocol.read_raw(folder / 'request.json', 16 * 1_048_576))
+    native = decode_record(protocol.read_raw(folder / 'request.json', 16 * 1_048_576))
     if native['job_id'] != job['job_id'] or native['experiment']['binding'] != job['binding']:
         raise ValueError('Native reader Job differs from its original request')
     try:
-        result = protocol.decode(protocol.read_raw(folder / 'result.json'))
+        result = decode_record(protocol.read_raw(folder / 'result.json'))
     except FileNotFoundError:
         result = None
     if result is None:
@@ -1100,7 +1172,7 @@ def _native_screen_read(payload):
         raise ValueError('Native result binding changed')
     if payload['operation'] == 'native-poll' and result['state'] not in ('SCREEN_COMPLETED', 'SCREEN_REJECTED'):
         return {'job': job, 'state': result['state'], 'detail': result['detail']}
-    request = protocol.decode(protocol.read_raw(folder / 'configuration-request.json', 16 * 1_048_576))
+    request = decode_record(protocol.read_raw(folder / 'configuration-request.json', 16 * 1_048_576))
     context = request['context']
     project = _TrainingProject({'project': context['project'], 'control_home': context['intent']['control_home']})
     if project.root != root or project.config != config or request['binding'] != job['binding']:
@@ -1127,11 +1199,10 @@ def main() -> None:
     from .reference_training_context import _native_bytes
 
     try:
-        from .training_execution_protocol import decode
         raw = sys.stdin.buffer.read(16 * 1_048_576 + 1)
         if len(raw) > 16 * 1_048_576:
             raise ValueError('capacity_exceeded: complete training reader request')
-        payload = decode(raw)
+        payload = decode_record(raw)
         if payload['operation'] not in ('inspect', 'baseline-reference', 'native-poll', 'collect-screen'):
             raise ValueError('Unsupported training evidence operation')
         if payload['operation'] in ('native-poll', 'collect-screen'):

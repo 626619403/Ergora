@@ -17,6 +17,7 @@ import stat
 import sys
 
 from . import budget_clock, processes, reference
+from .training_materials import decode_record
 
 
 _CYCLE_LIMIT = 32_768
@@ -75,7 +76,7 @@ def cycle_supervisor_main() -> None:
     raw = sys.stdin.buffer.read(limit + 1)
     if len(raw) > limit:
         raise ValueError('Complete cycle operation request exceeds 32 KiB')
-    payload = decode(raw)
+    payload = decode_record(raw)
     validate_cycle_operation(payload)
     identity = payload['identity']
     expected = identity['parent']
@@ -132,7 +133,7 @@ def cycle_supervisor_main() -> None:
             logging.exception('Complete cycle helper stdout retained at %s', output / 'helper/stdout.txt')
             observed = {'status': 'capacity_exceeded', 'reason': str(error)}
         else:
-            observed = decode(stdout)
+            observed = decode_record(stdout)
             observed['_stdout_ref'] = {'file': 'helper/stdout.txt', 'bytes': len(stdout),
                                        'sha256': hashlib.sha256(stdout).hexdigest()}
     frame('result', 'result', observed)
@@ -606,7 +607,7 @@ def read_round_observation(ref: dict, *, home: Path, operation_id: str) -> dict:
     raw = read_raw(expected, ARTIFACT_LIMIT)
     if len(raw) != ref['bytes'] or hashlib.sha256(raw).hexdigest() != ref['sha256']:
         raise ValueError('Round observation differs from its complete original raw reference')
-    value = decode(raw)
+    value = decode_record(raw)
     validate_round_observation(value)
     if value['identity']['operation_id'] != operation_id or value['identity']['control_home'] != str(home):
         raise ValueError('Round observation identity differs from its original path')
@@ -646,31 +647,6 @@ def read_raw(path: Path, limit: int = LIMIT) -> bytes:
     return raw
 
 
-def decode(raw: bytes) -> dict:
-    def pairs(items):
-        value = {}
-        for key, item in items:
-            if key in value:
-                raise ValueError('Duplicate execution record key: ' + key)
-            value[key] = item
-        return value
-
-    def number(text):
-        value = float(text)
-        if not math.isfinite(value):
-            raise ValueError('Execution records require finite JSON numbers')
-        return value
-
-    try:
-        value = json.loads(raw.decode('utf-8'), object_pairs_hook=pairs,
-                           parse_constant=number, parse_float=number)
-    except (UnicodeError, RecursionError) as error:
-        raise ValueError('Execution record is not complete UTF-8 JSON') from error
-    if not isinstance(value, dict):
-        raise ValueError('Execution record must be a JSON object')
-    return value
-
-
 class PhaseFrames:
     """Read the ordered stopped/result response for one identity-bound helper."""
 
@@ -690,7 +666,7 @@ class PhaseFrames:
             try:
                 if len(self.frames) == 2 or len(line) > limit:
                     raise ValueError('Unexpected or oversized training phase frame')
-                frame = decode(line)
+                frame = decode_record(line)
                 field = 'process' if event == 'stopped' else 'result'
                 if (set(frame) != {*self.identity, 'event', field}
                         or any(frame.get(key) != value for key, value in self.identity.items())
@@ -1000,7 +976,7 @@ def cycle_start_source(payload: dict) -> dict:
         raise ValueError('Candidate observation does not grant a start window')
     context = payload['start_context']
     origin = identity['operation_id'] if identity['mode'] == 'prepare-candidate' else context['origin_operation_id']
-    source = decode(read_raw(Path(identity['control_home']) / 'operations/training-cycles' / origin / 'request.json', 32_768))
+    source = decode_record(read_raw(Path(identity['control_home']) / 'operations/training-cycles' / origin / 'request.json', 32_768))
     validate_cycle_operation(source)
     if source['identity']['mode'] != 'prepare-candidate' or source['identity']['operation_id'] != origin:
         raise ValueError('Candidate start has no matching original prepare request')
@@ -1022,7 +998,7 @@ def cycle_execution_source(payload: dict, intent: dict) -> None:
     if (identity['mode'] != 'request-execution-candidate'
             or payload['activity_context']['activity_source']['attempt'] != 1):
         raise ValueError('Only the first authenticated execution request activity may publish a request')
-    source = decode(read_raw(Path(identity['control_home']) / 'operations/training-cycles'
+    source = decode_record(read_raw(Path(identity['control_home']) / 'operations/training-cycles'
                              / identity['operation_id'] / 'request.json', 32_768))
     _match(payload, source, 'Complete execution operation source')
     binding = intent['budget']
@@ -1131,7 +1107,7 @@ def observe_source_manifest(capability: dict, manifest: dict | None, protocol_ra
     if (declarations.get('PROTOCOL') != capability['protocol'] or len(names) != len(set(names))
             or set(names) != set(capability['gate_sources'])):
         raise ValueError('Saved execution source declaration is incomplete or mismatched')
-    descriptor = decode(descriptor_raw)
+    descriptor = decode_record(descriptor_raw)
     if (descriptor.get('protocol_id') != capability['admission_protocol']
             or descriptor.get('reference_manifest_sha256') != capability['gate_sources'].get('data/reference-manifest.json')):
         raise ValueError('Saved native descriptor differs from its original source manifest')
@@ -1158,7 +1134,7 @@ def owner_active(path: Path, expected: dict) -> bool:
     import fcntl
 
     try:
-        value = owner_record(decode(read_raw(path)))
+        value = owner_record(decode_record(read_raw(path)))
         if value.get('execution_capability') is not None:
             _current_capability(value['execution_capability'])
         _match(value, expected, 'Original live owner')
@@ -1223,7 +1199,7 @@ def publish(path: Path, value: dict, root: Path) -> None:
     adapter.safe_file(root, path.relative_to(root).as_posix())
     # Check existing bytes with the nonblocking reader before native equal retry.
     try:
-        _match(decode(read_raw(path)), value, 'Existing execution record')
+        _match(decode_record(read_raw(path)), value, 'Existing execution record')
     except FileNotFoundError:
         pass
     adapter.publish(path, value)
@@ -1269,7 +1245,7 @@ class CycleAdmission:
             separators=(',', ':'), allow_nan=False).encode('utf-8')).hexdigest()
 
     def _authorization(self):
-        saved = decode(read_raw(self.directory / 'authorization.json'))
+        saved = decode_record(read_raw(self.directory / 'authorization.json'))
         if self._sha(saved) != self._sha(self.authorization):
             raise ValueError('Original controller authorization changed')
 
@@ -1319,7 +1295,7 @@ class CycleAdmission:
 
     def controller_intent(self):
         try:
-            intent = decode(read_raw(self.folder / 'intent.json'))
+            intent = decode_record(read_raw(self.folder / 'intent.json'))
         except FileNotFoundError:
             return None
         if self._sha(intent) != self._sha(self.intent_record()):
@@ -1356,7 +1332,7 @@ class CycleAdmission:
         # A concurrent publisher adds completion only after its attempt and intent.
         for name in ('receipt', 'rejection', 'attempt'):
             try:
-                records[name] = decode(read_raw(self.folder / (name + '.json')))
+                records[name] = decode_record(read_raw(self.folder / (name + '.json')))
             except FileNotFoundError:
                 records[name] = None
         intent = self.controller_intent()
@@ -1453,7 +1429,7 @@ class CycleAdmission:
                 raw = stream.read(LIMIT + 1)
                 if len(raw) > LIMIT:
                     raise ValueError('Complete controller stop exceeds its read capacity')
-                value = self._stop_record(decode(raw))
+                value = self._stop_record(decode_record(raw))
                 observed.update(identity_matches=True, record=value, record_sha256=hashlib.sha256(raw).hexdigest())
                 if synchronize or drain:
                     os.fsync(stream.fileno())
@@ -1541,7 +1517,7 @@ class ExecutionRecords:
                 return None
             raise
         self.originals[path] = raw
-        return decode(raw)
+        return decode_record(raw)
 
     def load(self):
         # Read descendants first so concurrent append-only publication is safe.
@@ -1727,7 +1703,7 @@ def _round_authority(plan, admission, ready):
         raise ValueError('Complete round authorization changed its original canonical SHA256')
     admission._authorization()
     raw_plan = read_raw(admission.directory / 'cycle.json', ARTIFACT_LIMIT)
-    if hashlib.sha256(raw_plan).hexdigest() != authorization['input_sha256'] or decode(raw_plan) != plan:
+    if hashlib.sha256(raw_plan).hexdigest() != authorization['input_sha256'] or decode_record(raw_plan) != plan:
         raise ValueError('Complete original cycle input changed')
     project, policy = plan['project'], plan['definition']['budget']
     if (plan['control_home'] != authorization['control_home'] or project['id'] != authorization['project']
@@ -1735,7 +1711,7 @@ def _round_authority(plan, admission, ready):
             or project['registration']['definition']['execution'] != authorization['execution']
             or project['registration']['operation_id'] != authorization['registration']['operation_id']):
         raise ValueError('Original round authorization differs from its registered project')
-    _match(decode(read_raw(admission.directory / 'ready.json')), ready, 'Original cycle ready')
+    _match(decode_record(read_raw(admission.directory / 'ready.json')), ready, 'Original cycle ready')
     _match(ready, {'schema_version': 1, 'kind': 'training-cycle-ready',
         'authorization_sha256': authorization['sha256'], 'admissions_sha256': sha(plan['admissions']),
         'project_revision': authorization['project_revision'], 'checked_at': ready['checked_at']}, 'Complete cycle ready')
@@ -1769,7 +1745,7 @@ def _round_predecessors(plan, admission, ready, controller, active):
         if pin['directory'] != str(directory) or {path.name for path in directory.iterdir()} != {'rounds.json'}:
             raise ValueError('Previous round prefix differs from its fixed original directory')
         raw = read_raw(directory / 'rounds.json', ARTIFACT_LIMIT)
-        saved = {'directory': str(directory), 'sha256': hashlib.sha256(raw).hexdigest(), 'report': decode(raw)}
+        saved = {'directory': str(directory), 'sha256': hashlib.sha256(raw).hexdigest(), 'report': decode_record(raw)}
         if round_pin(saved, raw) != pin:
             raise ValueError('Previous round pin differs from its complete raw original index')
         validate_round_content(saved['report'])
@@ -1786,9 +1762,9 @@ def _round_predecessors(plan, admission, ready, controller, active):
                 or chain.owner['authorization_sha256'] != authorization['sha256']):
             raise ValueError('Previous round owner differs from its original intent or authorization')
         source_path = Path(authorization['control_home']) / 'operations/training-cycles' / acceptance['source_operation_id']
-        source = decode(read_raw(source_path / 'request.json', 32_768))
+        source = decode_record(read_raw(source_path / 'request.json', 32_768))
         validate_cycle_operation(source)
-        reply = decode(read_raw(source_path / 'helper/stdout.txt', 32_768))
+        reply = decode_record(read_raw(source_path / 'helper/stdout.txt', 32_768))
         selection = round_selection(plan, authorization)
         expected_snapshot = {'authorization': authorization, 'policy': policy, 'candidates': [
             {'ordinal': number, 'experiment_id': item['experiment_id'], 'manifest_sha256': item['manifest_sha256']}
@@ -1854,7 +1830,7 @@ def authenticate_cycle_binding(binding: dict, plan: dict, admission: CycleAdmiss
     _round_sources(authorization, ready, None)
     result = _round_predecessors(plan, admission, ready, binding['controller'], active)
     admission._bound_selection(binding, plan)
-    _match(decode(read_raw(admission.directory / 'ready.json')), ready, 'Original cycle ready')
+    _match(decode_record(read_raw(admission.directory / 'ready.json')), ready, 'Original cycle ready')
     if read_raw(admission.directory / 'cycle.json', ARTIFACT_LIMIT) != raw_plan:
         raise ValueError('Original complete cycle input changed during authentication')
     _round_sources(authorization, ready, None)
@@ -1893,7 +1869,7 @@ def authenticate_cycle_candidate(intent: dict, plan: dict, admission: CycleAdmis
     _round_sources(authorization, ready, current_owner)
     result = _round_predecessors(plan, admission, ready, controller, active)
     _match(current.document(current.budget / 'owner.json', optional=True), current_owner, 'Original round candidate owner')
-    _match(decode(read_raw(admission.directory / 'ready.json')), ready, 'Original cycle ready')
+    _match(decode_record(read_raw(admission.directory / 'ready.json')), ready, 'Original cycle ready')
     if read_raw(admission.directory / 'cycle.json', ARTIFACT_LIMIT) != raw_plan:
         raise ValueError('Original complete cycle input changed during authentication')
     _round_sources(authorization, ready, current_owner)
@@ -1915,18 +1891,18 @@ def validate_context(context: dict, chain: ExecutionRecords, *, live=True) -> Cy
             or authorization['sha256'] != owner['authorization_sha256']):
         raise ValueError('Execution authorization differs from its original complete SHA256')
     cycle = Path(intent['control_home']) / 'training-cycles' / intent['project'] / intent['budget']['cycle_id']
-    _match(decode(read_raw(cycle / 'authorization.json')), authorization, 'Original cycle authorization')
+    _match(decode_record(read_raw(cycle / 'authorization.json')), authorization, 'Original cycle authorization')
     raw = read_raw(cycle / 'cycle.json', ARTIFACT_LIMIT)
     if hashlib.sha256(raw).hexdigest() != authorization['input_sha256']:
         raise ValueError('Original complete cycle input changed')
-    plan = decode(raw)
+    plan = decode_record(raw)
     validate_budget_binding(intent['budget'])
     if type(authorization['schema_version']) is not int or authorization['schema_version'] not in (1, 2, 3, 4):
         raise ValueError('Unsupported original execution authorization schema')
     parent = None
     if authorization['schema_version'] in (3, 4):
         parent = CycleAdmission(cycle, authorization)
-        authenticate_cycle_candidate(intent, plan, parent, decode(read_raw(cycle / 'ready.json')))
+        authenticate_cycle_candidate(intent, plan, parent, decode_record(read_raw(cycle / 'ready.json')))
     elif authorization['schema_version'] == 2:
         parent = CycleAdmission(cycle, authorization)
         parent.bind(intent, plan)
@@ -1934,7 +1910,7 @@ def validate_context(context: dict, chain: ExecutionRecords, *, live=True) -> Cy
         raise ValueError('Manual authorization cannot acquire a controller binding')
     _match(plan['definition']['budget'], policy, 'Original complete computation policy')
     _match(plan['project'], context['project'], 'Original cycle project')
-    ready = decode(read_raw(cycle / 'ready.json'))
+    ready = decode_record(read_raw(cycle / 'ready.json'))
     if (chain.sha(ready) != owner['execution_capability']['cycle_ready_sha256']
             or ready['authorization_sha256'] != authorization['sha256']):
         raise ValueError('Original cycle ready record changed')
@@ -2173,7 +2149,7 @@ class _CycleOperation:
                     raw = self.retention_response
                     if not raw.endswith(b'\n') or len(raw) - 1 > _CYCLE_LIMIT or raw.count(b'\n') != 1:
                         raise ValueError('Request retention requires exactly one bounded confirmation and EOF')
-                    confirmation = decode(bytes(raw[:-1]))
+                    confirmation = decode_record(bytes(raw[:-1]))
                     _exact(confirmation, ('protocol', 'identity', 'ref'), 'Request retention confirmation')
                     _process(confirmation['identity']['parent'])
                     ref = confirmation['ref']

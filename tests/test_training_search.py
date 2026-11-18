@@ -395,7 +395,7 @@ def test_two_batch_configurations_prepare_real_native_bindings_and_read_offline(
     monkeypatch.setattr(State, '__init__', lambda *args, **kwargs: pytest.fail('Offline reader created State'))
     observed = training_search.read(directory, sha256=result['sha256'])
     assert observed['plan'] == plan and observed['sha256'] == _sha((directory / 'search.json').read_bytes())
-    assert observed['coverage']['configuration_execution'] == 'requires-original-managed-full'
+    assert observed['coverage']['configuration_execution'] == 'requires-original-managed-execution'
     assert observed['coverage']['runtime_status'] == 'not_queried'
     from ergora.cli import main
     output = io.StringIO()
@@ -1263,15 +1263,19 @@ before=list(protocol.GATE_SOURCES)
 protocol.GATE_SOURCES=(*protocol.GATE_SOURCES,name)
 Path({str(extension_marker)!r}).write_text(json.dumps({{'before':before,'after':list(protocol.GATE_SOURCES)}}))
 '''
-    original_reader = reference.subprocess.run
+    original_reader = reference.subprocess.Popen
+    extended_readers = []
     def extend_current_coverage(argv, *args, **kwargs):
         if argv[-1] == 'from ergora.reference_training_evidence import main;main()':
+            extended_readers.append(argv)
             argv = [*argv[:-1], extension + argv[-1]]
         return original_reader(argv, *args, **kwargs)
     with pytest.MonkeyPatch.context() as patch:
-        patch.setattr(reference.subprocess, 'run', extend_current_coverage)
+        patch.setattr(reference.subprocess, 'Popen', extend_current_coverage)
         assert training.baseline_reference(item['state'], 'demo', source['experiment_id'],
                                            evidence_sha256=source_gate['evidence_sha256']) == saved
+    assert len(extended_readers) == 1, 'The coverage extension must reach the actual training reader child'
+    assert extension_marker.is_file(), 'The training reader child must record its actual coverage extension'
     extended = json.loads(extension_marker.read_bytes())
     assert extended['after'] == [*extended['before'], 'training_search.py']
     source_output = source['job'] / 'run-output'

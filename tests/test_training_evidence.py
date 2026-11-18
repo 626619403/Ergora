@@ -165,15 +165,15 @@ def test_selected_text_requires_exact_index_digest_and_capacity(archive):
 
 @pytest.mark.parametrize('selected_installation', ('missing', 'descriptor-mismatch'))
 def test_public_reference_inventory_runs_without_site_packages_or_selected_native_installation(
-        archive, monkeypatch, selected_installation):
+        archive, monkeypatch, selected_installation, tmp_path):
     state, definition, runtime, _, _, folder, report = archive
     native = Path(definition['execution']['installation'])
     descriptor = native / 'ergora-native-runtime.json'
     original_descriptor = descriptor.read_bytes()
     moved = native.with_name(native.name + '-temporarily-unavailable')
     before = {path: path.read_bytes() for path in runtime.rglob('*') if path.is_file()}
-    original_run = reference.subprocess.run
-    calls = []
+    original_popen = reference.subprocess.Popen
+    calls_path = tmp_path / 'actual-reader-operations.jsonl'
     guard = '''import sys
 class DenyApplicationImports:
     def find_spec(self, fullname, *args):
@@ -181,13 +181,25 @@ class DenyApplicationImports:
             raise AssertionError('Forbidden reader import: ' + fullname)
 sys.meta_path.insert(0, DenyApplicationImports())
 '''
+    guard += f'''import json
+from pathlib import Path
+from ergora import reference_training_evidence as evidence
+calls_path=Path({str(calls_path)!r})
+def observe(action):
+    def call(payload):
+        with calls_path.open('a',encoding='utf-8') as stream:
+            stream.write(json.dumps(payload['operation'])+'\\n')
+        return action(payload)
+    return call
+evidence.inspect=observe(evidence.inspect)
+evidence.baseline_reference=observe(evidence.baseline_reference)
+'''
     def guarded(argv, *args, **kwargs):
         if argv[-1] == 'from ergora.reference_training_evidence import main;main()':
             assert '-S' in argv and '-P' in argv
-            calls.append(json.loads(kwargs['input'])['operation'])
             argv = [*argv[:-1], guard + argv[-1]]
-        return original_run(argv, *args, **kwargs)
-    monkeypatch.setattr(reference.subprocess, 'run', guarded)
+        return original_popen(argv, *args, **kwargs)
+    monkeypatch.setattr(reference.subprocess, 'Popen', guarded)
     try:
         if selected_installation == 'missing':
             native.rename(moved)
@@ -210,7 +222,7 @@ sys.meta_path.insert(0, DenyApplicationImports())
             raw = (folder / artifact['path']).read_bytes()
             assert indexed[artifact['path']]['sha256'] == artifact['sha256']
             assert indexed[artifact['path']]['bytes'] == len(raw)
-        assert calls == ['inspect', 'baseline-reference']
+        assert [json.loads(line) for line in calls_path.read_text().splitlines()] == ['inspect', 'baseline-reference']
         assert {path: path.read_bytes() for path in runtime.rglob('*') if path.is_file()} == before
     finally:
         if selected_installation == 'missing':
@@ -349,7 +361,7 @@ def test_inventory_confirms_initially_present_fence_after_later_files(tmp_path, 
 def test_complete_reference_rechecks_same_inode_after_all_artifacts_are_read(archive, monkeypatch, tmp_path):
     state, _, _, _, _, folder, report = archive
     marker = tmp_path / 'actual-archive-inode-exchange.json'
-    original_run = reference.subprocess.run
+    original_popen = reference.subprocess.Popen
     program = f'''import json
 from pathlib import Path
 from ergora import reference_training_evidence as evidence
@@ -369,8 +381,8 @@ evidence._Inventory.confirm=exchange_after_inventory
     def invoke(argv, *args, **kwargs):
         if argv[-1] == 'from ergora.reference_training_evidence import main;main()':
             argv = [*argv[:-1], program + argv[-1]]
-        return original_run(argv, *args, **kwargs)
-    monkeypatch.setattr(reference.subprocess, 'run', invoke)
+        return original_popen(argv, *args, **kwargs)
+    monkeypatch.setattr(reference.subprocess, 'Popen', invoke)
     with pytest.raises(ValueError):
         training.baseline_reference(state, 'demo', 'alpha', evidence_sha256=report['evidence_sha256'])
     exchanged = json.loads(marker.read_text())
@@ -429,13 +441,13 @@ def change_after_first_reads(inventory):
     return original(inventory)
 evidence._Inventory.confirm=change_after_first_reads
 '''
-    original_run = reference.subprocess.run
+    original_popen = reference.subprocess.Popen
     def inject(argv, *args, **kwargs):
         if argv[-1] == 'from ergora.reference_training_evidence import main;main()':
             assert '-S' in argv and '-P' in argv
             argv = [*argv[:-1], program + argv[-1]]
-        return original_run(argv, *args, **kwargs)
-    monkeypatch.setattr(reference.subprocess, 'run', inject)
+        return original_popen(argv, *args, **kwargs)
+    monkeypatch.setattr(reference.subprocess, 'Popen', inject)
     try:
         with pytest.raises(ValueError, match='archive_changed'):
             training.baseline_reference(state, 'demo', 'alpha', evidence_sha256=report['evidence_sha256'])
@@ -456,7 +468,7 @@ evidence._Inventory.confirm=change_after_first_reads
             assert changed['dangling'] is (mutation == 'late-dangling-fence')
 
 
-def test_reference_is_independent_of_mutable_heads_and_registration_formatting(archive, monkeypatch):
+def test_reference_is_independent_of_mutable_heads_and_registration_formatting(archive, monkeypatch, tmp_path):
     state, definition, runtime, prefix, write, folder, report = archive
     saved = training.baseline_reference(state, 'demo', 'alpha', evidence_sha256=report['evidence_sha256'])
     head = prefix / 'baseline.json'
@@ -470,26 +482,31 @@ def test_reference_is_independent_of_mutable_heads_and_registration_formatting(a
         ignored = [head, config / 'training-runners/trusted.json',
                    runtime / ('training/integration-tickets/alpha-' + report['evidence_sha256'][:16] + '.json'),
                    runtime / 'training/negative-results/alpha.json']
+        marker = tmp_path / 'actual-mutable-head-read-guard.txt'
         program = f'''from pathlib import Path
 from ergora import training_materials as materials,training_execution_protocol as protocol
 ignored={{Path(value) for value in {[str(path) for path in ignored]!r}}}
+marker=Path({str(marker)!r})
 original_raw,original_fd=materials.read_raw,protocol._fd
 def checked_raw(path,*args,**kwargs):
     assert Path(path) not in ignored,'unrelated mutable reference read: '+str(path)
+    marker.write_text('actual guarded material read')
     return original_raw(path,*args,**kwargs)
 def checked_fd(path,*args,**kwargs):
     assert Path(path) not in ignored,'unrelated mutable reference read: '+str(path)
+    marker.write_text('actual guarded inventory read')
     return original_fd(path,*args,**kwargs)
 materials.read_raw=checked_raw
 protocol._fd=checked_fd
 '''
-        original_run = reference.subprocess.run
+        original_popen = reference.subprocess.Popen
         def inject(argv, *args, **kwargs):
             if argv[-1] == 'from ergora.reference_training_evidence import main;main()':
                 argv = [*argv[:-1], program + argv[-1]]
-            return original_run(argv, *args, **kwargs)
-        monkeypatch.setattr(reference.subprocess, 'run', inject)
+            return original_popen(argv, *args, **kwargs)
+        monkeypatch.setattr(reference.subprocess, 'Popen', inject)
         assert training.baseline_reference(state, 'demo', 'alpha', evidence_sha256=report['evidence_sha256']) == saved
+        assert marker.is_file(), 'The mutable-head read guard must run inside the actual reader'
     finally:
         head.write_bytes(head_raw)
         guard.write_bytes(guard_raw)

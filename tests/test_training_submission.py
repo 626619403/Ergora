@@ -16,6 +16,7 @@ import time
 import pytest
 
 from ergora import projects, reference, registrations, training
+from ergora.training_materials import decode_record
 from test_registrations import original_registration
 from test_training import experiments, registration
 from test_training_runtime import cycle_sdk_completion, installation
@@ -1596,6 +1597,8 @@ def test_cycle_supervises_blocking_observation_and_recovers_only_the_original_vi
     prefix = runtime / 'ergora/training-submissions'
     attempt = (prefix / 'alpha.attempt.json').read_bytes()
     folder = wait_budget_stopped(runtime, seconds=20)
+    if fault == 'monitor-blocked':
+        assert_budget_process_stopped(json.loads(service[1].with_suffix('.monitor-blocked').read_bytes()))
     final_path = folder / 'final.json'
     if final_path.exists():
         assert json.loads(final_path.read_bytes())['status'] == ('fenced' if fault == 'monitor-blocked' else 'unknown')
@@ -4279,7 +4282,7 @@ def test_round_internal_collect_and_reconcile_preserve_authenticated_originals(r
     operation_record, intent, _ = worker._cycle_target(plan, admission, 0)
     source_state, source_plan, authorization, source_ready = worker.BudgetedStart(operation_record, intent).source()
     assert source_state.root == state.root and source_plan == plan and authorization == admission.authorization
-    ready = protocol.decode(protocol.read_raw(admission.directory / 'ready.json'))
+    ready = decode_record(protocol.read_raw(admission.directory / 'ready.json'))
     assert source_ready == ready
     intent_path = operation_record.path('.intent.json')
     intent_raw = intent_path.read_bytes()
@@ -4468,6 +4471,7 @@ class WithoutApplication:
             raise AssertionError('Native reader imported application or SDK: '+fullname)
 sys.meta_path.insert(0,WithoutApplication())
 from ergora import training_execution_protocol as protocol
+from ergora.training_materials import decode_record
 try:
     if sys.argv[3].startswith('native'):
         from ergora.reference_training_execution import native_main
@@ -4478,8 +4482,8 @@ try:
         authorization=context['authorization']
         cycle=Path(authorization['control_home'])/'training-cycles'/authorization['project']/authorization['cycle_id']
         protocol.authenticate_cycle_candidate(context['intent'],
-            protocol.decode(protocol.read_raw(cycle/'cycle.json',protocol.ARTIFACT_LIMIT)),
-            protocol.CycleAdmission(cycle,authorization),protocol.decode(protocol.read_raw(cycle/'ready.json')))
+            decode_record(protocol.read_raw(cycle/'cycle.json',protocol.ARTIFACT_LIMIT)),
+            protocol.CycleAdmission(cycle,authorization),decode_record(protocol.read_raw(cycle/'ready.json')))
         print(json.dumps({'authenticated':True,'executor_sdk_loaded':'temporalio' in sys.modules}))
 except ValueError as error:
     print(json.dumps({'rejected':str(error),'executor_sdk_loaded':'temporalio' in sys.modules}))
@@ -4518,7 +4522,7 @@ except ValueError as error:
             current = operation('reconcile-round', attempt=2)
             result = asyncio.run(current.run())
             raw = (current.output / 'helper/observation.json').read_bytes()
-            value = protocol.decode(raw)
+            value = decode_record(raw)
             attempts.append({'target': target, 'probe': probe, 'detail_bytes': detail_size,
                 'actual_bytes': len(raw), 'operation_id': current.identity['operation_id'],
                 'budget': value['facts']['budget'], 'window': current.payload['bootstrap']})
@@ -4529,7 +4533,7 @@ except ValueError as error:
         else:
             pytest.fail('Real sampled observation lengths did not reach the requested boundary: ' + repr(attempts))
         assert raw.endswith(b'\n') and not raw.endswith(b'\n\n')
-        value = protocol.decode(raw)
+        value = decode_record(raw)
         assert value['runtime']['status']['last_signal_rejection'].startswith('独特 RPC 原值 🧪')
         if target <= protocol.ARTIFACT_LIMIT:
             acceptance = result['facts']['measurement']['acceptance']

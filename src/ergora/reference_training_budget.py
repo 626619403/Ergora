@@ -21,6 +21,7 @@ from . import budget_clock, processes, registrations, training_cycles, training_
 from .processes import identity as _process_identity
 from .reference_training_context import _select_cycle_project
 from .state import State, file_lock, now
+from .training_materials import decode_record
 
 
 TASK_QUEUE = training_execution_protocol.BUDGET_TASK_QUEUE
@@ -413,7 +414,7 @@ class BudgetedStart:
             raise ValueError('Original training computation deadline has passed')
 
     def owner_record(self) -> dict:
-        value = training_execution_protocol.owner_record(training_execution_protocol.decode(
+        value = training_execution_protocol.owner_record(decode_record(
             training_execution_protocol.read_raw(self.path('owner.json'))))
         process = {name: value.get(name) for name in ('pid', 'start_ticks', 'boot_id')}
         if (any(value[name] != self.identity[name] for name in ('intent_sha256', 'authorization_sha256'))
@@ -744,7 +745,7 @@ def _controller_owner(request: dict, *, operation_factory, required_schema_versi
     protocol = training_execution_protocol
     protocol.validate_cycle_root_request(request)
     payload = request['submission']
-    source = protocol.decode(protocol.read_raw(Path(payload['control_home']) / 'operations/training-cycles'
+    source = decode_record(protocol.read_raw(Path(payload['control_home']) / 'operations/training-cycles'
         / request['origin_operation_id'] / 'request.json', 32_768))
     protocol.cycle_start_source(source)
     identity = source['identity']
