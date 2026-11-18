@@ -4,10 +4,14 @@
   "title": "Finite original training candidates and immutable budget policy",
   "$ref": "#/$defs/request",
   "$defs": {
+    "execution": {"oneOf": [
+      {"type": "object", "additionalProperties": false, "required": ["operation"], "properties": {"operation": {"const": "full-verify"}}},
+      {"type": "object", "additionalProperties": false, "required": ["operation", "plan"], "properties": {"operation": {"const": "training-screen-v1"}, "plan": {"type": "object"}}}
+    ]},
     "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
     "configurationReadback": {
       "type": ["object", "null"], "additionalProperties": false,
-      "required": ["protocol", "source", "prepared_json_format", "manifest_configuration_role", "observation_scheme", "baseline_reference_protocol"],
+      "required": ["protocol", "source", "prepared_json_format", "manifest_configuration_role", "observation_scheme", "baseline_reference_protocol", "screen"],
       "properties": {
         "protocol": {"const": "training-configuration-driver-v1"},
         "source": {
@@ -23,7 +27,8 @@
         "prepared_json_format": {"enum": [null, "json-v1"]},
         "manifest_configuration_role": {"const": "source-bytes"},
         "observation_scheme": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$"},
-        "baseline_reference_protocol": {"enum": [null, "baseline-reference-v1"]}
+        "baseline_reference_protocol": {"enum": [null, "baseline-reference-v1"]},
+        "screen": {"type": ["object", "null"], "additionalProperties": false, "required": ["protocol", "scheme"], "properties": {"protocol": {"const": "training-screen-v1"}, "scheme": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$"}}}
       }
     },
     "commit": {"type": "string", "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"},
@@ -164,10 +169,11 @@
                                "candidate_config_sha256", "workload_fingerprint", "dataset_manifest_sha256", "initial_checkpoint_sha256",
                                "environment_fingerprint", "validation_contract_sha256", "comparison_tool_sha256", "checks_required",
                                "quality_required", "performance_policy", "track", "allowed_changes", "owner", "author", "contract_approved",
-                               "candidate_sha", "baseline_sha", "local_project", "runner_template_id", "max_run_seconds"],
+                               "candidate_sha", "baseline_sha", "local_project", "runner_template_id", "max_run_seconds", "execution"],
                   "properties": {
                     "schema_version": {"type": "integer", "const": 1},
                     "contract_approved": {"const": true},
+                    "execution": {"$ref": "#/$defs/execution"},
                     "max_run_seconds": {"type": "integer"},
                     "runner_template_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"},
                     "track": {"enum": ["E", "N", "A"]},

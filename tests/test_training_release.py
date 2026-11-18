@@ -15,6 +15,58 @@ from ergora import reference, training
 from test_training_evidence import archive
 from test_training import experiments, registration
 from test_training_runtime import installation
+from test_training_submission import prepared, synthetic_execution
+
+
+def test_historical_owner_decision_is_read_only_without_current_release_authority(prepared, monkeypatch):
+    from ergora.training_cycles import _sha
+
+    state, _, runtime, prefix, write, _ = prepared
+    manifest_path = runtime / 'training/manifests/alpha.json'
+    manifest = json.loads(manifest_path.read_bytes())
+    manifest.pop('execution')
+    manifest_sha = write(manifest_path, manifest)
+    write(prefix / 'experiments/alpha/manifest.json', manifest)
+    spec_path = runtime / 'training/specs/alpha.json'
+    spec = json.loads(spec_path.read_bytes())
+    spec['binding']['manifest_sha'] = manifest_sha
+    write(spec_path, spec)
+    # Construct saved historical records only; this fixture never ran training,
+    # granted an owner receipt, or delivered a release signal.
+    synthetic_execution(prepared)
+    start = json.loads((runtime / 'ergora/training-submissions/alpha.intent.json').read_bytes())
+    intent = {key: start[key] for key in ('schema_version', 'control_home', 'project', 'repo', 'execution',
+                                        'registration_sha256', 'experiment_id', 'workflow_id')}
+    intent.update(operation='approve', project_revision=start['project_revision'], submission_sha256=_sha(start),
+                  run_id='historical-run', evidence_sha256='a' * 64, actor_id='unix:999:historical-actor',
+                  operation_id='1' * 32, files={})
+    approval_prefix = runtime / 'ergora/training-approvals/alpha'
+    intent_path = Path(str(approval_prefix) + '.intent.json')
+    write(intent_path, intent)
+    before = {path: path.read_bytes() for path in runtime.rglob('*') if path.is_file()}
+    original = reference.importlib.util.find_spec
+    monkeypatch.setattr(reference.importlib.util, 'find_spec', lambda name: None if name == 'temporalio' else original(name))
+    observed = training.approval(state, 'demo', 'alpha')
+    assert observed['status'] == 'prepared' and observed['intent_sha256'] == _sha(intent)
+    assert observed['run_id'] == 'historical-run' and observed['evidence_sha256'] == intent['evidence_sha256']
+    assert observed['release_requested'] is False and observed['authorization_status'] == 'not_evaluated'
+    monkeypatch.setattr(reference.importlib.util, 'find_spec', original)
+    if sys.platform == 'linux':
+        operations = ['prepare', 'prepare-resume']
+        if original('temporalio') is not None:
+            operations += ['dispatch', 'resume']
+        for operation in operations:
+            with pytest.raises(ValueError, match='full-verify'):
+                reference.training_release(state.project('demo'), state.root, operation,
+                    {'experiment_id': 'alpha', 'run_id': 'historical-run', 'evidence_sha256': intent['evidence_sha256'],
+                     'intent_sha256': _sha(intent)}, timeout=20)
+    assert {path: path.read_bytes() for path in runtime.rglob('*') if path.is_file()} == before
+    try:
+        write(intent_path, {**intent, 'run_id': 'another-run'})
+        with pytest.raises(ValueError, match='original project, submission or run'):
+            training.approval(state, 'demo', 'alpha')
+    finally:
+        intent_path.write_bytes(before[intent_path])
 
 
 @pytest.fixture

@@ -196,7 +196,11 @@ class _Submission(_TrainingProject):
         # Do not wait on the submission lock held across an in-flight start RPC.
         # Native fence/create share their own registry lock and immutable binding.
         experiment = Experiment(**{**spec, 'binding': Binding(**spec['binding'])})
-        job = await create_adapter().fence_and_lookup(experiment)
+        adapter = create_adapter()
+        try:
+            job = await adapter.fence_and_lookup(experiment)
+        finally:
+            await adapter.close()
         fence_path = self.adapter.safe_file(self.root, fence_relative)
         return {**self.recovery_context, 'project': self.project['id'], 'project_revision': self.project_revision,
                 'experiment_id': self.ident, 'binding': spec['binding'], 'status': 'fenced',

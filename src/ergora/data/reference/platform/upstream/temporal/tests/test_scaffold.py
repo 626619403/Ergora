@@ -1,10 +1,12 @@
 """No GPU/cluster/Cloud side effects. Integration tests use Temporal's ephemeral server."""
 import asyncio
 from dataclasses import replace
+from datetime import datetime, timezone
 import hashlib
 import json
 import os
 import unittest
+from unittest.mock import AsyncMock, patch
 from temporalio import workflow
 from temporalio.exceptions import ApplicationError
 from temporalio.client import WorkflowFailureError
@@ -14,10 +16,11 @@ from temporalio.worker.workflow_sandbox import SandboxedWorkflowRunner
 from perf_temporal.activities import Activities
 from perf_temporal.adapter import load_adapter, AdapterNotConfigured, ApprovalRejected
 from perf_temporal.models import (
-    Binding, Experiment, Job, Observation, GateDecision, IntegrationTask,
+    Binding, Experiment, Job, Observation, GateDecision, ScreenDecision, IntegrationTask,
     ReleaseRequest, ReleaseContext, CancelRequest, Cancellation, workflow_id,
 )
 from perf_temporal.workflow import ExperimentWorkflow
+from perf_temporal import worker as bundled_worker
 
 
 def fixture(name="test-001", max_run_seconds=600, release_wait_seconds=600):
@@ -48,6 +51,12 @@ class FakeAdapter:
         self.fail_cancel = False
         self.control_entered = asyncio.Event()
         self.control_continue = asyncio.Event()
+        self.block_screen = False
+        self.screen_entered = asyncio.Event()
+        self.screen_continue = asyncio.Event()
+        self.screen_decision = None
+        self.gate_count = 0
+        self.closed = False
 
     async def read_manifest(self, uri):
         return self.raw
@@ -72,7 +81,7 @@ class FakeAdapter:
             raise TimeoutError("Response lost after scheduler accepted job")
         return self.job
 
-    async def poll_job(self, job):
+    async def poll_job(self, job, *, timeout=20):
         if self.fail_poll_once:
             self.fail_poll_once = False
             self.control_entered.set()
@@ -81,7 +90,16 @@ class FakeAdapter:
         return Observation(job, self.state)
 
     async def collect_and_gate(self, job):
+        self.gate_count += 1
         return GateDecision(job, self.passed, "c" * 64, "test://report", "test gate")
+
+    async def collect_screen(self, job, *, timeout=20):
+        decision = self.screen_decision or ScreenDecision(
+            job, self.state, "d" * 64, "test://screen-result", "candidate-only screen")
+        self.screen_entered.set()
+        if self.block_screen:
+            await self.screen_continue.wait()
+        return decision
 
     async def fence_and_lookup(self, experiment):
         self.fenced = True
@@ -102,6 +120,9 @@ class FakeAdapter:
         self.tasks.setdefault(key, IntegrationTask(context.experiment.binding,
                                                    "integration-123", "test://integration-123"))
         return self.tasks[key]
+
+    async def close(self):
+        self.closed = True
 
 
 class Contracts(unittest.IsolatedAsyncioTestCase):
@@ -174,6 +195,150 @@ class Contracts(unittest.IsolatedAsyncioTestCase):
                                                 "c" * 64, "test-trusted-receipt"))
         self.assertIsNone(instance.release)
         self.assertIsNotNone(instance.last_signal_rejection)
+
+    async def screen_workflow(self, state, cancel=False):
+        spec, raw = fixture("screen-" + state.lower())
+        fake = FakeAdapter(raw)
+        fake.state = state
+        fake.block_screen = cancel
+        activities = Activities(fake)
+        instance = ExperimentWorkflow()
+        calls = []
+
+        async def call(name, value, result_type):
+            calls.append(name)
+            return await getattr(activities, name)(value)
+
+        instance.call = call
+        with patch("perf_temporal.workflow.workflow.now", return_value=datetime.now(timezone.utc)):
+            running = asyncio.create_task(instance.run(spec))
+            try:
+                if cancel:
+                    await asyncio.wait_for(fake.screen_entered.wait(), timeout=5)
+                    self.assertEqual(instance.phase, "COLLECTING_SCREEN")
+                    instance.request_release(ReleaseRequest(spec.binding, "d" * 64,
+                                                           "test-trusted-receipt"))
+                    self.assertIsNone(instance.release)
+                    self.assertIsNotNone(instance.last_signal_rejection)
+                    instance.request_cancel(CancelRequest(spec.binding, "cancel during screen collection"))
+                    # Cancellation may race an already terminal scheduler result.
+                    async def cancel_terminal(job):
+                        fake.cancelled_ids.append(job.job_id)
+                    fake.cancel_job_group = cancel_terminal
+                    fake.screen_continue.set()
+                result = await running
+            finally:
+                if not running.done():
+                    running.cancel()
+                    await asyncio.gather(running, return_exceptions=True)
+        self.assertEqual(result.status, "CANCELLED" if cancel else state)
+        self.assertEqual(result.binding, spec.binding)
+        self.assertEqual(result.job_id, fake.job.job_id)
+        self.assertIsNone(result.integration_task_url)
+        self.assertIsNone(instance.gate)
+        self.assertEqual(fake.gate_count, 0)
+        self.assertEqual(fake.create_count, 1)
+        self.assertFalse(fake.tasks)
+        self.assertFalse(fake.approval_attempts)
+        self.assertEqual(calls, ["submit_or_lookup", "poll_job", "collect_screen"]
+                         + (["cancel_exact_job", "poll_job"] if cancel else []))
+        if cancel:
+            self.assertEqual(fake.cancelled_ids, [fake.job.job_id])
+            self.assertTrue(fake.fenced)
+            self.assertIn(state, result.detail)
+        else:
+            self.assertEqual(result.report_uri, "test://screen-result")
+            self.assertEqual(result.detail, "candidate-only screen")
+
+    async def test_screen_outcomes_do_not_enter_full_gate_or_release(self):
+        for state in ("SCREEN_COMPLETED", "SCREEN_REJECTED"):
+            with self.subTest(state=state):
+                await self.screen_workflow(state)
+
+    async def test_cancel_during_screen_collection_uses_original_exact_job_cleanup(self):
+        for state in ("SCREEN_COMPLETED", "SCREEN_REJECTED"):
+            with self.subTest(state=state):
+                await self.screen_workflow(state, cancel=True)
+
+    async def test_screen_collection_cannot_change_the_observed_terminal_state(self):
+        spec, raw = fixture("screen-state-drift")
+        fake = FakeAdapter(raw)
+        fake.state = "SCREEN_COMPLETED"
+        fake.screen_decision = ScreenDecision(Job(spec.binding, "job-exact-123"), "SCREEN_REJECTED",
+                                               "d" * 64, "test://screen-result", "changed result")
+        activities = Activities(fake)
+        instance = ExperimentWorkflow()
+
+        async def call(name, value, result_type):
+            return await getattr(activities, name)(value)
+
+        instance.call = call
+        with patch("perf_temporal.workflow.workflow.now", return_value=datetime.now(timezone.utc)):
+            with self.assertRaises(ApplicationError):
+                await instance.run(spec)
+        self.assertIsNone(instance.gate)
+        self.assertEqual(fake.gate_count, 0)
+        self.assertFalse(fake.tasks)
+
+    async def test_worker_connection_failure_closes_adapter_and_exposes_close_failure(self):
+        for close_fails in (False, True):
+            with self.subTest(close_fails=close_fails):
+                _, raw = fixture()
+                fake = FakeAdapter(raw)
+                fake.close = AsyncMock(side_effect=RuntimeError("reader cleanup unconfirmed")
+                                       if close_fails else None)
+                with patch.object(bundled_worker, "load_adapter", return_value=fake), \
+                        patch.object(bundled_worker, "connect", side_effect=ConnectionError("connect failed")):
+                    with self.assertRaisesRegex(RuntimeError if close_fails else ConnectionError,
+                                                "reader cleanup unconfirmed" if close_fails else "connect failed"):
+                        await bundled_worker.main()
+                fake.close.assert_awaited_once()
+
+    async def test_worker_cancellation_drains_same_adapter_after_worker_stops(self):
+        _, raw = fixture()
+        fake = FakeAdapter(raw)
+        entered, draining, drained = asyncio.Event(), asyncio.Event(), asyncio.Event()
+        order = []
+
+        class ControlledWorker:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            async def __aenter__(self):
+                order.append("worker entered")
+                entered.set()
+
+            async def __aexit__(self, *args):
+                order.append("worker stopped")
+
+        async def close():
+            order.append("adapter draining")
+            draining.set()
+            await drained.wait()
+            order.append("adapter drained")
+
+        fake.close = close
+        with patch.object(bundled_worker, "load_adapter", return_value=fake) as load, \
+                patch.object(bundled_worker, "connect", new=AsyncMock(return_value=object())), \
+                patch.object(bundled_worker, "Worker", ControlledWorker), \
+                patch.object(bundled_worker, "task_queue", return_value="test-q"):
+            running = asyncio.create_task(bundled_worker.main())
+            try:
+                await asyncio.wait_for(entered.wait(), timeout=5)
+                running.cancel()
+                await asyncio.wait_for(draining.wait(), timeout=5)
+                self.assertFalse(running.done())
+                self.assertEqual(order, ["worker entered", "worker stopped", "adapter draining"])
+                drained.set()
+                with self.assertRaises(asyncio.CancelledError):
+                    await running
+            finally:
+                drained.set()
+                if not running.done():
+                    running.cancel()
+                    await asyncio.gather(running, return_exceptions=True)
+            load.assert_called_once()
+        self.assertEqual(order[-1], "adapter drained")
 
 
 @unittest.skipUnless(os.environ.get("RUN_TEMPORAL_INTEGRATION") == "1",

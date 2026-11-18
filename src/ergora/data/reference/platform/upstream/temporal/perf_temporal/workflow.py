@@ -7,7 +7,7 @@ from temporalio.exceptions import ApplicationError, ActivityError
 
 with workflow.unsafe.imports_passed_through():
     from .models import (
-        Experiment, Job, Observation, GateDecision, ReleaseRequest, ReleaseContext,
+        Experiment, Job, Observation, GateDecision, ScreenDecision, ReleaseRequest, ReleaseContext,
         IntegrationTask, CancelRequest, Cancellation, Status, Outcome,
     )
 
@@ -88,7 +88,8 @@ class ExperimentWorkflow:
         deadline = workflow.now() + timedelta(seconds=experiment.cancel_wait_seconds)
         while workflow.now() < deadline:
             observation = await self.call("poll_job", self.job, Observation)
-            if observation.state in {"CANCELLED", "FAILED", "SUCCEEDED"}:
+            if observation.state in {"CANCELLED", "FAILED", "SUCCEEDED",
+                                     "SCREEN_COMPLETED", "SCREEN_REJECTED"}:
                 self.phase = "CANCELLED"
                 return Outcome("CANCELLED", experiment.binding, self.job.job_id,
                                detail=f"Release suppressed; scheduler ended as {observation.state}; "
@@ -120,6 +121,17 @@ class ExperimentWorkflow:
                     return await self.cancel_and_confirm(experiment)
                 observation = await self.call("poll_job", self.job, Observation)
                 self.phase = observation.state
+                if observation.state in {"SCREEN_COMPLETED", "SCREEN_REJECTED"}:
+                    self.phase = "COLLECTING_SCREEN"
+                    screen = await self.call("collect_screen", self.job, ScreenDecision)
+                    if screen.state != observation.state:
+                        raise ApplicationError("Screen result state differs from observation",
+                                               type="ContractViolation", non_retryable=True)
+                    if self.cancel_reason is not None:
+                        return await self.cancel_and_confirm(experiment)
+                    self.phase = screen.state
+                    return Outcome(screen.state, experiment.binding, self.job.job_id,
+                                   screen.report_uri, detail=screen.summary)
                 if observation.state == "SUCCEEDED":
                     break
                 if observation.state in {"FAILED", "CANCELLED"}:

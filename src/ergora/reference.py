@@ -10,6 +10,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+import time
 from tempfile import TemporaryDirectory
 
 from . import processes
@@ -445,24 +446,292 @@ def training_files(project: dict, *, experiment_id: str | None = None, limit: in
                              'experiment_id': experiment_id, 'limit': limit, 'after': after})
 
 
-def _training_reader(project: dict, entrypoint: str, payload: dict, *, timeout: int = 30) -> dict:
-    execution = project['registration']['definition']['execution']
+def _training_reader_request(state_directory, config_directory, payload):
     environment = dict(os.environ, PYTHONDONTWRITEBYTECODE='1', PYTHONUTF8='1',
-                       AGENTFLOW_CONFIG_DIR=execution['config_directory'],
-                       AGENTFLOW_STATE_DIR=execution['state_directory'])
+                       AGENTFLOW_CONFIG_DIR=config_directory, AGENTFLOW_STATE_DIR=state_directory)
     environment['PYTHONPATH'] = os.pathsep.join(map(str, (
         Path(__file__).parent.parent, ROOT / 'platform/local', ROOT / 'platform/upstream/platform',
         ROOT / 'platform/upstream/temporal', ROOT / 'platform/upstream')))
+    raw = json.dumps(payload, ensure_ascii=False, allow_nan=False).encode('utf-8')
+    if len(raw) > 16 * 1_048_576:
+        raise ValueError('capacity_exceeded: complete training reader request')
+    return environment, raw
+
+
+def _training_reader_response(raw, stderr, returncode):
+    from .training_execution_protocol import decode
+
+    if returncode:
+        lines = stderr.decode('utf-8', errors='replace').strip().splitlines()
+        raise ValueError(lines[-1] if lines else f'Training record reader exited with status {returncode}')
+    return decode(raw)
+
+
+def _stop_training_reader(process):
     try:
-        result = subprocess.run([sys.executable, '-P', '-S', '-c', entrypoint],
-                                input=json.dumps(payload, allow_nan=False),
-                                capture_output=True, text=True, encoding='utf-8', env=environment, timeout=timeout)
-    except subprocess.TimeoutExpired as error:
-        raise ValueError('Training record reader timed out; native execution state was not queried') from error
-    if result.returncode:
-        lines = result.stderr.strip().splitlines()
-        raise ValueError(lines[-1] if lines else f'Training record reader exited with status {result.returncode}')
-    return json.loads(result.stdout)
+        process.kill()
+    except ProcessLookupError:
+        pass  # The original wait must still confirm the concurrent exit.
+
+
+def _training_reader(project: dict, entrypoint: str, payload: dict, *, timeout: int = 30) -> dict:
+    """A synchronous caller owns its actual child/wait until reap, even after T."""
+    import selectors
+
+    started = time.monotonic()
+    deadline = started + timeout
+    read_deadline = deadline - min(5, timeout / 4)
+    execution = project['registration']['definition']['execution']
+    environment, encoded = _training_reader_request(execution['state_directory'], execution['config_directory'], payload)
+    if timeout <= 0:
+        raise ValueError('Training record reader has no remaining allowance')
+    process, selected = None, None
+    stdout, stderr, offset, failure = bytearray(), bytearray(), 0, None
+    pumps = []
+    try:
+        process = subprocess.Popen([sys.executable, '-P', '-S', '-c', entrypoint], stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=environment)
+        selected = selectors.DefaultSelector()
+        if os.name == 'nt':
+            # Windows does not select anonymous pipes. These synchronous pipe
+            # pumps do no business-file I/O and remain owned/joined by this call.
+            import threading
+            problems, pumps = [], []
+            def pump(stream, target, limit):
+                try:
+                    while chunk := stream.read(65_536):
+                        if len(target) + len(chunk) > limit:
+                            problems.append(ValueError('capacity_exceeded: complete training reader response'))
+                        else:
+                            target.extend(chunk)
+                except OSError as error:
+                    problems.append(error)
+            def send():
+                nonlocal offset
+                try:
+                    for start in range(0, len(encoded), 65_536):
+                        offset += process.stdin.write(encoded[start:start + 65_536])
+                        process.stdin.flush()
+                except (OSError, ValueError) as error:
+                    problems.append(error)
+                finally:
+                    process.stdin.close()
+            pumps = [threading.Thread(target=send), threading.Thread(target=pump, args=(process.stdout, stdout, 8_388_608)),
+                     threading.Thread(target=pump, args=(process.stderr, stderr, 65_536))]
+            for pump_thread in pumps:
+                pump_thread.start()
+            while any(pump_thread.is_alive() for pump_thread in pumps) or process.poll() is None:
+                if problems:
+                    raise problems[0]
+                remaining = read_deadline-time.monotonic()
+                if remaining <= 0:
+                    raise TimeoutError('Training record reader timed out; native execution state was not queried')
+                threading.Event().wait(min(.05, remaining))
+        else:
+            for stream, event in ((process.stdin, selectors.EVENT_WRITE), (process.stdout, selectors.EVENT_READ), (process.stderr, selectors.EVENT_READ)):
+                os.set_blocking(stream.fileno(), False)
+                selected.register(stream, event)
+            while selected.get_map() or process.poll() is None:
+                remaining = read_deadline - time.monotonic()
+                if remaining <= 0:
+                    raise TimeoutError('Training record reader timed out; native execution state was not queried')
+                for key, event in selected.select(min(.05, remaining)):
+                    stream = key.fileobj
+                    try:
+                        if event == selectors.EVENT_WRITE:
+                            offset += os.write(stream.fileno(), encoded[offset:offset + 65_536])
+                            if offset == len(encoded):
+                                selected.unregister(stream)
+                                stream.close()
+                        else:
+                            chunk = os.read(stream.fileno(), 65_536)
+                            if not chunk:
+                                selected.unregister(stream)
+                                stream.close()
+                            else:
+                                target, limit = (stdout, 8_388_608) if stream is process.stdout else (stderr, 65_536)
+                                if len(target) + len(chunk) > limit:
+                                    raise ValueError('capacity_exceeded: complete training reader response')
+                                target.extend(chunk)
+                    except BlockingIOError:
+                        continue
+                    except BrokenPipeError:
+                        selected.unregister(stream)
+                        stream.close()
+        if offset != len(encoded) or time.monotonic() > read_deadline:
+            raise TimeoutError('Training record reader timed out or did not consume its complete request')
+    except BaseException as error:
+        if process is None:
+            raise
+        failure = error
+    finally:
+        if process is not None:
+            # Stop initiation and actual wait retain the same child across interrupts.
+            # If the OS delays reap, this call remains cleanup_incomplete past T.
+            while True:
+                try:
+                    try:
+                        if process.poll() is None:
+                            _stop_training_reader(process)
+                    except OSError as error:
+                        if not isinstance(failure, (KeyboardInterrupt, SystemExit)):
+                            failure = error
+                    process.wait()
+                    break
+                except KeyboardInterrupt as error:
+                    if not isinstance(failure, KeyboardInterrupt):
+                        failure = error
+        for pump_thread in pumps:
+            while pump_thread.is_alive():
+                try:
+                    pump_thread.join()
+                except KeyboardInterrupt:
+                    failure = failure or KeyboardInterrupt()
+        if selected is not None:
+            selected.close()
+        if process is not None:
+            for stream in (process.stdin, process.stdout, process.stderr):
+                if not stream.closed:
+                    stream.close()
+    elapsed = time.monotonic() - started
+    if failure is not None:
+        detail = f'; reader elapsed={elapsed:.6f}s T={timeout}s overrun={max(0, elapsed-timeout):.6f}s returncode={process.returncode}'
+        if isinstance(failure, (KeyboardInterrupt, SystemExit)):
+            raise failure
+        raise ValueError(str(failure) + detail) from failure
+    result = _training_reader_response(bytes(stdout), bytes(stderr), process.returncode)
+    if time.monotonic() > deadline:
+        raise ValueError(f'Training record reader timed out during decoding; elapsed={time.monotonic()-started:.6f}s overrun={time.monotonic()-deadline:.6f}s returncode={process.returncode}')
+    return result
+
+
+async def _training_reader_async(state_directory, config_directory, operation, job, *, resources, timeout=20):
+    """Await bounded pipes only; the adapter retains every child and actual wait."""
+    import asyncio
+
+    started = time.monotonic()
+    timeout = min(20, timeout)
+    deadline = started + timeout
+    read_deadline = deadline - min(5, timeout / 4)
+    if timeout <= 0 or any(item.get('unconfirmed') for item in resources.values()):
+        raise ValueError('reader_cleanup_unconfirmed or original reader allowance exhausted')
+    environment, encoded = _training_reader_request(state_directory, config_directory,
+        {'operation': operation, 'state_directory': state_directory, 'config_directory': config_directory, 'job': job})
+    spawning = asyncio.create_task(asyncio.create_subprocess_exec(sys.executable, '-P', '-S', '-c',
+        'from ergora.reference_training_evidence import main;main()', stdin=asyncio.subprocess.PIPE,
+        stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, env=environment))
+    spawning_key = id(spawning)
+    resource = {'process': None, 'spawn': spawning, 'unconfirmed': False, 'draining': None}
+    resources[spawning_key] = resource
+    try:
+        process = await asyncio.wait_for(asyncio.shield(spawning), max(.001, read_deadline-time.monotonic()))
+    except BaseException as error:
+        async def reap_spawn():
+            child = await spawning
+            resource['process'] = child
+            _stop_training_reader(child)
+            # No request bytes were sent; this fixed child cannot do work.
+            await child.communicate()
+        resource['draining'] = asyncio.create_task(reap_spawn())
+        while not resource['draining'].done() and time.monotonic() < deadline:
+            try:
+                await asyncio.wait_for(asyncio.shield(resource['draining']), max(.001, deadline-time.monotonic()))
+            except asyncio.CancelledError:
+                continue
+            except TimeoutError:
+                break
+        if resource['draining'].done():
+            resources.pop(spawning_key, None)
+            await resource['draining']
+            raise error
+        resource['unconfirmed'] = True
+        raise ValueError('reader_cleanup_unconfirmed: original child creation/wait retained') from error
+    resources.pop(spawning_key)
+    overflow = asyncio.get_running_loop().create_future()
+    stdout, stderr = bytearray(), bytearray()
+
+    async def read_pipe(stream, target, limit):
+        while chunk := await stream.read(65_536):
+            if len(target) + len(chunk) > limit:
+                if not overflow.done():
+                    overflow.set_result('capacity_exceeded: complete training reader response')
+            else:
+                target.extend(chunk)
+
+    async def write_pipe():
+        try:
+            for offset in range(0, len(encoded), 65_536):
+                process.stdin.write(encoded[offset:offset + 65_536])
+                await process.stdin.drain()
+        except (BrokenPipeError, ConnectionResetError):
+            pass
+        finally:
+            process.stdin.close()
+
+    wait = asyncio.create_task(process.wait())
+    tasks = [asyncio.create_task(write_pipe()), asyncio.create_task(read_pipe(process.stdout, stdout, 8_388_608)),
+             asyncio.create_task(read_pipe(process.stderr, stderr, 65_536))]
+    draining = asyncio.gather(wait, *tasks, return_exceptions=True)
+    resource = {'process': process, 'wait': wait, 'draining': draining, 'unconfirmed': False}
+    resources[process.pid] = resource
+    failure = None
+    try:
+        done, _ = await asyncio.wait((draining, overflow), timeout=max(0, read_deadline-time.monotonic()), return_when=asyncio.FIRST_COMPLETED)
+        if overflow in done:
+            raise ValueError(overflow.result())
+        if draining not in done or time.monotonic() > read_deadline:
+            raise TimeoutError('Training record reader timed out')
+        outcomes = await draining
+        if any(isinstance(item, BaseException) for item in outcomes):
+            raise ValueError('Training reader pipe or actual wait failed')
+    except BaseException as error:
+        failure = error
+    finally:
+        overflow.cancel()
+        if not draining.done() and process.returncode is None:
+            _stop_training_reader(process)
+        while not draining.done() and time.monotonic() < deadline:
+            try:
+                await asyncio.wait_for(asyncio.shield(draining), max(.001, deadline-time.monotonic()))
+            except asyncio.CancelledError as error:
+                failure = failure or error
+            except TimeoutError:
+                break
+        if draining.done() and process.returncode is not None:
+            resources.pop(process.pid, None)
+        else:
+            resource['unconfirmed'] = True
+    if resource['unconfirmed']:
+        raise ValueError(f'reader_cleanup_unconfirmed: pid={process.pid} returncode={process.returncode}')
+    if failure is not None:
+        if isinstance(failure, asyncio.CancelledError):
+            raise failure
+        raise ValueError(str(failure)) from failure
+    result = _training_reader_response(bytes(stdout), bytes(stderr), process.returncode)
+    if time.monotonic() > deadline:
+        raise ValueError(f'Training record reader timed out during decoding; returncode={process.returncode}')
+    return result
+
+
+async def _close_training_readers(resources):
+    """Drain the adapter's original resources before its loop may be closed."""
+    import asyncio
+
+    for pid, item in list(resources.items()):
+        while item['draining'] is None:
+            try:
+                await asyncio.sleep(.01)
+            except asyncio.CancelledError:
+                continue
+        if item['process'] is not None and item['process'].returncode is None:
+            _stop_training_reader(item['process'])
+        while not item['draining'].done():
+            try:
+                await asyncio.shield(item['draining'])
+            except asyncio.CancelledError:
+                continue
+        await item['draining']
+        resources.pop(pid, None)
 
 
 def training_execution(project: dict, home: Path, operation: str, payload: dict, *, timeout: int = 20) -> dict:
@@ -686,19 +955,34 @@ def _training_records(payload: dict) -> dict:
                 raise ValueError('Gate report bytes differ from the original result SHA')
             if gate['binding'] != asdict(binding) or gate['manifest_sha256'] != binding.manifest_sha:
                 raise ValueError('Gate report belongs to another experiment manifest')
+        screen_ref = result.get('screen') if result is not None else None
+        screen_report = None
+        if screen_ref is not None:
+            screen_name = job_prefix + 'run-output/screen-result.json'
+            expected = adapter.safe_file(root, screen_name)
+            if screen_ref['report'] != str(expected):
+                raise ValueError('Screen report is outside its original experiment job')
+            screen_report = document(screen_name)
+            if (files['state/' + screen_name] != screen_ref['report_sha256']
+                    or screen_report['binding'] != asdict(binding) or gate_ref is not None
+                    or manifest.get('execution', {}).get('operation') != 'training-screen-v1'):
+                raise ValueError('Screen result raw, operation or binding changed')
         item = {'experiment_id': ident, 'binding': asdict(binding), 'track': manifest['track'],
                 'baseline_id': manifest['baseline_id'], 'workload_fingerprint': manifest['workload_fingerprint'],
                 'baseline_matches': baseline_error is None, 'baseline_error': baseline_error,
                 'max_run_seconds': experiment.max_run_seconds, 'runtime_status': 'not_queried',
                 'job_id': request['job_id'] if request else None, 'started_recorded': started is not None,
                 'recorded_result_state': result['state'] if result else None, 'fence_recorded': fence is not None,
+                'execution': manifest.get('execution', {'operation': 'full-verify'}), 'screen_ref': screen_ref,
+                'recorded_screen': {'result_sha256': screen_ref['report_sha256'], 'decision': screen_report['decision'],
+                    'achieved_quality_tier': screen_report['achieved_quality_tier']} if screen_report else None,
                 'recorded_gate': {'passed': gate['passed'], 'evidence_sha256': gate['evidence_sha256'],
                                   'report_sha256': gate_ref['report_sha256'],
                                   'mlflow_run_id': gate_ref['mlflow_run_id']} if gate else None,
                 'files': dict(files)}
         if detail:
             item.update(manifest=manifest, spec=spec, current_runner=runner, job_request=request,
-                        started=started, result=result, gate_report=gate, fence=fence, negative_result=negative)
+                        started=started, result=result, gate_report=gate, screen_report=screen_report, fence=fence, negative_result=negative)
         return item
 
     result = {'baseline': baseline, 'baseline_files': baseline_files, 'runtime_status': 'not_queried'}

@@ -1,4 +1,4 @@
-"""Source-pinned configuration construction inside one managed full runner."""
+"""Source-pinned configuration construction and explicit operations in one managed runner."""
 
 import hashlib
 import json
@@ -129,9 +129,16 @@ def validate_runner(runner: dict) -> None:
     if capability is None:
         return
     _exact(capability, ('protocol', 'source', 'prepared_json_format', 'manifest_configuration_role',
-                        'observation_scheme', 'baseline_reference_protocol'), 'Configuration readback')
+                        'observation_scheme', 'baseline_reference_protocol', 'screen'), 'Configuration readback')
     if capability['baseline_reference_protocol'] not in (None, 'baseline-reference-v1'):
         raise ValueError('Unsupported baseline reference protocol')
+    screen = capability['screen']
+    if screen is not None:
+        _exact(screen, ('protocol', 'scheme'), 'Screen capability')
+        if (screen['protocol'] != 'training-screen-v1' or not isinstance(screen['scheme'], str)
+                or re.fullmatch('[A-Za-z0-9][A-Za-z0-9_.-]{0,127}', screen['scheme']) is None
+                or capability['baseline_reference_protocol'] != 'baseline-reference-v1'):
+            raise ValueError('Unsupported declared screen capability')
     if capability['protocol'] != PROTOCOL or capability['manifest_configuration_role'] != 'source-bytes':
         raise ValueError('Unsupported configuration driver protocol or manifest configuration role')
     if (not isinstance(capability['observation_scheme'], str)
@@ -154,6 +161,25 @@ def _checkout(repo, commit):
         raise ValueError('Configuration checkout differs from its original commit')
     if _git(repo, 'status', '--porcelain', '--untracked-files=all'):
         raise ValueError('Configuration checkout contains changed or untracked source')
+
+
+def validate_execution_sources(manifest, runner):
+    """Observe current trusted oracle bytes before an operation can be reserved."""
+    from .training_materials import execution_plan
+
+    execution = execution_plan(manifest, runner)
+    if execution['operation'] == 'full-verify':
+        return
+    source = runner['configuration_readback']['source']
+    if source_reference(Path(source['repo']), source['commit'], source['entrypoint']) != source:
+        raise ValueError('Screen trusted source inventory changed')
+    for check in execution['plan']['checks']:
+        raw = _git(Path(source['repo']), 'show', source['commit'] + ':' + check['source_entrypoint'])
+        if not raw or len(raw) > 10 * LIMIT or hashlib.sha256(raw).hexdigest() != check['contract_sha256']:
+            raise ValueError('Screen oracle source differs from its frozen contract')
+        metadata = _git(Path(source['repo']), 'ls-tree', source['commit'], '--', check['source_entrypoint'])
+        if not metadata.startswith((b'100644 blob ', b'100755 blob ')):
+            raise ValueError('Screen oracle requires an ordinary tracked source file')
 
 
 def _source_bytes(repo, commit, relative):
@@ -235,6 +261,7 @@ def stage_request(folder, record, checkouts, manifest, context, active):
                'binding': record['experiment']['binding'],
                'native_request_sha256': chain.records['request']['native_request_sha256'],
                'runner_sha256': chain.sha(runner), 'configuration_readback': capability,
+               'execution': materials.execution_plan(manifest, runner),
                'baseline_reference': materials.baseline_selector(manifest),
                'execution_phase_id': chain.records['launch']['execution_phase_id'],
                'configurations': configurations, 'trusted_repo': str(trusted),
@@ -305,6 +332,13 @@ def _inputs(request, original_raw):
         raise ValueError('Configuration driver manifest bytes changed')
     manifest = json.loads(manifest_raw)
     descriptor = materials.require_driver(manifest, runner)
+    if request['execution'] != materials.execution_plan(manifest, runner):
+        raise ValueError('Configuration operation changed from its original manifest')
+    if request['execution']['operation'] == 'training-screen-v1':
+        for check in request['execution']['plan']['checks']:
+            _, digest = _source_bytes(trusted, source['commit'], check['source_entrypoint'])
+            if digest != check['contract_sha256']:
+                raise ValueError('Screen oracle bytes changed from their original trusted source')
     if request['baseline_reference'] != materials.baseline_selector(manifest):
         raise ValueError('Baseline reference selection differs from the original manifest')
     raw_materials = materials.read_materials(chain.root, manifest)
@@ -341,6 +375,14 @@ def _publish_receipt(path, value, chain):
 
 
 def _reference_read(projection, selected, request, request_raw, observations):
+    from ergora import training_execution_protocol as protocol
+
+    _chain(request)
+    manifest = protocol.decode(protocol.read_raw(Path(request['manifest'])))
+    return _reference_projection(projection, selected, request, hashlib.sha256(request_raw).hexdigest(), observations, manifest)
+
+
+def _reference_projection(projection, selected, request, request_sha256, observations, manifest):
     """The source declares its oracle relation; core keeps quality and timing separate."""
     from ergora import training_execution_protocol as protocol
     from ergora.reference_training_evidence import _reason
@@ -350,16 +392,14 @@ def _reference_read(projection, selected, request, request_raw, observations):
                         'relations', 'allowed_deltas', 'oracle_applicability'), 'Baseline reference projection')
     reference = selected['reference']
     anchor = reference['anchor']
-    chain = _chain(request)
-    manifest = protocol.decode(protocol.read_raw(Path(request['manifest'])))
     if (anchor['baseline_commit'] != request['binding']['baseline_sha']
             or anchor['base_config_sha256'] != manifest['base_config_sha256']
             or anchor['workload_fingerprint'] != manifest['workload_fingerprint']
             or anchor['baseline_id'] != manifest['baseline_id']):
         raise ValueError('Baseline reference anchor differs from the current baseline')
     if (not isinstance(projection['scheme'], str) or not projection['scheme']
-            or projection['baseline_observation_sha256'] != chain.sha(observations['baseline'])
-            or projection['candidate_observation_sha256'] != chain.sha(observations['candidate'])
+            or projection['baseline_observation_sha256'] != _sha(observations['baseline'])
+            or projection['candidate_observation_sha256'] != _sha(observations['candidate'])
             or projection['invariants'] != observations['baseline']['invariants']):
         raise ValueError('Baseline reference projection differs from the actual configuration observations')
     relations, deltas = projection['relations'], projection['allowed_deltas']
@@ -402,11 +442,11 @@ def _reference_read(projection, selected, request, request_raw, observations):
         reasons.append(_reason('reader_unsupported', 'projection.relation_units', observed=unsupported_units))
     if not reusable:
         reasons.append(_reason('oracle_relation_unsupported', 'projection.oracle_applicability', observed=applicability['state']))
-    return {'schema_version': 1, 'kind': 'baseline-reference-read', 'request_sha256': hashlib.sha256(request_raw).hexdigest(),
+    return {'schema_version': 1, 'kind': 'baseline-reference-read', 'request_sha256': request_sha256,
             'binding': request['binding'], 'selector': request['baseline_reference'],
             'reference_sha256': selected['reference_sha256'], 'anchor_sha256': selected['anchor_sha256'],
             'inventory_sha256': reference['inventory']['sha256'],
-            'candidate_observation_sha256': chain.sha(observations['candidate']), 'projection': projection,
+            'candidate_observation_sha256': _sha(observations['candidate']), 'projection': projection,
             'quality': {'state': 'reusable' if reusable else 'unavailable', 'coverage': applicability['coverage'] if reusable else None,
                         'reasons': reasons},
             'timing': reference['coverage']['timing'], 'resources': reference['coverage']['resources'],
@@ -515,6 +555,137 @@ def _record_reference(driver, context, request, output, observations, configurat
     return result
 
 
+def _record_screen(driver, context, request, output, observations, frozen, raw, manifest, guards, reference_project):
+    """Publish actual candidate-only observations inside the existing managed job."""
+    from ergora import training_execution_protocol as protocol, training_materials as materials
+    from ergora.reference_training_evidence import _screen_data, _screen_bundle, _baseline_reference
+
+    chain, _ = _inputs(request, raw)
+    first = None
+
+    def record_first_failure(failure):
+        nonlocal first
+        _bytes(failure)
+        _exact(failure, ('check_id', 'rank', 'phase', 'window_id', 'work_index', 'observation_order', 'diagnostic_refs'), 'Screen first failure')
+        if (first is not None or failure['check_id'] not in {item['id'] for item in request['execution']['plan']['checks']}
+                or any(type(failure[key]) is not int or failure[key] < 0 for key in ('rank', 'work_index', 'observation_order'))
+                or any(not isinstance(failure[key], str) or not failure[key] for key in ('phase', 'window_id'))
+                or not isinstance(failure['diagnostic_refs'], list)):
+            raise ValueError('Screen first failure is duplicate or has no actual check/observation identity')
+        # The final report does not exist yet. Authenticate each existing raw
+        # diagnostic now, then bind it again to the final complete index.
+        for ref in failure['diagnostic_refs']:
+            _exact(ref, ('path', 'sha256', 'bytes'), 'Screen failure diagnostic')
+            original = guards.read(output, ref['path'], 'screen', ref['sha256'], 16 * LIMIT)
+            if type(ref['bytes']) is not int or len(original) != ref['bytes'] or hashlib.sha256(original).hexdigest() != ref['sha256']:
+                raise ValueError('Screen first failure diagnostic differs from its original raw bytes')
+            materials.confirm_file(output / ref['path'], original, chain.root)
+        first = {'schema_version': 1, 'kind': 'training-screen-first-failure', 'binding': request['binding'],
+            'configuration_request_sha256': hashlib.sha256(raw).hexdigest(), 'source': request['configuration_readback']['source'],
+            'failure': protocol.decode(_bytes(failure))}
+        path = output / 'screen-first-failure.json'
+        frozen[path] = _publish_receipt(path, first, chain)
+        guards.read(output, path.name, 'screen', hashlib.sha256(frozen[path]).hexdigest())
+        guards.confirm()
+        _inputs(request, raw)
+
+    # No work follows a last source/read/receipt return without this admission.
+    chain, _ = _inputs(request, raw)
+    guards.confirm()
+    chain, _ = _inputs(request, raw)
+    if protocol.budget_clock.remaining(request['context']['authorization']['clock'], request['context']['policy']['wall_seconds'],
+            request['context']['policy']['cleanup_seconds']) < 1:
+        raise ValueError('blocked: remaining original work allowance is below supported screen walltime')
+    data = protocol.decode(_bytes(driver['screen'](context, request, output, record_first_failure=record_first_failure)))
+    _inputs(request, raw)
+    _exact(data, ('workload', 'windows', 'checks', 'checks_not_run', 'resources', 'artifacts', 'reasons'), 'Screen source report')
+    path = output / 'screen-source-report.json'
+    frozen[path] = _publish_receipt(path, data, chain)
+    source = request['configuration_readback']['source']
+    capability = chain.owner['execution_capability']
+    core_raw = {
+        'screen-source-inventory.raw': _git(Path(request['trusted_repo']), 'ls-tree', '-r', '-z', '--full-tree', source['commit']),
+        'baseline-reference-protocol-source.py.txt': protocol.read_raw(Path(protocol.__file__)),
+        'baseline-reference-native-descriptor.json': protocol.read_raw(Path(capability['installation']) / 'ergora-native-runtime.json')}
+    if (hashlib.sha256(core_raw['screen-source-inventory.raw']).hexdigest() != source['inventory_sha256']
+            or hashlib.sha256(core_raw['baseline-reference-protocol-source.py.txt']).hexdigest() != capability['gate_sources']['training_execution_protocol.py']
+            or hashlib.sha256(core_raw['baseline-reference-native-descriptor.json']).hexdigest() != capability['descriptor_sha256']):
+        raise ValueError('Screen source bytes differ from original admitted source closure')
+    for index, check in enumerate(request['execution']['plan']['checks']):
+        original = protocol.read_raw(_file(request['trusted_repo'], check['source_entrypoint']), 10 * LIMIT)
+        if hashlib.sha256(original).hexdigest() != check['contract_sha256']:
+            raise ValueError('Screen oracle changed during actual candidate work')
+        core_raw['screen-oracles/' + str(index) + '.raw'] = original
+    for arm in ('baseline', 'candidate'):
+        original = materials.read_raw(Path(request['configurations'][arm]['path']), 10 * LIMIT)
+        if hashlib.sha256(original).hexdigest() != request['configurations'][arm]['source_sha256']:
+            raise ValueError('Screen configuration input changed during actual work')
+        core_raw['screen-configuration-inputs/' + arm + '.raw'] = original
+    for name, original in core_raw.items():
+        path = output / name
+        materials.publish_material(path, original, chain.root)
+        frozen[path] = original
+
+    def ref(path, original):
+        return {'path': path.relative_to(output).as_posix(), 'sha256': hashlib.sha256(original).hexdigest(), 'bytes': len(original)}
+
+    source_manifest = {'schema_version': 1, 'kind': 'training-execution-source-manifest',
+        'capability_sha256': chain.sha(capability), 'gate_sources': capability['gate_sources'],
+        'protocol_source_ref': ref(output / 'baseline-reference-protocol-source.py.txt', core_raw['baseline-reference-protocol-source.py.txt']),
+        'native_descriptor_ref': ref(output / 'baseline-reference-native-descriptor.json', core_raw['baseline-reference-native-descriptor.json'])}
+    path = output / 'screen-execution-sources.json'
+    frozen[path] = _publish_receipt(path, source_manifest, chain)
+    originals = dict(frozen)
+    if not isinstance(data['artifacts'], list) or len(data['artifacts']) > 256:
+        raise ValueError('capacity_exceeded: screen source artifact index')
+    for item in data['artifacts']:
+        _exact(item, ('path', 'sha256', 'bytes'), 'Screen source artifact')
+        path = output / materials.relative(item['path'])
+        original = guards.read(output, item['path'], 'screen', item['sha256'], 16 * LIMIT)
+        if hashlib.sha256(original).hexdigest() != item['sha256'] or type(item['bytes']) is not int or len(original) != item['bytes']:
+            raise ValueError('Screen source artifact differs from its actual raw output')
+        if path in originals and originals[path] != original:
+            raise ValueError('Screen source changed a core receipt or raw input')
+        originals[path] = original
+    artifacts = [ref(path, original) for path, original in sorted(originals.items())]
+    if len(artifacts) > 256 or sum(item['bytes'] for item in artifacts) > 64 * LIMIT:
+        raise ValueError('capacity_exceeded: complete screen raw inventory')
+    indexed = {item['path']: item for item in artifacts}
+
+    def read(item, metadata=True):
+        entry = indexed.get(item.get('path'))
+        if entry is None or len(item) != 1 and item != entry:
+            raise ValueError('Screen report references unindexed raw data')
+        original = originals[output / entry['path']]
+        if not metadata:
+            return original
+        if len(original) > LIMIT:
+            raise ValueError('capacity_exceeded: screen metadata')
+        return protocol.decode(original)
+
+    checked_request = {**request, '_raw_sha256': hashlib.sha256(raw).hexdigest()}
+    derived = _screen_data(data, checked_request, manifest, read, first)
+    result = {'schema_version': 1, 'kind': 'training-screen-result', 'binding': request['binding'],
+        'native_request_sha256': request['native_request_sha256'], 'configuration_request_sha256': hashlib.sha256(raw).hexdigest(),
+        'runner_sha256': request['runner_sha256'], 'managed': request['managed'], 'source': source,
+        'execution_plan_sha256': chain.sha(request['execution']['plan']),
+        'configuration_receipt_ref': indexed['configuration-receipt.json'], 'baseline_reference_read_ref': indexed['baseline-reference-read.json'],
+        'first_failure_ref': indexed.get('screen-first-failure.json'), **derived, 'artifacts': artifacts}
+    for path, original in originals.items():
+        materials.confirm_file(path, original, chain.root)
+    guards.confirm()
+    _inputs(request, raw)
+    path = output / 'screen-result.json'
+    _publish_receipt(path, result, chain)
+    _screen_bundle(output, checked_request, manifest, inventory=guards)
+    selected = _baseline_reference(reference_project, request['context']['intent']['control_home'],
+        request['baseline_reference'], inventory=guards)
+    if _bytes(selected, 8 * LIMIT) != _bytes(read({'path': 'baseline-reference-projection.json'}), 8 * LIMIT):
+        raise ValueError('Original baseline reference changed during candidate screen work')
+    guards.confirm()
+    _inputs(request, raw)
+
+
 def main(request_path):
     """Construct, observe, freeze and run the same source-owned configuration objects."""
     from ergora import training_execution_protocol as protocol, training_materials as materials
@@ -522,7 +693,7 @@ def main(request_path):
     raw = protocol.read_raw(Path(request_path), 16 * LIMIT)
     request = protocol.decode(raw)
     _exact(request, ('schema_version', 'kind', 'binding', 'native_request_sha256', 'runner_sha256',
-                     'configuration_readback', 'baseline_reference', 'execution_phase_id', 'configurations', 'trusted_repo', 'manifest', 'output', 'context', 'managed'),
+                     'configuration_readback', 'baseline_reference', 'execution', 'execution_phase_id', 'configurations', 'trusted_repo', 'manifest', 'output', 'context', 'managed'),
            'Configuration driver request')
     if type(request['schema_version']) is not int or request['schema_version'] != 1 or request['kind'] != 'training-configuration-driver-request':
         raise ValueError('Unsupported configuration driver request')
@@ -553,12 +724,13 @@ def main(request_path):
     sys.path[:] = [str(trusted), *[entry for entry in sys.path if entry and Path(entry).is_absolute()
                                   and not any(Path(entry).is_relative_to(arm) for arm in arms)]]
     driver = runpy.run_path(str(_file(trusted, request['configuration_readback']['source']['entrypoint'])))
-    for operation in ('prepare', 'describe', 'run'):
+    screen_operation = request['execution']['operation'] == 'training-screen-v1'
+    for operation in ('prepare', 'describe', 'screen' if screen_operation else 'run'):
         if not callable(driver.get(operation)):
             raise ValueError('Configuration driver does not support ' + operation)
     supports_reference = request['configuration_readback']['baseline_reference_protocol'] == 'baseline-reference-v1'
     if supports_reference:
-        for operation in ('baseline_reference_read', 'baseline_reference_record'):
+        for operation in (('baseline_reference_read',) if screen_operation else ('baseline_reference_read', 'baseline_reference_record')):
             if not callable(driver.get(operation)):
                 raise ValueError('Configuration driver does not support ' + operation)
     _inputs(request, raw)
@@ -571,18 +743,26 @@ def main(request_path):
                'native_request_sha256': request['native_request_sha256'], 'runner_sha256': request['runner_sha256'],
                'managed': request['managed'], 'source': request['configuration_readback']['source'],
                'environment_fingerprint': manifest['environment_fingerprint'], 'observations': observations,
-               'configuration_inputs': materials.input_descriptor(manifest), 'configurations': request['configurations']}
+               'configuration_inputs': materials.input_descriptor(manifest), 'configurations': request['configurations'],
+               'execution_plan_sha256': chain.sha(request['execution'].get('plan'))}
     _bytes(receipt, LIMIT - 1)
     receipt_raw = chain.adapter.canonical(receipt) + b'\n'
     protocol.publish(receipt_path, receipt, chain.root)
     materials.confirm_file(receipt_path, receipt_raw, chain.root)
     frozen = {receipt_path: receipt_raw}
+    guards = None
+    if screen_operation:
+        from ergora.reference_training_evidence import _Inventory
+        guards = _Inventory()
+        guards.read(output, receipt_path.name, 'screen', hashlib.sha256(receipt_raw).hexdigest())
+    reference_project = None
     if request['baseline_reference'] is not None:
         from ergora.reference_training_evidence import _baseline_reference
         from ergora.reference_training_context import _TrainingProject
 
         project = _TrainingProject({'project': request['context']['project'], 'control_home': request['context']['intent']['control_home']})
-        selected = _baseline_reference(project, request['context']['intent']['control_home'], request['baseline_reference'])
+        reference_project = project
+        selected = _baseline_reference(project, request['context']['intent']['control_home'], request['baseline_reference'], inventory=guards)
         if selected['reference_sha256'] != request['baseline_reference']['reference_sha256']:
             raise ValueError('Baseline reference content differs from the frozen selector')
         reference = selected['reference']
@@ -593,14 +773,23 @@ def main(request_path):
         read = _reference_read(projection, selected, request, raw, observations)
         read_path = output / 'baseline-reference-read.json'
         frozen[read_path] = _publish_receipt(read_path, read, chain)
+        if guards is not None:
+            guards.read(output, read_path.name, 'screen', hashlib.sha256(frozen[read_path]).hexdigest())
+        if screen_operation:
+            projection_path = output / 'baseline-reference-projection.json'
+            frozen[projection_path] = _publish_receipt(projection_path, selected, chain)
+            guards.read(output, projection_path.name, 'screen', hashlib.sha256(frozen[projection_path]).hexdigest())
         # Re-read the same full immutable inventory after the callback and the
         # durable receipt; then the existing last admission follows all I/O.
-        again = _baseline_reference(project, request['context']['intent']['control_home'], request['baseline_reference'])
+        again = _baseline_reference(project, request['context']['intent']['control_home'], request['baseline_reference'], inventory=guards)
         if _bytes(again['reference'], 8 * LIMIT) != before_reference:
             raise ValueError('Baseline reference changed before current full work')
     if _bytes(_observations(driver['describe'](context), request)) != _bytes(observations):
         raise ValueError('Configuration changed after observation and before training work')
     _inputs(request, raw)
+    if screen_operation:
+        _record_screen(driver, context, request, output, observations, frozen, raw, manifest, guards, reference_project)
+        return
     driver['run'](context, request, output)
     _inputs(request, raw)
     if supports_reference:

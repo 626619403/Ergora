@@ -9,18 +9,19 @@
 |当前目标|操作入口|
 |---|---|
 |先理解算法、执行依赖和状态驻留|[源码锚定的流程图谱](#源码锚定的流程图谱)|
-|组合图谱、分析、kernel评估和测量审查|[按瓶颈组织完整提案](#按瓶颈组织完整提案)，v3各叶显式交接|
+|组合图谱、分析、kernel评估和测量审查|[按瓶颈组织完整提案](#按瓶颈组织完整提案)，共同root各叶显式交接|
 |先分析已有代码、trace或显存报告|[通用性能诊断](#通用性能诊断)或[细方向子模板](#独立的优化方向子模板)|
 |把专家提案变成可执行实验|[提案到原实验合同](#从专家提案填写原实验合同)，然后预览／确认baseline、runner和实验|
 |先在 CPU 核对测量合同与原门禁|[离线成对测量演示](#离线成对测量演示)，无需模型、密钥或训练服务|
 |保留每轮原结果及失败／未知，离线回看|[多轮证据索引](#多轮证据索引)，显式选择原实验并在新目录追加|
 |启动和停止原控制流程|[原ID提交与对账](#提交已准备实验与原-id-对账)、[取消和停止事实](#取消原运行与分别观察停止事实)|
 |在原预算内执行一个已提交实验并确认子树停止|[显式受管执行与离线停止观察](#显式受管执行与离线停止观察)|
+|先做有界候选筛选，再决定是否另作完整验证|[选择 full 或轻量 screen](#选择-full-或轻量-screen)|
 |登记或配置变化后继续处理旧运行|[原登记恢复](#在原登记上下文中恢复)，选择原发布记录并明确确认|
 |审阅实际结果和授权后续集成|[归档证据](#阅读归档证据与原集成票据)、[精确owner批准](#精确-owner-批准与投递恢复)|
 |把经验用于下一次任务|[完整改进旅程](IMPROVEMENT_WORKFLOW.md)，候选分别采用后再明确冻结|
 
-实际计算可按下文显式选择同一预算下的`training execute`，或沿旧流程逐实验确认manifest使用可信`run-local`。当前没有自动多轮训练队列消费者。控制操作成功、CPU生命周期验收与真实GPU正确性／质量／性能收益分别需要对应证据。
+实际计算可按下文显式选择同一预算下的`training execute`；普通full也可逐实验确认manifest后使用可信`run-local`。当前没有自动多轮训练队列消费者。控制操作成功、CPU生命周期验收与真实GPU正确性／质量／性能收益分别需要对应证据。
 
 Windows 原生可设计训练模板、普通调用提案角色并管理记忆 / Skill；带完整Skill附件的组合单叶使用Linux task-MCP，须在WSL2/Linux运行。ForgeKernel、mini 驱动及完整参考实验执行同样使用WSL2/Linux，可信参考执行器还要求Linux容器。原生安装不会配置CUDA、GPU或这些参考服务，详见[Windows手册](WINDOWS.md)。
 
@@ -126,7 +127,7 @@ ergora training register-runner my-project --runner ./training-task/runner-templ
 
 `project` 必须是当前已登记项目，`repo` 必须指向其 Git 根；回执显示 resolve 后的规范路径。字段／argv／超时由原 `agentflow training runner-add` 的登记逻辑验证；`schema_version`须为整数2，exact七字段包含`configuration_readback`，超时为1–82800秒。普通full命令将`configuration_readback`设为null。预览只在隔离子进程的临时配置目录运行原登记器，不修改真实配置；确认后仍由原登记器不可变写入真实 `training-runners/RUNNER_ID.json`。共享配置目录中的ID全局唯一，建议使用带项目名称和版本的ID。
 
-可信配置驱动使用非null的`configuration_readback`，固定`training-configuration-driver-v1`、受审Git source引用、`source-bytes`材料角色、观测scheme、required `prepared_json_format`（null或`json-v1`）与`baseline_reference_protocol`（null或`baseline-reference-v1`）能力声明；command必须为绝对Python、`{configuration_driver}`、`{configuration_request}`三个argv。固定source adapter实现`prepare/describe/run`，构造与两次观察后由同一context运行，receipt经原evidence artifacts归档；该能力只支持原managed full入口，不能用手工run-local取得执行权。输入来源只由experiment manifest的`configuration_inputs`选择：`{kind:"git-source",path:"<checkout相对普通文件>"}`，或由原准备owner生成的prepared-json descriptor；runner不再另存配置路径。JSON声明只说明所选source被登记为支持该格式，实际构造和目标语义仍须在原预算内验证。接口通过不证明任意目标训练框架已提供该adapter。
+可信配置驱动使用非null的`configuration_readback`，固定`training-configuration-driver-v1`、受审Git source引用、`source-bytes`材料角色、观测scheme，以及必填的`prepared_json_format`（null或`json-v1`）、`baseline_reference_protocol`（null或`baseline-reference-v1`）、`screen`能力声明。`screen:null`表示只支持full；筛选能力写为`{"protocol":"training-screen-v1","scheme":"project-screen-v1"}`并同时声明`baseline-reference-v1`。command必须为绝对Python、`{configuration_driver}`、`{configuration_request}`三个argv。source实现`prepare(request)`、`describe(context)`和`run(context, request, output)`，构造与两次观察后由同一context执行manifest所选操作，沿原managed入口消费授权；手工run-local不授该驱动执行权。输入只由manifest的`configuration_inputs`选择：`{kind:"git-source",path:"<checkout相对普通文件>"}`，或原准备owner生成的prepared-json descriptor。声明与source实际支持必须一致，不能靠callback名字探测能力；接口通过不证明任意目标训练框架已提供adapter。
 
 控制台“训练实验”→“可信 runner”→“预览与登记 runner”提供同一流程。HTTP为`POST /api/projects/{project}/training/runner-preview`（`runner`对象）及`POST .../register-runner`（再加`revision / runner_sha256`）。编辑或切项目使旧预览失效，确认内容SHA与原文件字节SHA分列；CLI原文件和原生序列化文件各最多1MiB，HTTP沿既有4MB封套。
 
@@ -164,9 +165,45 @@ HTTP对应`POST /api/projects/{project}/training/experiment-preview`，body含`e
 
 请求失败或页面重开时，展开“读取与恢复原准备记录”，输入原实验ID读取各文件事实；`intent_saved / partially_prepared`会展示完整原意图和逐件状态，粘贴原intent SHA后明确恢复。`conflict / native_files_without_intent`不提供覆盖／接管操作。编辑输入或切项目会使旧预览和迟到回执失效，发送期间禁用本面板防双击。完整prepared仅表示原件持久且一致，不代表已经start、训练成功或批准采用。
 
-### 有限 JSON 配置材料接入 managed full
+### 选择 full 或轻量 screen
 
-`training search-preview/search-prepare/search-read` 从完整 baseline UTF-8 与有限标量变项生成完整候选配置，保持原候选代码 commit／六阶段export来源。请求字段见随包 `data/schemas/training-search-v1.json`。第一轮模型算法、结构、尺寸、精度和objective保持固定；合法batch/chunk/parallel/library改动仍须满足项目 workload 和完整质量合同。
+当前每份experiment manifest必须显式填写`execution`：完整验证为`{"operation":"full-verify"}`；轻量筛选为`training-screen-v1`，其screen plan放在`execution.plan`。第一轮仍固定模型算法、结构、尺寸、精度和训练目标，保留原checks_required、quality_required及完整performance_policy；screen只覆盖source声明的低成本检查和候选窗口，不授full_verified、accepted、controller执行或release。
+
+先按[基线参照读取](#阅读归档证据与原集成票据)取得准确selector，并登记支持同一scheme的可信source。下例是合入完整experiment的片段；SHA占位符须替换为真实身份，scheme、计数、阈值和输入计划须由所选source支持，示例值不作为默认政策：
+
+```json
+{
+  "configuration_inputs": {"kind": "git-source", "path": "training/config.json"},
+  "baseline_reference": {"experiment_id": "baseline-measurement",
+    "evidence_sha256": "BASELINE_EVIDENCE_SHA256", "reference_sha256": "BASELINE_REFERENCE_SHA256"},
+  "execution": {"operation": "training-screen-v1", "plan": {
+    "scheme": "project-screen-v1", "requested_tier": "screened",
+    "verification_experiment_id": "trial-a-full",
+    "input_plan": {"scheme": "project-input-v1", "sha256": "INPUT_PLAN_SHA256"},
+    "window": {"unit": "source_samples", "minimum_work": 256, "maximum_work": 256,
+      "warmup_maximum_work": 0, "maximum_windows": 1, "maximum_seconds": 30},
+    "checks": [
+      {"id": "finite", "kind": "finite", "contract_sha256": "FINITE_SOURCE_SHA256", "source_entrypoint": "checks/finite.py"},
+      {"id": "behavior", "kind": "behavior", "contract_sha256": "BEHAVIOR_SOURCE_SHA256", "source_entrypoint": "checks/behavior.py"}
+    ],
+    "resources": [],
+    "screening": {"target": "throughput", "minimum_improvement_fraction": 0.03,
+      "noise_fraction": 0.02, "comparison_scheme": "project-comparison-v1"}
+  }}
+}
+```
+
+`verification_experiment_id`关联另一个完整验证ID，字段本身不准备或授权该实验；每个候选各自冻结，同一手工选择内须互异。input_plan绑定输入／初始化／顺序，不能只给seed；window.unit取source_samples或source_tokens。两种check都必须有，contract_sha256是同一受审source inventory内普通文件的原字节SHA，expected和容差由可信source提供。comparison_scheme须符合其reference projection的适用关系。资源按source实际支持声明metric／unit／scope／aggregation／required／limit；可选缺测明确NOT_RUN，必测缺测阻断完成，不能拿设备容量代替峰值。
+
+source另外实现`screen(context, request, output, *, record_first_failure) -> report_data`，复用prepare／describe／baseline_reference_read的同一context，只运行冻结的候选窗口，不执行baseline训练臂或baseline_reference_record；对象构造／模型驻留是否减少须另有证据。report_data含`workload / windows / checks / checks_not_run / resources / artifacts / reasons`，原件引用为普通相对路径的`{path,sha256,bytes}`；完整raw字段见[筛选报告校验](../src/ergora/reference_training_evidence.py)。core按实际有效工作和正有限耗时派生吞吐、tier及决定。source首次识别finite／behavior FAIL即停止新增训练work／窗口，并同步调用`record_first_failure`，payload含`check_id / rank / phase / window_id / work_index / observation_order / diagnostic_refs`；确认原首失败持久后再处理必要记录或传播异常。nonfinite诊断放文本raw，不能写NaN JSON或被后续异常覆盖。
+
+使用上节相同的`experiment-preview → prepare`；prepared JSON材料按下节API逐实验传`configuration_materials`，省略draft中的`configuration_inputs`由原owner生成，保持各自完整配置和验证ID。随后沿[手工原预算](#起算本地训练预算与恢复原授权)的schema1授权、显式cycle-start和managed execute运行；候选共享相同operation及screen合同，不能混full与screen或不同资源政策。原clock覆盖构造、参照读取、检查和收尾。window.maximum_seconds支持1–86400秒及范围内小数；0.5秒在准备前拒绝，实际测量耗时可小于1秒。runner或原剩余预算可更早截止；请求进程前及最终work前不足1秒即blocked，不向上取整或重开clock。
+
+完整检查可产生`SCREEN_COMPLETED`，已证有限性／行为失败或必测资源超限为`SCREEN_REJECTED`／tier none；缺本次必需oracle、raw无效或运行异常仍是FAILED，fence沿CANCELLED。参照库存完整可读但baseline质量／来源／计时等缺证时，已做检查可达到screened，性能unavailable且inconclusive。promising只是冻结探索政策下的方向判断；后续完整验证要另行准备、执行和审阅，不自动推进baseline、深验、negative/skip循环或逐轮profile。
+
+### 有限 JSON 配置材料接入受管执行
+
+`training search-preview/search-prepare/search-read` 从完整 baseline UTF-8 与有限标量变项生成完整候选配置，保持原候选代码 commit／六阶段export来源。请求字段见随包 `data/schemas/training-search-v1.json`。首轮固定项沿上节；合法batch/chunk/parallel/library改动仍须满足项目 workload 和完整质量合同。
 
 ```bash
 ergora training search-preview my-project --request ./search-request.json
@@ -179,7 +216,7 @@ ergora training search-read ./search-inputs --sha256 SEARCH_JSON_RAW_SHA256
 
 准备不授执行权、不开clock、不自动循环。操作者仍以返回的原experiment ID／manifest SHA按下文原cycle授权、显式start和managed execute消费材料；不改原三键performance policy、attempt/unknown对账或reaper。wrapper在同一opaque context构造／观察后冻结receipt，首work前重核原raw／source／fence／clock；原full evidence archive保存实际消费的两份raw和receipt。raw SHA、canonical snapshot SHA和adapter semantic identity各有独立意义。只有实际原gate通过才具有其声明范围内的完整证据；JSON能力声明不证明GEAct/MoE、GPU、质量或收益。
 
-`search-read`只核冻结包，不读取当前source／native状态，不创建State或要求Temporal SDK。丢回复／部分发布继续同包、同原intent／ID恢复；已存在job／submission／fence后不补修，丢失原意图也不从包重造。baseline复用、typed screen、negative/skip循环和自动采用属于独立后继。
+`search-read`只核冻结包，不读取当前source／native状态，不创建State或要求Temporal SDK。丢回复／部分发布继续同包、同原intent／ID恢复；已存在job／submission／fence后不补修，丢失原意图也不从包重造。baseline参照与typed screen分别沿本手册对应入口；negative/skip循环和自动采用仍为后继。
 
 ## 在控制台查看原实验
 
@@ -461,13 +498,20 @@ ergora training evidence my-project EXPERIMENT_ID
 ergora training evidence my-project EXPERIMENT_ID \
   --artifact checks/forward.json --evidence-sha256 EVIDENCE_SHA256 \
   --offset 0 --limit 12000
+# screen先读索引，路径取report.artifacts，摘要取screen.result_sha256
+ergora training evidence my-project SCREEN_EXPERIMENT_ID
+ergora training evidence my-project SCREEN_EXPERIMENT_ID \
+  --artifact checks/finite.json --screen-result-sha256 SCREEN_RESULT_SHA256 \
+  --offset 0 --limit 12000
 ```
+
+已有typed screen原件时，返回`archive_status:no_accepted_archive`、`recorded_gate_report:null`及`screen={result_sha256,report,cleanup}`；`screen_status`为complete或cleanup_unavailable，后者表示原停止证据未齐，不能用已有报告替代收尾；无typed原件时为not_recorded／screen:null。report保留实际scope／checks／resources／决定和raw索引。full归档继续使用`evidence_sha256`；screen原件只接受本次`screen.result_sha256`对应的`screen_result_sha256`，两种摘要互斥。Python `training.evidence`使用同名keyword；无artifact时只读索引，不传摘要。窗口／容量规则与下面的full原件读取相同。
 
 先核完整gate、原`evidence.json`及其字节SHA、归档`gate-result.json`、manifest／baseline／comparator摘要和当前baseline适用性。无gate或gate未通过时返回`archive_status: no_accepted_archive`，不创建归档或批准；gate通过且记录不完整／冲突时明确失败。归档gate按原JSON内容与job中的archive_report核对，带SHA的evidence／manifest／baseline／comparator按原字节核对。已有原本地`integration-ticket`按完整project／binding／evidence读取；`automatic_merge: false`，不表示实际复验已完成、当前receipt仍有效或Temporal终态已确认。
 
 `archive.evidence.artifacts`保留原路径和声明摘要，`artifact_content_status: not_read`明确尚未核所有文件内容。指定其中一个artifact和本次完整evidence SHA后，入口先读整个文件并校验原SHA，再返回UTF-8文本的Unicode字符窗口；下一段沿`next_offset`读取。JSON每份最多1MiB、所选artifact最多16MiB、返回窗口最多65,536字符、总响应最多8MiB；超限／二进制／NUL／摘要漂移／symlink或越界明确拒绝，不截断后宣称完整。大型或二进制profile继续使用原索引位置与对应工具，不经此文本入口解码。
 
-HTTP同样使用`GET /api/projects/{project}/training/{experiment}/evidence`，可选`artifact / evidence_sha256 / offset / limit`。此操作不发RPC、不重跑comparator／runner、不生成owner receipt、不批准或采用。它核保存材料的身份并供人审阅；真实质量、作者可信性、当前批准资格与实际集成效果仍须原独立流程。精确owner批准CLI／HTTP见下一节；图形入口见下方控制台步骤。
+HTTP同样使用`GET /api/projects/{project}/training/{experiment}/evidence`，可选`artifact / evidence_sha256 / screen_result_sha256 / offset / limit`，摘要类型及互斥规则同CLI。此操作不发RPC、不重跑comparator／runner、不生成owner receipt、不批准或采用。它核保存材料的身份并供人审阅；真实质量、作者可信性、当前批准资格与实际集成效果仍须原独立流程。精确owner批准CLI／HTTP见下一节；图形入口见下方控制台步骤。
 
 Python `training.baseline_reference(state, project_id, experiment_id, evidence_sha256=...)`读取一个准确accepted archive的全部indexed artifacts、传递引用、原managed链与停止事实，返回不可变`reference`、`reference_sha256`及`anchor_sha256`。库存覆盖原archive与执行绑定原件；当前注册认证guard在同一有界读取中保首次身份并末核，不进入immutable index／hash。此入口不读取当前baseline head、runner配置或集成ticket来重解释原证据，fence存在与缺席均在末尾确认。原receipt与环境报告保完整raw摘要，derived receipt保code inventory／commit／entrypoint与实际环境身份，省去原checkout及解释器安装位置。每件最多16MiB、256件、完整库存64MiB，metadata每份1MiB、完整响应8MiB；超限、缺文件或原件漂移明确失败。此入口与`evidence`均使用当前包的SDK-free reader，保登记、control-home与canonical路径检查；所选native安装缺失不扣留历史，原登记恢复不在这两个入口支持范围。缺baseline-specific实际oracle、原来源manifest或停止确认时，完整库存仍可读，各维明确unavailable；generic candidate checks、full gate PASS和历史计时不能认证baseline quality。
 
@@ -509,7 +553,7 @@ ergora training rounds-read ./rounds-2 --sha256 NEW_INDEX_SHA256
 
 `change`／`next_bottleneck`始终是未验证注释，不参与门禁。离线读取核整个期望SHA、轮内内容和前驱链接，不连接服务或重新评价统计，也不认证来源。原始日志、大trace与artifact内容仍在原存储；索引不替代备份，不表示全部artifact已读。每份索引最多32轮／10MB，超限明确失败，不截断；扩展不会覆盖旧目录或已有目标目录。完整格式见[原JSON schema](../src/ergora/data/schemas/training-rounds-v1.json)。
 
-kernel专家继续在v3提案路径评估；索引不会跳过它，也不会自动启动下一轮、采用候选、重写门槛或计算累计收益。有界自动循环和跨baseline迁移需各自合同。
+kernel专家继续在共同提案路径评估；索引不会跳过它，也不会自动启动下一轮、采用候选、重写门槛或计算累计收益。有界自动循环和跨baseline迁移需各自合同。
 
 ## 精确 owner 批准与投递恢复
 
@@ -546,9 +590,9 @@ HTTP复用同一用例：`GET .../training/{experiment}/approval`；`POST .../ap
 
 先完成下文的[专家提案及手动交接](#可选的实验专家提案)，保存完整manifest、所选叶input、原result及实际后端记录。原result的自由文本供人审阅，不能直接当作`experiment.json`。以下步骤适用于各优化方向；真实文件仍使用`ergora templates copy training-optimization`给出的原模板，执行命令沿[完整参考手册](../src/ergora/data/reference/platform/docs/TRAINING.md)。
 
-1. 明确真实项目、优化目标和允许改变的语义，分别选定基线负责人、候选作者、受信runner、独立评价者及采用负责人。design／profile完整原结果先交kernel；measurement接收全部相关原结果和实际实验材料。三叶方向没有kernel时直接交接两份分析。
+1. 明确真实项目、优化目标和允许改变的语义，分别选定基线负责人、候选作者、受信runner、独立评价者及采用负责人。共同design／profile原结果交全局kernel；方向specialist／design原结果交其measurement，low-precision先经自己的kernel前驱。最终measurement接收全部相关原结果和实际实验材料。
 2. 按下表填写合同。每个值记录真实来源和人工决定；缺少实际commit、配置、数据、初态或验收方法时先补齐，保留未验状态。提案中的示例数值、搜索成本估算或自生成PASS不进入真实测量。
-3. 人工审阅范围、检查、质量和资源预算后，才设置`contract_approved: true`；登记真实baseline与runner，再运行`prepare`。它检查canonical提交与别名、仓库commit、当前基线和比较器，补充执行字段并冻结原字节。后续确认它返回的`manifest_sha256`，不要用提案、draft或重新排版JSON的SHA代替。
+3. 人工审阅范围、检查、质量和资源预算后，才设置`contract_approved: true`；登记真实baseline与runner，再运行`prepare`。它检查canonical提交与别名、仓库commit、当前基线和比较器，补充原runner／窗口字段并冻结原字节。后续用`training show`返回的`experiment.binding.manifest_sha`核实际发布manifest，不用提案、draft或重新排版JSON的SHA替代。
 4. 原runner以精确manifest执行，生成可信证据、独立检查／审查／质量与配对比较。measurement可解释这些原材料并提出缺项；其`approve`不代替实验门禁或人工采用。最后按原`evidence SHA`批准，再交该项目的开发集成／复验任务。
 
 |目标文件／字段|来源及决定|
@@ -556,6 +600,7 @@ HTTP复用同一用例：`GET .../training/{experiment}/approval`；`POST .../ap
 |`workload-contract.md`的目标、硬件、数据、更新、计量、停止／恢复、资源授权|真实项目说明与原配置／报告；profile指出缺口，design给有限建议，操作者确认有效源样本、rank范围与实际optimizer更新语义。Markdown不会自动变成workload指纹。|
 |`baseline.json`的`baseline_id / commit / config_sha256 / workload_fingerprint / evidence_uri / quality_scope`|基线负责人确认的精确commit、最终有效配置、工作负载身份、原证据位置和质量适用范围。`baseline_ok`核前四项与experiment匹配；证据URI和质量文字仍须人工核查。|
 |`experiment.json`的`schema_version / experiment_id / baseline_id`|沿原schema 1和唯一实验身份登记，关联同一baseline。结果不明先按原ID对账；改变已绑定内容须按原流程创建可追溯修订。|
+|`execution`及配置／参照字段|按[操作选择](#选择-full-或轻量-screen)填写必需操作，核所选source能力及完整输入／参照身份；筛选提案不代替完整验证或采用。|
 |`track / allowed_changes`|按实际变化选择E／N／A并列精确边界。kernel、packing或低精度的方向名称不能自动决定分类；提案建议不授予修改oracle、阈值或受信runner的权限。|
 |`owner / author / contract_approved`|实际负责人／候选作者和人工合同决定。它们不是模型后端名称；独立review的`reviewer_id`须区别于作者，身份真实性由受信流程负责。|
 |`baseline_commit / candidate_commit`|真实runner仓库中的完整Git提交；`prepare`补同值`baseline_sha / candidate_sha`，已有别名冲突会拒绝。设计公式、生成代码片段和原result摘要都不是候选commit。|
@@ -576,7 +621,7 @@ HTTP复用同一用例：`GET .../training/{experiment}/approval`；`POST .../ap
 所选实例path；input digest；原run ID／实际backend／model／回退原因
 各完整原result的位置／SHA，以及kernel和measurement收到的原前驱
 原合同字段 → 真实来源／SHA → 人工决定／负责人 → 未验项
-prepare返回的实验ID／manifest SHA → 原runner／job → evidence SHA／原批准
+原准备意图／实际发布manifest SHA → 原runner／job → evidence SHA／原批准
 ```
 
 这些身份各有作用：组合manifest固定模板和资料，叶input固定本次任务，result固定模型原产物，实验manifest绑定真实候选和实验合同，evidence SHA绑定执行证据。它们不能互换，也不会因为记录在一张表中就自动获得执行权。
@@ -610,7 +655,7 @@ prepare返回的实验ID／manifest SHA → 原runner／job → evidence SHA／�
 
 ## 可选的实验专家提案
 
-`ergora composition install-preset training-optimization`导入当前根`ergora-training-proposal@4.0.1`：源码图谱、跨域实验设计、纯性能诊断、kernel实施方案评估与独立测量审查。全部五叶继承库／环境选择和原证据合同；model固定gpt-6.1-sol，设计／kernel规划max、诊断／测量审查high。它们供操作者填写原workload／baseline／experiment，不执行搜索或授予采用；真实CPU/GPU仍由本手册的原runner与证据门禁负责。
+`ergora composition install-preset training-optimization`导入当前共同根`ergora-training-proposal@4.1.3`：源码图谱、跨域实验设计、纯性能诊断、kernel实施方案评估与独立测量审查。全部五叶继承库／环境选择和原证据合同；model固定gpt-6.1-sol，设计／kernel规划max、诊断／测量审查high。选定方向的专项专家作为这个共同根的真实结构后代进入完整优化；它们供操作者填写原workload／baseline／experiment，不执行搜索或授予采用，真实CPU/GPU仍归原runner与证据门禁。
 
 |叶路径|主要职责与所需资料|结果边界|
 |---|---|---|
@@ -621,7 +666,7 @@ prepare返回的实验ID／manifest SHA → 原runner／job → evidence SHA／�
 
 先为该精确根生成grant和完整manifest，再按[单叶调用](WORKFLOW_DEFINITIONS.md#调用一个准备好的叶子)准备一个叶输入。带Skill附件时选Linux／WSL2的`task-mcp`模式并确保实际读取完整固定资源。单次`run-input`不会执行其图前驱：操作者把design／profile的完整原产物和摘要明确交给kernel，再把全部相关输入与真实实验材料交给measurement；缺少的报告、硬件或实验数据须保持未验，不用占位数字充当实测。后端覆盖按实际叶路径保存原因，measurement优先异于执行后端；不可用时显式记录已授权的同后端回退。
 
-跨域专家可复用于多个方向子模板，单份kernel设计也可覆盖精度、布局、融合和通信等关系。方向知识与原生执行能力分别接入；安装当前提案不等于已接入Forge／KDA内部全流程或任意外部MCP。实际实验继续使用本手册前述原manifest、可信runner、独立评价和精确evidence SHA批准。
+共同design与measurement各守其全局职责，19个方向由对应专项专家处理；profiling／performance-diagnosis复用performance-analyst，kernel专题复用kernel-designer。方向知识与原生执行能力分别接入；安装当前提案不等于已接入Forge／KDA内部全流程或任意外部MCP。实际实验继续使用原manifest、可信runner、独立评价和精确evidence SHA批准。
 
 ## 源码锚定的流程图谱
 
@@ -647,10 +692,10 @@ ergora composition run-input my-project ./flow-map-input --backend codex \
 
 ```bash
 ergora composition install-preset training-optimization
-ergora composition show ergora-training-proposal 4.0.1 --material
+ergora composition show ergora-training-proposal 4.1.3 --material
 ```
 
-当前根 `ergora-training-proposal@4.0.1` 组合图谱和四位跨域专家。根Skill负责证据、方向及库／环境选择，子Skill保留各自方法。顺序如下，design／profile 读取相同资料、可以独立进行：
+当前共同根 `ergora-training-proposal@4.1.3` 组合图谱和四位跨域专家。根Skill负责证据、方向及库／环境选择，子Skill保留各自方法。需要完整专题优化时，修订这个共同根，将选中的1.1.0方向模板置于其真实后代后再冻结完整manifest；[选定MoE组合示例](../examples/composition/optimization-selected-moe/README.md)给出11叶及完整交接。实际存储中的该示例为`ergora-training-proposal@4.1.4`，应使用存储返回的完整root引用／manifest，不把通用4.1.3与选定组合混用。共同骨架的顺序如下，design／profile读取相同资料：
 
 ```mermaid
 flowchart LR
@@ -671,10 +716,10 @@ flowchart LR
 根各阶段绑定原 root task，依赖边表达次序；`prepare-input/run-input` 仍仅准备／调用指定叶，不自动执行前驱或收集端口内容。调用者按上表将原 JSON 结果封套及 input／result 身份加入 task，保留全部 response、失败和未覆盖范围；摘要不能代替原件。最终 all-join 保留所有阶段，不能只选最后一份有利意见。具体 grant／manifest 沿[现有分享与单叶入口](WORKFLOW_DEFINITIONS.md#准备完整的单叶输入)。例如先在 checkout 使用公开小任务：
 
 ```bash
-ergora composition prepare-from-manifest ./training-v3-manifest root/flow/map \
-  --task examples/training/host-redundancy.md --directory ./v3-flow-input \
+ergora composition prepare-from-manifest ./training-manifest root/flow/map \
+  --task examples/training/host-redundancy.md --directory ./flow-input \
   --max-prompt-bytes 1000000
-ergora composition run-input my-project ./v3-flow-input \
+ergora composition run-input my-project ./flow-input \
   --mode text-only --backend codex --timeout 600
 ```
 
@@ -684,28 +729,28 @@ kernel 评估不会被方向选择跳过。实际干预可为去冗余／解依�
 
 ## 通用性能诊断
 
-性能分析、实验设计、kernel设计和测量审查的定义与组合由Ergora维护，参考[专项采用调研](research/2026-11-12-specialist-adoption.md)和[工程／性能Skill盘点](research/2026-11-14-local-engineering-skills.md)。十八个纵向方向共享跨域专家，再由父模板补充对应资料；这使同一kernel或架构专家能覆盖多个方向。引用NVIDIA／其他项目的论文与Skill，不表示已导入其完整原生Agent流程；Forge等原生工具仍单独适配和准入。
+性能分析、实验设计、kernel设计和测量审查的定义与组合由Ergora维护，参考[专项采用调研](research/2026-11-12-specialist-adoption.md)和[工程／性能Skill盘点](research/2026-11-14-local-engineering-skills.md)。19个方向按专项分工；profiling与performance-diagnosis复用`ergora-performance-analyst@2.1.0`，kernel专题复用kernel-designer，共同实验设计和测量审查独立保留。引用论文与Skill不表示已导入完整原生Agent流程；Forge等工具仍单独适配和准入。
 
 ```bash
 ergora composition install-preset optimization-performance-diagnosis
 ```
 
-使用安装结果返回的完整 `root` 引用准备 manifest；根 ID 为 `ergora-opt-performance-diagnosis-proposal`，复用跨域 design／profile／measurement 三叶。父模板提供标准 [`ergora-performance-diagnosis`](../src/ergora/data/presets/workflows/ergora-opt-performance-diagnosis-proposal/skills/ergora-performance-diagnosis/SKILL.md)：先固定同症状反馈命令，再按实际格式、版本、phase 和硬件选择已有报告 reader。没有可比证据或 trace 来自不同场景时保留 unknown，向原 runner 提出有限补测请求。
+使用安装结果返回的完整 `root` 引用准备 manifest；根为`ergora-opt-performance-diagnosis-proposal@1.1.0`，`root/specialist`绑定`ergora-performance-analyst@2.1.0`，另有`root/design`和`root/measurement/review`。诊断专家提供标准 [`ergora-performance-diagnosis`](../src/ergora/data/presets/agents/ergora-performance-analyst/skills/ergora-performance-diagnosis/SKILL.md)：先固定同症状反馈命令，再按实际格式、版本、phase和硬件选择已有报告reader。没有可比证据时保留unknown，向原runner提出有限补测请求。
 
-沿[单叶输入与调用](WORKFLOW_DEFINITIONS.md#准备完整的单叶输入)为该精确根准备 grant／manifest，显式选 `root/analysis/design` 或 `root/analysis/profile`；之后把两份完整原结果交给 `root/measurement/review`。资料通过父链累加，权限仍为只读、无 shell／网络；安装不执行整图、采集器、parser 或实验。工具路线是选择依据，具体工具的安装、可用性和授权分别核实。真实收益仍按本手册的原 runner／evidence gate 验收。
+沿[单叶输入与调用](WORKFLOW_DEFINITIONS.md#准备完整的单叶输入)为该精确根准备grant／manifest，分别调用`root/specialist`与`root/design`，把两份完整原结果交给`root/measurement/review`。独立方向根只作有限专题分析；完整优化沿共同根继承政策和环境记录。权限仍为只读、无shell／网络；工具的安装、可用性与授权分别核实，真实收益按原runner／evidence gate验收。
 
 若仅需要项目级 Skill，可在本仓库 checkout 根、已登记实际项目后执行：
 
 ```bash
 ergora skill import my-project \
-  src/ergora/data/presets/workflows/ergora-opt-performance-diagnosis-proposal/skills/ergora-performance-diagnosis
+  src/ergora/data/presets/agents/ergora-performance-analyst/skills/ergora-performance-diagnosis
 ```
 
 首次 import 是初始 baseline；后续候选不自动采用。独立 `agent run --skill ergora-performance-diagnosis` 不修改模板固定资料，完整选择区别见[重构手册](USAGE.md#使用重构配方)。
 
 ## 独立的优化方向子模板
 
-按任务选择下列配方，不必让每个专家加载全部方向资料。每个根的版本为1.0.0，组合共享的analysis／measurement v2及designer／analyst／measurement reviewer；基础三叶路径为`root/analysis/design`、`root/analysis/profile`和`root/measurement/review`；low-precision与kernel方向另含`root/kernel`。每叶继承本方向完整context、自身Skill与全部结构祖先资料。
+按任务选择下列配方，不必让每个专家加载全部方向资料。19个方向根当前均为1.1.0：普通三叶为`root/specialist`、`root/design`和`root/measurement/review`，专项方法／context归对应专家，design和measurement各守其合同。low-precision额外保留`root/kernel`前驱；kernel专题的`root/specialist`本身就是kernel-designer，不另设该节点。独立方向根只供有限专题提案；完整优化将选定方向置于共同根的真实后代，继承两份完整共同Skill及环境记录。
 
 |安装用preset|根ID|准备的方向资料与输出|
 |---|---|---|
@@ -725,29 +770,29 @@ ergora skill import my-project \
 |`optimization-recipe-model`|`ergora-opt-recipe-model-proposal`|模型／任务／配方身份、收敛语义与执行映射、真实builder／mapping／模态缺项；适配交原开发流程|
 |`optimization-model-verification`|`ergora-opt-model-verification-proposal`|十二核心项、完整权重／forward／训练／resume／质量证据；exit0和schema-valid卡不替代实际结果|
 |`optimization-cluster-resiliency`|`ergora-opt-cluster-resiliency-proposal`|唯一rank生成者、原experiment／job／cycle和unknown、日志归因、checkpoint持久化与下一update恢复证据；只读提案|
-|`optimization-low-precision`|`ergora-opt-low-precision-proposal`|PTQ／QAT-QAD／TE训练的格式、融合／导出／runtime、质量及成本方案；复用四位v2专家|
-|`optimization-kernel`|`ergora-opt-kernel-proposal`|真实算子／wrapper、独立oracle、当前编译基线及kernel／整体测量；复用四位v2专家，原生工具另行准入|
+|`optimization-low-precision`|`ergora-opt-low-precision-proposal`|低精度专项与独立设计、kernel评估、测量审查；核PTQ／QAT-QAD／TE格式、runtime、质量及成本|
+|`optimization-kernel`|`ergora-opt-kernel-proposal`|kernel专项与独立设计、测量审查；核真实wrapper、oracle、编译基线及整体测量，原生工具另行准入|
 
 例如选择容量诊断，先准备项目、后端、根grant及真实UTF-8任务正文，再使用原命令：
 
 ```bash
 ergora composition install-preset optimization-memory-tuning
-ergora composition show ergora-opt-memory-tuning-proposal 1.0.1
-ergora composition prepare-manifest ergora-opt-memory-tuning-proposal 1.0.1 --grant ./grant.json --directory ./memory-manifest
-ergora composition prepare-from-manifest ./memory-manifest root/analysis/design --task ./memory-task.txt --directory ./memory-design --max-prompt-bytes 100000
-ergora composition check-input PROJECT_ID ./memory-design --mode task-mcp --backend codex --backend-reason "Explicit design backend"
-ergora composition run-input PROJECT_ID ./memory-design --mode task-mcp --backend codex --backend-reason "Explicit design backend" --timeout 600
+ergora composition show ergora-opt-memory-tuning-proposal 1.1.0
+ergora composition prepare-manifest ergora-opt-memory-tuning-proposal 1.1.0 --grant ./grant.json --directory ./memory-manifest
+ergora composition prepare-from-manifest ./memory-manifest root/specialist --task ./memory-task.txt --directory ./memory-specialist --max-prompt-bytes 100000
+ergora composition check-input PROJECT_ID ./memory-specialist --mode task-mcp --backend codex --backend-reason "Explicit specialist backend"
+ergora composition run-input PROJECT_ID ./memory-specialist --mode task-mcp --backend codex --backend-reason "Explicit specialist backend" --timeout 600
 ```
 
 grant的`permissions`／`limits`从该精确根读取，按[完整manifest准备](WORKFLOW_DEFINITIONS.md#保存和分享完整组合)设置；若需要新增权限，先修订所有相关父级上限再修订子模板，不能用task正文越权。正文提供实际code／config／依赖版本、模型与token／batch、精度／optimizer／PEFT、mesh／rank、失败阶段与原trace／snapshot／峰值、目标与独立数值／质量门禁、允许改动、资源／时间预算及恢复要求；缺项标为未知，不填写虚构测量。
 
-单次调用只运行所选叶。独立准备profile输入后，把design和profile的完整原产物、来源摘要及真实实验材料一起放入measurement的新任务正文。measurement默认优先异于执行后端，覆盖及回退须显式记录原因。配置能解析、估算低于容量、未OOM或有限短loss都不等于端到端性能／质量通过；资料中引用的Bridge／Core版本是知识来源，不表示这些依赖已安装，也不证明该组合适合当前运行版本。多个方向可作为普通精确引用子模板组合，但静态图不会获得自动训练执行权。
+单次调用只运行所选叶。另备`root/design`输入后，把specialist和design的完整原产物、来源摘要及真实实验材料一起放入measurement的新任务正文。measurement默认优先异于执行后端，覆盖及回退须记录原因。配置可解析、估算低于容量、未OOM或短loss不等于端到端性能／质量通过；库版本只是知识来源，不表示已安装或适用。多个方向在共同根下按精确引用组合，当前单叶调用不会自动调度训练或注入前驱结果。
 
 集群／恢复提案还需实际入口／初始化、nodes与每节点进程、原提交回执与作业身份、所有rank日志及共享路径、checkpoint提交／分片与恢复后的下一update证据。用srun直接生成训练进程或每节点一个launcher，按真实入口选定一个rank生成者；lost acknowledgement先按原身份对账，空日志的RESTART建议与异步保存入队均保留未验。`optimization-cluster-resiliency`不运行Slurm、NVRx或恢复动作；确定性归因工具、带内部模型的Restart Agent和实际集群执行分别准入，完整步骤及来源见其已声明context。
 
-低精度提案需源权重／精度、模块与模态覆盖、tokenizer／chat template、校准／开发／独立留出数据、每任务质量门槛、格式／算法／scale／packing及目标runtime／硬件身份。该方向额外保留`root/kernel`：先手动提供design／profile完整原产物，再把三份完整原结果和实际实验材料交给measurement。PTQ、QAT／QAD与TE训练分别核；effective_bits、低perplexity、短loss或搜索返回best均不替代任务质量与真实性能。原生ModelOpt／AutoRound／TE未随提案安装或执行，原runner与评价／采用门禁保持。
+低精度提案需源权重／精度、模块与模态覆盖、tokenizer／chat template、校准／开发／独立留出数据、每任务质量门槛、格式／算法／scale／packing及目标runtime／硬件身份。该方向额外保留`root/kernel`：先手动提供specialist／design完整原产物，再把三份完整原结果和实际实验材料交给measurement。PTQ、QAT／QAD与TE训练分别核；effective_bits、低perplexity、短loss或搜索返回best均不替代任务质量与真实性能。原生ModelOpt／AutoRound／TE未随提案安装或执行，原runner与评价／采用门禁保持。
 
-Kernel提案需真实operation／调用者、shape分布／stride／layout、数值／alias／RNG和所需梯度、硬件／compiler／DSL及当前编译基线。与低精度方向相同，先把两份完整分析交给`root/kernel`，再将三份完整原结果与真实实验资料交给measurement。候选自生成PASS、原生judge或exit0分别保留其范围；完整wrapper命中、独立oracle、梯度及实际step／服务测量单独核准，局部speedup不直接变成整体收益。其完整context给出KDA、Forge、KernelAgent/Fuser、GEAK、AKG及robust-kbench的固定来源与接入条件；提案包本身不安装／执行这些工具，不改变Forge pin／后端协议或原campaign、runner与评价／采用所有者。
+Kernel提案需真实operation／调用者、shape分布／stride／layout、数值／alias／RNG和所需梯度、硬件／compiler／DSL及当前编译基线。该专题由`root/specialist`的kernel-designer提出候选，另行调用`root/design`，再将两份完整原结果与真实实验资料交给measurement；共同完整根的kernel评估阶段仍保留。候选自生成PASS、原生judge或exit0分别保留其范围；完整wrapper命中、独立oracle、梯度及实际step／服务测量单独核准，局部speedup不直接变成整体收益。其context给出KDA、Forge、KernelAgent/Fuser、GEAK、AKG及robust-kbench的固定来源与接入条件；提案包不安装／执行这些工具，不改变原工具或runner与评价／采用所有者。
 
 Graph提案需提供实际trace／shape分布／地址和RNG生命周期、当前编译及capture范围；capture成功与实际replay、冷启动和稳态收益分别核对。Packing提案还需数据／tokenizer身份、真实样本边界／mask／loss分母、原生路径和resume状态；按所选版本区分runtime THD与offline／in-batch限制，配置token容量不能当有效源token吞吐。缺项保留未验，由原runner和owner决定实验／采用。
 

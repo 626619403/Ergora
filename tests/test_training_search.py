@@ -67,7 +67,8 @@ def search_request():
                 if key not in ('experiment_id', 'candidate_config_sha256', 'performance_policy')}
     # Preserve noncanonical baseline bytes, including its BOM, separately from candidate serialization.
     baseline = '\ufeff{ "training": {"global_batch_size": 128, "micro_batch_size": 4},\n "model": {"width": 64}, "precision": "float32" }\r\n'
-    template.update(baseline_id='baseline-one', baseline_commit='a' * 40, candidate_commit='a' * 40,
+    template.update(execution={'operation': 'full-verify'},
+                    baseline_id='baseline-one', baseline_commit='a' * 40, candidate_commit='a' * 40,
                     base_config_sha256=_sha(baseline.encode('utf-8')), contract_approved=True,
                     owner='fixture-owner', author='fixture-implementer',
                     allowed_changes=['Vary global batch size', 'Vary microbatch organization'])
@@ -115,7 +116,7 @@ def search_input(request, search_request, configuration_source):
                           '{configuration_driver}', '{configuration_request}'], 'timeout_seconds': 20,
               'configuration_readback': {'protocol': 'training-configuration-driver-v1',
                   'source': configuration_source['reference'], 'prepared_json_format': 'json-v1',
-                  'baseline_reference_protocol': None,
+                  'baseline_reference_protocol': None, 'screen': None,
                   'manifest_configuration_role': 'source-bytes',
                   'observation_scheme': 'fixture-cpu-configuration-v1'}}
     write(Path(definition['execution']['config_directory']) / 'training-runners/trusted.json', runner)
@@ -445,7 +446,7 @@ def test_completed_original_six_stage_export_binds_source_without_another_export
         'command': [sys.executable, '{configuration_driver}', '{configuration_request}'], 'timeout_seconds': 30,
         'configuration_readback': {'protocol': 'training-configuration-driver-v1',
             'source': configuration_source['reference'], 'prepared_json_format': 'json-v1',
-                  'baseline_reference_protocol': None,
+                  'baseline_reference_protocol': None, 'screen': None,
             'manifest_configuration_role': 'source-bytes',
             'observation_scheme': 'fixture-cpu-configuration-v1'}})
     search_request['experiment_template'].update(baseline_commit=commit, candidate_commit=exported['candidate_sha'])
@@ -688,10 +689,14 @@ def search_execution(search_input, service, configuration_source, tmp_path, requ
     """External JSON, one unchanged source commit, and the original managed CPU path."""
     state, definition, runtime, prefix, search_request = search_input
     options = dict(getattr(request, 'param', {}))
+    screen_support = options.pop('screen_support', False)
     if options.pop('baseline_reference_support', False):
         runner_path = Path(definition['execution']['config_directory']) / 'training-runners/trusted.json'
         runner = json.loads(runner_path.read_bytes())
         runner['configuration_readback']['baseline_reference_protocol'] = 'baseline-reference-v1'
+        if screen_support:
+            runner['configuration_readback']['screen'] = {'protocol': 'training-screen-v1',
+                                                         'scheme': 'fixture-cpu-screen-v1'}
         runner_path.write_text(json.dumps(runner) + '\n')
     baseline = '\ufeff{ "global_batch": 12, "microbatch": 3, "strategy": "redundant-loop"'
     if options:
@@ -740,10 +745,10 @@ def search_execution(search_input, service, configuration_source, tmp_path, requ
     return {'state': state, 'definition': definition, 'runtime': runtime, 'prefix': prefix,
             'request': search_request, 'preview': preview, 'prepared': published, 'directory': directory,
             'markers': configuration_source['markers'], 'service': service, 'tmp_path': tmp_path,
-            'baseline_record': baseline_path.read_bytes()}
+            'baseline_record': baseline_path.read_bytes(), 'screen_plan': configuration_source['screen_plan']}
 
 
-def _execute_search(item, *, limit=None, lose_reply=False):
+def _execute_search(item, *, limit=None, lose_reply=False, wait_completion=False):
     from ergora import training_cycles
 
     state, definition, runtime = item['state'], item['definition'], item['runtime']
@@ -794,13 +799,334 @@ def _execute_search(item, *, limit=None, lose_reply=False):
                 time.sleep(.03)
             assert (job / 'managed-execution/stopped.json').is_file(), 'The original supervisor must reap its executor'
             observed = training.execution(state, 'demo', ident)
+            final = None
+            if wait_completion:
+                final_path = runtime / f'ergora/training-submissions/{ident}.budget/final.json'
+                until = time.monotonic() + 20
+                while not final_path.exists() and time.monotonic() < until:
+                    time.sleep(.03)
+                assert final_path.is_file(), 'Original budget monitor must collect the typed terminal result'
+                final = json.loads(final_path.read_bytes())
             results.append({'experiment_id': ident, 'job': job, 'execution': observed,
-                            'submission': submitted, 'native_sha256': native_sha, 'service': record})
+                            'submission': submitted, 'native_sha256': native_sha, 'service': record,
+                            'budget_final': final})
         finally:
             stop_controller_test_owner(runtime, ident=ident)
         assert authorization_path.read_bytes() == original_clock
     item['executions'] = results
     return results
+
+
+def _prepare_cpu_screens(item, cases):
+    """Use one real B archive, then prepare each fixed screen through the public owner."""
+    source = _execute_search(item, limit=1)[0]
+    source_gate = json.loads((source['job'] / 'gate-report.json').read_bytes())
+    assert source_gate['passed'] is True, source_gate
+    saved = training.baseline_reference(item['state'], 'demo', source['experiment_id'],
+                                        evidence_sha256=source_gate['evidence_sha256'])
+    selector = {'experiment_id': source['experiment_id'], 'evidence_sha256': source_gate['evidence_sha256'],
+                'reference_sha256': saved['reference_sha256']}
+    source_manifest = json.loads((item['runtime'] / f"training/manifests/{source['experiment_id']}.json").read_bytes())
+    for field in ('local_project', 'runner_template_id', 'baseline_sha', 'candidate_sha', 'max_run_seconds',
+                  'configuration_inputs'):
+        source_manifest.pop(field, None)
+    prepared = []
+    for index, case in enumerate(cases):
+        ident = 'cpu-screen-' + str(index)
+        candidate = {'global_batch': 24, 'microbatch': 6, 'strategy': 'closed-form', **case}
+        candidate_raw = (json.dumps(candidate, sort_keys=True, indent=2) + '\n').encode()
+        plan = deepcopy(item['screen_plan'])
+        plan['verification_experiment_id'] = ident + '-verification'
+        plan['resources'][0]['required'] = case.get('fault') == 'screen-required-resource'
+        draft = {**source_manifest, 'experiment_id': ident, 'candidate_config_sha256': _sha(candidate_raw),
+                 'baseline_reference': selector, 'execution': {'operation': 'training-screen-v1', 'plan': plan}}
+        materials = {'format': 'json-v1',
+            'baseline': {'utf8': item['request']['baseline_configuration']['utf8'],
+                         'sha256': item['request']['baseline_configuration']['sha256']},
+            'candidate': {'utf8': candidate_raw.decode(), 'sha256': _sha(candidate_raw)}}
+        preview = training.preview_experiment(item['state'], 'demo', draft, 'trusted',
+            max_run_seconds=120, configuration_materials=materials)
+        result = training.prepare_experiment(item['state'], 'demo', draft, 'trusted',
+            preview['project_revision'], preview['preview_sha256'], max_run_seconds=120,
+            configuration_materials=materials)
+        assert result['status'] == 'prepared'
+        manifest_raw = (item['runtime'] / f'training/manifests/{ident}.json').read_bytes()
+        spec = json.loads((item['runtime'] / f'training/specs/{ident}.json').read_bytes())
+        assert spec['binding']['manifest_sha'] == _sha(manifest_raw)
+        assert result['experiment_id'] == spec['binding']['experiment_id'] == ident
+        prepared.append({**result, 'manifest_sha256': _sha(manifest_raw)})
+    selected = {**item, 'prepared': {'experiments': prepared}, 'cycle_id': 'screen',
+                'request': {**item['request'], 'budget': {'wall_seconds': 240, 'cleanup_seconds': 20,
+                                                       'control_timeout_seconds': 10}},
+                'reference_source': source, 'reference_saved': saved, 'reference_selector': selector}
+    return selected
+
+
+def _assert_screen_is_not_full(item, result):
+    installation = Path(item['definition']['execution']['installation'])
+    environment = {**os.environ, 'AGENTFLOW_CONFIG_DIR': item['definition']['execution']['config_directory'],
+        'AGENTFLOW_STATE_DIR': item['definition']['execution']['state_directory'],
+        'PYTHONPATH': os.pathsep.join(map(str, (Path(reference.__file__).parent.parent,
+            installation / 'local', installation / 'upstream/platform', installation / 'upstream/temporal', installation / 'upstream')))}
+    program = '''import asyncio,hashlib,json,sys
+from copy import deepcopy
+from pathlib import Path
+from agent_platform import training
+from agent_platform.core import Blocked
+from perf_temporal.adapter import ContractViolation
+from perf_temporal.client import load_experiment
+from perf_temporal.models import GateDecision,ReleaseContext,ReleaseRequest
+experiment=load_experiment(str(training.TRAINING/'specs'/ (sys.argv[1]+'.json')))
+path=training.TRAINING/'jobs'/sys.argv[1]/'result.json'
+original=path.read_bytes()
+async def run():
+    adapter=training.create_adapter()
+    errors=[]
+    try:
+        job=await adapter.lookup_job(experiment)
+        for forged in (False,True):
+            if forged:
+                value=json.loads(original)
+                value['state']='SUCCEEDED'
+                path.write_text(json.dumps(value))
+            context=ReleaseContext(experiment,GateDecision(job,True,'f'*64,path.as_uri(),'forged gate'),
+                ReleaseRequest(experiment.binding,'f'*64,'forged-owner'))
+            for name,action in (('collect',lambda:adapter.collect_and_gate(job)),
+                                ('release',lambda:adapter.authorize_release_and_create_task(context))):
+                try:
+                    await action()
+                except (ContractViolation,Blocked) as error:
+                    assert 'full-verify' in str(error)
+                    errors.append({'operation':name,'forged_state':forged,'error':str(error)})
+                else:
+                    raise AssertionError('screen reached a full consumer')
+        path.write_bytes(original)
+        if json.loads(original)['state']=='SCREEN_COMPLETED':
+            from ergora.reference_training_evidence import _screen_data
+            output=path.parent/'run-output'
+            report=json.loads((output/'screen-result.json').read_bytes())
+            original_data=json.loads((output/'screen-source-report.json').read_bytes())
+            manifest=training.read(training.TRAINING/'manifests'/ (sys.argv[1]+'.json'))
+            request_raw=(path.parent/'configuration-request.json').read_bytes()
+            request=json.loads(request_raw)
+            request['_raw_sha256']=hashlib.sha256(request_raw).hexdigest()
+            def read(ref,metadata=True):
+                raw=(output/ref['path']).read_bytes()
+                return json.loads(raw) if metadata else raw
+            # Only policy derivation is varied; no altered bound bundle is published.
+            changed=deepcopy(manifest)
+            changed['execution']['plan']['screening']['minimum_improvement_fraction']=report['change_fraction']+1
+            derived=_screen_data(original_data,request,changed,read,None)
+            assert (derived['performance_state'],derived['decision'])==('no_gain','stop_direction')
+            changed['execution']['plan']['screening'].update(minimum_improvement_fraction=0,
+                noise_fraction=report['change_fraction']*2)
+            derived=_screen_data(original_data,request,changed,read,None)
+            assert (derived['performance_state'],derived['decision'])==('below_noise','stop_direction')
+            def missing_quality(ref,metadata=True):
+                value=read(ref,metadata)
+                if ref['path']=='baseline-reference-read.json':
+                    value['quality']['state']='unavailable'
+                return value
+            derived=_screen_data(original_data,request,manifest,missing_quality,None)
+            assert (derived['performance_state'],derived['decision'])==('unavailable','inconclusive')
+            assert derived['achieved_quality_tier']=='screened'
+        return errors
+    finally:
+        path.write_bytes(original)
+        await adapter.close()
+print(json.dumps(asyncio.run(run())))
+'''
+    process = subprocess.run([sys.executable, '-P', '-c', program, result['experiment_id']],
+        env=environment, capture_output=True, text=True, timeout=10)
+    assert process.returncode == 0, process.stderr
+    assert len(json.loads(process.stdout)) == 4
+    assert not (item['runtime'] / 'training/approvals').exists()
+    assert not (item['runtime'] / 'training/integration-tickets').exists()
+
+
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('search_execution', [{'baseline_reference_support': True, 'screen_support': True}], indirect=True)
+def test_typed_screen_runs_only_two_candidate_windows_against_the_original_cpu_reference(search_execution):
+    item = _prepare_cpu_screens(search_execution, [{'global_batch': 24}, {'global_batch': 48}])
+    from ergora import training_cycles
+
+    selection = {'schema_version': 1, 'budget': item['request']['budget'], 'candidates': [
+        {'experiment_id': prepared['experiment_id'], 'manifest_sha256': prepared['manifest_sha256'],
+         'change': 'CPU screen only', 'next_bottleneck': 'No full verification or release authorized'}
+        for prepared in item['prepared']['experiments']]}
+    controller_input = item['tmp_path'] / 'blocked-controller-input'
+    packet = training_cycles.create(item['state'], 'demo', selection, controller_input)
+    with pytest.raises(ValueError, match='Controller execution unavailable for screen'):
+        training_cycles.authorize_controller(item['state'], 'demo', 'blocked-controller', controller_input,
+            packet['sha256'], item['state'].project('demo')['revision'], confirm=True, execute_selected=True)
+    assert not (item['state'].root / 'training-cycles/demo/blocked-controller').exists()
+    assert not (item['markers'] / 'screen.jsonl').exists()
+    source_output = item['reference_source']['job'] / 'run-output'
+    historical = (source_output / 'comparison-input.json').read_bytes()
+    results = _execute_search(item, wait_completion=True, lose_reply=True)
+    groups = []
+    for result in results:
+        output, observed = result['job'] / 'run-output', result['execution']
+        native = json.loads((result['job'] / 'result.json').read_bytes())
+        report_raw = (output / 'screen-result.json').read_bytes()
+        report = json.loads(report_raw)
+        assert native['state'] == 'SCREEN_COMPLETED' and native['gate'] is None
+        assert native['screen']['report_sha256'] == _sha(report_raw)
+        assert report['requested_tier'] == report['achieved_quality_tier'] == 'screened'
+        assert report['decision'] == 'promising' and report['performance_state'] == 'promising'
+        assert report['first_failure_ref'] is None and report['checks_not_run'] == []
+        assert [check['status'] for check in report['checks']] == ['PASS', 'PASS']
+        assert report['reference']['reference_sha256'] == item['reference_saved']['reference_sha256']
+        assert report['reference']['quality']['state'] == 'reusable'
+        assert report['reference']['timing']['state'] == 'historical_only'
+        assert all(observed[key] is True for key in ('executor_stop_confirmed', 'durable_stop_confirmed'))
+        assert all(observed['records'][name] is not None for name in ('request', 'launch', 'attempt', 'ack', 'stopped'))
+        assert report['managed'] == {name + '_sha256': observed['record_sha256'][name]
+                                     for name in ('request', 'launch', 'attempt', 'ack')}
+        request_raw = (result['job'] / 'configuration-request.json').read_bytes()
+        request = json.loads(request_raw)
+        assert report['configuration_request_sha256'] == _sha(request_raw)
+        assert report['execution_plan_sha256'] == _canonical_sha(request['execution']['plan'])
+        assert len(report['windows']) == 1
+        window = report['windows'][0]
+        raw_window = json.loads((output / window['raw_ref']['path']).read_bytes())
+        actual = json.loads((output / window['input_ref']['path']).read_bytes())
+        assert json.loads((output / 'screen/actual-output.txt').read_text()) == json.loads(
+            (output / 'screen/expected.json').read_bytes())['values']
+        assert window['effective_work'] == actual['effective_work'] == len(actual['values']) == 48
+        assert window['updates'] == 'not-applicable' and window['elapsed_seconds'] > 0
+        assert report['throughput'] == window['effective_work'] / window['elapsed_seconds']
+        read = json.loads((output / 'baseline-reference-read.json').read_bytes())
+        assert read['candidate_quality'] == 'not_evaluated'
+        assert read['baseline_work_skipped'] is read['independent_pair_supplied'] is read['promotion_approved'] is False
+        relations = {entry['field']: entry for entry in read['projection']['relations']}
+        historical_windows = item['reference_saved']['reference']['receipt']['baseline']['inputs']['windows']
+        assert len(historical_windows) == item['request']['measurement']['statistics']['min_pairs']
+        assert relations['input_windows'] == {'field': 'input_windows', 'relation': 'different',
+            'reference': _canonical_sha(historical_windows), 'current': _canonical_sha(historical_windows[:1]),
+            'unit': 'identity'}
+        assert 'input_windows' in read['projection']['allowed_deltas']
+        assert _sha(json.dumps(actual['values']).encode()) == historical_windows[0]['fingerprint']
+        assert report['workload']['scope']['baseline_work_executed'] is False
+        assert report['resources'] == [{**item['screen_plan']['resources'][0],
+            'state': 'NOT_RUN', 'observed': None, 'report_ref': None}]
+        assert window['provenance']['native_request_sha256'] == result['native_sha256']
+        assert window['provenance']['launch_sha256'] == observed['record_sha256']['launch']
+        assert window['provenance']['execution_phase_id'] == request['execution_phase_id']
+        candidate = json.loads(Path(request['configurations']['candidate']['path']).read_bytes())
+        expected_groups = 48 // candidate['global_batch']
+        assert len(raw_window['grouping']) == expected_groups
+        assert raw_window['grouping'] == [[candidate['microbatch']] *
+            (candidate['global_batch'] // candidate['microbatch'])] * expected_groups
+        groups.append(expected_groups)
+        for entry in report['artifacts']:
+            raw = (output / entry['path']).read_bytes()
+            assert entry == {'path': entry['path'], 'sha256': _sha(raw), 'bytes': len(raw)}
+        assert not (output / 'evidence.json').exists() and not (result['job'] / 'gate-report.json').exists()
+        assert not list((output / 'raw').glob('*-baseline.json'))
+        assert json.loads(result['service'].read_bytes())['starts'] == 1
+        assert result['budget_final']['status'] == 'completed'
+        assert result['budget_final']['gate'] is None
+        assert result['budget_final']['screen']['state'] == native['state']
+        evidence = training.evidence(item['state'], 'demo', result['experiment_id'])
+        assert evidence['archive_status'] == 'no_accepted_archive' and evidence['recorded_gate_report'] is None
+        assert evidence['screen_status'] == 'complete'
+        assert evidence['screen']['result_sha256'] == _sha(report_raw)
+        assert evidence['screen']['report'] == report
+        assert all(evidence['screen']['cleanup'][name] is True for name in
+                   ('durable_stop_confirmed', 'executor_stop_confirmed', 'reap_record_observed'))
+        text = (output / 'screen/actual-output.txt').read_text()
+        selected = training.evidence(item['state'], 'demo', result['experiment_id'],
+            artifact='screen/actual-output.txt', screen_result_sha256=_sha(report_raw), offset=2, limit=10)
+        assert selected['artifact']['text'] == text[2:12]
+        with pytest.raises(ValueError, match='exact screen result SHA'):
+            training.evidence(item['state'], 'demo', result['experiment_id'],
+                artifact='screen/actual-output.txt', screen_result_sha256='0' * 64)
+        _assert_screen_is_not_full(item, result)
+        for name in ('supervisor', 'executor'):
+            assert_budget_process_stopped(observed['records']['attempt'][name])
+    assert groups == [2, 1]
+    installation = Path(item['definition']['execution']['installation'])
+    unavailable = installation.with_name(installation.name + '-unavailable')
+    installation.rename(unavailable)
+    try:
+        saved = training.evidence(item['state'], 'demo', results[0]['experiment_id'])
+        assert saved['screen_status'] == 'complete'
+        assert training.inspect(item['state'], 'demo', results[0]['experiment_id'])['experiment'][
+            'recorded_result_state'] == 'SCREEN_COMPLETED'
+    finally:
+        unavailable.rename(installation)
+    assert (source_output / 'comparison-input.json').read_bytes() == historical
+    markers = {name: [json.loads(line) for line in (item['markers'] / (name + '.jsonl')).read_text().splitlines()]
+               for name in ('prepare', 'first-work', 'reference-read', 'reference-record', 'screen')}
+    assert len(markers['prepare']) == 3 and len(markers['first-work']) == len(markers['reference-record']) == 1
+    assert [entry['identity'] for entry in markers['prepare'][1:]] == [entry['identity'] for entry in markers['screen']]
+    assert [entry['identity'] for entry in markers['reference-read']] == [entry['identity'] for entry in markers['screen']]
+    assert all(entry['observations'] == 2 for entry in markers['screen'])
+    for entry in [*markers['prepare'], *markers['first-work'], *markers['screen']]:
+        assert_budget_process_stopped(entry['process_identity'])
+    assert (item['prefix'] / 'baseline.json').read_bytes() == item['baseline_record']
+
+
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('search_execution', [{'baseline_reference_support': True, 'screen_support': True}], indirect=True)
+def test_actual_screen_failures_preserve_first_failure_and_never_become_full_success(search_execution):
+    faults = ['screen-nan', 'screen-missing-input', 'screen-wrong-groups',
+              'screen-first-failure-then-exception', 'screen-invalid-raw', 'screen-required-resource',
+              'reference-read-last-sync-fence', 'reference-read-last-sync-deadline']
+    item = _prepare_cpu_screens(search_execution, [{'fault': fault} for fault in faults])
+    prepared = item['prepared']['experiments']
+    required_index = faults.index('screen-required-resource')
+    regular = {**item, 'cycle_id': 'screen-negative', 'prepared': {'experiments': [
+        result for index, result in enumerate(prepared) if index != required_index]}}
+    required = {**item, 'cycle_id': 'screen-required-resource',
+                'prepared': {'experiments': [prepared[required_index]]}}
+    # Each manual selection retains one contract and one original clock.
+    executed = [*_execute_search(regular, wait_completion=True), *_execute_search(required, wait_completion=True)]
+    by_id = {result['experiment_id']: result for result in executed}
+    results = [by_id[result['experiment_id']] for result in prepared]
+    for fault, result in zip(faults, results):
+        output = result['job'] / 'run-output'
+        native = json.loads((result['job'] / 'result.json').read_bytes())
+        expected_state = ('SCREEN_REJECTED' if fault in faults[:3] else
+                          'CANCELLED' if fault == 'reference-read-last-sync-fence' else 'FAILED')
+        assert native['state'] == expected_state and native['gate'] is None
+        assert result['budget_final']['native']['state'] == expected_state
+        assert not (output / 'evidence.json').exists() and not (result['job'] / 'gate-report.json').exists()
+        if expected_state == 'SCREEN_REJECTED':
+            report = json.loads((output / 'screen-result.json').read_bytes())
+            assert report['achieved_quality_tier'] == 'none' and report['decision'] == 'rejected'
+            assert any(check['status'] == 'FAIL' for check in report['checks'])
+            assert len(report['windows']) == 1
+            if fault == 'screen-missing-input':
+                assert report['windows'][0]['effective_work'] == 47
+            assert report['first_failure_ref']['sha256'] == _sha((output / 'screen-first-failure.json').read_bytes())
+            _assert_screen_is_not_full(item, result)
+        else:
+            assert native.get('screen') is None
+        if fault.startswith('reference-read-last-sync-'):
+            assert not (output / 'screen').exists(), 'Last reference sync must be followed by fresh live admission'
+        if fault in faults[:4]:
+            failure_raw = (output / 'screen-first-failure.json').read_bytes()
+            failure = json.loads(failure_raw)
+            assert failure['failure']['check_id'] == (
+                'finite-output' if fault in ('screen-nan', 'screen-first-failure-then-exception') else 'independent-output')
+            if fault in ('screen-nan', 'screen-first-failure-then-exception'):
+                assert 'nan' in (output / 'screen/actual-output.txt').read_text()
+            assert b'NaN' not in failure_raw
+        assert result['execution']['executor_stop_confirmed'] is True
+        for name in ('supervisor', 'executor'):
+            assert_budget_process_stopped(result['execution']['records']['attempt'][name])
+    failures = [json.loads(line) for line in
+                (item['markers'] / 'screen-first-failure-returned.jsonl').read_text().splitlines()]
+    assert len(failures) == 4
+    for first, result in zip(failures, results):
+        failure = result['job'] / 'run-output/screen-first-failure.json'
+        assert first['sha256'] == _sha(failure.read_bytes()) and first['inode'] == failure.stat().st_ino
+    screens = [json.loads(line) for line in (item['markers'] / 'screen.jsonl').read_text().splitlines()]
+    assert len(screens) == 6
+    for entry in screens:
+        assert_budget_process_stopped(entry['process_identity'])
 
 
 @pytest.mark.parametrize('installation', ['managed'], indirect=True)

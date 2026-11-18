@@ -58,7 +58,7 @@ class Job:
 @dataclass(frozen=True)
 class Observation:
     job: Job
-    state: str  # QUEUED, RUNNING, SUCCEEDED, FAILED, CANCELLED
+    state: str  # QUEUED, RUNNING, SUCCEEDED, FAILED, CANCELLED, SCREEN_COMPLETED, SCREEN_REJECTED
     detail: str = ""
 
 
@@ -67,6 +67,15 @@ class GateDecision:
     job: Job
     passed: bool
     evidence_sha: str
+    report_uri: str
+    summary: str
+
+
+@dataclass(frozen=True)
+class ScreenDecision:
+    job: Job
+    state: str
+    result_sha256: str
     report_uri: str
     summary: str
 

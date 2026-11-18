@@ -71,51 +71,56 @@ async def check_cycle_predecessors(plan, admission, ready, binding, client, rema
         if state.project(project['id']) != project:
             raise ValueError('Previous round admission lost its original registered project')
 
-    async with asyncio.timeout(remaining()):
-        active()
-        originals = protocol.authenticate_cycle_binding(binding, plan, admission, ready)
-        selection = protocol.round_selection(plan, authorization)
-        for position, (saved, value, original, _) in enumerate(originals):
+    adapter = LocalTrainingAdapter()
+    try:
+        async with asyncio.timeout(remaining()):
             active()
-            ordinal = value['identity']['ordinal']
-            if (value['activity_context']['workflow_input'] != admission.controller_intent()['workflow_input']
-                    or value['activity_context']['service_namespace'] != client.namespace
-                    or value['selection'] != selection):
-                raise ValueError('Previous observation differs from the current original selection or namespace')
-            evidence = training.evidence(state, project['id'], original['experiment_id'])
-            retain(ordinal, 'evidence', evidence)
+            originals = protocol.authenticate_cycle_binding(binding, plan, admission, ready)
+            selection = protocol.round_selection(plan, authorization)
+            for position, (saved, value, original, _) in enumerate(originals):
+                active()
+                ordinal = value['identity']['ordinal']
+                if (value['activity_context']['workflow_input'] != admission.controller_intent()['workflow_input']
+                        or value['activity_context']['service_namespace'] != client.namespace
+                        or value['selection'] != selection):
+                    raise ValueError('Previous observation differs from the current original selection or namespace')
+                evidence = training.evidence(state, project['id'], original['experiment_id'])
+                retain(ordinal, 'evidence', evidence)
+                active()
+                if evidence != value['evidence']:
+                    raise ValueError('Previous accepted complete archive inventory changed')
+                if position != 0:
+                    continue
+                chain = protocol.ExecutionRecords(project, original['experiment_id'], authorization['control_home']).load()
+                request = chain.request_record(authorization['controller']['actor_id'])
+                if chain.records['request'] != request:
+                    raise ValueError('Previous execution request differs from its complete controller source')
+                receipt = chain.document(chain.budget.parent / (chain.ident + '.result.json'))
+                runtime = await observe_submission(client, original, run_id=receipt['run_id'], timeout=remaining())
+                retain(ordinal, 'runtime', runtime)
+                active()
+                native = await adapter.poll_job(Job(
+                    Binding(**original['observation']['experiment']['spec']['binding']), request['job_id']),
+                    timeout=min(20, remaining()))
+                retain(ordinal, 'native', asdict(native))
+                active()
+                execution = chain.observe(durable=True)
+                retain(ordinal, 'execution', execution)
+                observed = {'status': 'observed' if runtime is not None else 'unknown',
+                    'submission': {name: receipt[name] for name in ('workflow_id', 'run_id', 'intent_sha256')},
+                    'runtime': runtime, 'native': asdict(native), 'execution': execution,
+                    'facts': {'submission': {'state': 'submitted'}, 'candidate': {
+                        'current_project_matches': state.project(project['id']) == project,
+                        'parent_stop_visible': admission.observe()['stop_visible']}}}
+                if protocol.round_state(observed, evidence, saved['report']['rounds'][-1], original) != 'accepted':
+                    raise ValueError('Immediately previous round is no longer authenticated accepted')
+            await lookup_controller(client, admission.controller_intent(), binding['controller'], timeout=remaining())
+            # Blocking archive reads and RPCs cannot leave a stale local admission.
+            protocol.authenticate_cycle_binding(binding, plan, admission, ready)
             active()
-            if evidence != value['evidence']:
-                raise ValueError('Previous accepted complete archive inventory changed')
-            if position != 0:
-                continue
-            chain = protocol.ExecutionRecords(project, original['experiment_id'], authorization['control_home']).load()
-            request = chain.request_record(authorization['controller']['actor_id'])
-            if chain.records['request'] != request:
-                raise ValueError('Previous execution request differs from its complete controller source')
-            receipt = chain.document(chain.budget.parent / (chain.ident + '.result.json'))
-            runtime = await observe_submission(client, original, run_id=receipt['run_id'], timeout=remaining())
-            retain(ordinal, 'runtime', runtime)
-            active()
-            native = await LocalTrainingAdapter().poll_job(Job(
-                Binding(**original['observation']['experiment']['spec']['binding']), request['job_id']))
-            retain(ordinal, 'native', asdict(native))
-            active()
-            execution = chain.observe(durable=True)
-            retain(ordinal, 'execution', execution)
-            observed = {'status': 'observed' if runtime is not None else 'unknown',
-                'submission': {name: receipt[name] for name in ('workflow_id', 'run_id', 'intent_sha256')},
-                'runtime': runtime, 'native': asdict(native), 'execution': execution,
-                'facts': {'submission': {'state': 'submitted'}, 'candidate': {
-                    'current_project_matches': state.project(project['id']) == project,
-                    'parent_stop_visible': admission.observe()['stop_visible']}}}
-            if protocol.round_state(observed, evidence, saved['report']['rounds'][-1], original) != 'accepted':
-                raise ValueError('Immediately previous round is no longer authenticated accepted')
-        await lookup_controller(client, admission.controller_intent(), binding['controller'], timeout=remaining())
-        # Blocking archive reads and RPCs cannot leave a stale local admission.
-        protocol.authenticate_cycle_binding(binding, plan, admission, ready)
-        active()
-        return originals[0][0] if originals else None
+            return originals[0][0] if originals else None
+    finally:
+        await adapter.close()
 
 
 class _BudgetPhase:
@@ -655,9 +660,8 @@ class BudgetedStart:
         spec = self.intent['observation']['experiment']['spec']
         return Experiment(**{**spec, 'binding': Binding(**spec['binding'])})
 
-    async def completion(self) -> dict | None:
-        from agent_platform.training import create_adapter
-
+    async def completion(self, adapter, *, timeout: float = 20) -> dict | None:
+        deadline = asyncio.get_running_loop().time() + timeout
         experiment = self.experiment()
         request = self.operation.native_request()
         if request is None:
@@ -665,10 +669,9 @@ class BudgetedStart:
         if (self.operation.sha(request['experiment']) != self.operation.sha(asdict(experiment))
                 or self.operation.sha(request['runner']) != self.operation.sha(self.intent['observation']['experiment']['current_runner'])):
             raise ValueError('Budget native request differs from its complete original experiment or runner')
-        adapter = create_adapter()
         job = await adapter.lookup_job(experiment)
-        observation = await adapter.poll_job(job)
-        if observation.state not in ('SUCCEEDED', 'FAILED', 'CANCELLED'):
+        observation = await adapter.poll_job(job, timeout=min(20, max(0, deadline - asyncio.get_running_loop().time())))
+        if observation.state not in ('SUCCEEDED', 'FAILED', 'CANCELLED', 'SCREEN_COMPLETED', 'SCREEN_REJECTED'):
             return None
         if (self.operation.root / ('training/jobs/' + self.operation.ident + '/managed-execution')).exists():
             stopped = training_execution_protocol.ExecutionRecords(self.operation.project, self.operation.ident,
@@ -676,11 +679,23 @@ class BudgetedStart:
             if stopped['executor_stop_confirmed'] is not True:
                 return None
         gate = asdict(await adapter.collect_and_gate(job)) if observation.state == 'SUCCEEDED' else None
-        return {'status': 'completed', 'native': asdict(observation), 'gate': gate}
+        screen = (asdict(await adapter.collect_screen(job,
+            timeout=min(20, max(0, deadline - asyncio.get_running_loop().time()))))
+            if observation.state in ('SCREEN_COMPLETED', 'SCREEN_REJECTED') else None)
+        return {'status': 'completed', 'native': asdict(observation), 'gate': gate, 'screen': screen}
 
     async def helper(self, mode: str, context: dict) -> dict:
         from agent_platform.training import create_adapter
 
+        if mode in ('monitor', 'fence'):
+            adapter = create_adapter()
+            try:
+                return await self._observe_helper(mode, context, adapter)
+            finally:
+                await adapter.close()
+        return await self._observe_helper(mode, context, None)
+
+    async def _observe_helper(self, mode: str, context: dict, adapter) -> dict:
         self.validate_cached(context)
         if mode == 'publish':
             final = self.operation.payload['final']
@@ -692,7 +707,8 @@ class BudgetedStart:
             while True:
                 if not self.owner_alive():
                     return {'status': 'unknown', 'reason': 'Original budget owner disappeared'}
-                completed = await self.completion()
+                completed = await self.completion(adapter,
+                    timeout=min(20, context['policy']['control_timeout_seconds'], self.remaining(context)))
                 if completed is not None:
                     return completed
                 self.require_active()
@@ -700,7 +716,8 @@ class BudgetedStart:
                     return {'status': 'stop', 'reason': 'Original native fence observed'}
                 await asyncio.sleep(.1)
         if mode == 'fence':
-            completed = await self.completion()
+            completed = await self.completion(adapter,
+                timeout=min(20, context['policy']['control_timeout_seconds'], self.remaining(context, cleanup=True)))
             if completed is not None:
                 return completed
             relative = 'training/fences/' + self.operation.ident + '.json'
@@ -709,7 +726,7 @@ class BudgetedStart:
                 self.operation.adapter.safe_file(self.operation.root, name)
             if path.exists() and self.operation.document(self.operation.root, relative) != {'binding': asdict(self.experiment().binding)}:
                 raise ValueError('Budget fence conflicts with its original complete binding')
-            job = await create_adapter().fence_and_lookup(self.experiment())
+            job = await adapter.fence_and_lookup(self.experiment())
             durable = self.durable_fence()
             if self.remaining(context, cleanup=True) <= 0:
                 return {'status': 'unknown', 'reason': 'Original cleanup deadline passed during fence publication'}

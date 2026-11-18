@@ -135,7 +135,80 @@ def require_driver(manifest, runner):
         raise ValueError('Configuration execution unavailable: runner and input descriptor disagree')
     if value is not None and value['kind'] == 'prepared-json' and capability.get('prepared_json_format') != value['format']:
         raise ValueError('Configuration execution unavailable: trusted driver does not declare json-v1 support')
+    execution_plan(manifest, runner)
     return value
+
+
+def execution_plan(manifest, runner):
+    """Validate the one current operation without importing source or reading history."""
+    execution = manifest.get('execution')
+    if not isinstance(execution, dict):
+        raise ValueError('Current execution requires an explicit operation')
+    if execution.get('operation') == 'full-verify':
+        _exact(execution, ('operation',), 'Full execution')
+        return execution
+    _exact(execution, ('operation', 'plan'), 'Screen execution')
+    if execution['operation'] != 'training-screen-v1':
+        raise ValueError('Execution operation unavailable')
+    plan = execution['plan']
+    _exact(plan, ('scheme', 'requested_tier', 'verification_experiment_id', 'input_plan', 'window',
+                  'checks', 'resources', 'screening'), 'Screen plan')
+    capability = runner['configuration_readback']
+    screen = capability.get('screen') if isinstance(capability, dict) else None
+    if (not isinstance(screen, dict) or screen != {'protocol': 'training-screen-v1', 'scheme': plan['scheme']}
+            or capability.get('baseline_reference_protocol') != 'baseline-reference-v1'
+            or baseline_selector(manifest) is None or input_descriptor(manifest) is None):
+        raise ValueError('Screen execution unavailable: declared source, scheme or baseline reference is missing')
+    if (not isinstance(plan['scheme'], str) or re.fullmatch('[A-Za-z0-9][A-Za-z0-9_.-]{0,127}', plan['scheme']) is None
+            or plan['requested_tier'] != 'screened'
+            or not isinstance(plan['verification_experiment_id'], str)
+            or re.fullmatch('[A-Za-z0-9][A-Za-z0-9_-]{0,79}', plan['verification_experiment_id']) is None
+            or plan['verification_experiment_id'] == manifest['experiment_id']):
+        raise ValueError('Screen plan requires its fixed scheme, tier and distinct verification experiment')
+    _exact(plan['input_plan'], ('scheme', 'sha256'), 'Screen input plan')
+    _sha(plan['input_plan']['sha256'])
+    if not isinstance(plan['input_plan']['scheme'], str) or not plan['input_plan']['scheme']:
+        raise ValueError('Screen input plan requires an explicit source scheme')
+    window = plan['window']
+    _exact(window, ('unit', 'minimum_work', 'maximum_work', 'warmup_maximum_work', 'maximum_windows', 'maximum_seconds'), 'Screen window')
+    if (window['unit'] not in ('source_samples', 'source_tokens')
+            or any(type(window[key]) is not int for key in ('minimum_work', 'maximum_work', 'warmup_maximum_work', 'maximum_windows'))
+            or not 0 < window['minimum_work'] <= window['maximum_work'] or window['warmup_maximum_work'] < 0
+            or window['maximum_windows'] <= 0 or type(window['maximum_seconds']) not in (int, float)
+            or not math.isfinite(window['maximum_seconds']) or not 1 <= window['maximum_seconds'] <= 86400):
+        raise ValueError('Screen window requires supported work bounds and walltime 1..86400 seconds')
+    if not isinstance(plan['checks'], list) or not 1 <= len(plan['checks']) <= 64:
+        raise ValueError('Screen requires a complete bounded check plan')
+    checks = set()
+    for check in plan['checks']:
+        _exact(check, ('id', 'kind', 'contract_sha256', 'source_entrypoint'), 'Screen check')
+        if not isinstance(check['id'], str) or not check['id'] or check['id'] in checks or check['kind'] not in ('finite', 'behavior'):
+            raise ValueError('Screen checks require unique IDs and supported kinds')
+        checks.add(check['id'])
+        _sha(check['contract_sha256'])
+        relative(check['source_entrypoint'])
+    if {check['kind'] for check in plan['checks']} != {'finite', 'behavior'}:
+        raise ValueError('Screen requires finite and independent behavior checks')
+    if not isinstance(plan['resources'], list) or len(plan['resources']) > 32:
+        raise ValueError('Screen resource plan exceeds its complete bound')
+    metrics = set()
+    for metric in plan['resources']:
+        _exact(metric, ('metric', 'unit', 'scope', 'aggregation', 'required', 'limit'), 'Screen resource')
+        if (any(not isinstance(metric[key], str) or not metric[key].strip() for key in ('metric', 'unit', 'aggregation'))
+                or not (isinstance(metric['scope'], str) and metric['scope'].strip() or isinstance(metric['scope'], dict) and metric['scope'])
+                or metric['metric'] in metrics or type(metric['required']) is not bool
+                or metric['limit'] is not None and (type(metric['limit']) not in (int, float)
+                    or not math.isfinite(metric['limit']) or metric['limit'] < 0)):
+            raise ValueError('Screen resources require unique typed observations and finite limits')
+        metrics.add(metric['metric'])
+    screening = plan['screening']
+    _exact(screening, ('target', 'minimum_improvement_fraction', 'noise_fraction', 'comparison_scheme'), 'Screening policy')
+    if (screening['target'] not in {'throughput', *metrics}
+            or not isinstance(screening['comparison_scheme'], str) or not screening['comparison_scheme']
+            or any(type(screening[key]) not in (int, float) or not math.isfinite(screening[key]) or screening[key] < 0
+                   for key in ('minimum_improvement_fraction', 'noise_fraction'))):
+        raise ValueError('Screening requires a declared target and finite exploration thresholds')
+    return execution
 
 
 def baseline_selector(manifest):

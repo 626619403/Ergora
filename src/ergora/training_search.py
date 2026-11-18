@@ -32,7 +32,7 @@ MAX_PACKAGE_BYTES = 10_000_000
 _SCHEMA = json.loads((Path(__file__).parent / 'data/schemas/training-search-v1.json').read_text())
 _COVERAGE = {'operation': 'preparation-only', 'origin_authenticated': False,
              'runtime_status': 'not_queried', 'execution_authorized': False,
-             'budget_started': False, 'configuration_execution': 'requires-original-managed-full'}
+             'budget_started': False, 'configuration_execution': 'requires-original-managed-execution'}
 _PACKET_FIELDS = {'schema_version', 'kind', 'control_home', 'project', 'request', 'request_sha256',
                   'candidate_source', 'cardinality', 'family_allocation', 'performance_policy',
                   'performance_policy_sha256', 'baseline_configuration', 'choices', 'coverage'}
@@ -347,9 +347,13 @@ def _check_native(packet, choice):
     _exact(runner, {'schema_version', 'runner_template_id', 'project', 'repo', 'command', 'timeout_seconds', 'configuration_readback'},
            'original runner template')
     capability = runner['configuration_readback']
-    _exact(capability, {'protocol', 'source', 'prepared_json_format', 'manifest_configuration_role', 'observation_scheme', 'baseline_reference_protocol'},
+    _exact(capability, {'protocol', 'source', 'prepared_json_format', 'manifest_configuration_role', 'observation_scheme', 'baseline_reference_protocol', 'screen'},
            'frozen configuration readback')
-    if (capability['baseline_reference_protocol'] not in (None, 'baseline-reference-v1')
+    if (capability['screen'] is not None and (not isinstance(capability['screen'], dict)
+            or set(capability['screen']) != {'protocol', 'scheme'}
+            or capability['screen']['protocol'] != 'training-screen-v1'
+            or not isinstance(capability['screen']['scheme'], str))
+            or capability['baseline_reference_protocol'] not in (None, 'baseline-reference-v1')
             or capability['protocol'] != 'training-configuration-driver-v1'
             or capability['manifest_configuration_role'] != 'source-bytes'
             or capability['prepared_json_format'] != 'json-v1'

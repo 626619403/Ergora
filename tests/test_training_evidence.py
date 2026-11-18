@@ -15,6 +15,49 @@ from ergora import reference, training
 from test_training import experiments, registration
 from test_training_runtime import installation
 from test_training_submission import prepared, service
+from test_training_runner import configuration_source
+from test_training_search import (search_request, search_input, search_execution,
+                                  _prepare_cpu_screens, _execute_search)
+
+
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('search_execution', [{'baseline_reference_support': True, 'screen_support': True}], indirect=True)
+def test_screen_opaque_check_artifacts_keep_raw_identity_and_capacity(search_execution):
+    item = _prepare_cpu_screens(search_execution, [{'fault': 'screen-opaque-artifacts'}])
+    result, = _execute_search(item, wait_completion=True)
+    state, ident = item['state'], result['experiment_id']
+    output = result['job'] / 'run-output'
+    report = json.loads((output / 'screen-result.json').read_bytes())
+    assert json.loads((result['job'] / 'result.json').read_bytes())['state'] == 'SCREEN_COMPLETED'
+    inputs = (output / 'screen/check-inputs.bin').read_bytes()
+    expected = (output / 'screen/check-expected.bin').read_bytes()
+    assert b'\0' in inputs
+    with pytest.raises(UnicodeDecodeError):
+        inputs.decode('utf-8')
+    assert 1_048_576 < len(expected) <= 16_777_216
+    actual = json.loads((output / 'screen/actual-output.txt').read_bytes())
+    assert [int.from_bytes(expected[index:index + 24_000], 'big')
+            for index in range(0, len(expected), 24_000)] == actual
+    assert all(check['status'] == 'PASS' for check in report['checks'])
+    assert report['windows'][0]['input_ref']['path'] == 'screen/inputs.json'
+    observed = training.evidence(state, 'demo', ident)
+    assert observed['screen_status'] == 'complete' and observed['screen']['report'] == report
+    originals = {path: path.read_bytes() for path in output.rglob('*') if path.is_file()}
+    for path, replacement, error in (
+            (output / 'screen/check-inputs.bin', inputs + b'drift', 'digest differs'),
+            (output / 'screen/check-expected.bin', b'\0' * 16_777_217, 'capacity_exceeded')):
+        try:
+            path.write_bytes(replacement)
+            with pytest.raises(ValueError, match=error):
+                training.evidence(state, 'demo', ident)
+        finally:
+            path.write_bytes(originals[path])
+    assert training.evidence(state, 'demo', ident)['screen_status'] == 'complete'
+    assert {path: path.read_bytes() for path in output.rglob('*') if path.is_file()} == originals
+    with pytest.raises(ValueError, match='full-verify'):
+        training.approve(state, 'demo', ident, state.project('demo')['revision'],
+            run_id=result['submission']['run_id'], evidence_sha256='a' * 64, confirm=True)
+    assert not (item['runtime'] / 'training/approvals').exists()
 
 
 @pytest.fixture

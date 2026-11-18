@@ -59,7 +59,21 @@ def configuration_source(tmp_path, monkeypatch):
     markers = tmp_path / 'configuration markers'
     monkeypatch.setenv('ERGORA_TEST_CONFIGURATION_MARKERS', str(markers))
     selected = training_configuration.source_reference(source, source_commit, 'driver.py')
-    return {'source': source, 'reference': selected, 'markers': markers, 'git': git, 'commit': commit}
+    contract_sha = hashlib.sha256((source / 'driver.py').read_bytes()).hexdigest()
+    input_sha = hashlib.sha256(json.dumps(list(range(3500, 3548)), separators=(',', ':')).encode()).hexdigest()
+    screen_plan = {'scheme': 'fixture-cpu-screen-v1', 'requested_tier': 'screened',
+        'verification_experiment_id': 'cpu-full-verification',
+        'input_plan': {'scheme': 'fixed-positive-integers-v1', 'sha256': input_sha},
+        'window': {'unit': 'source_samples', 'minimum_work': 1, 'maximum_work': 48,
+                   'warmup_maximum_work': 0, 'maximum_windows': 1, 'maximum_seconds': 10.5},
+        'checks': [{'id': name, 'kind': kind, 'contract_sha256': contract_sha, 'source_entrypoint': 'driver.py'}
+                   for name, kind in (('finite-output', 'finite'), ('independent-output', 'behavior'))],
+        'resources': [{'metric': 'peak_rss', 'unit': 'bytes', 'scope': 'whole_runner_process',
+                       'aggregation': 'peak', 'required': False, 'limit': None}],
+        'screening': {'target': 'throughput', 'minimum_improvement_fraction': 0,
+                      'noise_fraction': 0, 'comparison_scheme': 'fixture-integer-reference-projection-v1'}}
+    return {'source': source, 'reference': selected, 'markers': markers, 'git': git, 'commit': commit,
+            'screen_plan': screen_plan}
 
 
 @pytest.fixture
@@ -81,13 +95,14 @@ def configuration_project(registration, configuration_source):
               'repo': definition['repo'], 'command': [str(Path(definition['execution']['installation']) / '.venv/bin/python'),
                    '{configuration_driver}', '{configuration_request}'], 'timeout_seconds': 20,
               'configuration_readback': {'protocol': 'training-configuration-driver-v1', 'source': selected,
-                  'prepared_json_format': None, 'baseline_reference_protocol': None,
+                  'prepared_json_format': None, 'baseline_reference_protocol': None, 'screen': None,
                   'manifest_configuration_role': 'source-bytes',
                   'observation_scheme': 'fixture-cpu-configuration-v1'}}
     return {'state': state, 'definition': definition, 'runner': runner, 'markers': configuration_source['markers'],
             'baseline_raw': baseline_raw, 'baseline_commit': baseline_commit,
             'candidate_raw': candidate_raw, 'candidate_commit': candidate_commit,
-            'configuration': configuration, 'source': configuration_source['source'], 'git': git, 'commit': commit}
+            'configuration': configuration, 'source': configuration_source['source'], 'git': git, 'commit': commit,
+            'screen_plan': configuration_source['screen_plan']}
 
 
 @pytest.mark.parametrize('installation', ['managed'], indirect=True)

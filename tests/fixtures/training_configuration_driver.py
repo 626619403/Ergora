@@ -3,6 +3,7 @@
 from copy import deepcopy
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import platform
@@ -42,6 +43,10 @@ def marker(name, value):
     if directory:
         path = Path(directory) / (name + '.jsonl')
         path.parent.mkdir(parents=True, exist_ok=True)
+        if 'pid' in value and sys.platform == 'linux':
+            value = {**value, 'process_identity': {'pid': os.getpid(),
+                'boot_id': Path('/proc/sys/kernel/random/boot_id').read_text().strip(),
+                'start_ticks': int(Path('/proc/self/stat').read_text().rsplit(')', 1)[1].split()[19])}}
         with path.open('a') as stream:
             stream.write(json.dumps(value) + '\n')
 
@@ -262,6 +267,112 @@ def oracle(inputs):
     return expected
 
 
+def screen(context, request, output, *, record_first_failure):
+    """Measure one candidate integer window and check its actual output independently."""
+    output = Path(output)
+    plan = request['execution']['plan']
+    config = context['configurations']['candidate']
+    fault = config['fault']
+    planned_inputs = list(range(3500, 3548))
+    if plan['input_plan'] != {'scheme': 'fixed-positive-integers-v1',
+                              'sha256': canonical_sha(planned_inputs)}:
+        raise ValueError('CPU screen does not support the frozen input plan')
+    marker('screen', {'pid': os.getpid(), 'identity': context['identity'],
+                      'observations': context['observations']})
+    actual_inputs = planned_inputs[:-1] if fault == 'screen-missing-input' else planned_inputs
+    actual_config = {**config, 'global_batch': 12} if fault == 'screen-wrong-groups' else config
+    started = time.perf_counter_ns()
+    values, grouping = calculate(actual_config, actual_inputs)
+    elapsed = (time.perf_counter_ns() - started) / 1e9
+    if fault in ('screen-nan', 'screen-first-failure-then-exception'):
+        values[0] = float('nan')
+    expected = oracle(planned_inputs)
+    write(output / 'screen/inputs.json', {'input_plan': plan['input_plan'],
+          'effective_work': len(actual_inputs), 'values': actual_inputs})
+    write(output / 'screen/expected.json', {'values': expected,
+          'algorithm': 'sum successive odd increments; independent of candidate execution'})
+    check_inputs, check_expected = 'screen/inputs.json', 'screen/expected.json'
+    if fault == 'screen-opaque-artifacts':
+        check_inputs, check_expected = 'screen/check-inputs.bin', 'screen/check-expected.bin'
+        (output / check_inputs).write_bytes(b''.join(value.to_bytes(8, 'big') for value in actual_inputs))
+        # A deliberately wide raw integer encoding exercises the artifact capacity,
+        # independently of the JSON window and the source-owned oracle report.
+        (output / check_expected).write_bytes(b''.join(value.to_bytes(24_000, 'big') for value in expected))
+    # A textual raw observation preserves nonfinite diagnostics without nonstandard JSON.
+    (output / 'screen/actual-output.txt').write_text(repr(values) + '\n', encoding='utf-8')
+    window = {'provenance': {'native_request_sha256': request['native_request_sha256'],
+                'launch_sha256': request['managed']['launch_sha256'],
+                'execution_phase_id': request['execution_phase_id'],
+                'run_id': uuid.uuid4().hex, 'window_id': uuid.uuid4().hex},
+              'input_ref': artifact(output, 'screen/inputs.json'), 'unit': plan['window']['unit'],
+              'effective_work': len(actual_inputs), 'updates': 'not-applicable',
+              'measurement_mode': 'unprofiled', 'aggregation': 'global_completion_window',
+              'rank_coverage': {'expected': [0], 'completed': [0]}, 'elapsed_seconds': elapsed}
+    write(output / 'screen/window.json', {**window, 'grouping': grouping,
+          'output_ref': artifact(output, 'screen/actual-output.txt'),
+          'context_identity': context['identity'], 'candidate_batch': config['global_batch'],
+          'candidate_microbatch': config['microbatch']})
+    window['raw_ref'] = artifact(output, 'screen/window.json')
+    expected_groups = [
+        [len(planned_inputs[start + offset:start + min(offset + config['microbatch'], config['global_batch'])])
+         for offset in range(0, min(config['global_batch'], len(planned_inputs) - start), config['microbatch'])]
+        for start in range(0, len(planned_inputs), config['global_batch'])]
+    checks = []
+    for order, check in enumerate(plan['checks']):
+        passed = (all(math.isfinite(value) for value in values) if check['kind'] == 'finite' else
+                  values == expected and actual_inputs == planned_inputs and grouping == expected_groups)
+        status = 'PASS' if passed else 'FAIL'
+        entry = {'id': check['id'], 'kind': check['kind'], 'contract_sha256': check['contract_sha256'],
+                 'subject': {'window_id': window['provenance']['window_id'], 'rank': 0},
+                 'status': status, 'input_refs': [artifact(output, check_inputs)],
+                 'expected_refs': [artifact(output, check_expected)] if check['kind'] == 'behavior' else [],
+                 'coverage': {'scope': 'candidate exact integer CPU outputs and configured sample grouping',
+                              'expected_samples': len(planned_inputs), 'actual_samples': len(actual_inputs),
+                              'model_training_quality': 'not_evaluated',
+                              'optimizer': 'not_applicable', 'loss': 'not_applicable', 'schedule': 'not_applicable'}}
+        name = 'screen/' + check['id'] + '.json'
+        write(output / name, {'kind': 'screen-check', 'check_id': entry['id'], 'check_kind': entry['kind'],
+              **{key: entry[key] for key in ('contract_sha256', 'subject', 'status', 'input_refs',
+                                            'expected_refs', 'coverage')}})
+        entry['report_ref'] = artifact(output, name)
+        checks.append(entry)
+        if not passed:
+            record_first_failure({'check_id': check['id'], 'rank': 0, 'phase': 'candidate-output-check',
+                'window_id': window['provenance']['window_id'], 'work_index': 0,
+                'observation_order': order, 'diagnostic_refs': [artifact(output, 'screen/actual-output.txt')]})
+            first = output / 'screen-first-failure.json'
+            marker('screen-first-failure-returned', {'identity': context['identity'],
+                'sha256': digest(first.read_bytes()), 'inode': first.stat().st_ino,
+                'check_id': check['id']})
+            if fault == 'screen-first-failure-then-exception':
+                raise RuntimeError('Controlled exception after durable first-failure publication')
+            break
+    resources = [{key: resource[key] for key in ('metric', 'unit', 'scope', 'aggregation')}
+                 | {'state': 'NOT_RUN', 'observed': None, 'report_ref': None}
+                 for resource in plan['resources']]
+    reasons = [{'code': 'resource_not_measured', 'field': resource['metric'],
+                'expected': resource['scope'], 'observed': 'NOT_RUN', 'source_ref': None}
+               for resource in resources]
+    environment = {'device': 'CPU', 'python': sys.version, 'implementation': platform.python_implementation(),
+                   'platform': platform.platform(), 'ranks': [0], 'layout': 'single-process',
+                   'dependencies': 'Python standard library'}
+    write(output / 'screen/environment.json', {'environment': environment,
+          'executable': str(Path(sys.executable).resolve()), 'pid': os.getpid()})
+    artifacts = [artifact(output, path.relative_to(output).as_posix())
+                 for path in sorted((output / 'screen').rglob('*')) if path.is_file()]
+    if fault == 'screen-invalid-raw':
+        (output / 'screen/window.json').write_bytes((output / 'screen/window.json').read_bytes() + b'\n')
+    return {'workload': {'input_plan': plan['input_plan'], 'warmup_work': 0,
+                'scope': {'device': 'CPU', 'work': 'candidate integer outputs only',
+                          'environment': environment,
+                          'historical_window_relation': 'first oracle-covered fixed-size window; historical rate aggregates all original windows',
+                          'baseline_work_executed': False, 'model_construction': 'not_applicable',
+                          'optimizer': 'not_applicable', 'loss': 'not_applicable', 'schedule': 'not_applicable'}},
+            'windows': [window], 'checks': checks,
+            'checks_not_run': [item['id'] for item in plan['checks'][len(checks):]],
+            'resources': resources, 'artifacts': artifacts, 'reasons': reasons}
+
+
 def run(context, request, output):
     output = Path(output)
     marker('first-work', {'pid': os.getpid(), 'identity': context['identity'],
@@ -446,7 +557,7 @@ def baseline_reference_record(context, request, output):
 
 
 def baseline_reference_read(context, request, reference):
-    """Consume a reference in the same context that subsequently executes both arms."""
+    """Consume the reference in the same context as the selected execution operation."""
     observations = {}
     for arm, observed in context['described'].items():
         observations[arm] = {**observed, 'snapshot_sha256': canonical_sha(observed['snapshot'])}
@@ -459,6 +570,8 @@ def baseline_reference_read(context, request, reference):
     inputs = baseline.get('inputs', {})
     expected_windows = [{'fingerprint': digest(json.dumps(list(range(3500 + index, 3548 + index))).encode()),
                          'source_samples': 48} for index in range(manifest['performance_policy']['statistics']['min_pairs'])]
+    current_windows = (expected_windows[:1] if request['execution']['operation'] == 'training-screen-v1'
+                       else expected_windows)
     supported = bool(oracle_record and oracle_record['scheme'] == INTEGER_ORACLE_SCHEME
         and oracle_record['coverage'] == INTEGER_COVERAGE
         and baseline['commit'] == manifest['baseline_commit']
@@ -474,9 +587,10 @@ def baseline_reference_read(context, request, reference):
     relations = [
         {'field': 'input_scheme', 'relation': 'matched' if supported else 'unknown',
          'reference': inputs.get('scheme'), 'current': 'fixed-positive-integers-v1', 'unit': 'identity'},
-        {'field': 'input_windows', 'relation': 'matched' if supported else 'unknown',
+        {'field': 'input_windows', 'relation': ('matched' if current_windows == inputs.get('windows') else 'different')
+                                             if supported else 'unknown',
          'reference': canonical_sha(inputs['windows']) if 'windows' in inputs else None,
-         'current': canonical_sha(expected_windows), 'unit': 'identity'},
+         'current': canonical_sha(current_windows), 'unit': 'identity'},
         {'field': 'effective_samples', 'relation': 'matched' if supported else 'unknown',
          'reference': baseline.get('workload', {}).get('source_samples_per_window'), 'current': 48, 'unit': 'samples'},
         {'field': 'initialization', 'relation': 'matched' if supported else 'unknown',

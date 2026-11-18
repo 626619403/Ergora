@@ -1,11 +1,13 @@
 """Implement this protocol against the EXISTING runner/scheduler. Never shell user input.
 
-Every method must finish within 20 seconds (or raise). GPU work is an external job.
+Control calls must finish within 20 seconds (or raise). GPU work is an external job.
+close drains retained reader resources before its owning event loop can close;
+an unconfirmed reader exit can outlast the control-call budget.
 The runner owns a durable, atomic experiment-id registry: immutable binding,
 job identity, and cancellation fence. It is not another workflow/retry engine.
 """
 from typing import Protocol
-from .models import Experiment, Job, Observation, GateDecision, ReleaseContext, IntegrationTask
+from .models import Experiment, Job, Observation, GateDecision, ScreenDecision, ReleaseContext, IntegrationTask
 
 
 class AdapterNotConfigured(RuntimeError):
@@ -41,14 +43,25 @@ class ClusterAdapter(Protocol):
         """
         ...
 
-    async def poll_job(self, job: Job) -> Observation:
-        """Read exact parent/job-group state. Missing/unavailable is an error, not success."""
+    async def poll_job(self, job: Job, *, timeout: float = 20) -> Observation:
+        """Read exact parent/job-group state. Missing/unavailable is an error, not success.
+        timeout is this call's total remaining allowance, including reader cleanup reserve,
+        capped at 20 seconds. Exhausted allowance must not start a reader. Retain an
+        unconfirmed actual wait until close, even when cleanup must outlast timeout.
+        """
         ...
 
     async def collect_and_gate(self, job: Job) -> GateDecision:
         """Verify immutable run artifacts and preset gates; return bound evidence hash.
         Fail closed if logs, numerical tests, baseline, whole-update metrics or provenance
         required by the manifest are absent. Do not let the candidate edit the validator.
+        """
+        ...
+
+    async def collect_screen(self, job: Job, *, timeout: float = 20) -> ScreenDecision:
+        """Verify the exact typed screen result and its durable original stop chain.
+        This result does not pass the full gate or authorize release/integration.
+        timeout has the same complete-call allowance and retained-wait semantics as poll_job.
         """
         ...
 
@@ -76,6 +89,12 @@ class ClusterAdapter(Protocol):
         receipt may then be submitted. Network/unknown-side-effect failures are not denials.
         Baseline/contract drift is ContractViolation, NOT a correctable receipt rejection;
         it requires reconciliation and a new bound experiment/revalidation.
+        """
+        ...
+
+    async def close(self) -> None:
+        """Drain this instance's reader handles/waits after Activities stop accepting work.
+        Keep ownership until actual process exit; cancellation or a closed pipe is not reap.
         """
         ...
 

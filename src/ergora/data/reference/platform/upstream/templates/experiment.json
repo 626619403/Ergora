@@ -1,5 +1,6 @@
 {
   "schema_version": 1,
+  "execution": {"operation": "full-verify"},
   "experiment_id": "exp001",
   "baseline_id": "b0001",
   "track": "E",

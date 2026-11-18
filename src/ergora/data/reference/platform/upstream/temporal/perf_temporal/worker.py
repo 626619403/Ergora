@@ -8,13 +8,16 @@ from .workflow import ExperimentWorkflow
 
 async def main() -> None:
     adapter = load_adapter()  # Fail before connecting if no real runner adapter exists.
-    client = await connect()
-    async with Worker(
-        client, task_queue=task_queue(), workflows=[ExperimentWorkflow],
-        activities=Activities(adapter).registered(),
-        max_concurrent_activities=8,
-    ):
-        await asyncio.Event().wait()
+    try:
+        client = await connect()
+        async with Worker(
+            client, task_queue=task_queue(), workflows=[ExperimentWorkflow],
+            activities=Activities(adapter).registered(),
+            max_concurrent_activities=8,
+        ):
+            await asyncio.Event().wait()
+    finally:
+        await adapter.close()
 
 
 if __name__ == "__main__":

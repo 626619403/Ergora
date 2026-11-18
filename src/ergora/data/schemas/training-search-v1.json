@@ -4,6 +4,10 @@
   "title": "Finite training configuration search preparation request",
   "$ref": "#/$defs/request",
   "$defs": {
+    "execution": {"oneOf": [
+      {"type": "object", "additionalProperties": false, "required": ["operation"], "properties": {"operation": {"const": "full-verify"}}},
+      {"type": "object", "additionalProperties": false, "required": ["operation", "plan"], "properties": {"operation": {"const": "training-screen-v1"}, "plan": {"type": "object"}}}
+    ]},
     "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
     "commit": {"type": "string", "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"},
     "identifier": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"},
@@ -23,8 +27,9 @@
                    "baseline_commit", "candidate_commit", "workload_fingerprint", "environment_fingerprint",
                    "dataset_manifest_sha256", "initial_checkpoint_sha256", "base_config_sha256",
                    "validation_contract_sha256", "comparison_tool_sha256", "allowed_changes",
-                   "checks_required", "quality_required"],
+                   "checks_required", "quality_required", "execution"],
       "properties": {
+        "execution": {"$ref": "#/$defs/execution"},
         "schema_version": {"type": "integer", "const": 1},
         "baseline_id": {"$ref": "#/$defs/identifier"},
         "track": {"const": "E"},

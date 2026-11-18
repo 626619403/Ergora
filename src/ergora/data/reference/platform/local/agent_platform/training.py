@@ -17,7 +17,7 @@ import uuid
 
 import perfctl
 from perf_temporal.adapter import ApprovalRejected, ContractViolation
-from perf_temporal.models import Binding, Experiment, GateDecision, IntegrationTask, Job, Observation, ReleaseContext
+from perf_temporal.models import Binding, Experiment, GateDecision, ScreenDecision, IntegrationTask, Job, Observation, ReleaseContext
 
 from .core import CONFIG, PYTHON, STATE, UPSTREAM, git, read, require, slug, write
 
@@ -69,6 +69,7 @@ def register_runner(source: Path) -> dict:
 
 def prepare(draft_path: Path, runner_id: str, max_run_seconds: int | None, *, configuration_materials: dict | None = None) -> dict:
     from ergora.training_materials import material_plan, publish_material, require_driver
+    from ergora.training_configuration import validate_execution_sources
 
     draft = read(draft_path)
     materials = {}
@@ -81,6 +82,7 @@ def prepare(draft_path: Path, runner_id: str, max_run_seconds: int | None, *, co
     ident = slug(draft['experiment_id'])
     runner = read(CONFIG / 'training-runners' / (slug(runner_id) + '.json'))
     require_driver(draft, runner)
+    validate_execution_sources(draft, runner)
     maximum = max_run_seconds or max(60, runner['timeout_seconds'] + 3600)
     require(60 <= maximum <= 86400 and runner['timeout_seconds'] <= maximum, 'Invalid queue-plus-run window')
     for canonical, alias in [('candidate_commit', 'candidate_sha'), ('baseline_commit', 'baseline_sha')]:
@@ -112,6 +114,23 @@ def prepare(draft_path: Path, runner_id: str, max_run_seconds: int | None, *, co
 
 
 class LocalTrainingAdapter:
+    def __init__(self):
+        self._reader_resources = {}
+        self._reader_closed = False
+
+    async def close(self) -> None:
+        from ergora.reference import _close_training_readers
+
+        self._reader_closed = True
+        await _close_training_readers(self._reader_resources)
+
+    async def _read(self, operation, job, *, timeout):
+        from ergora.reference import _training_reader_async
+
+        require(not self._reader_closed, 'Training adapter is closed')
+        return await _training_reader_async(str(STATE), str(CONFIG), operation, asdict(job),
+            resources=self._reader_resources, timeout=timeout)
+
     async def read_manifest(self, uri: str) -> bytes:
         parts = urlsplit(uri)
         require(parts.scheme == 'file' and not parts.netloc and not parts.query and not parts.fragment, 'Only local immutable file URIs are allowed')
@@ -130,6 +149,7 @@ class LocalTrainingAdapter:
 
     async def create_job_if_absent(self, experiment: Experiment, manifest: bytes) -> Job:
         from ergora.training_materials import read_materials, require_driver
+        from ergora.training_configuration import validate_execution_sources
 
         require(hashlib.sha256(manifest).hexdigest() == experiment.binding.manifest_sha, 'Manifest bytes changed')
         value = json.loads(manifest)
@@ -149,25 +169,31 @@ class LocalTrainingAdapter:
             existing = await self.lookup_job(experiment)
             if existing is not None: return existing
             require_driver(value, runner)
+            validate_execution_sources(value, runner)
             read_materials(TRAINING.parent, value)
             job_id = 'local-perf-' + experiment.binding.experiment_id
             write(job_folder(experiment.binding.experiment_id) / 'request.json',
                   {'schema_version': 1, 'job_id': job_id, 'experiment': asdict(experiment), 'runner': runner})
             return Job(experiment.binding, job_id)
 
-    async def poll_job(self, job: Job) -> Observation:
-        exact_job(job)
-        folder = job_folder(job.binding.experiment_id)
-        if (folder / 'result.json').exists():
-            result = read(folder / 'result.json')
-            require(result['binding'] == asdict(job.binding) and result['job_id'] == job.job_id, 'Training result identity mismatch')
-            return Observation(job, result['state'], result['detail'])
-        return Observation(job, 'RUNNING' if (folder / 'started.json').exists() else 'QUEUED')
+    async def poll_job(self, job: Job, *, timeout: float = 20) -> Observation:
+        result = await self._read('native-poll', job, timeout=timeout)
+        require(result['job'] == asdict(job), 'Training observation identity mismatch')
+        return Observation(job, result['state'], result['detail'])
+
+    async def collect_screen(self, job: Job, *, timeout: float = 20) -> ScreenDecision:
+        result = await self._read('collect-screen', job, timeout=timeout)
+        require(result['job'] == asdict(job), 'Training screen identity mismatch')
+        return ScreenDecision(job, result['state'], result['result_sha256'], result['report_uri'], result['summary'])
 
     async def collect_and_gate(self, job: Job) -> GateDecision:
         record = exact_job(job)
+        manifest_path = TRAINING / 'manifests' / (job.binding.experiment_id + '.json')
+        require(hashlib.sha256(manifest_path.read_bytes()).hexdigest() == job.binding.manifest_sha, 'Full collector manifest bytes changed')
+        manifest = read(manifest_path)
+        require(manifest.get('execution') == {'operation': 'full-verify'}, 'Full collector requires full-verify operation')
         result = read(job_folder(job.binding.experiment_id) / 'result.json')
-        require(result['state'] == 'SUCCEEDED', 'Training job did not finish successfully')
+        require(result['state'] == 'SUCCEEDED' and result.get('screen') is None, 'Training job did not finish full verification')
         gate = result['gate']
         report = Path(gate['report'])
         require(hashlib.sha256(report.read_bytes()).hexdigest() == gate['report_sha256'], 'Gate report changed')
@@ -271,6 +297,10 @@ def cli(arguments: list[str]):
         import re
         require(re.fullmatch('[a-f0-9]{64}', args.evidence_sha), 'Expected exact evidence SHA-256')
         experiment = load_experiment(str(spec))
+        manifest_path = TRAINING / 'manifests' / (slug(args.experiment_id) + '.json')
+        require(hashlib.sha256(manifest_path.read_bytes()).hexdigest() == experiment.binding.manifest_sha, 'Training approval manifest bytes changed')
+        require(read(manifest_path).get('execution') == {'operation': 'full-verify'},
+                'Training approval requires full-verify; screen cannot be approved')
         async def check_phase():
             from perf_temporal.connection import connect
             from perf_temporal.models import workflow_id

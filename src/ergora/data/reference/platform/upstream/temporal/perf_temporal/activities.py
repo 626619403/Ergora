@@ -6,7 +6,7 @@ from temporalio import activity
 from temporalio.exceptions import ApplicationError
 from .adapter import ClusterAdapter, ApprovalRejected
 from .models import (
-    Experiment, Job, Observation, GateDecision, ReleaseContext,
+    Experiment, Job, Observation, GateDecision, ScreenDecision, ReleaseContext,
     IntegrationTask, Cancellation,
 )
 
@@ -57,9 +57,10 @@ class Activities:
     @activity.defn
     async def poll_job(self, job: Job) -> Observation:
         async with asyncio.timeout(20):
-            observation = await self.adapter.poll_job(job)
+            observation = await self.adapter.poll_job(job, timeout=20)
         require(observation.job == job, "Observation job mismatch")
-        require(observation.state in {"QUEUED", "RUNNING", "SUCCEEDED", "FAILED", "CANCELLED"},
+        require(observation.state in {"QUEUED", "RUNNING", "SUCCEEDED", "FAILED", "CANCELLED",
+                                      "SCREEN_COMPLETED", "SCREEN_REJECTED"},
                 "Unknown scheduler state")
         return observation
 
@@ -71,6 +72,16 @@ class Activities:
         require(type(result.passed) is bool, "Gate passed must be boolean")
         require(bool(re.fullmatch(r"[a-f0-9]{64}", result.evidence_sha)), "Invalid evidence digest")
         require(bool(result.report_uri), "Missing gate report")
+        return result
+
+    @activity.defn
+    async def collect_screen(self, job: Job) -> ScreenDecision:
+        async with asyncio.timeout(20):
+            result = await self.adapter.collect_screen(job, timeout=20)
+        require(result.job == job, "Screen result job mismatch")
+        require(result.state in {"SCREEN_COMPLETED", "SCREEN_REJECTED"}, "Invalid screen state")
+        require(bool(re.fullmatch(r"[a-f0-9]{64}", result.result_sha256)), "Invalid screen result digest")
+        require(bool(result.report_uri), "Missing screen report")
         return result
 
     @activity.defn
@@ -100,5 +111,5 @@ class Activities:
         return result
 
     def registered(self):
-        return [self.submit_or_lookup, self.poll_job, self.collect_and_gate,
+        return [self.submit_or_lookup, self.poll_job, self.collect_and_gate, self.collect_screen,
                 self.cancel_exact_job, self.create_integration_task]

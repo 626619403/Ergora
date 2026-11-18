@@ -185,6 +185,7 @@ class _Cancellation:
         from perf_temporal.models import Binding, Experiment
         from .reference_training_runtime import observe
 
+        started = asyncio.get_running_loop().time()
         request = self.submission.native_request()
         for suffix in ('started.json', 'result.json'):
             try:
@@ -203,17 +204,21 @@ class _Cancellation:
         handle, description, _ = await self.lookup()
         control = await observe(handle, description, Binding(**self.spec['binding']), timeout=self.payload['timeout'])
         adapter = load_adapter()
-        experiment = Experiment(**{**self.spec, 'binding': Binding(**self.spec['binding'])})
-        job = await adapter.lookup_job(experiment)
-        executor = asdict(await adapter.poll_job(job)) if job is not None else None
-        return {**self.submission.recovery_context, 'project': self.submission.project['id'], 'project_revision': self.submission.project_revision,
-                'submitted_revision': self.start['project_revision'],
-                'experiment_id': self.submission.ident, 'workflow_id': self.start['workflow_id'], 'run_id': self.run_id,
-                'control': control, 'executor_observation': executor, 'fence_recorded': fence is not None,
-                'managed_execution': training_execution_protocol.ExecutionRecords(self.submission.project,
-                    self.submission.ident, str(self.payload['control_home'])).load().observe(durable=True),
-                'execution_success': None, 'read_only': True,
-                'scope': 'Original control outcome, native adapter observation and saved fence are separate facts; no OS stop or adoption claim'}
+        try:
+            experiment = Experiment(**{**self.spec, 'binding': Binding(**self.spec['binding'])})
+            job = await adapter.lookup_job(experiment)
+            allowance = min(20, max(0, self.payload['timeout'] - (asyncio.get_running_loop().time() - started)))
+            executor = asdict(await adapter.poll_job(job, timeout=allowance)) if job is not None else None
+            return {**self.submission.recovery_context, 'project': self.submission.project['id'], 'project_revision': self.submission.project_revision,
+                    'submitted_revision': self.start['project_revision'],
+                    'experiment_id': self.submission.ident, 'workflow_id': self.start['workflow_id'], 'run_id': self.run_id,
+                    'control': control, 'executor_observation': executor, 'fence_recorded': fence is not None,
+                    'managed_execution': training_execution_protocol.ExecutionRecords(self.submission.project,
+                        self.submission.ident, str(self.payload['control_home'])).load().observe(durable=True),
+                    'execution_success': None, 'read_only': True,
+                    'scope': 'Original control outcome, native adapter observation and saved fence are separate facts; no OS stop or adoption claim'}
+        finally:
+            await adapter.close()
 
     def notify_owner(self) -> dict | None:
         """A local stop request supplements, but never acknowledges, the native signal."""

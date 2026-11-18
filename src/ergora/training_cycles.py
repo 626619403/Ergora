@@ -51,6 +51,7 @@ def _decode(raw: bytes) -> dict:
     if len(plan['admissions']) != len(candidates):
         raise ValueError('Training cycle must retain one complete admission for each ordered candidate')
     anchor, baseline_files = None, None
+    verification_ids = set()
     try:
         registration = project['registration']
         definition = registration['definition']
@@ -121,6 +122,17 @@ def _decode(raw: bytes) -> dict:
                     or files[registered] != selected['manifest_sha256'] or files[frozen] != selected['manifest_sha256']):
                 raise ValueError('Training cycle lacks its complete original source SHA inventory')
             common = {name: manifest.get(name) for name in _COMMON}
+            execution = manifest['execution']
+            if item.get('execution') != execution:
+                raise ValueError('Training cycle operation differs from its original manifest')
+            operation_contract = {'operation': execution['operation']}
+            if execution['operation'] == 'training-screen-v1':
+                verification = execution['plan']['verification_experiment_id']
+                if verification in verification_ids:
+                    raise ValueError('Screen choices require distinct frozen verification experiment IDs')
+                verification_ids.add(verification)
+                operation_contract['plan'] = {key: value for key, value in execution['plan'].items() if key != 'verification_experiment_id'}
+            common['operation_contract'] = operation_contract
             if anchor is None:
                 anchor, baseline_files = common, observed['baseline_files']
             elif common != anchor or observed['baseline_files'] != baseline_files:
@@ -419,6 +431,10 @@ def prepare_controller(state: State, project_id: str, cycle_id: str,
         if observed['current_project_revision'] != expected_revision:
             raise ValueError('Project revision changed; reload before preparing the controller')
         directory = _directory(state.root, project_id, cycle_id)
+        plan, _, _ = _load(state.root, project_id, cycle_id, directory)
+        if any(item['observation']['experiment']['manifest']['execution']['operation'] != 'full-verify'
+               for item in plan['admissions']):
+            raise ValueError('Controller preparation unavailable for screen selections')
         admission = training_execution_protocol.CycleAdmission(directory, observed['authorization'])
         if observed['status'] != 'ready':
             raise ValueError(observed['reason'] or 'Controller preparation requires the original durable ready record')
@@ -533,6 +549,9 @@ def _authorize(state: State, project_id: str, cycle_id: str, directory: Path, sh
             if hashlib.sha256(raw).hexdigest() != sha256:
                 raise ValueError('Training cycle plan differs from the expected complete SHA256')
             plan = _decode(raw)
+            if version in (2, 3, 4) and any(item['observation']['experiment']['manifest']['execution']['operation'] != 'full-verify'
+                                          for item in plan['admissions']):
+                raise ValueError('Controller execution unavailable for screen selections')
             if plan['control_home'] != str(state.root) or _sha(plan['project']) != _sha(project):
                 raise ValueError('Training authorization requires the original control home and complete current project')
             sources = _measurement_sources() if version in (3, 4) else None

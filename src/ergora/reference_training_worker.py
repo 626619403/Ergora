@@ -750,8 +750,12 @@ def _execution_candidate_operation(payload: dict, plan: dict, admission, active)
                 raise ValueError('Original execution request differs from its controller actor or complete native request')
 
             async def native():
-                async with asyncio.timeout(remaining()):
-                    return await LocalTrainingAdapter().poll_job(Job(binding, request['job_id']))
+                adapter = LocalTrainingAdapter()
+                try:
+                    async with asyncio.timeout(remaining()):
+                        return await adapter.poll_job(Job(binding, request['job_id']), timeout=min(20, remaining()))
+                finally:
+                    await adapter.close()
 
             observed = asyncio.run(native())
             result['native'] = asdict(observed)
@@ -2639,30 +2643,35 @@ async def _serve() -> None:
     from temporalio.worker import Worker
 
     adapter = load_adapter()
-    stopped = asyncio.Event()
     loop = asyncio.get_running_loop()
-    loop.add_signal_handler(signal.SIGTERM, stopped.set)
-
-    async def connected():
-        async with asyncio.timeout(60):
-            while True:
-                try:
-                    return await connect()
-                except (OSError, RuntimeError):
-                    await asyncio.sleep(1)
-
-    connecting, stopping = asyncio.create_task(connected()), asyncio.create_task(stopped.wait())
     try:
-        await asyncio.wait((connecting, stopping), return_when=asyncio.FIRST_COMPLETED)
-        if not stopped.is_set():
-            async with Worker(connecting.result(), task_queue=task_queue(), workflows=[ExperimentWorkflow],
-                              activities=Activities(adapter).registered(), max_concurrent_activities=8):
-                await stopped.wait()
+        stopped = asyncio.Event()
+        loop.add_signal_handler(signal.SIGTERM, stopped.set)
+
+        async def connected():
+            async with asyncio.timeout(60):
+                while True:
+                    try:
+                        return await connect()
+                    except (OSError, RuntimeError):
+                        await asyncio.sleep(1)
+
+        connecting, stopping = asyncio.create_task(connected()), asyncio.create_task(stopped.wait())
+        try:
+            await asyncio.wait((connecting, stopping), return_when=asyncio.FIRST_COMPLETED)
+            if not stopped.is_set():
+                async with Worker(connecting.result(), task_queue=task_queue(), workflows=[ExperimentWorkflow],
+                                  activities=Activities(adapter).registered(), max_concurrent_activities=8):
+                    await stopped.wait()
+        finally:
+            for pending in (connecting, stopping):
+                pending.cancel()
+            await asyncio.gather(connecting, stopping, return_exceptions=True)
     finally:
-        for pending in (connecting, stopping):
-            pending.cancel()
-        await asyncio.gather(connecting, stopping, return_exceptions=True)
-        loop.remove_signal_handler(signal.SIGTERM)
+        try:
+            await adapter.close()
+        finally:
+            loop.remove_signal_handler(signal.SIGTERM)
 
 
 def main(installation: str) -> None:

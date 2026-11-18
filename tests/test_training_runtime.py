@@ -32,6 +32,7 @@ def installation(tmp_path_factory):
 @pytest.mark.parametrize('action', ['run-local', 'approve'])
 def test_native_cli_keeps_the_original_loader_at_each_sdk_use(
         prepared_training_installation, tmp_path, action):
+    import hashlib
     import os
     import subprocess
     import venv
@@ -41,7 +42,10 @@ def test_native_cli_keeps_the_original_loader_at_each_sdk_use(
     state = tmp_path / 'native-state'
     spec = state / 'training/specs/alpha.json'
     spec.parent.mkdir(parents=True)
-    binding = {'experiment_id': 'alpha', 'manifest_sha': 'a' * 64,
+    manifest = state / 'training/manifests/alpha.json'
+    manifest.parent.mkdir(parents=True)
+    manifest.write_text(json.dumps({'execution': {'operation': 'full-verify'}}))
+    binding = {'experiment_id': 'alpha', 'manifest_sha': hashlib.sha256(manifest.read_bytes()).hexdigest(),
                'candidate_sha': 'b' * 40, 'baseline_sha': 'c' * 40}
     value = {'binding': binding, 'manifest_uri': (tmp_path / 'manifest.json').as_uri()}
     environment = {**os.environ, 'AGENTFLOW_STATE_DIR': str(state), 'AGENTFLOW_CONFIG_DIR': str(tmp_path / 'config'),
@@ -1918,3 +1922,336 @@ def test_cycle_v3_sdk_windows_charge_queue_and_inspection_to_one_origin(
     if action == 'stop':
         assert len(seen) == 7 and value['facts'] is None
     assert not permit_enabled or permit.acquired and permit.released
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Actual Linux child wait and PID/boot/start identity')
+@pytest.mark.parametrize('fault', ['selector-construction', 'selector-registration', 'setup-interrupt', 'read-interrupt'])
+def test_training_reader_setup_failure_retains_actual_child_wait(tmp_path, monkeypatch, fault):
+    import selectors
+    from ergora import processes
+
+    children, waits, identities = [], [], []
+    original_spawn, original_selector = reference.subprocess.Popen, selectors.DefaultSelector
+
+    def spawn(*args, **kwargs):
+        child = original_spawn(*args, **kwargs)
+        children.append(child)
+        identities.append(processes.identity(child.pid))
+        actual_wait = child.wait
+
+        def wait(*args, **kwargs):
+            result = actual_wait(*args, **kwargs)
+            waits.append(result)
+            return result
+
+        child.wait = wait
+        return child
+
+    def selector():
+        assert children, 'The boundary must follow actual child creation'
+        if fault == 'selector-construction':
+            raise OSError('controlled selector setup failure')
+        if fault == 'setup-interrupt':
+            raise KeyboardInterrupt()
+        selected = original_selector()
+
+        def fail(*args, **kwargs):
+            if fault == 'read-interrupt':
+                raise KeyboardInterrupt()
+            raise OSError('controlled selector registration failure')
+
+        monkeypatch.setattr(selected, 'select' if fault == 'read-interrupt' else 'register', fail)
+        return selected
+
+    monkeypatch.setattr(reference.subprocess, 'Popen', spawn)
+    monkeypatch.setattr(selectors, 'DefaultSelector', selector)
+    project = {'registration': {'definition': {'execution': {
+        'state_directory': str(tmp_path / 'state'), 'config_directory': str(tmp_path / 'config')}}}}
+    try:
+        with pytest.raises(KeyboardInterrupt if fault.endswith('interrupt') else ValueError):
+            reference._training_reader(project, 'import time;time.sleep(60)', {}, timeout=1.2)
+        assert len(children) == 1 and waits == [-9]
+        assert children[0].returncode == -9
+    finally:
+        (tmp_path / 'reader-before-harness-cleanup.json').write_text(json.dumps({
+            'fault': fault, 'identities': identities, 'production_waits': list(waits),
+            'returncodes': [child.returncode for child in children]}, indent=2) + '\n')
+        for child in children:
+            if child.poll() is None:
+                child.kill()
+            child.wait()
+        (tmp_path / 'reader-after-harness-cleanup.json').write_text(json.dumps({
+            'returncodes': [child.returncode for child in children], 'waits': waits}, indent=2) + '\n')
+
+
+def test_stop_status_uses_declared_adapter_allowance(tmp_path, monkeypatch):
+    import asyncio
+    from dataclasses import asdict
+    from types import SimpleNamespace
+    from ergora import reference_training_cancellation as cancellation, reference_training_runtime as runtime
+
+    monkeypatch.syspath_prepend(str(reference.ROOT / 'platform/upstream/temporal'))
+    from perf_temporal import adapter as adapters
+    from perf_temporal.models import Binding, Job, Observation
+
+    binding = Binding('declared-adapter', 'a' * 64, 'b' * 40, 'c' * 40)
+    job, calls = Job(binding, 'job-original'), []
+
+    class RestrictedAdapter:
+        __slots__ = ()
+
+        async def read_manifest(self, uri):
+            raise AssertionError('read-only stop observation must not read a new manifest')
+
+        async def lookup_job(self, experiment):
+            assert experiment.binding == binding
+            await asyncio.sleep(.01)
+            return job
+
+        async def create_job_if_absent(self, experiment, manifest):
+            raise AssertionError('stop status cannot submit')
+
+        async def poll_job(self, original, *, timeout=20):
+            assert original == job and 0 < timeout < 1.2
+            calls.append(('poll', timeout))
+            return Observation(job, 'RUNNING')
+
+        async def collect_and_gate(self, original):
+            raise AssertionError('stop status cannot gate')
+
+        async def collect_screen(self, original, *, timeout=20):
+            raise AssertionError('stop status cannot collect')
+
+        async def fence_and_lookup(self, experiment):
+            raise AssertionError('stop status cannot fence')
+
+        async def cancel_job_group(self, original):
+            raise AssertionError('stop status cannot cancel')
+
+        async def authorize_release_and_create_task(self, context):
+            raise AssertionError('stop status cannot authorize')
+
+        async def close(self):
+            calls.append(('close',))
+
+    async def observe(*args, **kwargs):
+        await asyncio.sleep(.01)
+        return {'status': 'observed'}
+
+    async def lookup():
+        return object(), object(), None
+
+    def missing(*args):
+        raise FileNotFoundError()
+
+    operation = cancellation._Cancellation.__new__(cancellation._Cancellation)
+    operation.payload = {'timeout': 1.2, 'control_home': str(tmp_path)}
+    operation.spec = {'binding': asdict(binding), 'manifest_uri': 'test://original'}
+    operation.start, operation.run_id = {'project_revision': 1, 'workflow_id': 'workflow-original'}, 'run-original'
+    operation.submission = SimpleNamespace(native_request=lambda: None, document=missing,
+        root=tmp_path, ident=binding.experiment_id, project={'id': 'demo'}, project_revision=1, recovery_context={})
+    operation.lookup = lookup
+    records = SimpleNamespace(observe=lambda *, durable: {'executor_stop_confirmed': False})
+    monkeypatch.setattr(cancellation.training_execution_protocol, 'ExecutionRecords',
+        lambda *args: SimpleNamespace(load=lambda: records))
+    monkeypatch.setattr(runtime, 'observe', observe)
+    monkeypatch.setattr(adapters, 'load_adapter', RestrictedAdapter)
+    result = asyncio.run(operation.stop_status())
+    assert result['executor_observation'] == asdict(Observation(job, 'RUNNING'))
+    assert result['read_only'] and result['execution_success'] is None
+    assert [row[0] for row in calls] == ['poll', 'close']
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Actual Linux child wait and PID/boot/start identity')
+@pytest.mark.parametrize('hold_wait', [False, True])
+def test_native_reader_per_call_allowance_keeps_actual_wait(tmp_path, monkeypatch, hold_wait):
+    import asyncio
+    from ergora import processes
+
+    for part in ('upstream', 'upstream/platform', 'upstream/temporal', 'local'):
+        monkeypatch.syspath_prepend(str(reference.ROOT / 'platform' / part))
+    from agent_platform.training import LocalTrainingAdapter
+    from perf_temporal.models import Binding, Job
+
+    async def run():
+        original_spawn = asyncio.create_subprocess_exec
+        children, confirmation, waited = [], asyncio.Event(), asyncio.Event()
+        started = asyncio.get_running_loop().time()
+        observed = {}
+
+        async def spawn(*args, **kwargs):
+            child = await original_spawn(*args[:-1], 'import sys,time;sys.stdin.buffer.read();time.sleep(60)', **kwargs)
+            actual_wait = child.wait
+            item = {'child': child, 'identity': processes.identity(child.pid), 'wait': actual_wait}
+            children.append(item)
+
+            async def wait():
+                code = await actual_wait()
+                item['returncode'] = code
+                item['actual_wait_elapsed'] = asyncio.get_running_loop().time() - started
+                waited.set()
+                if hold_wait:
+                    await confirmation.wait()
+                return code
+
+            child.wait = wait
+            return child
+
+        monkeypatch.setattr(asyncio, 'create_subprocess_exec', spawn)
+        adapter = LocalTrainingAdapter()
+        job = Job(Binding('reader-allowance', 'a' * 64, 'b' * 40, 'c' * 40), 'job-original')
+        try:
+            with pytest.raises(ValueError, match='allowance exhausted'):
+                await adapter.poll_job(job, timeout=0)
+            assert not children
+            with pytest.raises(ValueError, match='reader_cleanup_unconfirmed' if hold_wait else 'timed out'):
+                await adapter.poll_job(job, timeout=1.2)
+            observed['reader_return_elapsed'] = asyncio.get_running_loop().time() - started
+            await asyncio.wait_for(waited.wait(), 2)
+            if hold_wait:
+                with pytest.raises(ValueError, match='reader_cleanup_unconfirmed'):
+                    await adapter.collect_screen(job, timeout=1.2)
+                assert len(children) == 1
+                closing = asyncio.create_task(adapter.close())
+                await asyncio.sleep(.02)
+                assert not closing.done()
+                confirmation.set()
+                await closing
+            await adapter.close()
+            assert not adapter._reader_resources
+            observed['close_elapsed'] = asyncio.get_running_loop().time() - started
+            assert len(children) == 1 and children[0]['returncode'] == -9
+            with pytest.raises((OSError, ValueError)):
+                processes.identity(children[0]['identity']['pid'])
+        finally:
+            (tmp_path / 'native-reader-observation.json').write_text(json.dumps({
+                'T': 1.2, 'hold_wait': hold_wait, **observed, 'children': [
+                    {'identity': item['identity'], 'actual_returncode': item.get('returncode'),
+                     'process_returncode': item['child'].returncode,
+                     'actual_wait_elapsed': item.get('actual_wait_elapsed')} for item in children]}, indent=2) + '\n')
+            confirmation.set()
+            for item in children:
+                if item['child'].returncode is None:
+                    item['child'].kill()
+                await item['wait']()
+            await adapter.close()
+
+    asyncio.run(run())
+
+
+def test_budget_completion_spends_one_allowance_across_reader_calls(tmp_path, monkeypatch):
+    import asyncio
+    from dataclasses import asdict
+    from types import SimpleNamespace
+    from ergora.reference_training_budget import BudgetedStart
+
+    monkeypatch.syspath_prepend(str(reference.ROOT / 'platform/upstream/temporal'))
+    from perf_temporal.models import Binding, Experiment, Job, Observation, ScreenDecision
+
+    binding = Binding('budget-reader-allowance', 'a' * 64, 'b' * 40, 'c' * 40)
+    job, calls = Job(binding, 'job-original'), []
+    spec = asdict(Experiment(binding, 'test://original'))
+    runner = {'id': 'original-runner'}
+    budget = BudgetedStart.__new__(BudgetedStart)
+    budget.intent = {'observation': {'experiment': {'spec': spec, 'current_runner': runner}}}
+    budget.operation = SimpleNamespace(native_request=lambda: {'experiment': spec, 'runner': runner},
+        sha=lambda value: json.dumps(value, sort_keys=True), root=tmp_path, ident=binding.experiment_id)
+
+    class Adapter:
+        __slots__ = ()
+
+        async def lookup_job(self, experiment):
+            await asyncio.sleep(.01)
+            return job
+
+        async def poll_job(self, original, *, timeout=20):
+            calls.append(('poll', timeout))
+            await asyncio.sleep(.01)
+            return Observation(original, 'SCREEN_COMPLETED')
+
+        async def collect_screen(self, original, *, timeout=20):
+            calls.append(('screen', timeout))
+            return ScreenDecision(original, 'SCREEN_COMPLETED', 'd' * 64, 'test://screen', 'original screen')
+
+    result = asyncio.run(budget.completion(Adapter(), timeout=1.2))
+    assert result['status'] == 'completed' and result['gate'] is None
+    assert result['screen']['job'] == asdict(job)
+    assert [row[0] for row in calls] == ['poll', 'screen']
+    assert 0 < calls[1][1] < calls[0][1] < 1.2
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Actual SIGINT, child wait and PID/boot/start identity')
+@pytest.mark.parametrize('boundary', ['poll', 'kill', 'poll-kill-wait', 'kill-error'])
+def test_training_reader_cleanup_interrupt_keeps_original_wait(tmp_path, monkeypatch, boundary):
+    import signal
+    from ergora import processes
+
+    children, identities, waits, interrupts, events = [], [], [], [], []
+    pending = boundary.split('-') if boundary != 'kill-error' else []
+    original_spawn = reference.subprocess.Popen
+    harness_cleanup = False
+
+    def interrupt(operation):
+        if not harness_cleanup and pending and pending[0] == operation:
+            pending.pop(0)
+            events.append(operation + '-SIGINT')
+            try:
+                signal.raise_signal(signal.SIGINT)
+            except KeyboardInterrupt as error:
+                interrupts.append(error)
+                raise
+
+    def spawn(*args, **kwargs):
+        child = original_spawn(*args, **kwargs)
+        children.append(child)
+        identities.append(processes.identity(child.pid))
+        actual_poll, actual_kill, actual_wait = child.poll, child.kill, child.wait
+
+        def poll():
+            interrupt('poll')
+            return actual_poll()
+
+        def kill():
+            interrupt('kill')
+            actual_kill()
+            if boundary == 'kill-error' and not harness_cleanup:
+                raise OSError('controlled kill initiation failure after actual signal')
+
+        def wait(*args, **kwargs):
+            interrupt('wait')
+            code = actual_wait(*args, **kwargs)
+            waits.append(code)
+            events.append('actual-wait-confirmed')
+            return code
+
+        child.poll, child.kill, child.wait = poll, kill, wait
+        return child
+
+    monkeypatch.setattr(reference.subprocess, 'Popen', spawn)
+    project = {'registration': {'definition': {'execution': {
+        'state_directory': str(tmp_path / 'state'), 'config_directory': str(tmp_path / 'config')}}}}
+    try:
+        expected = ValueError if boundary == 'kill-error' else KeyboardInterrupt
+        with pytest.raises(expected) as caught:
+            reference._training_reader(project, 'import sys,time;sys.stdin.buffer.read();time.sleep(60)', {}, timeout=.12)
+        events.append('caller-received-' + type(caught.value).__name__)
+        assert len(children) == 1 and waits == [-9]
+        assert not pending and children[0].returncode == -9
+        assert all(stream.closed for stream in (children[0].stdin, children[0].stdout, children[0].stderr))
+        with pytest.raises((OSError, ValueError)):
+            processes.identity(identities[0]['pid'])
+        if boundary == 'kill-error':
+            assert 'controlled kill initiation failure' in str(caught.value) and 'overrun=' in str(caught.value)
+        else:
+            assert caught.value is interrupts[0]
+    finally:
+        (tmp_path / 'cleanup-before-harness.json').write_text(json.dumps({
+            'boundary': boundary, 'identities': identities, 'production_waits': list(waits),
+            'returncodes': [child.returncode for child in children], 'events': list(events)}, indent=2) + '\n')
+        harness_cleanup = True
+        for child in children:
+            if child.poll() is None:
+                child.kill()
+            child.wait()
+        (tmp_path / 'cleanup-after-harness.json').write_text(json.dumps({
+            'returncodes': [child.returncode for child in children], 'waits': waits}, indent=2) + '\n')

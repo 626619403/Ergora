@@ -719,6 +719,7 @@ def parser() -> argparse.ArgumentParser:
     evidence.add_argument("experiment_id")
     evidence.add_argument("--artifact", help="Relative path listed by the original evidence bundle")
     evidence.add_argument("--evidence-sha256", help="Exact observed content address; required with --artifact")
+    evidence.add_argument("--screen-result-sha256", help="Exact observed screen result digest; use with a screen artifact")
     evidence.add_argument("--offset", type=int, default=0, help="Unicode character offset in the selected text artifact")
     evidence.add_argument("--limit", type=int, default=12_000, help="Text window size, at most 65,536 characters")
     live = operations.add_parser("status", help="Query the original workflow; never start, cancel or approve an experiment")
@@ -1439,7 +1440,7 @@ def main(argv: list[str] | None = None) -> int:
                 output = training.status(State(args.home), args.project, args.experiment_id, run_id=args.run_id, timeout=args.timeout)
             elif args.operation == "evidence":
                 output = training.evidence(State(args.home), args.project, args.experiment_id, artifact=args.artifact,
-                                           evidence_sha256=args.evidence_sha256, offset=args.offset, limit=args.limit)
+                                           evidence_sha256=args.evidence_sha256, screen_result_sha256=args.screen_result_sha256, offset=args.offset, limit=args.limit)
             elif args.operation == "submission":
                 output = training.submission(State(args.home), args.project, args.experiment_id, original_registration=recovery)
             elif args.operation == "check-start":

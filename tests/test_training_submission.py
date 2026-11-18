@@ -754,7 +754,8 @@ def configuration_execution(configuration_project, cycle_selection, service, tmp
     draft = json.loads((runtime / 'training/manifests/alpha.json').read_bytes())
     for name in ('local_project', 'runner_template_id', 'baseline_sha', 'candidate_sha', 'max_run_seconds'):
         draft.pop(name, None)
-    draft.update(configuration_inputs={'kind': 'git-source', 'path': 'src/configuration.json'},
+    draft.update(execution={'operation': 'full-verify'},
+                 configuration_inputs={'kind': 'git-source', 'path': 'src/configuration.json'},
                  baseline_commit=item['baseline_commit'], candidate_commit=item['candidate_commit'],
                  base_config_sha256=hashlib.sha256(item['baseline_raw']).hexdigest(),
                  candidate_config_sha256=hashlib.sha256(item['candidate_raw']).hexdigest(),
@@ -804,6 +805,52 @@ def run_configuration_execution(item, *, wall=60, cleanup=10, on_requested=None)
         return training.execution(state, 'demo', 'alpha')
     finally:
         stop_controller_test_owner(runtime)
+
+
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+def test_screen_capability_oracle_and_walltime_reject_before_intent_or_import(configuration_execution):
+    item = configuration_execution
+    runner_path = Path(item['definition']['execution']['config_directory']) / 'training-runners/configuration-cpu.json'
+    original_runner = runner_path.read_bytes()
+    draft = json.loads((item['runtime'] / 'training/manifests/alpha.json').read_bytes())
+    for key in ('local_project', 'runner_template_id', 'baseline_sha', 'candidate_sha', 'max_run_seconds'):
+        draft.pop(key, None)
+    draft['baseline_reference'] = {'experiment_id': 'original-full', 'evidence_sha256': 'a' * 64,
+                                   'reference_sha256': 'b' * 64}
+    draft['execution'] = {'operation': 'training-screen-v1', 'plan': item['screen_plan']}
+    try:
+        for index, fault in enumerate(('capability-null', 'scheme', 'baseline', 'oracle-missing',
+                                       'oracle-digest', 'walltime')):
+            selected, runner = deepcopy(draft), json.loads(original_runner)
+            selected['experiment_id'] = 'blocked-screen-' + str(index)
+            runner['configuration_readback'].update(baseline_reference_protocol='baseline-reference-v1',
+                screen={'protocol': 'training-screen-v1', 'scheme': 'fixture-cpu-screen-v1'})
+            if fault == 'capability-null':
+                runner['configuration_readback']['screen'] = None
+            elif fault == 'scheme':
+                selected['execution']['plan']['scheme'] = 'unsupported-cpu-scheme'
+            elif fault == 'baseline':
+                selected.pop('baseline_reference')
+            elif fault == 'oracle-missing':
+                selected['execution']['plan']['checks'][1]['source_entrypoint'] = 'missing-oracle.py'
+            elif fault == 'oracle-digest':
+                selected['execution']['plan']['checks'][1]['contract_sha256'] = 'f' * 64
+            else:
+                selected['execution']['plan']['window']['maximum_seconds'] = .5
+            runner_path.write_text(json.dumps(runner) + '\n')
+            for invoke in (
+                lambda: training.preview_experiment(item['state'], 'demo', selected, 'configuration-cpu'),
+                lambda: training.prepare_experiment(item['state'], 'demo', selected, 'configuration-cpu',
+                    item['state'].project('demo')['revision'], '0' * 64)):
+                with pytest.raises(ValueError, match='[Ss]creen|oracle|walltime|Configuration source Git'):
+                    invoke()
+            ident = selected['experiment_id']
+            assert not (item['runtime'] / f'ergora/training-preparations/{ident}.intent.json').exists()
+            assert not (item['runtime'] / f'training/manifests/{ident}.json').exists()
+            assert not (item['runtime'] / f'training/jobs/{ident}').exists()
+            assert not item['markers'].exists(), 'Declaration failures must not import, prepare or compute'
+    finally:
+        runner_path.write_bytes(original_runner)
 
 
 @pytest.mark.parametrize('installation', ['managed'], indirect=True)

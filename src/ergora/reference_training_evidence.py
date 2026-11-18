@@ -42,6 +42,8 @@ def _accepted_archive(project, ident, binding, baseline_id, gate, read):
             or any(evidence.get(key) != value for key, value in expected.items())):
         raise ValueError('Archived evidence belongs to another manifest or experiment')
     manifest, manifest_digest = document('_archive_meta/manifest.json')
+    if manifest.get('execution') not in (None, {'operation': 'full-verify'}):
+        raise ValueError('Accepted archive requires original full verification')
     if manifest_digest != binding['manifest_sha']:
         raise ValueError('Archived manifest bytes differ from the original binding')
     baseline, baseline_digest = document('_archive_meta/baseline.json')
@@ -97,9 +99,28 @@ def inspect(payload: dict) -> dict:
               'baseline_matches': experiment['baseline_matches'], 'baseline_error': experiment['baseline_error'],
               'fence_recorded': experiment['fence_recorded'], 'recorded_gate_report': gate,
               'archive_status': 'no_accepted_archive', 'archive': None, 'artifact': None,
+              'screen': None, 'screen_status': 'not_recorded',
               'integration_ticket': None, 'files': files,
               'artifact_limit_bytes': 16_777_216, 'response_limit_bytes': 8_388_608,
               'scope': 'Saved native records only; no live phase, statistical re-evaluation, artifact-wide verification, authorization or integration completion claim'}
+    if experiment.get('screen_ref') is not None:
+        native = experiment['job_request']
+        job = {'binding': binding, 'job_id': native['job_id']}
+        bundle = _screen_result(project, ident, payload['control_home'], job)
+        result.update(screen_status='complete' if bundle['complete'] else 'cleanup_unavailable',
+            screen={'result_sha256': bundle['sha256'], 'report': bundle['result'], 'cleanup': bundle['cleanup']})
+        if payload['artifact'] is not None:
+            if payload.get('evidence_sha256') is not None or payload.get('screen_result_sha256') != bundle['sha256']:
+                raise ValueError('Screen artifact read requires the exact screen result SHA-256')
+            item = next((item for item in bundle['result']['artifacts'] if item['path'] == payload['artifact']), None)
+            if item is None:
+                raise ValueError('Selected artifact is absent from the original screen index')
+            raw = bundle['inventory'].originals[Path(bundle['output']) / item['path']][0]
+            result['artifact'] = _artifact_window(raw, item, payload)
+            bundle['inventory'].confirm()
+        return result
+    if payload.get('screen_result_sha256') is not None:
+        raise ValueError('Full archive artifact requires its full evidence SHA-256')
     if gate is None or gate['passed'] is not True:
         if payload['artifact'] is not None:
             raise ValueError('No accepted archive is recorded for the selected artifact')
@@ -146,6 +167,18 @@ def inspect(payload: dict) -> dict:
         result['integration_ticket'] = {'task_id': ticket_id, 'task_url': (project.root / ticket_path).as_uri(),
                                         'record': ticket, 'approval_currently_valid': None}
     return result
+
+
+def _artifact_window(raw, item, payload):
+    text = raw.decode('utf-8')
+    if '\0' in text:
+        raise ValueError('Selected artifact contains NUL; only UTF-8 text evidence is supported')
+    offset = payload['offset']
+    if offset > len(text):
+        raise ValueError('Artifact character offset exceeds the original text length')
+    stop = min(offset + payload['limit'], len(text))
+    return {'path': item['path'], 'sha256': item['sha256'], 'bytes': len(raw), 'characters': len(text),
+        'offset': offset, 'limit': payload['limit'], 'next_offset': stop if stop < len(text) else None, 'text': text[offset:stop]}
 
 
 class _Inventory:
@@ -422,7 +455,7 @@ def _measurement(receipt, evidence, manifest, artifacts, read_artifact, chain):
     return []
 
 
-def _baseline_reference(project, control_home, selector):
+def _baseline_reference(project, control_home, selector, *, inventory=None):
     """Inventory a fixed accepted archive with the same reader in public and managed processes."""
     from dataclasses import asdict
     from perf_temporal.models import Binding, Experiment
@@ -430,7 +463,16 @@ def _baseline_reference(project, control_home, selector):
     from . import training_execution_protocol as protocol
     from .training_materials import relative, input_descriptor, json_configuration
 
-    inventory = _Inventory()
+    inventory = _Inventory() if inventory is None else inventory
+    reference_entries = {}
+
+    def read_inventory(root, relative_path, label, expected=None, limit=1_048_576, *, evidence=True, optional=False):
+        original = inventory.read(root, relative_path, label, expected, limit, evidence=evidence, optional=optional)
+        if original is not None and evidence:
+            reference_entries.setdefault(Path(root) / relative_path,
+                {'root': label, 'path': relative_path, 'bytes': len(original), 'sha256': hashlib.sha256(original).hexdigest()})
+        return original
+
     project.registration(inventory)
     ident = project.core.slug(selector['experiment_id'])
     protocol._digest(selector['evidence_sha256'])
@@ -438,7 +480,7 @@ def _baseline_reference(project, control_home, selector):
     archive_prefix = prefix + 'accepted-evidence/' + selector['evidence_sha256'] + '/'
 
     def read(relative):
-        return inventory.read(project.root, relative, 'archive' if relative.startswith(archive_prefix) else 'job')
+        return read_inventory(project.root, relative, 'archive' if relative.startswith(archive_prefix) else 'job')
 
     def document(relative):
         return protocol.decode(read(relative))
@@ -502,11 +544,11 @@ def _baseline_reference(project, control_home, selector):
     if inputs is not None and inputs['kind'] == 'prepared-json':
         for arm in ('baseline', 'candidate'):
             item = inputs[arm]
-            raw = inventory.read(project.root, item['path'], 'job', item['sha256'])
+            raw = read_inventory(project.root, item['path'], 'job', item['sha256'])
             if len(raw) != item['bytes']:
                 raise ValueError('Configuration material bytes differ from the original manifest: ' + arm)
             json_configuration(raw)
-    fence_raw = inventory.read(project.root, 'training/fences/' + ident + '.json', 'execution', optional=True)
+    fence_raw = read_inventory(project.root, 'training/fences/' + ident + '.json', 'execution', optional=True)
     fence = None if fence_raw is None else protocol.decode(fence_raw)
     if fence is not None and fence['binding'] != binding:
         raise ValueError('Training fence belongs to another immutable binding')
@@ -523,14 +565,14 @@ def _baseline_reference(project, control_home, selector):
             size = os.fstat(descriptor).st_size
         finally:
             os.close(descriptor)
-        total += size
+        total += 0 if path in inventory.originals else size
         if size > 16 * 1_048_576 or total > 64 * 1_048_576:
             raise ValueError('capacity_exceeded: complete baseline reference archive')
     for item in artifacts:
         protocol._exact(item, ('path', 'sha256'), 'Original artifact index')
         relative(item['path'])
         protocol._digest(item['sha256'])
-        raw = inventory.read(folder, item['path'], 'archive', item['sha256'], 16 * 1_048_576)
+        raw = read_inventory(folder, item['path'], 'archive', item['sha256'], 16 * 1_048_576)
         indexed[item['path']] = {**item, 'bytes': len(raw)}
 
     def artifact(ref):
@@ -547,7 +589,7 @@ def _baseline_reference(project, control_home, selector):
     context_missing = []
     for path in (*required, saved.folder / 'stopped.json'):
         try:
-            original = inventory.read(project.root, path.relative_to(project.root).as_posix(),
+            original = read_inventory(project.root, path.relative_to(project.root).as_posix(),
                 'execution' if path.is_relative_to(saved.folder) else 'budget', limit=16 * 1_048_576)
             value = protocol.decode(original)
             if path == saved.budget / 'owner.json':
@@ -561,11 +603,11 @@ def _baseline_reference(project, control_home, selector):
     if chain is not None:
         for path, raw in chain.originals.items():
             label = 'execution' if path.is_relative_to(chain.folder) else 'budget' if path.is_relative_to(chain.budget.parent) else 'job'
-            inventory.read(project.root, path.relative_to(project.root).as_posix(),
+            read_inventory(project.root, path.relative_to(project.root).as_posix(),
                            label, hashlib.sha256(raw).hexdigest(), 16 * 1_048_576)
     configuration_request = None
     try:
-        raw = inventory.read(saved.folder.parent, 'configuration-request.json', 'job', limit=16 * 1_048_576)
+        raw = read_inventory(saved.folder.parent, 'configuration-request.json', 'job', limit=16 * 1_048_576)
         if chain is not None:
             chain.originals[chain.folder.parent / 'configuration-request.json'] = raw
         configuration_request = protocol.decode(raw)
@@ -578,7 +620,7 @@ def _baseline_reference(project, control_home, selector):
         for name in ('cycle.json', 'authorization.json', 'ready.json'):
             relative_path = (cycle / name).relative_to(control_home).as_posix()
             try:
-                protocol.decode(inventory.read(Path(control_home), relative_path, 'budget', limit=16 * 1_048_576))
+                protocol.decode(read_inventory(Path(control_home), relative_path, 'budget', limit=16 * 1_048_576))
             except FileNotFoundError:
                 context_missing.append(relative_path)
         if not context_missing:
@@ -642,7 +684,7 @@ def _baseline_reference(project, control_home, selector):
               'baseline_id': baseline['baseline_id'], 'baseline_commit': baseline['commit'],
               'base_config_sha256': baseline['config_sha256'], 'workload_fingerprint': baseline['workload_fingerprint']}
     inventory.confirm()
-    entries = inventory.index()
+    entries = sorted(reference_entries.values(), key=lambda item: (item['root'], item['path']))
     if receipt is not None:
         # Locations remain in the authenticated raw receipt/report inventory.
         # The reference exposes their code/build identity without making the
@@ -680,15 +722,422 @@ def baseline_reference(payload):
     return _baseline_reference(project, payload['control_home'], payload)
 
 
+def _screen_data(data, request, manifest, read, first_failure):
+    """Validate actual source observations and derive only the frozen exploratory result."""
+    from . import training_execution_protocol as protocol
+    from .training_materials import execution_plan
+
+    protocol._exact(data, ('workload', 'windows', 'checks', 'checks_not_run', 'resources', 'artifacts', 'reasons'), 'Screen source report')
+    plan = execution_plan(manifest, {'configuration_readback': request['configuration_readback']})['plan']
+    workload = data['workload']
+    protocol._exact(workload, ('input_plan', 'warmup_work', 'scope'), 'Screen workload')
+    protocol._match(workload['input_plan'], plan['input_plan'], 'Screen actual input plan')
+    if (type(workload['warmup_work']) is not int or not 0 <= workload['warmup_work'] <= plan['window']['warmup_maximum_work']
+            or not isinstance(workload['scope'], dict) or not workload['scope']):
+        raise ValueError('Screen workload lacks actual bounded warmup or scope')
+    if not isinstance(data['reasons'], list):
+        raise ValueError('Screen reasons must be a complete list')
+    windows = data['windows']
+    if not isinstance(windows, list) or not 1 <= len(windows) <= plan['window']['maximum_windows']:
+        raise ValueError('Screen has no complete bounded candidate windows')
+    by_window, runs, underwork = {}, set(), False
+    for window in windows:
+        protocol._exact(window, ('provenance', 'input_ref', 'unit', 'effective_work', 'updates', 'measurement_mode',
+                                'aggregation', 'rank_coverage', 'elapsed_seconds', 'raw_ref'), 'Screen window')
+        provenance = window['provenance']
+        protocol._exact(provenance, ('native_request_sha256', 'launch_sha256', 'execution_phase_id', 'run_id', 'window_id'), 'Screen window provenance')
+        if (any(provenance[key] != value for key, value in {'native_request_sha256': request['native_request_sha256'],
+                'launch_sha256': request['managed']['launch_sha256'], 'execution_phase_id': request['execution_phase_id']}.items())
+                or any(not isinstance(provenance[key], str) or not provenance[key] for key in ('run_id', 'window_id'))
+                or provenance['run_id'] in runs or provenance['window_id'] in by_window):
+            raise ValueError('Screen window does not belong to this original execution')
+        work, elapsed = window['effective_work'], window['elapsed_seconds']
+        if (type(work) is not int or not 0 <= work <= plan['window']['maximum_work']
+                or type(elapsed) not in (int, float) or not math.isfinite(elapsed) or elapsed < 0
+                or work > 0 and elapsed <= 0 or window['unit'] != plan['window']['unit']
+                or window['measurement_mode'] != 'unprofiled' or window['aggregation'] != 'global_completion_window'
+                or not (type(window['updates']) is int and window['updates'] >= 0 or window['updates'] == 'not-applicable')):
+            raise ValueError('Screen window has unsupported work, timing or measurement semantics')
+        coverage = window['rank_coverage']
+        protocol._exact(coverage, ('expected', 'completed'), 'Screen rank coverage')
+        if (not isinstance(coverage['expected'], list) or not coverage['expected']
+                or any(type(rank) is not int or rank < 0 for rank in coverage['expected'])
+                or len(set(coverage['expected'])) != len(coverage['expected'])
+                or protocol.CycleAdmission._sha(coverage['completed']) != protocol.CycleAdmission._sha(coverage['expected'])):
+            raise ValueError('Screen window lacks global rank completion')
+        raw = read(window['raw_ref'])
+        protocol._match({key: raw.get(key) for key in window if key != 'raw_ref'},
+                        {key: value for key, value in window.items() if key != 'raw_ref'}, 'Screen actual raw window')
+        raw_input = read(window['input_ref'])
+        protocol._match(raw_input.get('input_plan'), plan['input_plan'], 'Screen raw input identity')
+        if type(raw_input.get('effective_work')) is not int or raw_input['effective_work'] != work:
+            raise ValueError('Screen raw input effective work differs from its window')
+        by_window[provenance['window_id']] = window
+        runs.add(provenance['run_id'])
+        underwork |= work < plan['window']['minimum_work'] or elapsed <= 0
+    if sum(window['elapsed_seconds'] for window in windows) > plan['window']['maximum_seconds']:
+        raise ValueError('Screen measured windows exceed their frozen execution walltime')
+    expected_checks = {check['id']: check for check in plan['checks']}
+    seen, failures = set(), []
+    if not isinstance(data['checks'], list) or not isinstance(data['checks_not_run'], list):
+        raise ValueError('Screen check coverage is incomplete')
+    for check in data['checks']:
+        protocol._exact(check, ('id', 'kind', 'contract_sha256', 'subject', 'status', 'report_ref', 'input_refs', 'expected_refs', 'coverage'), 'Screen check result')
+        expected = expected_checks.get(check['id'])
+        if (expected is None or any(check[key] != expected[key] for key in ('kind', 'contract_sha256'))
+                or check['status'] not in ('PASS', 'FAIL') or not isinstance(check['coverage'], dict) or not check['coverage']):
+            raise ValueError('Screen check differs from its trusted oracle contract')
+        subject = check['subject']
+        protocol._exact(subject, ('window_id', 'rank'), 'Screen check subject')
+        window = by_window.get(subject['window_id'])
+        if window is None or type(subject['rank']) is not int or subject['rank'] not in window['rank_coverage']['completed']:
+            raise ValueError('Screen check has no actual candidate window/rank')
+        check_key = (check['id'], subject['window_id'], subject['rank'])
+        if check_key in seen:
+            raise ValueError('Duplicate screen check for the same window and rank')
+        if (not isinstance(check['input_refs'], list) or not check['input_refs'] or not isinstance(check['expected_refs'], list)
+                or check['kind'] == 'behavior' and not check['expected_refs']):
+            raise ValueError('Screen check lacks actual inputs or independent expected outputs')
+        for ref in (*check['input_refs'], *check['expected_refs']):
+            read(ref, metadata=False)
+        report = read(check['report_ref'])
+        expected_report = {'kind': 'screen-check', 'check_id': check['id'], 'check_kind': check['kind'],
+            **{key: check[key] for key in ('contract_sha256', 'subject', 'status', 'input_refs', 'expected_refs', 'coverage')}}
+        protocol._match({key: report.get(key) for key in expected_report}, expected_report, 'Screen original oracle report')
+        seen.add(check_key)
+        if check['status'] == 'FAIL':
+            failures.append(check)
+    not_run = data['checks_not_run']
+    last_window = windows[-1]['provenance']['window_id']
+    last_seen = {key[0] for key in seen if key[1] == last_window}
+    if (not all(isinstance(key, str) for key in not_run) or len(set(not_run)) != len(not_run)
+            or last_seen & set(not_run) or last_seen | set(not_run) != set(expected_checks)):
+        raise ValueError('Screen check coverage omits or duplicates a frozen required check')
+    for window in windows[:-1] if failures else windows:
+        if window['effective_work'] < plan['window']['minimum_work'] or window['elapsed_seconds'] <= 0:
+            raise ValueError('Screen completed window lacks required work before a later failure')
+        if any((key, window['provenance']['window_id'], rank) not in seen
+               for key in expected_checks for rank in window['rank_coverage']['completed']):
+            raise ValueError('Screen required checks do not cover every completed candidate window/rank')
+    if failures:
+        if first_failure is None:
+            raise ValueError('first_failure_unknown: source did not durably record its first failed check')
+        failure = first_failure['failure']
+        matching = [check for check in failures if check['id'] == failure['check_id'] and
+                    check['subject'] == {'window_id': failure['window_id'], 'rank': failure['rank']}]
+        if not matching or failure['window_id'] != windows[-1]['provenance']['window_id']:
+            raise ValueError('Screen continued candidate windows after its first observed failure')
+        for ref in failure['diagnostic_refs']:
+            read(ref, metadata=False)
+    elif first_failure is not None or underwork or not_run:
+        raise ValueError('Screen required work or checks are missing without an observed failure')
+    resources, resource_failure = [], False
+    supplied = {}
+    if not isinstance(data['resources'], list):
+        raise ValueError('Screen resources must be a bounded observation list')
+    for metric in data['resources']:
+        protocol._exact(metric, ('metric', 'unit', 'scope', 'aggregation', 'state', 'observed', 'report_ref'), 'Screen resource observation')
+        if metric['metric'] in supplied:
+            raise ValueError('Duplicate screen resource observation')
+        supplied[metric['metric']] = metric
+    for expected in plan['resources']:
+        metric = supplied.pop(expected['metric'], {'metric': expected['metric'], 'unit': expected['unit'], 'scope': expected['scope'],
+            'aggregation': expected['aggregation'], 'state': 'NOT_RUN', 'observed': None, 'report_ref': None})
+        protocol._match({key: metric[key] for key in ('metric', 'unit', 'scope', 'aggregation')},
+                        {key: expected[key] for key in ('metric', 'unit', 'scope', 'aggregation')}, 'Screen resource scope')
+        if metric['state'] == 'NOT_RUN':
+            if metric['observed'] is not None or metric['report_ref'] is not None or expected['required']:
+                raise ValueError('blocked: current required screen resource was not measured')
+        elif (metric['state'] != 'OBSERVED' or type(metric['observed']) not in (int, float)
+                or not math.isfinite(metric['observed']) or metric['observed'] < 0):
+            raise ValueError('Screen resource is not an actual finite measurement')
+        else:
+            protocol._match(read(metric['report_ref']).get('metric'),
+                            {key: value for key, value in metric.items() if key != 'report_ref'}, 'Screen raw resource report')
+            resource_failure |= expected['required'] and expected['limit'] is not None and metric['observed'] > expected['limit']
+        resources.append({**metric, 'required': expected['required'], 'limit': expected['limit']})
+    if supplied:
+        raise ValueError('Screen source reported an undeclared resource')
+    receipt = read({'path': 'baseline-reference-read.json'})
+    projection = read({'path': 'baseline-reference-projection.json'})
+    reference = projection['reference']
+    protocol._match(projection['reference_sha256'], request['baseline_reference']['reference_sha256'], 'Screen reference selector')
+    protocol._match(reference, reference, 'Screen reference')
+    if (protocol.CycleAdmission._sha(reference) != projection['reference_sha256']
+            or receipt['selector'] != request['baseline_reference'] or receipt['binding'] != request['binding']
+            or receipt['reference_sha256'] != projection['reference_sha256']
+            or receipt['anchor_sha256'] != projection['anchor_sha256']
+            or receipt['request_sha256'] != request['_raw_sha256']):
+        raise ValueError('Screen reference read differs from the actual same-context request')
+    policy = plan['screening']
+    relation = receipt['projection']
+    allowed = set(relation['allowed_deltas'])
+    comparable = (receipt['quality']['state'] == 'reusable' and receipt['timing']['state'] == 'historical_only'
+        and relation['scheme'] == policy['comparison_scheme']
+        and all(item['relation'] in ('matched', 'not_applicable') or item['relation'] == 'different' and item['field'] in allowed
+                for item in relation['relations']))
+    historical = reference.get('receipt')
+    environment = historical.get('environment') if isinstance(historical, dict) else None
+    comparable &= bool(environment and protocol.CycleAdmission._sha(workload['scope'].get('environment')) == protocol.CycleAdmission._sha(environment.get('observed')))
+    rate = (sum(window['effective_work'] for window in windows) / sum(window['elapsed_seconds'] for window in windows)
+            if not underwork else None)
+    change = None
+    if comparable and not failures and not resource_failure:
+        if policy['target'] == 'throughput':
+            measured = historical.get('measurement', [])
+            if measured and all(item['elapsed_seconds'] > 0 for item in measured):
+                baseline_rate = sum(item['source_samples'] for item in measured) / sum(item['elapsed_seconds'] for item in measured)
+                if plan['window']['unit'] == 'source_samples' and baseline_rate > 0:
+                    change = rate / baseline_rate - 1
+        else:
+            actual = next(item for item in resources if item['metric'] == policy['target'])
+            old = next((item for item in receipt['resources']['metrics'] if item['metric'] == policy['target']
+                        and all(item[key] == actual[key] for key in ('unit', 'scope', 'aggregation'))), None)
+            if receipt['resources']['state'] == 'observed' and old and old['observed'] > 0 and actual['state'] == 'OBSERVED':
+                change = 1 - actual['observed'] / old['observed']
+    rejected = bool(failures or resource_failure)
+    if rejected:
+        performance, decision = 'unavailable', 'rejected'
+    elif change is None:
+        performance, decision = 'unavailable', 'inconclusive'
+    elif change <= policy['minimum_improvement_fraction']:
+        performance, decision = 'no_gain', 'stop_direction'
+    elif change <= policy['minimum_improvement_fraction'] + policy['noise_fraction']:
+        performance, decision = 'below_noise', 'stop_direction'
+    else:
+        performance, decision = 'promising', 'promising'
+    return {'requested_tier': 'screened', 'achieved_quality_tier': 'none' if rejected else 'screened',
+        'workload': workload, 'windows': windows, 'checks': data['checks'], 'checks_not_run': not_run,
+        'resources': resources, 'reference': {key: receipt[key] for key in
+            ('selector', 'reference_sha256', 'anchor_sha256', 'inventory_sha256', 'quality', 'timing', 'resources')},
+        'performance_state': performance, 'decision': decision, 'throughput': rate, 'change_fraction': change,
+        'reasons': data['reasons'] + ([] if comparable else [_reason('comparison_unavailable', 'performance')])}
+
+
+def _screen_bundle(output, request, manifest, *, inventory=None):
+    """Read the same immutable typed content for executor and complete historical readers."""
+    from . import training_execution_protocol as protocol
+    from .training_configuration import _bytes, _reference_projection
+
+    output = Path(output)
+    inventory = _Inventory() if inventory is None else inventory
+    raw = inventory.read(output, 'screen-result.json', 'screen')
+    result = protocol.decode(raw)
+    protocol._match(request['execution'], manifest['execution'], 'Screen request operation')
+    protocol._exact(result, ('schema_version', 'kind', 'binding', 'native_request_sha256', 'configuration_request_sha256',
+        'runner_sha256', 'managed', 'source', 'execution_plan_sha256', 'configuration_receipt_ref', 'baseline_reference_read_ref',
+        'requested_tier', 'achieved_quality_tier', 'workload', 'windows', 'checks', 'checks_not_run', 'first_failure_ref',
+        'resources', 'reference', 'performance_state', 'decision', 'throughput', 'change_fraction', 'artifacts', 'reasons'), 'Screen result')
+    expected = {'schema_version': 1, 'kind': 'training-screen-result', 'binding': request['binding'],
+        'native_request_sha256': request['native_request_sha256'], 'configuration_request_sha256': request['_raw_sha256'],
+        'runner_sha256': request['runner_sha256'], 'managed': request['managed'], 'source': request['configuration_readback']['source'],
+        'execution_plan_sha256': protocol.CycleAdmission._sha(request['execution']['plan'])}
+    protocol._match({key: result[key] for key in expected}, expected, 'Screen result envelope')
+    indexed = {}
+    if not isinstance(result['artifacts'], list) or not 0 < len(result['artifacts']) <= 256:
+        raise ValueError('capacity_exceeded: screen artifact index')
+    for item in result['artifacts']:
+        protocol._exact(item, ('path', 'sha256', 'bytes'), 'Screen artifact')
+        if item['path'] == 'screen-result.json' or item['path'] in indexed or type(item['bytes']) is not int or not 0 <= item['bytes'] <= 16 * 1_048_576:
+            raise ValueError('Screen artifact index is duplicate, recursive or exceeds capacity')
+        original = inventory.read(output, item['path'], 'screen', item['sha256'], 16 * 1_048_576)
+        if len(original) != item['bytes']:
+            raise ValueError('Screen artifact length differs from its raw index')
+        indexed[item['path']] = item
+
+    projection_path = output / 'baseline-reference-projection.json'
+    if projection_path not in inventory.originals:
+        raise ValueError('Screen reference projection is missing')
+    projected = protocol.decode(inventory.originals[projection_path][0])
+    protocol._exact(projected, ('reference', 'reference_sha256', 'anchor_sha256', 'read_only', 'runtime_status'), 'Saved baseline reference projection')
+    historical_index = {}
+    for entry in projected['reference']['inventory']['entries']:
+        if entry['root'] == 'archive':
+            item = {key: entry[key] for key in ('path', 'sha256', 'bytes')}
+            if item['path'] in historical_index and historical_index[item['path']] != item:
+                raise ValueError('Historical baseline reference index is ambiguous')
+            historical_index[item['path']] = item
+    _artifact_refs(projected['reference']['receipt'], historical_index)
+    _artifact_refs(projected['reference']['coverage'], historical_index)
+
+    def read(ref, metadata=True):
+        item = indexed.get(ref.get('path'))
+        if item is None or len(ref) != 1 and ref != item:
+            raise ValueError('Screen report has an unindexed transitive raw reference')
+        original = inventory.originals[output / item['path']][0]
+        if not metadata:
+            return original
+        if len(original) > 1_048_576:
+            raise ValueError('capacity_exceeded: screen JSON metadata')
+        value = protocol.decode(original)
+        if item['path'] == 'baseline-reference-read.json':
+            _artifact_refs({key: value[key] for key in ('quality', 'timing', 'resources')}, historical_index)
+        elif item['path'] not in ('configuration-receipt.json', 'baseline-reference-projection.json'):
+            _artifact_refs(value, indexed)
+        return value
+
+    if result['configuration_receipt_ref'] != indexed.get('configuration-receipt.json'):
+        raise ValueError('Screen configuration receipt differs from its fixed original path')
+    configuration = read(result['configuration_receipt_ref'])
+    protocol._match(configuration['request_sha256'], request['_raw_sha256'], 'Screen configuration receipt request')
+    for key in ('binding', 'native_request_sha256', 'runner_sha256', 'managed'):
+        protocol._match(configuration[key], request[key], 'Screen configuration receipt ' + key)
+    for key, value in {'source': request['configuration_readback']['source'],
+            'environment_fingerprint': manifest['environment_fingerprint'],
+            'execution_plan_sha256': protocol.CycleAdmission._sha(request['execution']['plan']),
+            'configurations': request['configurations']}.items():
+        protocol._match(configuration[key], value, 'Screen configuration receipt ' + key)
+    if result['baseline_reference_read_ref'] != indexed.get('baseline-reference-read.json'):
+        raise ValueError('Screen baseline read receipt reference differs from its fixed path')
+    reference_read = read(result['baseline_reference_read_ref'])
+    projection = read({'path': 'baseline-reference-projection.json'})
+    expected_read = _reference_projection(reference_read['projection'], projection, request,
+        request['_raw_sha256'], configuration['observations'], manifest)
+    protocol._match(reference_read, expected_read, 'Screen same-context baseline read receipt')
+    if indexed.get('screen-source-inventory.raw', {}).get('sha256') != request['configuration_readback']['source']['inventory_sha256']:
+        raise ValueError('Screen trusted source inventory is missing or changed')
+    for index, check in enumerate(request['execution']['plan']['checks']):
+        if indexed.get('screen-oracles/' + str(index) + '.raw', {}).get('sha256') != check['contract_sha256']:
+            raise ValueError('Screen oracle raw is missing or changed')
+    for arm in ('baseline', 'candidate'):
+        if indexed.get('screen-configuration-inputs/' + arm + '.raw', {}).get('sha256') != request['configurations'][arm]['source_sha256']:
+            raise ValueError('Screen actual configuration raw is missing or changed')
+    first = read(result['first_failure_ref']) if result['first_failure_ref'] is not None else None
+    if first is not None:
+        for key, value in {'kind': 'training-screen-first-failure', 'binding': request['binding'],
+                'configuration_request_sha256': request['_raw_sha256'], 'source': request['configuration_readback']['source']}.items():
+            protocol._match(first[key], value, 'Screen first failure ' + key)
+    data = read({'path': 'screen-source-report.json'})
+    _artifact_refs(data, indexed)
+    derived = _screen_data(data, request, manifest, read, first)
+    protocol._match({key: result[key] for key in derived}, derived, 'Screen derived result')
+    _bytes(result)
+    inventory.confirm()
+    return {'result': result, 'raw': raw, 'sha256': hashlib.sha256(raw).hexdigest(),
+        'state': 'SCREEN_REJECTED' if result['decision'] == 'rejected' else 'SCREEN_COMPLETED', 'inventory': inventory}
+
+
+def _screen_result(project, ident, control_home, job):
+    """Combine typed content with the original managed records and real durable stop."""
+    from . import training_execution_protocol as protocol
+
+    guards = _Inventory()
+    saved = protocol.ExecutionRecords(project.project, ident, control_home)
+    for path in (*(saved.folder / (name + '.json') for name in ('request', 'launch', 'attempt', 'ack', 'stopped')),
+                 saved.budget / 'owner.json'):
+        guards.read(path.parent, path.name, 'execution', limit=16 * 1_048_576, optional=path.name == 'stopped.json')
+    chain = saved.load()
+    stop = chain.observe(durable=True)
+    complete = all(stop[key] is True for key in ('durable_stop_confirmed', 'executor_stop_confirmed', 'reap_record_observed'))
+    stopped_process = chain.records['stopped']['process'] if chain.records['stopped'] is not None else None
+    complete &= bool(stopped_process and stopped_process['status'] == 'succeeded' and stopped_process['returncode'] == 0)
+    def read_guard(path, limit=16 * 1_048_576):
+        return guards.read(path.parent, path.name, 'execution', limit=limit)
+    native_result = protocol.decode(read_guard(chain.folder.parent / 'result.json'))
+    if native_result['job_id'] != job['job_id'] or native_result['binding'] != job['binding'] or native_result.get('gate') is not None:
+        raise ValueError('Screen native result binding or gate is invalid')
+    request_raw = read_guard(chain.folder.parent / 'configuration-request.json')
+    request = protocol.decode(request_raw)
+    request['_raw_sha256'] = hashlib.sha256(request_raw).hexdigest()
+    manifest_raw = read_guard(chain.root / ('training/manifests/' + ident + '.json'))
+    if hashlib.sha256(manifest_raw).hexdigest() != job['binding']['manifest_sha']:
+        raise ValueError('Screen original manifest raw changed')
+    protocol._match(request['binding'], job['binding'], 'Screen original configuration binding')
+    protocol._match(request['managed'], {name + '_sha256': chain.sha(chain.records[name]) for name in ('request', 'launch', 'attempt', 'ack')}, 'Screen original managed chain')
+    if request['native_request_sha256'] != chain.records['request']['native_request_sha256'] or request['runner_sha256'] != chain.sha(chain.native['runner']):
+        raise ValueError('Screen original native request or runner changed')
+    bundle = _screen_bundle(chain.folder.parent / 'run-output', request, protocol.decode(manifest_raw), inventory=guards)
+    ref = native_result.get('screen')
+    expected = {'report': str(chain.folder.parent / 'run-output/screen-result.json'), 'report_sha256': bundle['sha256']}
+    if ref != expected or native_result['state'] != bundle['state']:
+        raise ValueError('Screen native result does not pin its original typed content')
+    sources = bundle['result']['artifacts']
+    indexed = {item['path']: item for item in sources}
+    output = chain.folder.parent / 'run-output'
+    source_manifest = protocol.decode(protocol.read_raw(output / 'screen-execution-sources.json'))
+    _artifact_refs(source_manifest, indexed)
+    observed = protocol.observe_source_manifest(chain.owner['execution_capability'], source_manifest,
+        protocol.read_raw(output / 'baseline-reference-protocol-source.py.txt'), protocol.read_raw(output / 'baseline-reference-native-descriptor.json'))
+    if observed['state'] != 'verified' or any(item not in indexed for item in
+            ('screen-execution-sources.json', 'baseline-reference-protocol-source.py.txt', 'baseline-reference-native-descriptor.json')):
+        raise ValueError('Screen original execution source manifest is unavailable or invalid')
+    for path, original in chain.originals.items():
+        if read_guard(path) != original:
+            raise ValueError('Screen original execution chain changed during collection')
+    selected = _baseline_reference(project, control_home, request['baseline_reference'], inventory=guards)
+    projection_raw = guards.originals[output / 'baseline-reference-projection.json'][0]
+    protocol._match(selected, protocol.decode(projection_raw), 'Screen original baseline inventory after collection')
+    guards.confirm()
+    bundle.update(complete=complete, cleanup={**{key: stop[key] for key in ('durable_stop_confirmed', 'executor_stop_confirmed', 'reap_record_observed')},
+        'process': stopped_process}, output=str(output))
+    return bundle
+
+
+def _native_screen_read(payload):
+    """Fixed no-spawn child body; native parents transmit only their Job and core paths."""
+    from . import training_execution_protocol as protocol
+    from .reference_training_context import _TrainingProject
+    from .training_materials import relative
+
+    root, config = Path(payload['state_directory']), Path(payload['config_directory'])
+    if root.resolve() != root or config.resolve() != config:
+        raise ValueError('Native reader requires original canonical core paths')
+    job = payload['job']
+    ident = job['binding']['experiment_id']
+    if relative(ident) != ident or '/' in ident:
+        raise ValueError('Native reader requires one exact experiment ID')
+    folder = root / 'training/jobs' / ident
+    native = protocol.decode(protocol.read_raw(folder / 'request.json', 16 * 1_048_576))
+    if native['job_id'] != job['job_id'] or native['experiment']['binding'] != job['binding']:
+        raise ValueError('Native reader Job differs from its original request')
+    try:
+        result = protocol.decode(protocol.read_raw(folder / 'result.json'))
+    except FileNotFoundError:
+        result = None
+    if result is None:
+        return {'job': job, 'state': 'RUNNING' if (folder / 'started.json').exists() else 'QUEUED', 'detail': ''}
+    if result['job_id'] != job['job_id'] or result['binding'] != job['binding']:
+        raise ValueError('Native result binding changed')
+    if payload['operation'] == 'native-poll' and result['state'] not in ('SCREEN_COMPLETED', 'SCREEN_REJECTED'):
+        return {'job': job, 'state': result['state'], 'detail': result['detail']}
+    request = protocol.decode(protocol.read_raw(folder / 'configuration-request.json', 16 * 1_048_576))
+    context = request['context']
+    project = _TrainingProject({'project': context['project'], 'control_home': context['intent']['control_home']})
+    if project.root != root or project.config != config or request['binding'] != job['binding']:
+        raise ValueError('Native screen reader context differs from its original core paths')
+    project.registration()
+    if payload['operation'] == 'native-poll':
+        chain = protocol.ExecutionRecords(project.project, ident, context['intent']['control_home']).load()
+        stopped = chain.observe(durable=True)
+        if not all(stopped[key] is True for key in ('durable_stop_confirmed', 'executor_stop_confirmed', 'reap_record_observed')):
+            return {'job': job, 'state': 'RUNNING', 'detail': 'screen_result_recorded; cleanup_pending'}
+        process = chain.records['stopped']['process']
+        if process['status'] != 'succeeded' or process['returncode'] != 0:
+            return {'job': job, 'state': 'FAILED', 'detail': 'screen_result_recorded; original executor process failed'}
+        return {'job': job, 'state': result['state'], 'detail': result['detail']}
+    bundle = _screen_result(project, ident, context['intent']['control_home'], job)
+    if not bundle['complete']:
+        raise ValueError('Screen cleanup_pending: original durable stop is incomplete')
+    return {'job': job, 'state': bundle['state'], 'result_sha256': bundle['sha256'],
+        'report_uri': (folder / 'run-output/screen-result.json').as_uri(), 'summary': bundle['result']['decision']}
+
+
 def main() -> None:
     from agent_platform.core import Blocked
     from .reference_training_context import _native_bytes
 
     try:
-        payload = json.load(sys.stdin)
-        if payload['operation'] not in ('inspect', 'baseline-reference'):
+        from .training_execution_protocol import decode
+        raw = sys.stdin.buffer.read(16 * 1_048_576 + 1)
+        if len(raw) > 16 * 1_048_576:
+            raise ValueError('capacity_exceeded: complete training reader request')
+        payload = decode(raw)
+        if payload['operation'] not in ('inspect', 'baseline-reference', 'native-poll', 'collect-screen'):
             raise ValueError('Unsupported training evidence operation')
-        result = inspect(payload) if payload['operation'] == 'inspect' else baseline_reference(payload)
+        if payload['operation'] in ('native-poll', 'collect-screen'):
+            result = _native_screen_read(payload)
+        else:
+            result = inspect(payload) if payload['operation'] == 'inspect' else baseline_reference(payload)
         sys.stdout.write(_native_bytes(result, 'Training evidence response', 8_388_608).decode('utf-8'))
     except (OSError, ValueError, KeyError, TypeError, Blocked) as error:
         raise SystemExit('BLOCKED: ' + str(error)) from error
