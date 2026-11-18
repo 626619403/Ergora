@@ -171,15 +171,26 @@ def test_repository_ownership_requires_current_runner_or_original_request(experi
 
 
 def test_read_limits_and_symlinks_are_enforced(experiments):
+    from ergora.training_materials import read_raw
+
     state, _, runtime, prefix, _ = experiments
     original = prefix / 'experiments/alpha/manifest.json'
-    original.write_bytes(b' ' * 1_048_577)
-    with pytest.raises(ValueError, match='size limit'):
+    oversized = (json.dumps({**json.loads(original.read_bytes()), 'notes': 'x' * 1_048_576}) + '\n').encode()
+    original.write_bytes(oversized)
+    before = {p: p.read_bytes() for p in runtime.rglob('*') if p.is_file() and not p.is_symlink()}
+    with pytest.raises(ValueError):
+        read_raw(original)
+    with pytest.raises(ValueError):
         training.inspect(state, 'demo', 'alpha')
+    assert {p: p.read_bytes() for p in runtime.rglob('*') if p.is_file() and not p.is_symlink()} == before
     if sys.platform != 'win32':
-        original.unlink();original.symlink_to(runtime / 'training/manifests/alpha.json')
-        with pytest.raises(ValueError, match='Symlinks'):
+        target = runtime / 'training/manifests/alpha.json'
+        target_raw = target.read_bytes()
+        original.unlink();original.symlink_to(target)
+        with pytest.raises(ValueError):
             training.inspect(state, 'demo', 'alpha')
+        assert original.is_symlink() and target.read_bytes() == target_raw
+
 
 
 def test_cli_http_and_application_share_the_same_offline_observation(experiments):

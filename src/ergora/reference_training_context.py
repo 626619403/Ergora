@@ -51,12 +51,11 @@ class _TrainingProject:
                 raise ValueError('Execution directories must retain their registered canonical paths')
 
     def document(self, root: Path, relative: str, limit: int = 1_048_576) -> dict:
-        from .training_materials import read_raw, json_configuration
+        from .training_materials import read_raw
+        from .training_execution_protocol import decode
 
-        value = json_configuration(read_raw(self.adapter.safe_file(root, relative), limit))
-        if not isinstance(value, dict):
-            raise ValueError('Training record must be a JSON object')
-        return value
+        raw = read_raw(self.adapter.safe_file(root, relative), limit)
+        return decode(raw.removeprefix(b'\xef\xbb\xbf'))
 
     def registration(self, inventory=None) -> None:
         if self.recovery is not None:
