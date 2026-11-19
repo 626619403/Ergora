@@ -20,7 +20,6 @@ import sys
 import time
 import threading
 import uuid
-from ergora._paths import IMPORT_ROOT
 
 try:
     from temporalio import workflow
@@ -30,6 +29,7 @@ except ModuleNotFoundError as error:
     workflow = None
 
 with workflow.unsafe.imports_passed_through() if workflow is not None else nullcontext():
+    from ergora._paths import IMPORT_ROOT
     import ergora.native.resources as native_resources
     import ergora.training.cycles as training_cycles
     import ergora.training.execution_protocol as protocol

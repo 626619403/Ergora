@@ -26,7 +26,7 @@ from test_registrations import installation, registration
 from test_task_creation import creation_project
 from test_task_submission import submitted_creation, native_client, _start
 from test_composition_tasks import composed_creation
-from ergora._paths import PACKAGE_ROOT
+from ergora._paths import IMPORT_ROOT, PACKAGE_ROOT
 
 
 pytestmark = pytest.mark.skipif(sys.platform != 'linux', reason='Formal task operations use Linux/WSL2')
@@ -664,7 +664,7 @@ assert not result['readiness']['ready']
 assert not any(name in sys.modules for name in ('jsonschema', 'temporalio', 'ergora.storage.state', 'ergora.configuration.validation'))
 print(json.dumps(result))
 '''
-    result = subprocess.run([sys.executable, '-S', '-c', script, str(PACKAGE_ROOTs[1])],
+    result = subprocess.run([sys.executable, '-S', '-c', script, str(IMPORT_ROOT)],
                             input=json.dumps(value), text=True, capture_output=True, timeout=10)
     assert result.returncode == 0, result.stderr
     assert json.loads(result.stdout) == {key: design[key] for key in ('sources', 'content_integrity', 'declared_requirements', 'readiness')}

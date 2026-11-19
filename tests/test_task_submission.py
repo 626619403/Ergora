@@ -176,7 +176,7 @@ def test_parallel_and_lost_parent_response_keep_the_original_receipt(submitted_c
     original=subprocess.run
     def lost(argv,**kwargs):
         result=original(argv,**kwargs)
-        if 'reference_task_submission import' in argv[-1]:
+        if argv[-1] == 'from ergora.development.runtime.submission import main;main()':
             assert result.returncode==0
             raise subprocess.TimeoutExpired(argv,25)
         return result
