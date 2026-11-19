@@ -14,7 +14,7 @@ Agent 定义包保存一名专家的职能、专长、后端、初始指令、�
 
 受限组合调用禁用环境中的用户配置。使用自定义provider时，由操作者通过`--codex-config ./inference.toml`提供原推理配置，凭据只引用环境变量；模板不保存provider或私有路径。显式模型／强度覆盖该文件对应项，其余provider配置保留。不指定`--backend`时继承模板binding；选择同一backend也保留模板未覆盖字段。
 
-正式执行保持原六阶段及上述已支持的审查／工作单元合同；静态关系图不使任意职能拓扑或一般Repeat变得可执行。当前[设计策略登记](../PROJECTS.md#current-limits-of-design-policy-registration)仍仅存储，不支持执行。隔离的source-journal首稿尚未发布，schema3训练实际效果继续关闭。导入定义或选择后端不扩大这些边界。
+正式执行保持原六阶段及上述已支持的审查／工作单元合同；静态关系图不使任意职能拓扑或一般Repeat变得可执行。当前[设计策略登记](../PROJECTS.md#current-limits-of-design-policy-registration)仍仅存储，不支持执行。只读[source-journal记录](../USAGE.md#保存完整设计来源与原答复)不授执行权；有限训练控制器须[明确授权](../TRAINING.md#起算本地训练预算与恢复原授权)。导入定义或选择后端不扩大这些边界。
 
 ## 内置专家
 

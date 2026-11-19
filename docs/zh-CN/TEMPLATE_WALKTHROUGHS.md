@@ -37,7 +37,7 @@
 
 Preset和静态图不实现一般Repeat、混合图调度器或统一fixed／preset／planner／automatic思考强度选择。当前显式后端字段只能请求模型支持的选项，不证明实际生效强度；完整祖先资料及逐级收窄权限仍按受支持任务／单叶输入冻结，见[当前后端边界](../AGENT_BACKENDS.md#current-configuration-evidence-and-pending-capabilities)。
 
-schema2设计policy登记仍仅存储且拒执行。S2 inspection-only [source-journal存取](../USAGE.md#保存完整设计来源与原答复)已随 `9f3e693498834f071cf20d0f25c18555554765f1` 发布，自己的Portability run `43867345323`为8/8 success；仍仅Linux／WSL2、要求真实原design-packet，没有新增默认seed producer。可信新自然人保证与F/J/G仍不可用，schema3训练效果继续关闭。导入定义、保存manifest或合同创建成功不会开放这些关卡；原schema1及受支持六阶段合同保持原范围。
+schema2设计policy登记仍仅存储且拒执行。只读[source-journal存取](../USAGE.md#保存完整设计来源与原答复)仅Linux／WSL2，要求真实原design-packet。可信新自然人保证与F/J/G仍不可用。有限训练控制器使用独立的[明确授权与提交流程](../TRAINING.md#起算本地训练预算与恢复原授权)；导入定义或保存manifest不授执行权。
 
 ## 1. 准备模板与完整组合
 

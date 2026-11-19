@@ -68,7 +68,7 @@ Codex 的可选值为 `low/medium/high/xhigh/max/ultra`，显式 binding 覆盖 
 
 DeepSeek当前的 `context_window`／`max_tokens` 写入SDK模型注册的容量描述，不是已验证的单请求token硬上限；仍按原每次wall-time、报告成本和续接合同处理，不把不同原生控制当作统一预算保证。
 
-选择后端不会开放新设计关卡或训练效果。当前schema2设计policy登记仍[仅存储且拒执行](../PROJECTS.md#current-limits-of-design-policy-registration)；隔离source-journal首稿未发布，可信owner／materials／gate仍待交付，schema3训练效果继续关闭。原schema1任务合同保持原范围。
+选择后端不会开放新设计关卡或训练效果。当前schema2设计policy登记仍[仅存储且拒执行](../PROJECTS.md#current-limits-of-design-policy-registration)；只读[source-journal记录](../USAGE.md#保存完整设计来源与原答复)不提供可信owner批准；有限训练控制器按其[明确授权合同](../TRAINING.md#起算本地训练预算与恢复原授权)执行。原schema1任务合同保持原范围。
 
 ### 用 Ergora 审查自己的仓库
 

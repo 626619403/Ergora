@@ -71,7 +71,7 @@ Only explicit binding values and existing defaults are implemented. Unified fixe
 
 DeepSeek's current `context_window`/`max_tokens` populate SDK model-registry capacity descriptions; this is not a verified per-request hard token cap. Retain the original per-call wall-time, reported-cost and continuation semantics rather than treating different native controls as a common budget guarantee.
 
-Backend selection does not enable new design gates or training effects. Current schema2 design-policy registration remains [storage-only with execution unsupported](PROJECTS.md#current-limits-of-design-policy-registration). The isolated source-journal draft is not released, trusted owner/material/gate handling remains pending, and schema3 training effects stay disabled. Existing schema1 task contracts retain their original scope.
+Backend selection does not enable new design gates or training effects. Current schema2 design-policy registration remains [storage-only with execution unsupported](PROJECTS.md#current-limits-of-design-policy-registration). Inspection-only [source-journal records](USAGE.md#保存完整设计来源与原答复) do not supply trusted owner approval. Finite training controllers use their [explicit authorization contract](TRAINING.md#起算本地训练预算与恢复原授权). Existing schema1 task contracts retain their original scope.
 
 <a id="用-ergora-审查自己的仓库"></a>
 ### Review a repository using Ergora

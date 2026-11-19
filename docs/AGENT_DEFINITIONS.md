@@ -15,7 +15,7 @@ Bundled specialists explicitly select Codex `gpt-6.1-sol`: planning, contract de
 
 Restricted composition calls ignore ambient user configuration. For a custom provider, supply the original inference configuration through `--codex-config ./inference.toml`, retaining environment credential references. Templates store no provider or private path. The explicit model/effort overrides those settings while retaining provider configuration. Omitting `--backend` inherits the template binding; selecting the same backend retains its unspecified fields.
 
-Formal execution keeps the original six stages and the supported review/work-unit contracts described above; a static graph does not make arbitrary role topologies or generalized Repeat executable. Current [design-policy registration](PROJECTS.md#current-limits-of-design-policy-registration) remains storage-only with execution unsupported. The isolated source-journal first draft is unreleased, and schema3 training effects remain disabled. These boundaries do not expand when importing a definition or selecting a backend.
+Formal execution keeps the original six stages and the supported review/work-unit contracts described above; a static graph does not make arbitrary role topologies or generalized Repeat executable. Current [design-policy registration](PROJECTS.md#current-limits-of-design-policy-registration) remains storage-only with execution unsupported. Inspection-only [source-journal records](USAGE.md#保存完整设计来源与原答复) do not grant execution; finite training controllers require [explicit authorization](TRAINING.md#起算本地训练预算与恢复原授权). These boundaries do not expand when importing a definition or selecting a backend.
 
 <a id="内置专家"></a>
 ## Built-in specialists
