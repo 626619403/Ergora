@@ -21,7 +21,7 @@
 |审阅实际结果和授权后续集成|[归档证据](#阅读归档证据与原集成票据)、[精确owner批准](#精确-owner-批准与投递恢复)|
 |把经验用于下一次任务|[完整改进旅程](IMPROVEMENT_WORKFLOW.md)，候选分别采用后再明确冻结|
 
-实际计算可按下文显式选择同一预算下的`training execute`；普通full也可逐实验确认manifest后使用可信`run-local`。当前没有自动多轮训练队列消费者。控制操作成功、CPU生命周期验收与真实GPU正确性／质量／性能收益分别需要对应证据。
+实际计算可按下文显式选择同一预算下的`training execute`；普通full也可逐实验确认manifest后使用可信`run-local`。有限V2／V3控制器通过下文显式授权和提交执行冻结候选。控制操作成功、CPU生命周期验收与真实GPU正确性／质量／性能收益分别需要对应证据。
 
 Windows 原生可设计训练模板、普通调用提案角色并管理记忆 / Skill；带完整Skill附件的组合单叶使用Linux task-MCP，须在WSL2/Linux运行。ForgeKernel、mini 驱动及完整参考实验执行同样使用WSL2/Linux，可信参考执行器还要求Linux容器。原生安装不会配置CUDA、GPU或这些参考服务，详见[Windows手册](WINDOWS.md)。
 
@@ -94,7 +94,7 @@ ergora reference prepare-training \
 
 准备只复制当前源码并同步声明，不安装依赖，不授予执行权，也不开放自动多轮。native 准入与可信配置驱动不依赖 Temporal SDK；实际 `run-local`／`approve` 的控制面操作仍需其原依赖。训练安装必须匹配当前 descriptor，已有运行仍受出生时的完整 source、owner、原 clock 与单次 launch 约束。
 
-依赖仍属于该 native 安装自己的 `.venv` 和固定 `requirements.lock`，基础 Ergora 或 `temporal` extra 不代替它。准备来源不初始化这套依赖；原安装／服务和可信 Linux 容器边界仍按完整参考手册处理。下文受管执行要求独立新状态目录、所有参与 executor 使用同一协议，不能接管旧 started 或活旧 owner。模板提案与 kernel 专家只提供建议；执行仍需原预算及显式确认，自动多轮循环另行提供。
+依赖仍属于该 native 安装自己的 `.venv` 和固定 `requirements.lock`，基础 Ergora 或 `temporal` extra 不代替它。准备来源不初始化这套依赖；原安装／服务和可信 Linux 容器边界仍按完整参考手册处理。下文受管执行要求独立新状态目录、所有参与 executor 使用同一协议，不能接管旧 started 或活旧 owner。模板提案与 kernel 专家只提供建议；执行仍需原预算及显式确认；有限候选控制器按下文单独授权和提交。
 
 ### 预览与初始化基线
 
@@ -366,7 +366,7 @@ ergora training resume-start my-project trial-a --revision REVISION --intent-sha
 ergora services logs my-project training-budget-worker --bytes 4096
 ```
 
-此处提供单个候选的预算提交与连续控制责任。受管计算还需下一步显式选择；自动多轮训练、GPU／质量／性能收益仍分别验收。
+此处提供单个候选的预算提交与连续控制责任。手动逐候选路径的受管计算还需下一步显式选择；有限控制器消费其出生时明确冻结的执行同意，GPU／质量／性能收益仍分别验收。
 
 ### 独立循环服务的集成入口
 
@@ -421,7 +421,7 @@ compute截止或显式原cancel会通知执行子树停止，同时独立处理�
 |`execution_success=null`|停止观察不判定训练、质量、收益或采用；另读原result、gate与批准记录。|
 |`current_sources`|当前原生安装／gate是否仍匹配；独立于历史读取，不追认新执行权。|
 
-`execution`使用随包的独立stdlib reader，无需Temporal SDK／服务、GPU或所选native安装仍存在。它只读取已有原链并确认同原件的持久性，不创建记录或改文件内容；同步失败保持unknown，未来可重新观察同一原件。当前source检查有独立上限，安装丢失或升级漂移会单独显示。自动多轮选择与执行尚未提供；真实训练质量和性能必须由原证据流程另验，kernel专家继续保留在提案路径中。
+`execution`使用随包的独立stdlib reader，无需Temporal SDK／服务、GPU或所选native安装仍存在。它只读取已有原链并确认同原件的持久性，不创建记录或改文件内容；同步失败保持unknown，未来可重新观察同一原件。当前source检查有独立上限，安装丢失或升级漂移会单独显示。此读取入口不选择或执行候选；有限控制器须按上文另行显式授权；真实训练质量和性能必须由原证据流程另验，kernel专家继续保留在提案路径中。
 
 ### 尚无 run ID 时显式阻断本地实验
 

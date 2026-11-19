@@ -457,7 +457,7 @@ ergora agent output my-project RUN_ID
 
 默认采用叶子精确定义的后端；`--backend`和`--model`仅覆盖本次调用。跨后端时重新选择model，不沿用另一后端的model名。执行/审查应尽量选择不同后端；Claude不可用时可显式选Codex/ChatGPT，并用`--backend-reason`记录原因。不会在失败后暗中重试另一后端。超时为1–3600秒；成功返回0，模型失败/超时/启动配置或结构错误返回1，输入包或模式准入错误返回2。
 
-也可在叶子精确定义中配置[DeepSeek Harness只读后端](AGENT_BACKENDS.md#deepseek-harness-只读叶后端)，保留完整解释器、模型、API服务与凭据变量引用；调用时不使用不完整的`--backend`覆盖。支持本节两种只读模式。原生workspace执行与正式任务恢复仍未支持；明确启用的新独立task-MCP来源支持[显式续接一次只读会话](AGENT_BACKENDS.md#显式续接一次只读会话)，保留原来源及其唯一持久续接槽位。
+也可在叶子精确定义中配置[DeepSeek Harness只读后端](AGENT_BACKENDS.md#deepseek-harness-只读叶后端)，保留完整解释器、模型、API服务与凭据变量引用；调用时不使用不完整的`--backend`覆盖。支持本节两种只读模式。该后端不支持原生workspace执行、正式任务恢复或持久会话。项目持久会话使用[当前Codex会话合同](../AGENT_BACKENDS.md#项目原生开发会话)。
 
 默认模式为 `text-only`。完整祖先指令、上下文、Skill的`SKILL.md`和原任务进入模型；Skill附件仍保存在快照中，但本模式没有文件/命令/网页/MCP工具，不能按路径读取其他资料或编辑项目。提供审查任务时应把候选代码及必要证据放入任务正文。请求write、shell或工具network权限的叶子会在调用前拒绝；例如示例执行叶子不能通过本模式运行。原生结构化响应工具或交互工具可能保留。
 
