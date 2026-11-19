@@ -1,6 +1,6 @@
 # Main branch integration
 
-Status: branch content and history are consolidated in the isolated integration candidate; documentation cleanup and independent review are in progress. The integration branch has not been pushed and its own CI and final `main` update remain pending.
+Preparation checkpoint (2026-11-19): branch content and history are consolidated and the integration branch has been ordinarily pushed. Documentation/archive/source-identity checks have passed; final independent review and the integration Portability gate are in progress. The final `main` update and ancestry-gated remote branch cleanup follow those gates.
 
 ## Scope and source
 
@@ -10,13 +10,13 @@ All 23 observed remote heads are ancestors of the integration candidate. The con
 
 Current user guides point installation and source ZIPs to `main`, use the actual current preset IDs, and describe explicit finite frozen-candidate training controllers. Adaptive generation and automatic per-round profiling remain separate work. The current six-stage workflow, candidate binding, original budgets, unknown reconciliation and unique reaper are unchanged.
 
-Old plans, delivery logs, research, handoffs and history documents are excluded from the final documentation tree after every archived file's bytes and digest were read back. Original Git commits and remote branches remain intact. The current plan and this active record satisfy the repository's continuity rules.
+Old plans, delivery logs, research, handoffs and history documents are excluded from the final documentation tree after every archived file's bytes and digest were read back. Original Git commits remain intact. Unneeded remote heads are removed only after the final main includes their exact commits; local development branches and active worktrees are retained. The current plan and this active record satisfy the repository's continuity rules.
 
 ## Actual validation and remaining work
 
 - Remote head OIDs were fetched and independently compared; all 23 ancestry relationships were checked after history integration.
-- The eight initial entry-document changes passed `git diff --check`, current preset-catalog checks and a relative-link comparison. Complete retained-document link checks and archive/source identity checks are being completed for the final cleanup candidate.
+- The retained 77 root, guide and example Markdown files passed relative-file and Markdown-anchor checks with no missing targets. `git diff --check`, current preset-catalog checks, all archived-file byte/digest/mode checks and source/test/script/dependency identity comparisons passed.
 - A fresh-context independent reviewer has independently checked branch content equivalence, current resource references and preserved source/test/script identities. Final complete-document review is pending.
-- No new runtime, model, GPU or installation acceptance is claimed for this documentation-only delta. The integration candidate's own applicable CI and the final normal `main` push are still pending.
+- No new runtime, model, GPU or installation acceptance is claimed for this documentation-only delta. The published integration ref has its own Portability run in progress; the final normal `main` push waits for its actual result and complete independent review.
 
 The [current plan](../PLAN.md) tracks the next action and remaining implementation boundaries. Historical results retain their original source and scope.

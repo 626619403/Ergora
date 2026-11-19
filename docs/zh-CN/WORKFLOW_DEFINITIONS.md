@@ -27,7 +27,7 @@ ergora composition install-preset optimization-report
 ergora composition install-preset pretraining-review
 ergora composition install-preset posttraining-review
 ergora composition show ergora-large-change-delivery 1.5.0 --material
-ergora agent definition show ergora-server-implementer 1.0.1 --material
+ergora agent definition show ergora-server-implementer 2.0.0 --material
 ```
 
 [预训练／后训练审查](../TRAINING_REVIEW.md)复用通用三路审查并增加领域专家，独立叶调用和正式 all-join 分开说明。
@@ -36,24 +36,24 @@ ergora agent definition show ergora-server-implementer 1.0.1 --material
 
 `presets`只读发行内容，不创建State。`install-preset`沿依赖顺序导入精确版本；重复执行保持同一身份，已有同ID/version的不同内容会拒绝。各定义分别原子发布，整套安装不是跨库事务；中断后可重试。安装不改变项目绑定或权限，不安装/认证Agent CLI，也不授予执行或批准权限。新默认库的权威资源在 [data/presets](../../src/ergora/data/presets/presets.json)，可以沿原export/new-version/import流程替换专家及子模板；已有examples的身份保持。
 
-|组合|根ID（除标注外1.0.1）|默认关系与使用范围|
+|组合|当前随包根身份|默认关系与使用范围|
 |---|---|---|
-|repository-governance|`ergora-governance-delivery`|知识地图、架构回归两个专家并行，再经可信integrate/verify接三审查；包含独立盘点／规划与原工作／审查阶段|
-|large-change|`ergora-large-change-delivery`|接口合同 → 服务端与客户端并行 → 集成/兼容验证 → 三审查；包含独立盘点／规划与原工作／审查阶段|
+|repository-governance|`ergora-governance-template@1.1.0`|知识地图、架构回归两个专家并行，再经可信integrate/verify接三审查；包含独立盘点／规划与原工作／审查阶段|
+|large-change|`ergora-large-change-template@1.1.0`|接口合同 → 服务端与客户端并行 → 集成/兼容验证 → 三审查；包含独立盘点／规划与原工作／审查阶段|
 |training-optimization|`ergora-training-proposal@4.2.2`|源码流程 → 并行规划／诊断 → kernel实施方案评估 → 测量审查；全部五叶继承库／环境选择规则，只读建议与手工完整交接|
-|refactoring|`ergora-refactoring-template@1.3.0`|普通父 → 原生六阶段：准备 → rewrite／compatibility串行工作 → 三类独立审查；正式task type沿用large-change，显式definition6／input10|
-|optimization-performance-diagnosis|`ergora-opt-performance-diagnosis-proposal`|同症状复现与兼容报告 reader；只读 design／profile→measurement 提案叶，原 runner 保留实验执行|
-|training-flow-map|`ergora-training-flow-map`|只读 `root/map` 分别产出算法／执行依赖图、状态生命周期和可证伪冗余假设；不自动运行后续专家或训练|
-|evidence-report|`ergora-evidence-report`|只读 `root/author` 生成来源绑定的 Markdown／静态 HTML 报告；原证据、运行记录与独立审查／release 保持|
+|refactoring|`ergora-refactoring-template@1.3.0`|普通父 → 原生六阶段：准备 → rewrite／compatibility串行工作 → 三类独立审查；正式task type沿用large-change，显式schema8／input12|
+|optimization-performance-diagnosis|`ergora-opt-performance-diagnosis-proposal@1.2.1`|同症状复现与兼容报告 reader；只读 design／profile→measurement 提案叶，原 runner 保留实验执行|
+|training-flow-map|`ergora-training-flow-map@1.1.0`|只读 `root/map` 分别产出算法／执行依赖图、状态生命周期和可证伪冗余假设；不自动运行后续专家或训练|
+|evidence-report|`ergora-evidence-report@1.0.1`|只读 `root/author` 生成来源绑定的 Markdown／静态 HTML 报告；原证据、运行记录与独立审查／release 保持|
 |optimization-report|`ergora-evidence-report@2.0.1`|原只读作者接口，新增专门优化 Skill 与完整模板 context：源码流程／冗余 → 可比结果 → 诊断／决定；仅使用明确提供的证据|
-|pretraining-review|`ergora-pretraining-review` 1.0.2|原通用三路与预训练专家并列 required／all-join；共享后端说明由四叶继承；领域叶可独立调用|
-|posttraining-review|`ergora-posttraining-review` 1.0.2|原通用三路与后训练专家并列 required／all-join；共享后端说明由四叶继承；领域叶可独立调用|
+|pretraining-review|`ergora-pretraining-review@1.1.0`|原通用三路与预训练专家并列 required／all-join；共享后端说明由四叶继承；领域叶可独立调用|
+|posttraining-review|`ergora-posttraining-review@1.1.0`|原通用三路与后训练专家并列 required／all-join；共享后端说明由四叶继承；领域叶可独立调用|
 
 开发组合共用 `ergora-delivery-review`，它引用结构、正确性、测试价值三份可单独使用的子模板。每份专家有独立初始指令、专长和Skill，沿自己的结构父链完整装载资料。全部内置专家默认Codex gpt-6.1-sol并按[定义下限](AGENT_DEFINITIONS.md)验证model／effort；逐实例覆盖须满足下限。实际可用性和认证仍由调用准入核验；同后端选择需遵守多样性政策并记录原因。
 
-在明确的preview grant下，按[完整组合分享](#保存和分享完整组合)执行`prepare-manifest`，把上面的根ID/版本换入即可。开发正式选择沿[work-units-v2](#专长执行者与原工作单元)，使用`root/work`和`root/review`；unit ID直接映射同名叶子，例如`contract`→`root/work/contract`。原`templates copy`取得的领域input包含对应unit ID、路径和依赖；改变原units关系时，应同时修订对应工作子模板。workspace写调用仍要求每个writer显式选择可信current-container；导入组合不会自动选择此边界。
+在明确的preview grant下，按[完整组合分享](#保存和分享完整组合)执行`prepare-manifest`，把上面的根ID/版本换入即可。开发正式选择沿[work-units-v2](#专长执行者与原工作单元)，使用`root/development/work`和`root/development/review`；unit ID映射真实执行叶，例如`contract`→`root/development/work/contract`。原`templates copy`取得的领域input包含对应unit ID、路径和依赖；改变原units关系时，应同时修订对应工作子模板。workspace写调用仍要求每个writer显式选择可信current-container；导入组合不会自动选择此边界。
 
-`refactoring`使用[原生六阶段选择](USAGE.md#使用重构配方)：实例为`root/development`，work／review在其内部，准备阶段也由独立专家会话承担。其[完整任务示例](../../examples/composition/refactoring/task.example.json)提供definition6、unit分配、预算与显式writer信任；需要替换真实baseline、caller、范围、验收和manifest。父Skill提供目标仓库规范、真实调用者与测试接缝指导；原任务类型保持。catalog的`development-v5`是既有页面的开发类别标签，真实执行合同由任务定义选择；该标签不会把新任务降为input5。图形任务向导可按下文选择原生六阶段、准备阶段与预算，并沿原definition6生成input10合同。
+`refactoring`使用[原生六阶段选择](USAGE.md#使用重构配方)：实例为`root/development`，work／review在其内部，准备阶段也由独立专家会话承担。其[完整任务示例](../../examples/composition/refactoring/task.example.json)提供schema8、unit分配、预算与显式writer信任；需要替换真实baseline、caller、范围、验收和manifest。父Skill提供目标仓库规范、真实调用者与测试接缝指导；原任务类型保持。catalog的`development-v5`是既有页面的开发类别标签，真实执行合同由任务定义选择；该标签不会把新任务降为input5。图形任务向导可按下文选择原生六阶段、准备阶段与预算，并沿当前schema8生成input12合同。
 
 训练组合的`root/analysis/design`、`root/analysis/profile`、`root/kernel/assess`和`root/measurement/review`可按[单叶调用](#调用一个准备好的叶子)使用；操作者需要在任务文件中提供完整workload、baseline和相应前驱输出。独立`run-input`不执行图前驱。生成的提案/代码文本及模型review不是实验结果或采用批准，真实CPU/GPU、Forge候选和测量仍按[训练手册](../TRAINING.md)使用原可信runner/gate。目录中的`runtime`只描述本发行支持的使用范围，不表示后端、服务或硬件已经就绪。
 
@@ -423,7 +423,7 @@ ergora composition file kernel-delivery 1.0.0 instructions.md --base-digest BASE
 4. 在“两个已发布组合的精确比较”查看新增、删除、变化、相同的实例数量和逐路径结果。点击完整路径可逐字段对照权限、职责、后端、预算、依赖、具名端口等事实，并展开两个版本的完整原实例，查看所有资源、来源和装配提示；键盘也可操作表格按钮。
 5. 分别下载比较前/后preview JSON保存完整原件。比较不会发布定义、应用草稿或改变编辑基准；切换根版本或控制目录会清除当前比较。更换目标或修改grant后须重新显式比较，迟到回复不会恢复旧结果。
 
-对象的键顺序不会制造差异；数组保持原顺序，不把重新排列的权限/依赖声明推断为等价。比较按完整实例路径配对，同一精确Agent/工作流的重复实例各自保留；改名表现为旧路径删除、新路径新增，不猜测重命名。资源内容身份及顺序、资源来源与声明、装配提示身份分别展示：仅来源定义版本变化也可能改变提示摘要及字节用量，不能据此声称Skill正文变化。摘要只反映原preview包含的编译事实；Agent描述、专长等非preview字段须打开精确定义核对。正式执行交接见[任务页面选择](#在正式任务页面选择组合)，验收进度见[工作流指南](../WORKFLOW_DEFINITIONS.md#在正式任务页面选择组合)。
+对象的键顺序不会制造差异；数组保持原顺序，不把重新排列的权限/依赖声明推断为等价。比较按完整实例路径配对，同一精确Agent/工作流的重复实例各自保留；改名表现为旧路径删除、新路径新增，不猜测重命名。资源内容身份及顺序、资源来源与声明、装配提示身份分别展示：仅来源定义版本变化也可能改变提示摘要及字节用量，不能据此声称Skill正文变化。摘要只反映原preview包含的编译事实；Agent描述、专长等非preview字段须打开精确定义核对。正式执行交接见[任务页面选择](#在正式任务页面选择组合)；支持的交接合同见[工作流指南](../WORKFLOW_DEFINITIONS.md#在正式任务页面选择组合)。
 
 ## 准备完整的单叶输入
 

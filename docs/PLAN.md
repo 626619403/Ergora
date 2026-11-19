@@ -8,7 +8,7 @@ The current implementation comes from `ace1deade97ac39182e0d34c1a5777afc0663b3e`
 
 The candidate keeps the current six-stage development workflow, candidate-bound evidence, original budgets, unknown-result reconciliation and existing process cleanup. Current installation guides use `main` and the actual bundled preset IDs. Working plans, diaries, research and old check artifacts remain available in their original Git commits and in a verified private archive.
 
-Current state: documentation cleanup and independent review are in progress. The integration branch's own CI and final normal `main` push remain pending. Earlier source, installed-package, model and CI results retain their original candidate identities.
+Preparation checkpoint (2026-11-19): the integration branch has been ordinarily pushed, documentation/archive/source-identity checks have passed, and final independent review and its own Portability gate are in progress. The final normal `main` update and ancestry-gated remote cleanup follow those gates. Earlier source, installed-package, model and CI results retain their original candidate identities.
 
 ## Remaining implementation boundaries
 

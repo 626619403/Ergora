@@ -706,7 +706,7 @@ ergora composition install-preset training-optimization
 ergora composition show ergora-training-proposal 4.2.2 --material
 ```
 
-当前共同根 `ergora-training-proposal@4.2.2` 组合图谱和四位跨域专家。根Skill负责证据、方向及库／环境选择，子Skill保留各自方法。需要完整专题优化时，修订这个共同根，将选中的1.1.0方向模板置于其真实后代后再冻结完整manifest；[选定MoE组合示例](../examples/composition/optimization-selected-moe/README.md)给出当前18叶native开发图及完整交接，其正式root身份由示例的[publication.json](../examples/composition/optimization-selected-moe/publication.json)提供；使用实际返回的完整root引用和manifest。下图是共同提案骨架，design／profile读取相同资料：
+当前共同根 `ergora-training-proposal@4.2.2` 组合图谱和四位跨域专家。根Skill负责证据、方向及库／环境选择，子Skill保留各自方法。需要完整专题优化时，修订这个共同根，将所选方向安装结果返回的完整root引用置于其真实后代后再冻结完整manifest；[选定MoE组合示例](../examples/composition/optimization-selected-moe/README.md)给出当前18叶native开发图及完整交接，其正式root身份由示例的[publication.json](../examples/composition/optimization-selected-moe/publication.json)提供；使用实际返回的完整root引用和manifest。下图是共同提案骨架，design／profile读取相同资料：
 
 ```mermaid
 flowchart LR
