@@ -20,6 +20,7 @@ async def main():
     root, kind, backend = Path(sys.argv[1]), sys.argv[2], sys.argv[3]
     mode = sys.argv[4] if len(sys.argv) > 4 else "legacy-registration"
     composition_mode = mode.startswith("composition")
+    native_auth = mode.startswith("native-auth")
     installation = root / "installation"
     for part in ("local", "upstream/platform"):
         shutil.copytree(reference.ROOT / "platform" / part, installation / part)
@@ -27,7 +28,12 @@ async def main():
     config, runtime = root / "config", root / "runtime"
     config.mkdir()
     runtime.mkdir()
-    os.environ.update(AGENTFLOW_CONFIG_DIR=str(config), AGENTFLOW_STATE_DIR=str(runtime), ERGORA_FIXTURE_KEY="not-a-secret")
+    os.environ.update(AGENTFLOW_CONFIG_DIR=str(config), AGENTFLOW_STATE_DIR=str(runtime), PYTHONDONTWRITEBYTECODE="1")
+    if mode != 'composition-task-mcp':
+        for name in ('OPENAI_API_KEY', 'LINGZHI_API_KEY', 'ERGORA_FIXTURE_KEY'):
+            os.environ.pop(name, None)
+    if native_auth or mode == 'selected-auth-rejected':
+        os.environ.update(HOME=str(root / 'native-home'), CODEX_HOME=str(root / 'native-codex'))
     sys.path[:0] = [str(installation / "local"), str(installation / "upstream/platform")]
     from agent_platform.core import git, read, write
     from agent_platform.projects import register, create_task
@@ -43,7 +49,19 @@ async def main():
     programs.mkdir()
     fixture = Path(__file__).with_name("stage_agent.py")
     codex = programs / "pinned-codex"
-    codex.write_text(f"#!{sys.executable}\nimport runpy\nrunpy.run_path({str(fixture)!r},run_name='__main__')\n")
+    codex_script = f"#!{sys.executable}\nimport os,runpy,sys\n"
+    if native_auth or mode == 'selected-auth-rejected':
+        codex_script += ("assert not any(os.environ.get(n) for n in ('OPENAI_API_KEY','LINGZHI_API_KEY','ERGORA_FIXTURE_KEY'))\n"
+                         f"assert os.environ['CODEX_HOME'] == {str(root / 'native-codex')!r}\n"
+                         f"assert os.environ['HOME'] == {str(root / 'native-home')!r}\n")
+    if mode in ('native-auth-rejected', 'selected-auth-rejected'):
+        codex_script += (f"with open({str(root / 'native-auth-starts')!r},'a') as starts: starts.write('started\\n')\n"
+                         "print('Fake native authentication denied',file=sys.stderr)\nsys.exit(41)\n")
+    else:
+        if native_auth:
+            codex_script += "sys.argv.append('--fixture-auth-only')\n"
+        codex_script += f"runpy.run_path({str(fixture)!r},run_name='__main__')\n"
+    codex.write_text(codex_script)
     codex.chmod(0o700)
     wrong_codex = programs / "codex"
     wrong_codex.write_text("#!/bin/sh\nexit 99\n")
@@ -51,12 +69,16 @@ async def main():
     os.environ["PATH"] = str(programs) + os.pathsep + os.environ["PATH"]
     write(config / "platform.json", {"current_container_trust_acknowledged": True,
         "container_boundary": identity, "stage_walltime_seconds": 20, "max_parallel_jobs": 2,
-        "codex_env_key": "ERGORA_FIXTURE_KEY", "codex_bin": str(codex), "reviewer": "codex"})
+        "codex_bin": str(codex), "reviewer": "codex"})
     (config / "codex.toml").write_text("")
+    if mode == 'command-invalid-codex-config':
+        (config / 'codex.toml').write_text('invalid = [')
+    elif mode == 'command-nontable-codex-config':
+        (config / 'codex.toml').write_text('model_providers = "irrelevant"')
     if mode == 'composition-task-mcp':
         platform = read(config / 'platform.json')
         platform.update(codex_bin=shutil.which('codex', path=os.environ['PATH'].split(os.pathsep, 1)[1]),
-                        codex_env_key='LINGZHI_API_KEY', stage_walltime_seconds=300)
+                        stage_walltime_seconds=300)
         assert platform['codex_bin'] and os.environ.get('LINGZHI_API_KEY')
         write(config / 'platform.json', platform, replace=True)
         shutil.copyfile(os.environ['ERGORA_HOSTED_REVIEW_CONFIG'], config / 'codex.toml')
@@ -564,6 +586,10 @@ async def main():
                                      "--project", "demo", "--request", str(request)], capture_output=True, text=True, timeout=30)
             assert result.returncode == 0, result.stdout + result.stderr
             receipt = json.loads(result.stdout)
+        elif native_auth:
+            from agent_platform.executor import process
+            process(request)
+            receipt = read(runtime / 'receipts/task-1' / (job['job_id'] + '.json'))
         else:
             if stage == 'review' and mode == 'composition-requirements-mutate':
                 target = runtime / 'workspaces/task-1/jobs' / context['job_id'] / 'checkout'
@@ -571,6 +597,26 @@ async def main():
                 # the production monitor's environment allowlist unchanged.
                 codex.write_text(f"#!{sys.executable}\nimport runpy,sys\nsys.argv.extend(['--fixture-checkout',{str(target)!r}])\nrunpy.run_path({str(fixture)!r},run_name='__main__')\n")
             receipt = reference.executor(installation, state.root, request)
+        if mode in ('native-auth-rejected', 'selected-auth-rejected'):
+            assert receipt['state'] == 'FAILED' and not receipt['checks'], receipt
+            assert await activities.poll(job) == receipt
+            model_log = next(item for item in receipt['artifacts'] if item['name'] == 'model-log')
+            assert 'Fake native authentication denied' in (runtime / 'artifacts' / model_log['path']).read_text()
+            process_name = 'af-' + job['job_id'] + ('-model' if native_auth else '-selected')
+            process_root = runtime / 'processes' / process_name
+            process_request = read(process_root / 'request.json')
+            assert process_request['name'] == process_name and process_request['model'] == 'codex'
+            terminal = read(process_root / 'terminal.json')
+            assert terminal['name'] == process_name
+            assert terminal['returncode'] == (41 if native_auth else 1), terminal
+            assert (root / 'native-auth-starts').read_text().splitlines() == ['started']
+            if not native_auth:
+                log = (Path(process_request['output']) / 'execution.log').read_text()
+                native_results = [json.loads(line) for line in log.splitlines() if line.startswith('{"status":')]
+                assert any(item['status'] == 'failed' and item['returncode'] == 41 for item in native_results)
+            print(json.dumps({'rejected': mode, 'state': receipt['state'], 'original_job_id': receipt['job_id'],
+                              'backend_authentication_error_preserved': True}))
+            return
         if stage == 'review' and (mode.startswith('composition-requirements-') or mode == 'composition-no-worker-sdk-v3'):
             if mode.endswith('-mutate'):
                 assert receipt['state'] == 'FAILED', receipt
@@ -646,7 +692,7 @@ async def main():
             return
         assert receipt["state"] == "SUCCEEDED", receipt
         assert await activities.poll(job) == receipt
-        if stage not in ("integrate", "verify") and not (composition_mode and stage == "review"):
+        if not native_auth and stage not in ("integrate", "verify") and not (composition_mode and stage == "review"):
             protocol = runtime / "workspaces/task-1/jobs" / context["job_id"] / "selected-agent/request.json"
             invocation = read(protocol)
             sent = (Path(invocation["output"]) / "stdin.txt").read_text()
@@ -659,26 +705,27 @@ async def main():
             assert selection["prompt_sha256"] == hashlib.sha256(sent.encode()).hexdigest()
         records[stage] = receipt
         app.results[stage] = receipt
-        selection_path = runtime / "tasks/task-1/agent-bindings.json"
-        selection = read(selection_path)
-        if stage == "inventory":
-            assert selection["configuration"] == projects.effective_configuration(state.project("demo"))
-            assert selection["configuration"]["project"]["revision"] == selection["project_revision"]
-            if len(sys.argv) > 4 and sys.argv[4] == "legacy-snapshot":
-                # Prior task selections lack the new additive view and must stay usable.
-                del selection["configuration"]
-                write(selection_path, selection, replace=True)
-            frozen_selection = selection
-            if mode in ("unified-registration", "imported-registration"):
-                # Existing task selections survive later registration changes.
-                replacement = deepcopy(definition)
-                replacement["templates"] = ["training-optimization"]
-                replacement["execution"]["config_directory"] = str(root / "next-config")
-                registrations.register(state, replacement, state.project("demo")["revision"])
-            # Later project changes must not change the already-frozen task selection.
-            projects.bind(state, "demo", "implementer", {"tool": "command", "argv": ["/missing/changed-binding"]}, state.project("demo")["revision"])
-        else:
-            assert selection == frozen_selection
+        if not native_auth:
+            selection_path = runtime / "tasks/task-1/agent-bindings.json"
+            selection = read(selection_path)
+            if stage == "inventory":
+                assert selection["configuration"] == projects.effective_configuration(state.project("demo"))
+                assert selection["configuration"]["project"]["revision"] == selection["project_revision"]
+                if len(sys.argv) > 4 and sys.argv[4] == "legacy-snapshot":
+                    # Prior task selections lack the new additive view and must stay usable.
+                    del selection["configuration"]
+                    write(selection_path, selection, replace=True)
+                frozen_selection = selection
+                if mode in ("unified-registration", "imported-registration"):
+                    # Existing task selections survive later registration changes.
+                    replacement = deepcopy(definition)
+                    replacement["templates"] = ["training-optimization"]
+                    replacement["execution"]["config_directory"] = str(root / "next-config")
+                    registrations.register(state, replacement, state.project("demo")["revision"])
+                # Later project changes must not change the already-frozen task selection.
+                projects.bind(state, "demo", "implementer", {"tool": "command", "argv": ["/missing/changed-binding"]}, state.project("demo")["revision"])
+            else:
+                assert selection == frozen_selection
         if stage == "plan":
             plan_sha = sha(receipt)
             write(runtime / "approvals/fixture-approval.json", {"schema_version": 1, "kind": "plan-approval",
@@ -694,14 +741,15 @@ async def main():
     assert candidate != starting
     assert records["verify"]["candidate_sha"] == records["review"]["candidate_sha"] == candidate
     assert records["review"]["actor"]["session_id"] != records["work:unit"]["actor"]["session_id"]
-    assert records["review"]["actor"]["id"] == ("codex" if composition_mode else backend) + ":reviewer"
+    assert records["review"]["actor"]["id"] == ("codex-reviewer" if native_auth else
+        ("codex" if composition_mode else backend) + ":reviewer")
     assert set(app.spec["profile"]["required_checks"]) == {check["id"] for check in records["verify"]["checks"]}
     if wrapper is not None:
         assert (runtime / 'tasks/task-1/task.spec.json').read_bytes() == wrapper
         check_formal_evidence(records['review'])
     assert not (root / 'shadow-imported').exists()
     print(json.dumps({"template": kind, "backend": backend, "stages": list(records), "candidate_bound": True,
-                      "template_instructions_bound": True}))
+                      "template_instructions_bound": not native_auth, "native_auth": native_auth}))
 
 
 if __name__ == "__main__":

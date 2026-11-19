@@ -13,6 +13,17 @@ def test_public_reference_identity():
     assert reference.verify()["files"] == 283
 
 
+def test_reference_public_payload_preserves_current_native_auth_sources():
+    import runpy
+
+    root = reference.ROOT / 'platform'
+    builder = runpy.run_path(str(root / 'bootstrap/report/build_report.py'))
+    payload = builder['payload_files'](root)
+    for module in ('setup.py', 'doctor.py', 'process_job.py', 'executor.py'):
+        name = 'local/agent_platform/' + module
+        assert payload[name] == payload['bootstrap/' + name] == (root / name).read_bytes()
+
+
 def test_template_copy_preserves_files_and_existing_destination(tmp_path):
     for kind in reference.TEMPLATES:
         destination = tmp_path / kind
@@ -194,6 +205,106 @@ def prepared_training_installation(tmp_path_factory):
     root = tmp_path_factory.mktemp('native-source-parent') / 'training runtime with spaces'
     receipt = reference.prepare_training(root, protocol=reference.TRAINING_PROTOCOL)
     return root, receipt
+
+
+def test_native_model_configuration_uses_backend_auth_and_only_selected_environment_refs(
+        prepared_training_installation, tmp_path):
+    import tomllib
+
+    installation, _ = prepared_training_installation
+    config = tmp_path / 'config'
+    environment = dict(os.environ, AGENTFLOW_CONFIG_DIR=str(config), AGENTFLOW_STATE_DIR=str(tmp_path / 'runtime'),
+                       HOME=str(tmp_path / 'home'), CODEX_HOME=str(tmp_path / 'codex-home'),
+                       PYTHONDONTWRITEBYTECODE='1')
+    for key in ('OPENAI_API_KEY', 'LINGZHI_API_KEY', 'ERGORA_FIXTURE_KEY'):
+        environment.pop(key, None)
+
+    def native(code):
+        result = subprocess.run([sys.executable, '-I', '-B', '-c',
+            'import sys;sys.path.insert(0,' + repr(str(installation / 'local')) + ');' + code],
+            env=environment, capture_output=True, text=True, timeout=20)
+        assert result.returncode == 0, result.stdout + result.stderr
+        return json.loads(result.stdout)
+
+    initialized = native('from agent_platform import setup;'
+        'setup.install_commands=lambda:None;setup.supervisor_config=lambda:None;'
+        'setup.shutil.which=lambda name:"/fixture/bin/"+name;setup.initialize();'
+        'from agent_platform.core import settings;import json;print(json.dumps(settings()))')
+    assert 'codex_env_key' not in initialized
+    initial_model = tomllib.loads((config / 'codex.toml').read_text())
+    assert initial_model['model'] == 'CONFIGURE_MODEL_BEFORE_USE' and 'model_provider' not in initial_model
+
+    script = installation / 'bootstrap/configure-model.py'
+    for arguments in ([], ['--base-url', 'https://provider.example/v1', '--env-key', 'ERGORA_TEST_API_REFERENCE'],
+                      ['--base-url', 'https://provider.example/v1']):
+        result = subprocess.run([sys.executable, '-B', str(script), '--model', 'backend-supported-model', *arguments],
+                                env=environment, capture_output=True, text=True, timeout=20)
+        assert result.returncode == 0, result.stderr
+        assert json.loads(result.stdout)['authentication'] == 'not_checked'
+        model = tomllib.loads((config / 'codex.toml').read_text())
+        if not arguments:
+            assert 'model_provider' not in model and 'model_providers' not in model
+        else:
+            provider = model['model_providers'][model['model_provider']]
+            assert provider.get('env_key') == ('ERGORA_TEST_API_REFERENCE' if '--env-key' in arguments else None)
+        assert (config / 'codex.toml').stat().st_mode & 0o077 == 0
+
+    (config / 'codex.toml').write_text('''model = "backend-supported-model"
+model_provider = "chosen"
+[model_providers.chosen]
+env_key = "ERGORA_TEST_API_REFERENCE"
+env_http_headers = { "X-Token" = "ERGORA_TEST_HEADER_REFERENCE" }
+[model_providers.other]
+env_key = "ERGORA_TEST_UNSELECTED_REFERENCE"
+''')
+    environment.update(ERGORA_TEST_API_REFERENCE='synthetic-api-value', ERGORA_TEST_HEADER_REFERENCE='synthetic-header-value',
+                       ERGORA_TEST_UNSELECTED_REFERENCE='synthetic-unselected-value', OPENAI_API_KEY='synthetic-ambient-value')
+    names = native('from agent_platform.process_job import child_environment;import json;'
+                   'print(json.dumps(sorted(child_environment("codex"))))')
+    assert {'HOME', 'CODEX_HOME', 'ERGORA_TEST_API_REFERENCE', 'ERGORA_TEST_HEADER_REFERENCE'} <= set(names)
+    assert not {'ERGORA_TEST_UNSELECTED_REFERENCE', 'OPENAI_API_KEY'} & set(names)
+    model = (config / 'codex.toml').read_text().replace('env_key = "ERGORA_TEST_API_REFERENCE"',
+        'env_key = "ERGORA_TEST_API_REFERENCE"\nrequires_openai_auth = true')
+    (config / 'codex.toml').write_text(model)
+    names = native('from agent_platform.process_job import child_environment;import json;'
+                   'print(json.dumps(sorted(child_environment("codex"))))')
+    assert 'ERGORA_TEST_API_REFERENCE' not in names and 'ERGORA_TEST_HEADER_REFERENCE' in names
+    environment.pop('ERGORA_TEST_API_REFERENCE')
+    names = native('from agent_platform.process_job import child_environment;import json;'
+                   'print(json.dumps(sorted(child_environment("codex"))))')
+    assert 'ERGORA_TEST_API_REFERENCE' not in names
+    platform = json.loads((config / 'platform.json').read_text())
+    platform['execution_enabled'] = True
+    (config / 'platform.json').write_text(json.dumps(platform))
+    doctor = native('from agent_platform import doctor;import contextlib,json;'
+        'doctor.importlib.metadata.version=lambda name:"fixture";'
+        'doctor.shutil.which=lambda name:"/fixture/bin/"+name;'
+        'doctor.Sandbox.probe=lambda self:{"available":True};'
+        'doctor.socket.create_connection=lambda *args,**kwargs:contextlib.nullcontext();'
+        'doctor.projects=lambda:[{"name":"fixture"}];print(json.dumps(doctor.report()))')
+    assert doctor['ready_for_real_tasks'] and doctor['checks']['codex-auth']['status'] == 'not_checked'
+    assert 'local prerequisites' in doctor['readiness_scope']
+    (config / 'codex.toml').unlink()
+    names = native('from agent_platform.process_job import child_environment;import json;'
+                   'print(json.dumps(sorted(child_environment("codex"))))')
+    assert 'CODEX_HOME' in names and 'ERGORA_TEST_HEADER_REFERENCE' not in names
+    for content in ('model_providers = "irrelevant"', 'model_provider = ["irrelevant"]',
+                    'model_provider = "chosen"\n[model_providers]\nchosen = "irrelevant"',
+                    'model_provider = "chosen"\n[model_providers.chosen]\nenv_key = ["irrelevant"]\nenv_http_headers = ["irrelevant"]',
+                    'model_provider = "chosen"\n[model_providers.chosen]\nenv_http_headers = { "X-Token" = ["irrelevant"] }'):
+        (config / 'codex.toml').write_text(content)
+        names = native('from agent_platform.process_job import child_environment;import json;'
+                       'print(json.dumps(sorted(child_environment("codex"))))')
+        assert 'CODEX_HOME' in names and 'ERGORA_TEST_HEADER_REFERENCE' not in names
+    (config / 'codex.toml').write_text('invalid = [')
+    names = native('from agent_platform.process_job import child_environment;import json;'
+                   'print(json.dumps(sorted(child_environment("codex"))))')
+    assert 'CODEX_HOME' in names and 'ERGORA_TEST_HEADER_REFERENCE' not in names
+    from ergora import agents
+    with pytest.raises(tomllib.TOMLDecodeError):
+        agents.invoke({'tool': 'codex'}, 'inspector', 'unused', tmp_path, tmp_path / 'invalid-codex-output', 5,
+                      codex_config=str(config / 'codex.toml'), codex_bin='/unavailable-fixture-codex')
+    assert not (tmp_path / 'invalid-codex-output').exists()
 
 
 def test_native_source_protocol_has_one_complete_training_identity(prepared_training_installation):

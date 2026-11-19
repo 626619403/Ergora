@@ -139,7 +139,7 @@ def _absolute(value):
     return path
 
 
-def _read_bound(path, limit=JOURNAL_LIMIT):
+def _read_snapshot(path, limit=JOURNAL_LIMIT):
     path = Path(path)
     _ordinary(path)
     descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
@@ -149,15 +149,21 @@ def _read_bound(path, limit=JOURNAL_LIMIT):
             raise ValueError('GPU admission records require ordinary files')
         raw = stream.read(limit + 1)
         after = os.fstat(stream.fileno())
-    current = path.stat(follow_symlinks=False)
     if (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns) != (
-            after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns) or (
-            current.st_dev, current.st_ino) != (before.st_dev, before.st_ino):
+            after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns):
         raise ValueError('GPU admission record changed during observation')
     if len(raw) > limit:
         raise ValueError('Complete GPU admission record exceeds its capacity')
     return raw, {'dev': before.st_dev, 'ino': before.st_ino,
                  'raw_sha256': hashlib.sha256(raw).hexdigest()}
+
+
+def _read_bound(path, limit=JOURNAL_LIMIT):
+    raw, binding = _read_snapshot(path, limit)
+    current = Path(path).stat(follow_symlinks=False)
+    if (current.st_dev, current.st_ino) != (binding['dev'], binding['ino']):
+        raise ValueError('GPU admission record changed during observation')
+    return raw, binding
 
 
 def _read(path, limit=JOURNAL_LIMIT):
@@ -692,7 +698,10 @@ class LocalGpuPool:
                 or descriptor_raw != self._descriptor_raw or sentinel_raw != self._sentinel_raw
                 or session_record != self.session):
             raise ValueError('Original GPU pool immutable records changed')
-        journal = _journal(_read(self.directory / 'journal.json'), self.session)
+        # The mutable snapshot only routes to an owner; the bound peer and server
+        # retain authority over the current resource state.
+        raw, _ = _read_snapshot(self.directory / 'journal.json')
+        journal = _journal(raw, self.session)
         if processes.identity(journal['current_owner']['pid']) != journal['current_owner']:
             raise PoolUnavailable('Original GPU resource owner is unavailable; explicit recovery is required')
         self.current_owner, self.owner_epoch = journal['current_owner'], journal['owner_epoch']

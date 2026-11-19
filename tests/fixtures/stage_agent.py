@@ -85,9 +85,10 @@ if any(kind in prompt for kind in ('"kind": "formal-preparation-materials"', '"k
                                    'model_finished_ns': time.time_ns()})
 if "decision" in schema["required"]:
     result["decision"] = "request-changes" if "fixture-reject" in sys.argv else "approve"
-    # Same-group background work must stop before the formal read-only check.
-    subprocess.Popen([sys.executable, "-c", "import time;from pathlib import Path;time.sleep(1);Path('src/late-review.py').write_text('LATE = True\\n')"],
-                     stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    if '--fixture-auth-only' not in sys.argv:
+        # Same-group background work must stop before the formal read-only check.
+        subprocess.Popen([sys.executable, "-c", "import time;from pathlib import Path;time.sleep(1);Path('src/late-review.py').write_text('LATE = True\\n')"],
+                         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 if "--output-last-message" in sys.argv:
     Path(sys.argv[sys.argv.index("--output-last-message") + 1]).write_text(json.dumps(result))
     print(json.dumps({"type": "fixture.process.finished"}))

@@ -1,6 +1,6 @@
 """Actual original-owner/guard processes; NVML alone is a controlled substitute."""
 
-from contextlib import contextmanager
+from contextlib import contextmanager, ExitStack
 import hashlib
 import json
 import os
@@ -14,7 +14,7 @@ import uuid
 import pytest
 
 from ergora import budget_clock, local_gpu_guard, local_gpu_pool, processes
-from test_local_gpu_pool import fake_pool, _ready, _start_session, _stop_session
+from test_local_gpu_pool import fake_pool, _after_record_read, _ready, _start_session, _stop_session
 
 
 pytestmark = pytest.mark.skipif(sys.platform != 'linux', reason='Dedicated Linux local resource guardians')
@@ -176,18 +176,41 @@ def test_real_subreaper_drains_setsid_descendant_before_resource_release(tmp_pat
 
 
 @pytest.mark.parametrize('stop_kind', ['stop.requested', 'authorization.revoked', 'source-change', 'deadline'])
-def test_pending_live_owner_stop_or_frozen_source_change_never_spawns(tmp_path, stop_kind):
+def test_pending_live_owner_stop_or_frozen_source_change_never_spawns(tmp_path, monkeypatch, stop_kind):
     with fake_pool(tmp_path / 'pool', count=1) as (pool, config, session):
         holder, _ = _setup(tmp_path / 'holder', config, config['device_uuids'],
-                          "import time;from pathlib import Path;Path('started').touch();time.sleep(3)")
+                          "import time;from pathlib import Path;Path('started').touch()\n"
+                          "while not Path('release').exists():time.sleep(.01)")
         pending, original = _setup(tmp_path / 'pending', config, config['device_uuids'],
                                   "from pathlib import Path;Path('unexpected').touch()",
                                   wall=4 if stop_kind == 'deadline' else 15, reserve=3)
         with _owner(holder) as first:
             _until(lambda: (holder.parent / 'started').exists())
-            with _owner(pending) as second:
-                _until(lambda: any(item['origin']['operation_id'] == original['origin']['operation_id']
-                                  and item['state'] == 'pending' for item in pool.inspect()['requests']))
+            with ExitStack() as owners:
+                second = None
+                journal_path = pool.directory / 'journal.json'
+
+                def submit_after_read(raw):
+                    nonlocal second
+                    before = json.loads(raw)
+                    assert [item['state'] for item in before['requests']] == ['consumed']
+                    second = owners.enter_context(_owner(pending))
+
+                    def published():
+                        value = json.loads(journal_path.read_bytes())
+                        return value if len(value['requests']) == 2 else None
+
+                    after = _until(published)
+                    assert after['current_owner'] == before['current_owner']
+                    assert after['owner_epoch'] == before['owner_epoch']
+                    assert after['sequence'] > before['sequence']
+                    assert [item['state'] for item in after['requests']] == ['consumed', 'pending']
+
+                with _after_record_read(monkeypatch, journal_path, submit_after_read):
+                    observation = pool.inspect()
+                assert second is not None
+                assert any(item['origin']['operation_id'] == original['origin']['operation_id']
+                           and item['state'] == 'pending' for item in observation['requests'])
                 if stop_kind == 'source-change':
                     (pending.parent / 'payload.py').write_text('# modified original source\n')
                 elif stop_kind != 'deadline':
@@ -198,6 +221,7 @@ def test_pending_live_owner_stop_or_frozen_source_change_never_spawns(tmp_path, 
             state = pool.inspect()['requests'][1]['state']
             assert state in ('expired', 'cancelled') if stop_kind == 'deadline' else state == 'cancelled'
             assert first.poll() is None, 'Stopping one original task must leave its sibling running'
+            (holder.parent / 'release').touch()
             assert _result(first)['resource']['status'] == 'released'
 
 

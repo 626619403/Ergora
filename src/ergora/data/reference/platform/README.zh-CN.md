@@ -41,25 +41,33 @@ docker run --init -it --name agentflow --network host \
 
 ## 模型配置与认证
 
-Codex 实现采用 Responses API 模式。选择你的服务支持的模型 ID，并配置平台使用的元数据；不需要预先存在 ~/.codex/config.toml，也不把 key 写入项目。
+模型调用使用 Codex 自身支持的认证。已有 ChatGPT 订阅登录时，在启动服务的同一用户及 home 下完成 `codex login`，再只配置服务支持的模型 ID：
 
 ```bash
 source ~/multi-agent-platform/env.sh
+python3 ~/multi-agent-platform/bootstrap/configure-model.py --model YOUR_SUPPORTED_MODEL_ID
+```
+
+未指定 provider 参数时使用 Codex 原生 OpenAI provider，不要求固定的 API-key 环境变量。原生登录状态由 Codex 读取；自定义 `CODEX_HOME` 时需在启动平台服务前导出该路径。安装器不会登录或复制认证状态。认证方式与订阅支持范围见 [Codex 官方认证说明](https://learn.chatgpt.com/docs/auth)。
+
+显式使用 Responses API 或兼容网关时配置其元数据和环境引用：
+
+```bash
 python3 ~/multi-agent-platform/bootstrap/configure-model.py \
   --model YOUR_SUPPORTED_MODEL_ID \
   --base-url https://api.openai.com/v1 \
   --env-key OPENAI_API_KEY
 ```
 
-通过你自己的 shell/Secret 管理器提供 OPENAI_API_KEY。使用兼容网关时替换 base-url、env-key 与模型 ID。不要把真实 key 写进公开文档或命令历史。仅 Codex 订阅登录并不自动提供本 adapter 所需的 API 凭据。
+通过自己的 shell/Secret 管理器提供变量值；不要把真实 key 写入项目、公开配置或命令历史。`--env-key` 可省略，是否需要凭据及支持哪种认证由所选 provider 决定；省略并不使 API-only 服务支持订阅登录或匿名调用。更具体的原生 provider 设置由平台的 `codex.toml` 持有；子进程只转发所选 provider 的 `env_key` 和 `env_http_headers` 引用，以及 HOME/CODEX_HOME 等原生运行环境。
 
-实现与审查共用这份 Codex API 配置和凭据变量。审查单独启动新的 ephemeral 会话，角色标识为 codex-reviewer，不续接实现会话；默认使用同一个已配置模型。独立会话有助于分开上下文，业务检查和人工审阅仍需完成。
+实现与审查共用这份 Codex 配置。审查单独启动新的 ephemeral 会话，角色标识为 codex-reviewer，不续接实现会话；默认使用同一个已配置模型。独立会话有助于分开上下文，业务检查和人工审阅仍需完成。
 
 ```bash
 agentflow doctor
 ```
 
-安装成功与模型认证可用是两个阶段；doctor 会显示缺少的模型配置、凭据、审查配置和项目。模型不可用时，任务会明确失败。
+静态 doctor 检查本地前置，认证显示 `not_checked`；`ready_for_real_tasks` 不证明账号、额度或模型可用。实际调用由后端决定认证是否有效，失败保留原错误和任务回执，不自动切换后端。
 
 ## 持久目录
 

@@ -175,7 +175,6 @@ class Executor:
         model = "codex"
         if review:
             require(self.config.get("reviewer") == "codex", "Configure the independent reviewer as Codex")
-        require(bool(environment().get(self.config["codex_env_key"])), "Codex API credential is not available")
         evidence = {}
         for stage, receipt in self.context["dependencies"].items():
             evidence[stage] = {a["name"]: (STATE / "artifacts" / a["path"]).read_text()[:60000] for a in receipt["artifacts"]}

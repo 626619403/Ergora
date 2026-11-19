@@ -111,6 +111,44 @@ def fake_pool(tmp_path, *, count=4, _setup=''):
             _stop_session(child, pool)
 
 
+@contextmanager
+def _after_record_read(monkeypatch, path, callback):
+    """Schedule once after complete descriptor read, before its final fstat."""
+    original = os.fdopen
+    fired = False
+
+    class RecordRead:
+        def __init__(self, stream):
+            self.stream = stream
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return self.stream.__exit__(*args)
+
+        def fileno(self):
+            return self.stream.fileno()
+
+        def read(self, *args):
+            nonlocal fired
+            raw = self.stream.read(*args)
+            if not fired:
+                fired = True
+                callback(raw)
+            return raw
+
+    def fdopen(descriptor, *args, **kwargs):
+        target = Path('/proc/self/fd', str(descriptor)).readlink()
+        stream = original(descriptor, *args, **kwargs)
+        return RecordRead(stream) if target == path else stream
+
+    with monkeypatch.context() as patch:
+        patch.setattr(os, 'fdopen', fdopen)
+        yield
+    assert fired, 'The selected record was not read'
+
+
 def _origin(tmp_path):
     artifacts = tmp_path / 'artifacts'
     artifacts.mkdir()
@@ -652,3 +690,134 @@ def test_cli_inspection_reports_required_inventory_failure_with_nonzero_exit(tmp
         assert unavailable['status'] == 'unavailable'
         assert unavailable['availability']['nvml']['available'] is False
         assert unavailable['availability']['nvml']['errors']
+
+
+def test_client_journal_in_place_change_during_descriptor_read_is_rejected(tmp_path, monkeypatch):
+    with fake_pool(tmp_path) as (pool, _configuration, _child):
+        path = pool.directory / 'journal.json'
+        raw, inode = path.read_bytes(), path.stat().st_ino
+
+        def change(raw):
+            with path.open('ab') as stream:
+                stream.write(b' ')
+
+        with _after_record_read(monkeypatch, path, change):
+            with pytest.raises(ValueError):
+                pool.inspect()
+        assert path.stat().st_ino == inode
+        assert path.read_bytes() == raw + b' '
+
+
+@pytest.mark.parametrize('kind', ['fifo', 'directory', 'symlink'])
+def test_client_journal_requires_an_ordinary_file_without_blocking(tmp_path, kind):
+    with fake_pool(tmp_path) as (pool, _configuration, _child):
+        path = pool.directory / 'journal.json'
+        raw = path.read_bytes()
+        path.unlink()
+        if kind == 'fifo':
+            os.mkfifo(path)
+        elif kind == 'directory':
+            path.mkdir()
+        else:
+            target = path.with_name('foreign-journal.json')
+            target.write_bytes(raw)
+            path.symlink_to(target)
+        with pytest.raises((ValueError, OSError)):
+            pool.inspect()
+        assert path.exists()
+
+
+@pytest.mark.parametrize('record', ['sentinel', 'proof'])
+def test_bound_sentinel_and_proof_reads_reject_atomic_path_replacement(tmp_path, monkeypatch, record):
+    with fake_pool(tmp_path) as (pool, configuration, _child):
+        if record == 'sentinel':
+            path = Path(configuration['legacy_sentinel'])
+        else:
+            path = pool.proof_directory('c' * 64) / 'ready.json'
+            local_gpu_pool._publish(path, {'fixture': 'bounded-immutable-proof'})
+        raw, inode = path.read_bytes(), path.stat().st_ino
+
+        def replace(observed):
+            assert observed == raw
+            replacement = path.with_name('replacement.json')
+            replacement.write_bytes(raw)
+            os.replace(replacement, path)
+
+        with _after_record_read(monkeypatch, path, replace):
+            with pytest.raises(ValueError):
+                if record == 'sentinel':
+                    pool.inspect()
+                else:
+                    local_gpu_pool._read_bound(path, local_gpu_pool.FRAME_LIMIT)
+        assert path.read_bytes() == raw
+        assert path.stat().st_ino != inode
+
+
+def test_old_client_snapshot_cannot_route_across_actual_owner_recovery(tmp_path, monkeypatch):
+    with fake_pool(tmp_path) as (pool, configuration, child):
+        path = pool.directory / 'journal.json'
+        original = pool.inspect()
+        restarted, current = None, None
+
+        def recover(raw):
+            nonlocal restarted, current
+            assert json.loads(raw)['current_owner']['pid'] == child.pid
+            child.terminate()
+            child.communicate(timeout=5)
+            restarted = _start_session(tmp_path, configuration, recover=pool.session['session_id'])
+            current = _ready(configuration, restarted)
+            assert current.owner_epoch == original['owner_epoch'] + 1
+
+        try:
+            with _after_record_read(monkeypatch, path, recover):
+                with pytest.raises((local_gpu_pool.PoolUnavailable, FileNotFoundError)):
+                    pool.inspect()
+            observed = pool.inspect()
+            assert observed['owner_epoch'] == original['owner_epoch'] + 1
+            assert observed['current_owner'] == processes.identity(restarted.pid)
+            assert observed['requests'] == []
+        finally:
+            if restarted is not None:
+                _stop_session(restarted, current)
+
+
+def test_journal_owner_cannot_bind_a_foreign_actual_socket_peer(tmp_path):
+    with fake_pool(tmp_path) as (pool, configuration, child):
+        path = Path(configuration['coordination_directory']) / 'session.sock'
+        path.unlink()
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as foreign:
+            foreign.bind(str(path))
+            foreign.listen()
+            inode = path.stat().st_ino
+            try:
+                with pytest.raises(ValueError):
+                    pool.inspect()
+                assert child.poll() is None
+                assert pool.current_owner == processes.identity(child.pid)
+            finally:
+                assert path.stat().st_ino == inode
+                path.unlink()
+
+
+@pytest.mark.parametrize('field', ['session_id', 'owner_epoch'])
+def test_client_rejects_a_reply_with_another_session_or_epoch(tmp_path, field):
+    arm = tmp_path / 'alter-reply'
+    replacement = "result['owner_epoch'] + 1" if field == 'owner_epoch' else repr('0' * 32)
+    setup = (
+        'original_reply=local_gpu_pool._Session._reply\n'
+        'def reply(self,*args,**kwargs):\n'
+        '    result=original_reply(self,*args,**kwargs)\n'
+        f'    if Path({str(arm)!r}).exists():\n'
+        f'        result[{field!r}]={replacement}\n'
+        '    return result\n'
+        'local_gpu_pool._Session._reply=reply\n'
+    )
+    with fake_pool(tmp_path, _setup=setup) as (pool, _configuration, _child):
+        original = pool.inspect()
+        arm.touch()
+        try:
+            with pytest.raises(ValueError):
+                pool.inspect()
+        finally:
+            arm.unlink()
+        assert pool.inspect()['owner_epoch'] == original['owner_epoch']

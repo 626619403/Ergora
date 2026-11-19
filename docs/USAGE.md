@@ -117,7 +117,7 @@ codex --version
 codex
 ```
 
-During the first interactive `codex` session, choose account or API authentication. See the [official OpenAI installation instructions](https://learn.chatgpt.com/docs/codex/cli) and [authentication instructions](https://learn.chatgpt.com/docs/auth). Standalone role invocations use Codex's own configuration; configure the model for the formal reference executor separately according to the reference guide below.
+During the first interactive `codex` session, choose account or API authentication. See the [official OpenAI installation instructions](https://learn.chatgpt.com/docs/codex/cli) and [authentication instructions](https://learn.chatgpt.com/docs/auth). Standalone role invocations use Codex's own configuration; configure the model for the formal reference executor separately according to the reference guide below. The reference model configurator uses native Codex authentication when only `--model MODEL` is supplied; custom API providers can specify `--base-url` and an optional `--env-key` reference. A missing fixed API-key variable does not block a backend that can authenticate itself. Provider requirements still apply, and actual authentication failures remain task failures. Start services with the intended HOME/CODEX_HOME; Ergora does not log in or copy login state.
 
 Claude Code is optional. Install it according to the [official setup instructions](https://code.claude.com/docs/en/setup):
 

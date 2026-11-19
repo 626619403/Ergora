@@ -6,7 +6,6 @@ from pathlib import Path
 import secrets
 import shlex
 import shutil
-import tomllib
 
 from .core import CONFIG, PYTHON, ROOT, RUNTIME, STATE, UPSTREAM, require, write
 
@@ -16,16 +15,11 @@ def initialize() -> None:
                  STATE / "logs", STATE / "tasks", STATE / "workspaces", STATE / "tracking", STATE / "search",
                  *[STATE / name for name in ("requests", "receipts", "artifacts", "approvals", "fences", "ingress", "a2a")]]:
         path.mkdir(parents=True, exist_ok=True, mode=0o700)
-    provider_id = "api"
-    provider = {"name": "Responses API", "base_url": "https://api.openai.com/v1",
-                "env_key": "OPENAI_API_KEY", "wire_api": "responses"}
-    source = {"model": "CONFIGURE_MODEL_BEFORE_USE", "model_provider": provider_id,
-              "model_providers": {provider_id: provider}, "model_reasoning_effort": "high"}
     node = shutil.which("node")
     require(node is not None, "Node is required")
     config = {
         "schema_version": 1, "codex_bin": shutil.which("codex"),
-        "node_root": str(Path(node).parent.parent), "codex_env_key": provider["env_key"],
+        "node_root": str(Path(node).parent.parent),
         "sandbox_image": "localhost/agentflow:0.1.0", "max_parallel_jobs": 4, "stage_walltime_seconds": 1800,
         "execution_enabled": False, "execution_backend": "current-container",
         "current_container_trust_acknowledged": False,
@@ -35,14 +29,9 @@ def initialize() -> None:
         write(CONFIG / "platform.json", config)
     codex_file = CONFIG / "codex.toml"
     if not codex_file.exists():
-        fields = {"model": source["model"], "model_provider": provider_id,
-                  "model_reasoning_effort": source.get("model_reasoning_effort", "high")}
+        fields = {"model": "CONFIGURE_MODEL_BEFORE_USE", "model_reasoning_effort": "high"}
         text = "\n".join(f"{key} = {json.dumps(value)}" for key, value in fields.items())
-        text += "\napproval_policy = \"never\"\n[sandbox_workspace_write]\nnetwork_access = true\n"
-        text += f"\n[model_providers.{provider_id}]\n"
-        for key in ("name", "base_url", "env_key", "wire_api", "requires_openai_auth", "supports_websockets"):
-            if key in provider:
-                text += f"{key} = {json.dumps(provider[key])}\n"
+        text += '\napproval_policy = "never"\n[sandbox_workspace_write]\nnetwork_access = true\n'
         codex_file.write_text(text)
         codex_file.chmod(0o600)
     if not (CONFIG / "credentials.json").exists():
