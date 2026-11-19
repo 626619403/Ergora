@@ -103,6 +103,137 @@ def test_native_structured_output_normalization_uses_actual_process(tmp_path, mo
             assert argv[argv.index("--effort") + 1] == effort
 
 
+@pytest.fixture
+def codex_schema_process(tmp_path):
+    """A native-process substitute with the observed provider's reference restriction."""
+    def create(payload):
+        script = tmp_path / "codex-schema"
+        script.write_text(f"#!{sys.executable}\n" +
+            "import json,pathlib,sys\nfrom jsonschema import Draft202012Validator\n" +
+            "args=sys.argv\n" +
+            "schema=json.loads(pathlib.Path(args[args.index('--output-schema')+1]).read_text())\n" +
+            "bounded=schema['properties'].get('bounded', {})\n" +
+            "if '$ref' in bounded and 'minItems' in bounded:\n" +
+            "    print('invalid_json_schema: $ref cannot have sibling minItems', file=sys.stderr)\n" +
+            "    raise SystemExit(31)\n" +
+            f"payload=json.loads({json.dumps(payload)!r})\n" +
+            "pathlib.Path('transport-valid.json').write_text(json.dumps(Draft202012Validator(schema).is_valid(payload)))\n" +
+            "pathlib.Path('transport-schema.json').write_text(json.dumps(schema))\n" +
+            "pathlib.Path(args[args.index('--output-last-message')+1]).write_text(json.dumps(payload))\n" +
+            "print('{}')\n")
+        script.chmod(0o700)
+        return str(script)
+    return create
+
+
+@pytest.mark.parametrize("case,target_minimum,accepted", [
+    ("valid", 0, True), ("minimum", 0, True), ("maximum", 0, True),
+    ("empty", 0, False), ("duplicate", 0, False),
+    ("overflow", 0, False), ("wrong-item", 0, False),
+    ("extra-property", 0, False), ("missing-property", 0, False),
+    ("wrong-literal", 0, False), ("wrong-enum", 0, False),
+    ("stronger-target", 2, False), ("valid", 2, True),
+])
+@pytest.mark.skipif(os.name == "nt", reason="POSIX native CLI substitute; no provider calls")
+def test_codex_array_reference_contract_survives_native_transport(tmp_path, codex_schema_process,
+                                                                  case, target_minimum, accepted):
+    maximum = 3
+    schema = {"type": "object", "additionalProperties": False,
+        "required": ["bounded", "shared", "details", "literal", "literal_enum"],
+        "properties": {
+            "bounded": {"$ref": "#/$defs/ids~1bounded~0", "minItems": 1},
+            "shared": {"$ref": "#/$defs/ids~1bounded~0"},
+            "details": {"type": "object", "properties": {"owner": {"type": "string"}},
+                        "required": ["owner"], "additionalProperties": False},
+            "literal": {"const": {"$ref": "data, not a schema reference", "minItems": 0}},
+            "literal_enum": {"enum": [{"$ref": "enum data", "minItems": 0}]}},
+        "$defs": {
+            "ids/bounded~": {"type": "array", "minItems": target_minimum, "maxItems": maximum,
+                             "items": {"$ref": "#/$defs/id"}, "uniqueItems": True},
+            "id": {"type": "string", "pattern": "^[a-z]+$"}}}
+    original = json.dumps(schema)
+    payload = {"bounded": ["a", "b"], "shared": ["a", "b"] if target_minimum else [],
+               "details": {"owner": "owner"}, "literal": schema["properties"]["literal"]["const"],
+               "literal_enum": schema["properties"]["literal_enum"]["enum"][0]}
+    if case == "minimum":
+        payload["bounded"] = ["a"]
+    elif case == "maximum":
+        payload["bounded"] = list("abcdef"[:maximum])
+    elif case == "empty":
+        payload["bounded"] = []
+    elif case == "duplicate":
+        payload["bounded"] = ["a", "a"]
+    elif case == "overflow":
+        payload["bounded"] = list("abcdef"[:maximum + 1])
+    elif case == "wrong-item":
+        payload["bounded"] = ["invalid ID"]
+    elif case == "extra-property":
+        payload["details"]["extra"] = "forbidden"
+    elif case == "missing-property":
+        del payload["details"]["owner"]
+    elif case == "wrong-literal":
+        payload["literal"] = {"$ref": "different data", "minItems": 0}
+    elif case == "wrong-enum":
+        payload["literal_enum"] = {"$ref": "different data", "minItems": 0}
+    elif case == "stronger-target":
+        payload["bounded"] = ["a"]
+    result = agents.invoke({"tool": "codex"}, "planner", "Return the supplied contract", tmp_path,
+                           tmp_path / "output", 5, schema, codex_bin=codex_schema_process(payload))
+    assert result["status"] == ("succeeded" if accepted else "failed"), result
+    assert json.loads((tmp_path / "transport-valid.json").read_text()) is accepted
+    assert json.dumps(schema) == original
+    assert (tmp_path / "output.protocol/schema.json").read_text() == original
+    if accepted:
+        assert json.loads(Path(result["result"]).read_text()) == payload
+    else:
+        assert "Invalid structured agent result" in result["error"]
+        assert not (tmp_path / "output/result.json").exists()
+
+
+@pytest.mark.parametrize("failure", ["missing", "external", "non-array", "recursive", "scope", "extra-sibling"])
+def test_codex_unsafe_array_reference_conversion_fails_before_process(tmp_path, monkeypatch, failure):
+    schema = {"type": "object", "properties": {"bounded": {"$ref": "#/$defs/ids", "minItems": 1}},
+              "$defs": {"ids": {"type": "array", "minItems": 0, "maxItems": 3,
+                                "items": {"type": "string"}}}}
+    target = schema["$defs"]["ids"]
+    if failure == "missing":
+        schema["$defs"].clear()
+    elif failure == "external":
+        schema["properties"]["bounded"]["$ref"] = "https://example.invalid/ids"
+    elif failure == "non-array":
+        schema["$defs"]["ids"] = {"type": "object", "additionalProperties": False}
+    elif failure == "recursive":
+        target["items"] = {"$ref": "#/$defs/ids"}
+    elif failure == "scope":
+        target["$id"] = "https://example.invalid/ids"
+    else:
+        schema["$defs"]["ids"] = {"type": "object", "additionalProperties": False}
+        schema["properties"]["bounded"]["properties"] = {"added": {"type": "string"}}
+    original = json.dumps(schema)
+    monkeypatch.setattr(processes, "run", lambda *args, **kwargs: pytest.fail("Unsafe conversion started a process"))
+    with pytest.raises(ValueError, match=r"Codex schema conversion unsupported at /properties/bounded.*\$ref.*minItems"):
+        agents.invoke({"tool": "codex"}, "planner", "Unsupported conversion", tmp_path,
+                      tmp_path / "output", 5, schema)
+    assert json.dumps(schema) == original
+    assert (tmp_path / "output.protocol/schema.json").read_text() == original
+
+
+@pytest.mark.skipif(os.name == "nt", reason="POSIX native CLI substitute; no provider calls")
+def test_codex_schema_without_array_conversion_keeps_original_behavior(tmp_path, codex_schema_process):
+    schema = {"type": "object", "properties": {
+        "value": {"$ref": "#/$defs/closed", "properties": {"other": {"type": "string"}}},
+        "tree": {"$ref": "#/$defs/tree"}}, "required": ["value", "tree"], "additionalProperties": False,
+        "$defs": {
+            "closed": {"type": "object", "properties": {"owner": {"type": "string"}}, "additionalProperties": False},
+            "tree": {"anyOf": [{"type": "null"}, {"type": "array", "items": {"$ref": "#/$defs/tree"}}]}}}
+    payload = {"value": {"owner": "owner"}, "tree": [None, [None]]}
+    result = agents.invoke({"tool": "codex"}, "planner", "Keep the original schema", tmp_path,
+                           tmp_path / "output", 5, schema, codex_bin=codex_schema_process(payload))
+    assert result["status"] == "succeeded", result
+    assert json.loads((tmp_path / "transport-schema.json").read_text()) == schema
+    assert json.loads(Path(result["result"]).read_text()) == payload
+
+
 @pytest.mark.parametrize("effort", [None, "high"])
 def test_formal_codex_config_cannot_override_role_sandbox(tmp_path, monkeypatch, effort):
     config = tmp_path / "codex.toml"
