@@ -9,9 +9,11 @@ pytest.importorskip("fastapi")
 pytest.importorskip("httpx")
 from fastapi.testclient import TestClient
 
-from ergora import memory, projects, skills
-from ergora.state import State
-from ergora.web import create_app
+import ergora.improvement.memory as memory
+import ergora.configuration.projects as projects
+import ergora.definitions.skills as skill_assets
+from ergora.storage.state import State
+from ergora.interfaces.web import create_app
 from test_agents import native_session_case
 
 
@@ -77,7 +79,8 @@ def test_binding_revisions_and_cli_web_share_durable_state(console):
 
 
 def test_project_sessions_http_and_cli_preserve_exact_operation_inputs(console, tmp_path, monkeypatch, capsys):
-    from ergora import agent_runs, cli
+    import ergora.agents.runs as agent_runs
+    import ergora.interfaces.cli as cli
 
     client, state, _ = console
     calls = []
@@ -307,7 +310,7 @@ def test_all_templates_and_formal_dag_constraints(console):
 
 
 def test_template_roles_and_structured_agent_selection(console):
-    from ergora import agents
+    import ergora.agents.invocation as agents
     client, state, repo = console
     bootstrap = client.get("/api/bootstrap").json()
     assert bootstrap["layers"]["reviewer"]["requires"] == ["independent-candidate-review"]
@@ -349,7 +352,7 @@ def test_skill_evidence_and_adoption_use_existing_business_gate(console, tmp_pat
     assert comparison["eligible"]
     payload = {"baseline_run": runs[0]["id"], "candidate_run": runs[1]["id"], "revision": 1, "reason": "Reviewed API fixture evidence"}
     assert client.post("/api/projects/demo/skills/adopt", json=payload).status_code == 200
-    assert skills.versions(State(state.root), "demo")["active"][0]["digest"] == candidate["digest"]
+    assert skill_assets.versions(State(state.root), "demo")["active"][0]["digest"] == candidate["digest"]
     assert client.post("/api/projects/demo/skills/adopt", json=payload).status_code == 400
 
 

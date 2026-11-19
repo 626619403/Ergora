@@ -11,8 +11,14 @@ from types import SimpleNamespace
 
 import pytest
 
-from ergora import agent_runs, contracts, issue_backends, issues, projects, registrations, tools
-from ergora.state import State
+import ergora.agents.runs as agent_runs
+import ergora.issues.backends as issue_backends
+import ergora.issues.application as issues
+import ergora.configuration.projects as projects
+import ergora.configuration.registrations as registrations
+import ergora.operations.tools as tools
+from ergora.configuration import validation as contracts
+from ergora.storage.state import State
 from test_registrations import installation, registration
 
 
@@ -195,7 +201,7 @@ def test_cli_http_and_descriptors_share_the_actual_read_use_case(source):
     pytest.importorskip('fastapi')
     pytest.importorskip('httpx')
     from fastapi.testclient import TestClient
-    from ergora.web import create_app
+    from ergora.interfaces.web import create_app
 
     bind(source, 'gitlab')
     source.raw = json.dumps(native('gitlab', None)).encode()

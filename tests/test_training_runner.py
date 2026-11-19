@@ -14,7 +14,10 @@ import sys
 
 import pytest
 
-from ergora import projects, reference, registrations, training
+import ergora.runtime.processes as processes
+import ergora.training.application as training
+import ergora.configuration.projects as projects
+import ergora.configuration.registrations as registrations
 from test_registrations import registration
 from test_training_runtime import installation
 
@@ -36,7 +39,7 @@ def runner_project(registration, tmp_path):
 @pytest.fixture
 def configuration_source(tmp_path, monkeypatch):
     """A real reviewed source identity; constructing its reference never imports it."""
-    from ergora import training_configuration
+    import ergora.training.configuration as training_configuration
 
     source = tmp_path / 'trusted configuration source'
     source.mkdir()
@@ -120,7 +123,7 @@ def test_configuration_driver_registration_reads_git_source_without_importing_it
 
 
 def test_configuration_driver_source_rejects_a_tracked_entrypoint_symlink(configuration_project):
-    from ergora import training_configuration
+    import ergora.training.configuration as training_configuration
 
     item = configuration_project
     (item['source'] / 'linked.py').symlink_to('driver.py')
@@ -188,17 +191,17 @@ def test_wrong_sha_stale_revision_and_changed_command_never_replace_runner(runne
 def test_lost_reply_and_concurrent_same_content_recover_original_file(runner_project, monkeypatch):
     state, definition, runner, marker = runner_project
     preview = training.preview_runner(state, 'demo', runner)
-    original = reference.processes.run
+    original = processes.run
 
     def lose_reply(*args, **kwargs):
         result = original(*args, **kwargs)
         assert result['status'] == 'succeeded'
         raise ValueError('Reply lost after native runner publication')
 
-    monkeypatch.setattr(reference.processes, 'run', lose_reply)
+    monkeypatch.setattr(processes, 'run', lose_reply)
     with pytest.raises(ValueError, match='Reply lost'):
         training.register_runner(state, 'demo', runner, preview['project_revision'], preview['runner_sha256'])
-    monkeypatch.setattr(reference.processes, 'run', original)
+    monkeypatch.setattr(processes, 'run', original)
     path = Path(definition['execution']['config_directory']) / 'training-runners/demo-training.json'
     raw = path.read_bytes()
     observed = training.preview_runner(state, 'demo', runner)
@@ -242,7 +245,7 @@ def test_registered_contract_and_capacity_do_not_publish_unusable_runner(runner_
     with pytest.raises(ValueError, match='configuration drift'):
         training.preview_runner(state, 'demo', runner)
     policy.write_bytes(raw)
-    from ergora.cli import main
+    from ergora.interfaces.cli import main
 
     source = tmp_path / 'padded-runner.json'
     source.write_bytes(b' ' * 1_048_576 + json.dumps(runner).encode('utf-8'))
@@ -266,8 +269,8 @@ def test_symlinked_runner_target_does_not_write_outside_registered_config(runner
 def test_cli_http_share_normalized_confirmation_and_original_publisher(runner_project, tmp_path):
     pytest.importorskip('fastapi')
     from fastapi.testclient import TestClient
-    from ergora.cli import main
-    from ergora.web import create_app
+    from ergora.interfaces.cli import main
+    from ergora.interfaces.web import create_app
 
     state, definition, runner, marker = runner_project
     path = tmp_path / 'runner.json'

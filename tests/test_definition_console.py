@@ -14,10 +14,13 @@ pytest.importorskip('fastapi')
 pytest.importorskip('httpx')
 from fastapi.testclient import TestClient
 
-from ergora import agent_definitions, cli, projects, workflow_definitions as workflows
-from ergora.state import State
-from ergora.web import create_app
-from ergora.asset_trees import digest_tree, inventory_tree
+import ergora.definitions.agents as agent_definitions
+import ergora.interfaces.cli as cli
+import ergora.configuration.projects as projects
+import ergora.definitions.workflows as workflows
+from ergora.storage.state import State
+from ergora.interfaces.web import create_app
+from ergora.storage.assets import digest_tree, inventory_tree
 
 
 @pytest.fixture

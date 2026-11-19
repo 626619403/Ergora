@@ -10,15 +10,17 @@ import sys
 
 import pytest
 
-from ergora import reference, registrations, training
+import ergora.native.resources as native_resources
+import ergora.training.application as training
+import ergora.configuration.registrations as registrations
 from test_registrations import registration
 
 
 @pytest.fixture(scope='module')
 def installation(tmp_path_factory):
     root = tmp_path_factory.mktemp('training-observation-installation')
-    shutil.copytree(reference.ROOT / 'platform', root, dirs_exist_ok=True)
-    shutil.copyfile(reference.DATA / 'native-runtime' / (reference.TRAINING_PROTOCOL + '.json'),
+    shutil.copytree(native_resources.ROOT / 'platform', root, dirs_exist_ok=True)
+    shutil.copyfile(native_resources.DATA / 'native-runtime' / (native_resources.TRAINING_PROTOCOL + '.json'),
                     root / 'ergora-native-runtime.json')
     return root
 
@@ -46,7 +48,7 @@ def experiments(registration, request):
     runner = {'schema_version': 2, 'runner_template_id': 'trusted', 'project': 'demo', 'repo': definition['repo'],
               'command': [sys.executable, '-c', 'pass'], 'timeout_seconds': 30, 'configuration_readback': None}
     write(config / 'training-runners/trusted.json', runner)
-    template = json.loads((reference.ROOT / 'platform/templates/training-optimization/experiment.json').read_text())
+    template = json.loads((native_resources.ROOT / 'platform/templates/training-optimization/experiment.json').read_text())
     for ident in ('alpha', 'beta'):
         manifest = {key: ('c' * 64 if value == 'REPLACE_SHA256' else value) for key, value in template.items()}
         manifest.update(experiment_id=ident, baseline_id=baseline['baseline_id'], contract_approved=True,
@@ -171,7 +173,7 @@ def test_repository_ownership_requires_current_runner_or_original_request(experi
 
 
 def test_read_limits_and_symlinks_are_enforced(experiments):
-    from ergora.training_materials import read_raw
+    from ergora.training.materials import read_raw
 
     state, _, runtime, prefix, _ = experiments
     original = prefix / 'experiments/alpha/manifest.json'
@@ -197,7 +199,7 @@ def test_cli_http_and_application_share_the_same_offline_observation(experiments
     state, _, _, _, _ = experiments
     pytest.importorskip('fastapi');pytest.importorskip('httpx')
     from fastapi.testclient import TestClient
-    from ergora.web import create_app
+    from ergora.interfaces.web import create_app
 
     headers = {'Origin': 'http://127.0.0.1:8977', 'X-Ergora-Request': '1'}
     with TestClient(create_app(state.root), base_url=headers['Origin'], headers=headers) as client:

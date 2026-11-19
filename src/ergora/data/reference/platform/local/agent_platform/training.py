@@ -56,7 +56,7 @@ def exact_job(job: Job) -> dict:
 
 def register_runner(source: Path) -> dict:
     value = read(source)
-    from ergora.training_configuration import validate_runner
+    from ergora.training.configuration import validate_runner
 
     validate_runner(value)
     slug(value['runner_template_id']); slug(value['project'])
@@ -68,8 +68,8 @@ def register_runner(source: Path) -> dict:
 
 
 def prepare(draft_path: Path, runner_id: str, max_run_seconds: int | None, *, configuration_materials: dict | None = None) -> dict:
-    from ergora.training_materials import material_plan, publish_material, require_driver
-    from ergora.training_configuration import validate_execution_sources
+    from ergora.training.materials import material_plan, publish_material, require_driver
+    from ergora.training.configuration import validate_execution_sources
 
     draft = read(draft_path)
     materials = {}
@@ -119,13 +119,13 @@ class LocalTrainingAdapter:
         self._reader_closed = False
 
     async def close(self) -> None:
-        from ergora.reference import _close_training_readers
+        from ergora.training.native import _close_training_readers
 
         self._reader_closed = True
         await _close_training_readers(self._reader_resources)
 
     async def _read(self, operation, job, *, timeout):
-        from ergora.reference import _training_reader_async
+        from ergora.training.native import _training_reader_async
 
         require(not self._reader_closed, 'Training adapter is closed')
         return await _training_reader_async(str(STATE), str(CONFIG), operation, asdict(job),
@@ -148,8 +148,8 @@ class LocalTrainingAdapter:
         return Job(experiment.binding, record['job_id'])
 
     async def create_job_if_absent(self, experiment: Experiment, manifest: bytes) -> Job:
-        from ergora.training_materials import read_materials, require_driver
-        from ergora.training_configuration import validate_execution_sources
+        from ergora.training.materials import read_materials, require_driver
+        from ergora.training.configuration import validate_execution_sources
 
         require(hashlib.sha256(manifest).hexdigest() == experiment.binding.manifest_sha, 'Manifest bytes changed')
         value = json.loads(manifest)

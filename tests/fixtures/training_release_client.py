@@ -16,7 +16,7 @@ from temporalio.api.common.v1 import Payloads
 from temporalio.api.history.v1 import HistoryEvent, WorkflowExecutionSignaledEventAttributes
 from temporalio.api.workflowservice.v1 import QueryWorkflowResponse, SignalWorkflowExecutionResponse
 
-from ergora.reference_training_release import main
+from ergora.training.runtime.release import main
 
 
 async def spec():

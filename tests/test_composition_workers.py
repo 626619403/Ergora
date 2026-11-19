@@ -11,7 +11,8 @@ import pytest
 
 pytest.importorskip('temporalio')
 
-from ergora import reference, task_envelopes
+import ergora.native.resources as native_resources
+from ergora.development import envelopes as task_envelopes
 from test_composition_runtime import original_input, composed_creation, creation_project, installation, registration
 
 
@@ -19,7 +20,7 @@ from test_composition_runtime import original_input, composed_creation, creation
 @pytest.mark.parametrize('version', [1, 2])
 def test_each_version_publishes_and_fences_only_its_own_requests(original_input, tmp_path, version):
     from dev_platform.adapter import publish, read_json
-    from ergora.reference_inputs import execution_input
+    from ergora.development.inputs import execution_input
     from temporalio.exceptions import ApplicationError
 
     document = original_input if version == 2 else original_input['legacy_spec']
@@ -54,7 +55,7 @@ def test_each_version_publishes_and_fences_only_its_own_requests(original_input,
 
 @pytest.mark.parametrize('admission', ['legacy', 'different-projection', 'missing', 'task-id', 'profile-sha'])
 def test_composition_activity_rejects_wrong_admission_before_publication(original_input, tmp_path, admission):
-    from ergora.reference_inputs import execution_input
+    from ergora.development.inputs import execution_input
     from temporalio.exceptions import ApplicationError
 
     selected = execution_input(original_input)
@@ -84,9 +85,10 @@ def test_composition_activity_rejects_wrong_admission_before_publication(origina
 
 @pytest.mark.parametrize('stop_at', ['connection', 'first-worker', 'shutdown'])
 def test_stop_covers_connection_worker_entry_and_shutdown(monkeypatch, stop_at):
-    monkeypatch.syspath_prepend(str(reference.ROOT / 'platform/upstream/platform'))
+    monkeypatch.syspath_prepend(str(native_resources.ROOT / 'platform/upstream/platform'))
     from dev_platform import adapter, connection
-    from ergora import reference_worker, reference_inputs
+    import ergora.development.runtime.worker as reference_worker
+    from ergora.development import inputs as reference_inputs
 
     events, handlers = [], {}
 

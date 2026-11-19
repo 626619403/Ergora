@@ -11,7 +11,7 @@ def install():
         def run(self, name, checkout, output, command, **options):
             output.mkdir(parents=True, exist_ok=True)
             environment = dict(os.environ)
-            if len(command) > 1 and command[1].endswith('/training_configuration.py'):
+            if len(command) > 1 and command[1].endswith('/training/configuration.py'):
                 for key in ('PYTHONPATH', 'AGENTFLOW_CONFIG_DIR', 'AGENTFLOW_STATE_DIR'):
                     environment.pop(key, None)
             with (output / 'execution.log').open('wb') as log:

@@ -10,14 +10,20 @@ import sys
 
 import pytest
 
-from ergora import agent_definitions, agents, backups, contracts, skill_assets, workflow_definitions as workflows
-from ergora.asset_trees import digest_tree
-from ergora.state import State
+import ergora.definitions.agents as agent_definitions
+import ergora.agents.invocation as agents
+import ergora.operations.backups as backups
+import ergora.definitions.skills as skill_assets
+import ergora.definitions.workflows as workflows
+from ergora.configuration import validation as contracts
+from ergora.storage.assets import digest_tree
+from ergora.storage.state import State
 
 
 @pytest.fixture
 def workflow_retrospective(tmp_path):
-    from ergora import handoff, projects
+    import ergora.development.handoff as handoff
+    import ergora.configuration.projects as projects
     from test_handoff import evidence, text_evidence
 
     repo = tmp_path / 'repo'
@@ -76,7 +82,8 @@ def workflow_proposal(input_path, result_path):
 
 
 def test_workflow_retrospective_complete_offline_revision_export_import_and_old_manifest(workflow_retrospective, tmp_path, capsys):
-    from ergora import cli, retrospectives
+    import ergora.interfaces.cli as cli
+    import ergora.improvement.retrospectives as retrospectives
 
     state, packet, target, options = workflow_retrospective
     original = workflows.inspect_manifest(options['target_manifest'], material=True)
@@ -126,7 +133,8 @@ def test_workflow_retrospective_complete_offline_revision_export_import_and_old_
     ('cycle', 'cycle'), ('source', 'frozen source'), ('citation', 'absent'),
 ])
 def test_workflow_retrospective_rejects_authority_or_gate_changes(workflow_retrospective, tmp_path, capsys, change, reason):
-    from ergora import cli, retrospectives
+    import ergora.interfaces.cli as cli
+    import ergora.improvement.retrospectives as retrospectives
 
     state, packet, target, options = workflow_retrospective
     retrospectives.prepare_workflow(state, 'demo', packet, [{'job_id': 'job-1', 'name': 'record'}], **options)
@@ -152,7 +160,7 @@ def test_workflow_retrospective_rejects_authority_or_gate_changes(workflow_retro
 
 
 def test_workflow_retrospective_null_explicit_selection_and_no_replace(workflow_retrospective, tmp_path):
-    from ergora import retrospectives
+    import ergora.improvement.retrospectives as retrospectives
 
     state, packet, target, options = workflow_retrospective
     with pytest.raises(ValueError, match='manifest digest'):
@@ -182,7 +190,7 @@ def test_workflow_retrospective_null_explicit_selection_and_no_replace(workflow_
 
 
 def test_workflow_retrospective_preserves_the_frozen_grant_and_complete_root_view(workflow_retrospective, tmp_path):
-    from ergora import retrospectives
+    import ergora.improvement.retrospectives as retrospectives
 
     state, packet, target, options = workflow_retrospective
     original = workflows.inspect_manifest(options['target_manifest'], material=True)
@@ -209,7 +217,7 @@ def test_workflow_retrospective_preserves_the_frozen_grant_and_complete_root_vie
 @pytest.mark.parametrize('content', [b'ordinary\x00binary', b'\xff\x01binary'])
 def test_workflow_retrospective_rejects_binary_skill_support_files_at_its_own_boundary(workflow_retrospective, tmp_path, place, content):
     import base64
-    from ergora import retrospectives
+    import ergora.improvement.retrospectives as retrospectives
 
     state, packet, target, options = workflow_retrospective
     before = workflows.definitions(state)
@@ -708,7 +716,7 @@ def test_cli_check_and_failed_preview_do_not_create_state(tmp_path):
 
 
 def test_prepared_input_retains_every_ancestor_skill_tree_and_is_independent_of_source_state(base, monkeypatch, capsys):
-    from ergora.cli import main
+    from ergora.interfaces.cli import main
 
     state, agent, directory = base
     sub = imported(base, definition("sub", [leaf("review", agent)]), "Child instructions.\n")

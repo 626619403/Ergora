@@ -13,8 +13,8 @@ from temporalio.service import RPCError, RPCStatusCode
 
 from dev_platform import connection
 from dev_platform.workflow import DevelopmentWorkflow
-from ergora.reference_inputs import execution_input
-from ergora.reference_task_cancellation import _Cancellation, main
+from ergora.development.inputs import execution_input
+from ergora.development.runtime.cancellation import _Cancellation, main
 
 payload=json.load(sys.stdin)
 sys.stdin=io.StringIO(json.dumps(payload))

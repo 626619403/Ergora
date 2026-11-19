@@ -9,9 +9,15 @@ import sys
 
 import pytest
 
-from ergora import reference, training
+import ergora.native.resources as native_resources
+import ergora.training.native as training_native
+import ergora.runtime.processes as processes
+import importlib
+import subprocess
+import ergora.training.application as training
 from test_training import experiments, registration
 from test_reference import prepared_training_installation
+from ergora._paths import IMPORT_ROOT
 
 
 @pytest.fixture(scope='module')
@@ -20,11 +26,11 @@ def installation(tmp_path_factory):
 
     root = tmp_path_factory.mktemp('training-reference-installation') / 'managed native'
     if sys.platform == 'linux':
-        reference.prepare_training(root, protocol=reference.TRAINING_PROTOCOL)
+        native_resources.prepare_training(root, protocol=native_resources.TRAINING_PROTOCOL)
         venv.EnvBuilder(with_pip=False).create(root / '.venv')
     else:
-        shutil.copytree(reference.ROOT / 'platform', root)
-        shutil.copyfile(reference.DATA / 'native-runtime' / (reference.TRAINING_PROTOCOL + '.json'),
+        shutil.copytree(native_resources.ROOT / 'platform', root)
+        shutil.copyfile(native_resources.DATA / 'native-runtime' / (native_resources.TRAINING_PROTOCOL + '.json'),
                         root / 'ergora-native-runtime.json')
     return root
 
@@ -115,17 +121,17 @@ except (ValueError, TypeError, RuntimeError, ModuleNotFoundError) as error:
 @pytest.fixture
 def runtime_client(monkeypatch):
     pytest.importorskip('temporalio')
-    original = reference.processes.run
+    original = processes.run
     fixture = Path(__file__).parent / 'fixtures/training_runtime_client.py'
 
     def select(scenario):
         def invoke(argv, *args, **kwargs):
-            if 'from ergora.reference_training_runtime import main;main()' in argv:
+            if 'from ergora.training.runtime.status import main;main()' in argv:
                 argv = list(argv)
                 argv[-1] = f'import runpy;runpy.run_path({str(fixture)!r},run_name="__main__")'
                 kwargs['env'] = {**kwargs['env'], 'ERGORA_TEST_TRAINING_RUNTIME': scenario}
             return original(argv, *args, **kwargs)
-        monkeypatch.setattr(reference.processes, 'run', invoke)
+        monkeypatch.setattr(processes, 'run', invoke)
     return select
 
 
@@ -184,8 +190,8 @@ def test_query_needs_the_fixed_native_family_and_optional_sdk(experiments, runti
             training.status(state, 'demo', 'alpha')
     finally:
         module.write_bytes(original_bytes)
-    original = reference.importlib.util.find_spec
-    monkeypatch.setattr(reference.importlib.util, 'find_spec', lambda name: None if name == 'temporalio' else original(name))
+    original = importlib.util.find_spec
+    monkeypatch.setattr(importlib.util, 'find_spec', lambda name: None if name == 'temporalio' else original(name))
     with pytest.raises(ValueError, match=r'install ergora\[temporal\]'):
         training.status(state, 'demo', 'alpha')
 
@@ -193,8 +199,8 @@ def test_query_needs_the_fixed_native_family_and_optional_sdk(experiments, runti
 def test_cli_and_http_explicitly_query_the_same_native_run(experiments, runtime_client):
     pytest.importorskip('fastapi')
     from fastapi.testclient import TestClient
-    from ergora.cli import main
-    from ergora.web import create_app
+    from ergora.interfaces.cli import main
+    from ergora.interfaces.web import create_app
 
     state, _, _, _, _ = experiments
     runtime_client('running')
@@ -335,7 +341,7 @@ def test_cycle_sdk_capacity_counts_metadata_and_rejects_without_truncation():
     from temporalio.api.common.v1 import Payloads
     from temporalio.converter import DataConverter
     from temporalio.exceptions import ApplicationError
-    from ergora.reference_training_worker import _cycle_capacity
+    from ergora.training.runtime.worker import _cycle_capacity
 
     value = {'reason': 'x' * 32750}
     assert len(json.dumps(value, separators=(',', ':')).encode()) <= 32768
@@ -404,7 +410,7 @@ def cycle_capacity_converter():
     from temporalio.api.common.v1 import Payloads
     from temporalio.converter import DataConverter, DefaultPayloadConverter
     from temporalio.exceptions import ApplicationError
-    from ergora.reference_training_worker import _CycleFailureConverter
+    from ergora.training.runtime.worker import _CycleFailureConverter
 
     def create(wire, size):
         class MetadataConverter(DefaultPayloadConverter):
@@ -437,7 +443,7 @@ def test_cycle_v3_wrapper_failure_does_not_export_original_error(cycle_sdk_compl
     from types import SimpleNamespace
     from temporalio.converter import DataConverter
     from temporalio.exceptions import CancelledError
-    from ergora import reference_training_worker as worker
+    import ergora.training.runtime.worker as worker
 
     activities = worker.create_cycle_activities(SimpleNamespace(namespace='default', data_converter=DataConverter.default), 2)
     original = {'protocol': 'ergora-training-cycle-v2', 'control_home': '/', 'project': 'demo',
@@ -477,7 +483,7 @@ def test_cycle_sdk_completion_measures_the_final_saved_failure(cycle_sdk_complet
     from temporalio.api.common.v1 import Payload, Payloads
     from temporalio.api.failure.v1 import ApplicationFailureInfo, Failure
     from temporalio.converter import DataConverter, DefaultFailureConverter
-    from ergora.reference_training_worker import _CycleFailureConverter
+    from ergora.training.runtime.worker import _CycleFailureConverter
 
     original = Failure(message='原始完整错误', stack_trace='original traceback',
         cause=Failure(message='original cause', application_failure_info=ApplicationFailureInfo(type='cause')),
@@ -519,7 +525,7 @@ def test_cycle_sdk_completion_bounds_the_whole_default_error_tree(cycle_sdk_comp
     from temporalio.api.failure.v1 import Failure
     from temporalio.converter import DataConverter, DefaultPayloadConverter
     from temporalio.exceptions import ApplicationError
-    from ergora.reference_training_worker import _CycleFailureConverter
+    from ergora.training.runtime.worker import _CycleFailureConverter
 
     converter = DataConverter.default
     error = ApplicationError('original error', type='original-type')
@@ -579,7 +585,7 @@ def test_cycle_execution_sdk_rejects_untrusted_input_before_any_operation(monkey
     from temporalio.converter import DataConverter
     from temporalio.exceptions import ApplicationError
     from temporalio.testing import ActivityEnvironment
-    from ergora import reference_training_worker as worker
+    import ergora.training.runtime.worker as worker
 
     def forbidden(*args, **kwargs):
         raise AssertionError('Rejected SDK input cannot create a supervised operation')
@@ -618,7 +624,9 @@ def test_cycle_execution_sdk_keeps_one_work_window_without_parent_file_reads(
     from types import SimpleNamespace
     from temporalio.converter import DataConverter
     from temporalio.testing import ActivityEnvironment
-    from ergora import budget_clock, reference_training_worker as worker, training_cycles
+    import ergora.training.runtime.worker as worker
+    import ergora.training.cycles as training_cycles
+    from ergora.runtime import budget_clock
 
     clock = budget_clock.authorize(wall)
     authorization = {'schema_version': 2, 'control_home': str(tmp_path), 'project': 'demo', 'cycle_id': 'first',
@@ -681,7 +689,7 @@ def test_cycle_service_closes_peers_with_real_sdk_lifecycle(monkeypatch, tmp_pat
     from temporalio.client import Client
     from temporalio.converter import DataConverter
     import temporalio.worker
-    from ergora import reference_training_worker as service
+    import ergora.training.runtime.worker as service
 
     sdk_worker = temporalio.worker.Worker
 
@@ -889,7 +897,7 @@ def cycle_workflow():
     from temporalio.worker._workflow_instance import WorkflowInstanceDetails
     from temporalio.worker.workflow_sandbox import SandboxedWorkflowRunner
     from temporalio.worker.workflow_sandbox._runner import _fake_info
-    from ergora.reference_training_worker import create_cycle_workflow
+    from ergora.training.runtime.worker import create_cycle_workflow
 
     class Harness:
         original = {'protocol': 'ergora-training-cycle-v1', 'control_home': str(Path.cwd().anchor),
@@ -900,7 +908,7 @@ def cycle_workflow():
             self.original = {**self.original, 'protocol': 'ergora-training-cycle-v' + str(program_version)}
             self.workflow_type = 'TrainingCycleWorkflow' + ('V' + str(program_version) if program_version in (2, 3) else '')
             if data_converter is None:
-                from ergora.reference_training_worker import _CycleFailureConverter
+                from ergora.training.runtime.worker import _CycleFailureConverter
 
                 data_converter = (replace(DataConverter.default, failure_converter_class=_CycleFailureConverter)
                                   if program_version in (2, 3) else DataConverter.default)
@@ -911,7 +919,7 @@ def cycle_workflow():
             async def create():
                 cls = create_cycle_workflow(program_version)
                 assert (cls.__module__, cls.__name__, cls.__qualname__) == (
-                    'ergora.reference_training_worker', self.workflow_type, self.workflow_type)
+                    'ergora.training.runtime.worker', self.workflow_type, self.workflow_type)
                 runner = SandboxedWorkflowRunner()
                 defn = workflow._Definition.must_from_class(cls)
                 runner.prepare_workflow(defn)
@@ -1227,14 +1235,14 @@ from pathlib import Path
 sys.path.insert(0, sys.argv[1])
 from temporalio.client import WorkflowHistory
 from temporalio.worker import Replayer
-from ergora.reference_training_worker import create_cycle_workflow
+from ergora.training.runtime.worker import create_cycle_workflow
 async def replay():
     history = WorkflowHistory.from_json('parent', Path(sys.argv[2]).read_text())
     await Replayer(workflows=[create_cycle_workflow(int(sys.argv[3]))]).replay_workflow(history)
     print('REPLAY_AND_EVICTION_COMPLETED', flush=True)
 asyncio.run(replay())
 '''
-    command = [sys.executable, '-I', '-B', '-c', script, str(Path(training.__file__).resolve().parent.parent), str(history), str(program_version)]
+    command = [sys.executable, '-I', '-B', '-c', script, str(IMPORT_ROOT), str(history), str(program_version)]
     try:
         replay = subprocess.run(command, capture_output=True, text=True, timeout=10)
     except subprocess.TimeoutExpired as error:
@@ -1318,7 +1326,7 @@ def test_cycle_workflow_unconfirmed_identity_never_requests_execution(cycle_work
 @pytest.fixture
 def cycle_v2_workflow(cycle_workflow):
     """SDK contracts with synthetic inline facts; no schema3 execution or training."""
-    from ergora import training_execution_protocol as protocol
+    import ergora.training.execution_protocol as protocol
 
     class Harness(cycle_workflow):
         def __init__(self, program_version=2, **config):
@@ -1599,7 +1607,9 @@ def test_cycle_v3_completion_counts_assembled_measurement_and_all_operations(
     from copy import deepcopy
     from types import SimpleNamespace
     from temporalio.api.common.v1 import Payloads
-    from ergora import budget_clock, reference_training_worker as worker, training_cycles
+    import ergora.training.runtime.worker as worker
+    import ergora.training.cycles as training_cycles
+    from ergora.runtime import budget_clock
 
     h = cycle_v2_workflow(program_version)
     wire = 'ergora-training-cycle-activity-v' + str(program_version + 1)
@@ -1679,7 +1689,9 @@ def test_cycle_v3_activity_routes_actual_sdk_source_without_reclaiming_retry(
     from types import SimpleNamespace
     from temporalio.converter import DataConverter
     from temporalio.testing import ActivityEnvironment
-    from ergora import budget_clock, reference_training_worker as worker, training_cycles
+    import ergora.training.runtime.worker as worker
+    import ergora.training.cycles as training_cycles
+    from ergora.runtime import budget_clock
 
     h = cycle_v2_workflow()
     clock = budget_clock.authorize(120)
@@ -1739,7 +1751,7 @@ def test_cycle_v3_factory_rejects_unknown_program_and_cross_version_request(monk
     from temporalio.converter import DataConverter
     from temporalio.exceptions import ApplicationError
     from temporalio.testing import ActivityEnvironment
-    from ergora import reference_training_worker as worker
+    import ergora.training.runtime.worker as worker
     client = SimpleNamespace(namespace='default', data_converter=DataConverter.default)
     for version in (True, 0, 4):
         with pytest.raises(ValueError):
@@ -1840,7 +1852,9 @@ def test_cycle_v3_sdk_windows_charge_queue_and_inspection_to_one_origin(
     from types import SimpleNamespace
     from temporalio.converter import DataConverter
     from temporalio.testing import ActivityEnvironment
-    from ergora import budget_clock, reference_training_worker as worker, training_cycles
+    import ergora.training.runtime.worker as worker
+    import ergora.training.cycles as training_cycles
+    from ergora.runtime import budget_clock
 
     clock = budget_clock.authorize(work + 10)
     authorization = {'schema_version': 4, 'control_home': str(tmp_path), 'project': 'demo', 'cycle_id': 'first',
@@ -1928,10 +1942,10 @@ def test_cycle_v3_sdk_windows_charge_queue_and_inspection_to_one_origin(
 @pytest.mark.parametrize('fault', ['selector-construction', 'selector-registration', 'setup-interrupt', 'read-interrupt'])
 def test_training_reader_setup_failure_retains_actual_child_wait(tmp_path, monkeypatch, fault):
     import selectors
-    from ergora import processes
+    from ergora.runtime import processes
 
     children, waits, identities = [], [], []
-    original_spawn, original_selector = reference.subprocess.Popen, selectors.DefaultSelector
+    original_spawn, original_selector = subprocess.Popen, selectors.DefaultSelector
 
     def spawn(*args, **kwargs):
         child = original_spawn(*args, **kwargs)
@@ -1963,13 +1977,13 @@ def test_training_reader_setup_failure_retains_actual_child_wait(tmp_path, monke
         monkeypatch.setattr(selected, 'select' if fault == 'read-interrupt' else 'register', fail)
         return selected
 
-    monkeypatch.setattr(reference.subprocess, 'Popen', spawn)
+    monkeypatch.setattr(subprocess, 'Popen', spawn)
     monkeypatch.setattr(selectors, 'DefaultSelector', selector)
     project = {'registration': {'definition': {'execution': {
         'state_directory': str(tmp_path / 'state'), 'config_directory': str(tmp_path / 'config')}}}}
     try:
         with pytest.raises(KeyboardInterrupt if fault.endswith('interrupt') else ValueError):
-            reference._training_reader(project, 'import time;time.sleep(60)', {}, timeout=1.2)
+            training_native._training_reader(project, 'import time;time.sleep(60)', {}, timeout=1.2)
         assert len(children) == 1 and waits == [-9]
         assert children[0].returncode == -9
     finally:
@@ -1988,9 +2002,10 @@ def test_stop_status_uses_declared_adapter_allowance(tmp_path, monkeypatch):
     import asyncio
     from dataclasses import asdict
     from types import SimpleNamespace
-    from ergora import reference_training_cancellation as cancellation, reference_training_runtime as runtime
+    import ergora.training.runtime.cancellation as cancellation
+    import ergora.training.runtime.status as runtime
 
-    monkeypatch.syspath_prepend(str(reference.ROOT / 'platform/upstream/temporal'))
+    monkeypatch.syspath_prepend(str(native_resources.ROOT / 'platform/upstream/temporal'))
     from perf_temporal import adapter as adapters
     from perf_temporal.models import Binding, Job, Observation
 
@@ -2066,10 +2081,10 @@ def test_stop_status_uses_declared_adapter_allowance(tmp_path, monkeypatch):
 @pytest.mark.parametrize('hold_wait', [False, True])
 def test_native_reader_per_call_allowance_keeps_actual_wait(tmp_path, monkeypatch, hold_wait):
     import asyncio
-    from ergora import processes
+    from ergora.runtime import processes
 
     for part in ('upstream', 'upstream/platform', 'upstream/temporal', 'local'):
-        monkeypatch.syspath_prepend(str(reference.ROOT / 'platform' / part))
+        monkeypatch.syspath_prepend(str(native_resources.ROOT / 'platform' / part))
     from agent_platform.training import LocalTrainingAdapter
     from perf_temporal.models import Binding, Job
 
@@ -2151,9 +2166,9 @@ def test_budget_completion_spends_one_allowance_across_reader_calls(
     import asyncio
     from dataclasses import asdict
     from types import SimpleNamespace
-    from ergora.reference_training_budget import BudgetedStart
+    from ergora.training.runtime.budget import BudgetedStart
 
-    monkeypatch.syspath_prepend(str(reference.ROOT / 'platform/upstream/temporal'))
+    monkeypatch.syspath_prepend(str(native_resources.ROOT / 'platform/upstream/temporal'))
     from perf_temporal.models import Binding, Experiment, Job, Observation, ScreenDecision
 
     binding = Binding('budget-reader-allowance', 'a' * 64, 'b' * 40, 'c' * 40)
@@ -2202,11 +2217,11 @@ def test_budget_completion_spends_one_allowance_across_reader_calls(
 @pytest.mark.parametrize('boundary', ['poll', 'kill', 'poll-kill-wait', 'kill-error'])
 def test_training_reader_cleanup_interrupt_keeps_original_wait(tmp_path, monkeypatch, boundary):
     import signal
-    from ergora import processes
+    from ergora.runtime import processes
 
     children, identities, waits, interrupts, events = [], [], [], [], []
     pending = boundary.split('-') if boundary != 'kill-error' else []
-    original_spawn = reference.subprocess.Popen
+    original_spawn = subprocess.Popen
     harness_cleanup = False
 
     def interrupt(operation):
@@ -2245,13 +2260,13 @@ def test_training_reader_cleanup_interrupt_keeps_original_wait(tmp_path, monkeyp
         child.poll, child.kill, child.wait = poll, kill, wait
         return child
 
-    monkeypatch.setattr(reference.subprocess, 'Popen', spawn)
+    monkeypatch.setattr(subprocess, 'Popen', spawn)
     project = {'registration': {'definition': {'execution': {
         'state_directory': str(tmp_path / 'state'), 'config_directory': str(tmp_path / 'config')}}}}
     try:
         expected = ValueError if boundary == 'kill-error' else KeyboardInterrupt
         with pytest.raises(expected) as caught:
-            reference._training_reader(project, 'import sys,time;sys.stdin.buffer.read();time.sleep(60)', {}, timeout=.12)
+            training_native._training_reader(project, 'import sys,time;sys.stdin.buffer.read();time.sleep(60)', {}, timeout=.12)
         events.append('caller-received-' + type(caught.value).__name__)
         assert len(children) == 1 and waits == [-9]
         assert not pending and children[0].returncode == -9

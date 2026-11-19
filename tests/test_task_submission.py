@@ -8,8 +8,10 @@ import sys
 
 import pytest
 
-from ergora import projects, reference, tasks
-from ergora.state import State
+import subprocess
+import ergora.configuration.projects as projects
+import ergora.development.application as tasks
+from ergora.storage.state import State
 from test_registrations import installation, registration
 from test_task_creation import creation_project, _files
 
@@ -38,13 +40,13 @@ def submitted_creation(creation_project, request):
 def native_client(monkeypatch):
     if sys.platform != 'linux':
         pytest.skip('Formal admission uses the Linux reference runtime')
-    original = reference.subprocess.run
+    original = subprocess.run
     fixture = Path(__file__).parent / 'fixtures/task_submission_client.py'
     def invoke(argv, **kwargs):
-        if 'from ergora.reference_task_submission import main;main()' in argv:
+        if 'from ergora.development.runtime.submission import main;main()' in argv:
             argv = [*argv[:-1], fixture.read_text(encoding='utf-8')]
         return original(argv, **kwargs)
-    monkeypatch.setattr(reference.subprocess, 'run', invoke)
+    monkeypatch.setattr(subprocess, 'run', invoke)
 
 
 def _root(creation):
@@ -171,17 +173,17 @@ def test_parallel_and_lost_parent_response_keep_the_original_receipt(submitted_c
         assert observed['intent_sha256']==completed['intent_sha256']
         assert observed['run_id'] in (None,completed['run_id'])
     assert _start(submitted_creation)==completed
-    original=reference.subprocess.run
+    original=subprocess.run
     def lost(argv,**kwargs):
         result=original(argv,**kwargs)
         if 'reference_task_submission import' in argv[-1]:
             assert result.returncode==0
             raise subprocess.TimeoutExpired(argv,25)
         return result
-    monkeypatch.setattr(reference.subprocess,'run',lost)
+    monkeypatch.setattr(subprocess,'run',lost)
     with pytest.raises(ValueError,match='process timed out'):
         _start(submitted_creation)
-    monkeypatch.setattr(reference.subprocess,'run',original)
+    monkeypatch.setattr(subprocess,'run',original)
     assert _resume(submitted_creation)==completed
     assert _calls(submitted_creation).count('start')==1
 
@@ -364,8 +366,8 @@ def test_native_spec_read_drift_is_rejected_before_doctor_and_claim(submitted_cr
 def test_cli_and_api_share_submission_and_explicit_recovery(submitted_creation,native_client,monkeypatch):
     pytest.importorskip('fastapi')
     from fastapi.testclient import TestClient
-    from ergora import cli
-    from ergora.web import create_app
+    import ergora.interfaces.cli as cli
+    from ergora.interfaces.web import create_app
     state=submitted_creation[0]
     client=TestClient(create_app(state.root),base_url='http://127.0.0.1')
     uri='/api/projects/demo/tasks/new-task'

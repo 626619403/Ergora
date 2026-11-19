@@ -9,8 +9,12 @@ import sys
 
 import pytest
 
-from ergora import backups, issues, projects, registrations, tasks
-from ergora.state import State
+import ergora.operations.backups as backups
+import ergora.issues.application as issues
+import ergora.configuration.projects as projects
+import ergora.configuration.registrations as registrations
+import ergora.development.application as tasks
+from ergora.storage.state import State
 from test_project_issues import bind, native, source
 from test_registrations import installation, registration
 from test_task_creation import _inject
@@ -273,7 +277,7 @@ def test_cli_and_http_share_capture_link_and_offline_recovery(mapping_project, m
     pytest.importorskip('fastapi')
     pytest.importorskip('httpx')
     from fastapi.testclient import TestClient
-    from ergora.web import create_app
+    from ergora.interfaces.web import create_app
 
     source, _, task = mapping_project
     monkeypatch.setenv('ERGORA_FIXTURE_ISSUE_TOKEN', 'fixture-token')

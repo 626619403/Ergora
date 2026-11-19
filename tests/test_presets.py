@@ -10,10 +10,16 @@ import sys
 
 import pytest
 
-from ergora import agent_definitions, reference, reference_budget, registrations, task_envelopes, tasks, workflow_definitions as workflows
-from ergora.reference_inputs import execution_input
-from ergora.review_dags import ReviewDAG, WorkDelivery
-from ergora.state import State
+import ergora.native.resources as native_resources
+import ergora.definitions.agents as agent_definitions
+import ergora.configuration.registrations as registrations
+import ergora.development.application as tasks
+import ergora.definitions.workflows as workflows
+from ergora.development import budget as reference_budget
+from ergora.development import envelopes as task_envelopes
+from ergora.development.inputs import execution_input
+from ergora.development.dags import ReviewDAG, WorkDelivery
+from ergora.storage.state import State
 from test_registrations import installation, registration
 
 
@@ -138,7 +144,7 @@ def test_selected_review_members_are_fixed_slots_in_existing_development_project
     workflows.revise(state, base['id'], base['version'], base['digest'], root, publish=True)
     grant = {'schema_version': 1, 'permissions': root['permissions'], 'limits': root['limits']}
     graph = workflows.preview(state.root, root['id'], root['version'], grant)
-    units = reference.template_details('repository-governance')['input']['work_units']
+    units = native_resources.template_details('repository-governance')['input']['work_units']
     execution = {'protocol': 'work-units-v1', 'instance': 'root/work', 'mode': 'workspace-task-mcp',
                  'assignments': {unit['id']: 'root/work/' + unit['id'] for unit in units}}
     preparation = {'protocol': 'preparation-dag-v1', 'mode': 'task-mcp', 'repository_paths': ['.'],
@@ -292,7 +298,7 @@ def test_selected_moe_example_prepares_exact_eighteen_slots_on_original_native_o
     assert tasks.show(state, 'demo', definition['task_id'])['admission_envelope'] == document
 
 
-@pytest.mark.parametrize('kind', reference.TEMPLATES)
+@pytest.mark.parametrize('kind', native_resources.TEMPLATES)
 def test_bundled_recipe_is_restartable_and_freezes_complete_ancestors(tmp_path, kind):
     state = State(tmp_path / 'state')
     available = next(item for item in workflows.presets() if item['id'] == kind)
@@ -320,14 +326,14 @@ def test_bundled_recipe_is_restartable_and_freezes_complete_ancestors(tmp_path, 
         assert all(not item['permissions']['write'] and not item['permissions']['shell'] for item in leaves)
         selected = 'root/analysis/design'
     else:
-        units = reference.template_details(kind)['input']['work_units']
+        units = native_resources.template_details(kind)['input']['work_units']
         execution = {'protocol': 'work-units-v1', 'instance': 'root/development/work', 'mode': 'workspace-task-mcp',
                      'assignments': {unit['id']: 'root/development/work/' + unit['id'] for unit in units}}
         preparation = {'protocol': 'preparation-dag-v1',
             **{stage: {'instance': 'root/development/preparation/' + stage,
                        'coordinator': 'root/development/preparation/' + stage + '/coordinator'}
                for stage in ('inventory', 'plan')}, 'mode': 'task-mcp',
-            'repository_paths': reference.template_details(kind)['input']['allowed_paths']}
+            'repository_paths': native_resources.template_details(kind)['input']['allowed_paths']}
         delivery = WorkDelivery(before, execution, 'root/development/review', units, preparation=preparation)
         assert set(delivery.work.members) == set(execution['assignments'].values())
         for stage, group in delivery.preparation.items():
@@ -442,7 +448,7 @@ def test_bottleneck_path_retains_kernel_assessment_and_original_task_in_frozen_l
 ])
 def test_bundled_review_can_be_selected_without_its_delivery_parent(registration, tmp_path, identity, preset):
     state, project = registration
-    original = reference.template_details('repository-governance')['input']
+    original = native_resources.template_details('repository-governance')['input']
     project['allowed_paths'] = original['allowed_paths']
     registrations.register(state, project, 0)
     installed = workflows.install_preset(state, preset)
@@ -503,7 +509,7 @@ def test_domain_reviews_keep_general_identities_and_frozen_ancestor_material(tmp
 @pytest.mark.parametrize('kind', ['repository-governance', 'large-change'])
 def test_development_preset_creates_original_unit_contract_without_starting(registration, tmp_path, kind):
     state, project = registration
-    original = reference.template_details(kind)['input']
+    original = native_resources.template_details(kind)['input']
     project['allowed_paths'] = original['allowed_paths']
     registrations.register(state, project, 0)
     selected = workflows.install_preset(state, kind)

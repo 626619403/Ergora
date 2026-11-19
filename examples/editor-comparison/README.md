@@ -1,18 +1,18 @@
-# 编辑器比较原型
+# Editor comparison prototype
 
-这个开发者例子用同一套输入与后端接口比较三个界面：
+This developer example compares three interfaces using the same inputs and backend interfaces:
 
-|入口|关系图|属性表单|
+|Entry point|Relationship graph|Property form|
 |---|---|---|
-|`native.html`|Ergora 已随包的 Cytoscape 3.33.1|原生 HTML|
-|`flow.html`|React Flow 12.12.1 / React 19.2.0|原生 HTML|
-|`schema.html`|同一 Cytoscape|JSON Forms 3.8.0 / React 19.2.0|
+|`native.html`|Cytoscape 3.33.1 already bundled with Ergora|Native HTML|
+|`flow.html`|React Flow 12.12.1 / React 19.2.0|Native HTML|
+|`schema.html`|The same Cytoscape|JSON Forms 3.8.0 / React 19.2.0|
 
-默认 Ergora 安装不依赖这个例子或 Node.js。这里没有 Agent 调用或正式任务提交按钮；只通过现有 API 校验和保存独立试验草稿。字段、依赖和 JSON 编辑同一份输入，图的位置不写入该输入。服务端继续拥有语义摘要、领域校验及修订号。
+The default Ergora installation depends on neither this example nor Node.js. There are no Agent invocation or formal task submission buttons; it only validates and saves independent experimental drafts through existing APIs. Fields, dependencies, and JSON edit the same input; graph positions are not written into that input. The server continues to own semantic digests, domain validation, and revisions.
 
-## 构建与启动
+## Build and start
 
-需要 Python 3.11+、Git、Node.js 与 npm。以下 Bash 命令从仓库根目录开始；运行环境、状态和项目使用独立目录。启动端口默认 8981，可用 `--port` 调整。
+Python 3.11+, Git, Node.js, and npm are required. The Bash commands below start at the repository root; runtime environment, state, and project use separate directories. The default port is 8981, adjustable with `--port`.
 
 ```bash
 python3 -m venv "$HOME/.local/share/ergora-editor-comparison/venv"
@@ -29,19 +29,19 @@ npm run build
   --home "$HOME/.local/state/ergora-editor-comparison"
 ```
 
-在浏览器打开 `http://127.0.0.1:8981/comparison/native.html?project=editor-comparison`，通过顶部链接切换方案。服务只监听本机；终端按 Ctrl+C 退出。再次运行时复用自己的试验状态和项目，不重复创建虚拟环境或登记同名项目。
+Open `http://127.0.0.1:8981/comparison/native.html?project=editor-comparison` in a browser and use the top links to switch approaches. The service listens only locally; press Ctrl+C in the terminal to stop. On subsequent runs, reuse your experimental state and project rather than recreating the virtual environment or registering the same project name.
 
-`npm run build` 从本源码树读取既有模板 schema、API 客户端及 Cytoscape 资产。`prototype/dist/` 包含三个独立完整 bundle、每文件 raw/gzip 体积和第三方许可；`node_modules/` 与构建输出不入 Git。不要把这个开发者服务器当成默认产品入口。
+`npm run build` reads existing template schemas, API client, and Cytoscape assets from this source tree. `prototype/dist/` contains three separate complete bundles, per-file raw/gzip sizes, and third-party licenses; `node_modules/` and build output are excluded from Git. Do not treat this developer server as the default product entry point.
 
-## 同一编辑旅程
+## The same editing journey
 
-1. 选择 `repository-governance` 或 `large-change`，选择一个单元，编辑 ID、路径或说明，再点“更新节点”。重命名会同步修改依赖引用。
-2. 用依赖起点/终点表单添加或移除依赖。Cytoscape 也支持 Shift 点起点再点终点，React Flow 支持拖动端口连接；表单提供键盘替代。
-3. 拖动节点或缩放图，再点“校验当前输入”，确认输入和摘要保持。JSON 编辑后用“校验并载入 JSON”显式载入。
-4. 添加环或输入越界路径，观察服务端拒绝及输入保留。修正后点“保存试验草稿”，保存结果使用原有修订检查。
+1. Select `repository-governance` or `large-change`, select a unit, edit its ID, path, or description, then click “更新节点”. Renaming updates dependency references as well.
+2. Use the dependency source / target form to add or remove dependencies. Cytoscape also supports Shift-clicking the source then the target; React Flow supports dragging between ports. The form provides a keyboard alternative.
+3. Drag nodes or zoom the graph, then click “校验当前输入” to confirm that input and digest are preserved. After editing JSON, explicitly load it with “校验并载入 JSON”.
+4. Add a cycle or enter an out-of-bounds path and observe server rejection with input retained. After correcting it, click “保存试验草稿”; saving uses the existing revision checks.
 
-每个方案/模板保存为 `editor-<方案>-<模板>` 草稿。打开页面从模板开始；现有草稿只用于读取保存修订，原型不会自动恢复它的输入。它也没有撤销/重做、完整未保存保护或跨标签修订冲突处理。这些属于后续正式编辑器计划。
+Each approach / template is saved as an `editor-<方案>-<模板>` draft. Opening a page starts from the template; existing drafts are used only to read the revision for saving, and the prototype does not automatically restore their input. It also lacks undo / redo, complete unsaved-change protection, and cross-tab revision conflict handling. These belong to the subsequent formal editor plan.
 
-JSON Forms 使用官方 `NoValidation` 模式生成控件。其默认 Ajv 浏览器编译实际被现有 CSP 拒绝；本例保持安全头，把显式校验交给同一个后端，不提供客户端 Schema 错误提示。规则/组合 schema、动态 schema 与其他 renderer 没有在本例验收，不能把这个模式推广成完整 JSON Forms 兼容性承诺。详见[第三方说明](THIRD_PARTY.md)。
+JSON Forms generates controls using the official `NoValidation` mode. Its default Ajv browser compilation is actually rejected by the existing CSP; this example preserves security headers and delegates explicit validation to the same backend, without client-side Schema error messages. Rules / composition schemas, dynamic schemas, and other renderers were not accepted in this example; do not generalize this mode into a promise of complete JSON Forms compatibility. See [third-party notes (Chinese)](THIRD_PARTY.md).
 
-本轮浏览器验证在 Linux、Node 24 和固定 Chromium 上进行；容量、其他浏览器和原型的 Windows 运行没有由这些结果覆盖。当前产品页面与交接边界见[工作流指南](../../docs/WORKFLOW_DEFINITIONS.md)。
+This round's browser validation ran on Linux, Node 24, and a fixed Chromium version; its results do not cover capacity, other browsers, or running the prototype on Windows. See the [workflow guide](../../docs/definitions/workflows/compose.md) for current product pages and handoff boundaries.

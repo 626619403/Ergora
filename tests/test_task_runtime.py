@@ -7,23 +7,24 @@ import sys
 
 import pytest
 
-from ergora import reference, tasks
+import importlib; import subprocess
+import ergora.development.application as tasks
 from test_tasks import installation, registration, task_store
 
 
 @pytest.fixture
 def runtime_client(monkeypatch):
     pytest.importorskip('temporalio')
-    original = reference.subprocess.run
+    original = subprocess.run
     fixture = Path(__file__).parent/'fixtures/task_runtime_client.py'
     def select(scenario):
         def invoke(argv, **kwargs):
-            if 'from ergora.reference_task_runtime import main;main()' in argv:
+            if 'from ergora.development.runtime.status import main;main()' in argv:
                 argv = list(argv)
                 argv[-1] = f'import runpy;runpy.run_path({str(fixture)!r},run_name="__main__")'
                 kwargs['env'] = {**kwargs['env'], 'ERGORA_TEST_RUNTIME_SCENARIO': scenario}
             return original(argv, **kwargs)
-        monkeypatch.setattr(reference.subprocess, 'run', invoke)
+        monkeypatch.setattr(subprocess, 'run', invoke)
     return select
 
 
@@ -73,8 +74,8 @@ def test_invalid_query_options_are_rejected_without_network(task_store, options)
 
 def test_sdk_absence_has_installation_guidance(task_store, monkeypatch):
     state,_=task_store
-    original=reference.importlib.util.find_spec
-    monkeypatch.setattr(reference.importlib.util,'find_spec',lambda name:None if name=='temporalio' else original(name))
+    original=importlib.util.find_spec
+    monkeypatch.setattr(importlib.util,'find_spec',lambda name:None if name=='temporalio' else original(name))
     with pytest.raises(ValueError,match=r'install ergora\[temporal\]'):
         tasks.status(state,'demo','first')
 
@@ -83,16 +84,16 @@ def test_sdk_absence_has_installation_guidance(task_store, monkeypatch):
 def test_query_process_failures_are_visible_and_not_retried(task_store, monkeypatch, failure):
     pytest.importorskip('temporalio')
     state,_=task_store
-    original=reference.subprocess.run
+    original=subprocess.run
     calls=[]
     def fail(argv,**kwargs):
-        if 'from ergora.reference_task_runtime import main;main()' not in argv:
+        if 'from ergora.development.runtime.status import main;main()' not in argv:
             return original(argv,**kwargs)
         calls.append(argv)
         if failure=='timeout':
             raise subprocess.TimeoutExpired(argv,25)
         return subprocess.CompletedProcess(argv,-9,'','')
-    monkeypatch.setattr(reference.subprocess,'run',fail)
+    monkeypatch.setattr(subprocess,'run',fail)
     with pytest.raises(ValueError,match='Task runtime query process'):
         tasks.status(state,'demo','first')
     assert len(calls)==1
@@ -101,8 +102,8 @@ def test_query_process_failures_are_visible_and_not_retried(task_store, monkeypa
 def test_cli_api_and_unpinned_query_use_the_same_native_facts(task_store, runtime_client, monkeypatch):
     pytest.importorskip('fastapi')
     from fastapi.testclient import TestClient
-    from ergora.web import create_app
-    from ergora.cli import main
+    from ergora.interfaces.web import create_app
+    from ergora.interfaces.cli import main
     import io
     from contextlib import redirect_stdout
     state,_=task_store

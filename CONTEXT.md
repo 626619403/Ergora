@@ -1,40 +1,40 @@
-# Ergora 协作领域
+# Ergora collaboration domain
 
-Ergora 组织代码开发与训练实验中的分工、决策和验收。以下术语用于区分工作本身、承担工作的主体，以及采用的实际工具。
+Ergora organizes work assignments, decisions, and acceptance in code development and training experiments. The following terms distinguish the work itself, the participants performing it, and the actual tools used.
 
 ## Language
 
-**任务（Task）**：
-具有明确目标、范围和验收要求的一次工作；一个工单可以关联多个任务修订。
-_Avoid_: 将任务与工单视为同一个对象。
+**Task**:
+A unit of work with explicit goals, scope, and acceptance requirements; one issue may be associated with multiple task revisions.
+_Avoid_: Treating a task and an issue as the same object.
 
-**任务合同（Task Contract）**：
-针对一次任务冻结的输入、工作约定、项目限制与验收要求。
+**Task Contract**:
+The inputs, working agreements, project constraints, and acceptance requirements frozen for a task.
 
-**协作角色（Role）**：
-对某一类工作承担的职责与权限，例如实现者、验证者和审查者；角色独立于承担它的工具。
-_Avoid_: 用模型名称或工具名称代替角色。
+**Role**:
+Responsibilities and permissions for a type of work, such as implementer, verifier, or reviewer; a role is independent of the tool performing it.
+_Avoid_: Substituting model or tool names for roles.
 
-**Agent 参与者（Agent）**：
-承担协作角色的自动化工作主体；同一角色可以在不同任务中由不同参与者承担。
+**Agent**:
+An automated participant performing a collaboration role; different participants may perform the same role in different tasks.
 
-**工作单元（Work Unit）**：
-开发任务中具有明确修改范围、完成要求和前置依赖的一份可分派工作。
-_Avoid_: 将工作单元、协作角色和完整任务混用。
+**Work Unit**:
+A dispatchable piece of a development task with an explicit modification scope, completion requirements, and prerequisite dependencies.
+_Avoid_: Using work unit, role, and complete task interchangeably.
 
-**工作流包（Workflow Package）**：
-可复用的阶段、角色职责和验收材料约定，供一类任务共同采用。
+**Workflow Package**:
+Reusable conventions for stages, role responsibilities, and acceptance materials, shared by a class of tasks.
 
-**项目策略（Project Policy）**：
-项目维护者规定的工作边界、必需检查、审批要求和资源限制。
+**Project Policy**:
+Work boundaries, required checks, approval requirements, and resource limits set by project maintainers.
 
-**工具绑定（Tool Binding）**：
-在项目的一次执行中，将协作角色与所用工具、运行环境对应起来的选择。
+**Tool Binding**:
+The selection mapping a role to its tool and runtime environment for an execution within a project.
 
-**验收证据（Acceptance Evidence）**：
-绑定确切交付候选、可供复查的检查结果与原始材料。
-_Avoid_: 将 agent 自报完成或运行日志直接等同于验收通过。
+**Acceptance Evidence**:
+Reviewable check results and original materials bound to the exact delivery candidate.
+_Avoid_: Equating an agent's self-reported completion or runtime logs directly with acceptance passing.
 
-**人工审批（Human Approval）**：
-有决策权限的人对一份明确的计划或证据材料作出的放行决定。
-_Avoid_: 将模型审查结论等同于人工批准。
+**Human Approval**:
+A decision by a person with decision-making authority to authorize an explicit plan or set of evidence materials.
+_Avoid_: Equating a model review conclusion with human approval.

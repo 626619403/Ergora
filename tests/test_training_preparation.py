@@ -10,8 +10,12 @@ import sys
 
 import pytest
 
-from ergora import projects, reference, registrations, training
-from ergora.state import State
+import ergora.runtime.processes as processes
+import importlib
+import ergora.training.application as training
+import ergora.configuration.projects as projects
+import ergora.configuration.registrations as registrations
+from ergora.storage.state import State
 from test_training import experiments, registration
 from test_training_runtime import installation
 
@@ -28,19 +32,19 @@ def preparation_input(experiments):
 
 @pytest.fixture
 def stop_after(monkeypatch):
-    original = reference.processes.run
+    original = processes.run
     fixture = Path(__file__).parent / 'fixtures/training_preparation_process.py'
 
     def select(index=None, *, sync_failure=None, trace=None, ident='gamma'):
         def invoke(argv, *args, **kwargs):
-            if (index is not None or sync_failure) and argv[-1] == 'from ergora.reference_training_preparation import main;main()':
+            if (index is not None or sync_failure) and argv[-1] == 'from ergora.training.runtime.preparation import main;main()':
                 argv = [*argv[:-1], f'import runpy;runpy.run_path({str(fixture)!r},run_name="__main__")']
                 kwargs['env'] = {**kwargs['env'], 'ERGORA_TEST_PREPARATION_STOP_AFTER': str(index if index is not None else -1),
                                  'ERGORA_TEST_PREPARATION_ID': ident,
                                  'ERGORA_TEST_PREPARATION_SYNC_FAILURE': sync_failure or '',
                                  'ERGORA_TEST_PREPARATION_TRACE': str(trace) if trace else ''}
             return original(argv, *args, **kwargs)
-        monkeypatch.setattr(reference.processes, 'run', invoke)
+        monkeypatch.setattr(processes, 'run', invoke)
     return select
 
 
@@ -65,8 +69,8 @@ def test_exact_plan_and_native_binding_preserve_originals_and_same_intent(prepar
     assert training.prepare_experiment(state, 'demo', draft, 'trusted', preview['project_revision'],
                                        preview['preview_sha256'], max_run_seconds=300)['status'] == 'prepared'
     # Reading local preparation checkpoints has no SDK gate.
-    original_spec = reference.importlib.util.find_spec
-    monkeypatch.setattr(reference.importlib.util, 'find_spec', lambda name: None if name == 'temporalio' else original_spec(name))
+    original_spec = importlib.util.find_spec
+    monkeypatch.setattr(importlib.util, 'find_spec', lambda name: None if name == 'temporalio' else original_spec(name))
     assert training.preparation(state, 'demo', 'gamma')['status'] == 'prepared'
     assert {p: p.read_bytes() for p in published} == published
     assert all(path.read_bytes() == raw for path, raw in originals.items())
@@ -197,8 +201,8 @@ def test_fenced_experiment_and_symlinked_registry_lock_fail_without_intent(prepa
 def test_cli_http_use_exact_plan_and_recover_after_actual_lost_success_reply(preparation_input, monkeypatch, tmp_path):
     pytest.importorskip('fastapi')
     from fastapi.testclient import TestClient
-    from ergora.cli import main
-    from ergora.web import create_app
+    from ergora.interfaces.cli import main
+    from ergora.interfaces.web import create_app
 
     state, _, runtime, _, draft = preparation_input
     source = tmp_path / 'experiment.json'
@@ -212,18 +216,18 @@ def test_cli_http_use_exact_plan_and_recover_after_actual_lost_success_reply(pre
     client = TestClient(create_app(state.root), base_url=headers['Origin'], headers=headers)
     body = {'experiment': draft, 'runner_template_id': 'trusted'}
     assert client.post('/api/projects/demo/training/experiment-preview', json=body).json() == preview
-    original = reference.processes.run
+    original = processes.run
 
     def lose_reply(*args, **kwargs):
         result = original(*args, **kwargs)
         assert result['status'] == 'succeeded'
         raise ValueError('Lost reply after the actual native preparation finished')
 
-    monkeypatch.setattr(reference.processes, 'run', lose_reply)
+    monkeypatch.setattr(processes, 'run', lose_reply)
     result = client.post('/api/projects/demo/training/prepare', json={**body, 'revision': preview['project_revision'],
                                                                     'preview_sha256': preview['preview_sha256']})
     assert result.status_code == 400 and 'Lost reply' in result.text
-    monkeypatch.setattr(reference.processes, 'run', original)
+    monkeypatch.setattr(processes, 'run', original)
     saved = {p: p.read_bytes() for p in runtime.rglob('*') if p.is_file()}
     observed = client.get('/api/projects/demo/training/gamma/preparation').json()
     assert observed['status'] == 'prepared'

@@ -10,10 +10,17 @@ from types import SimpleNamespace
 
 import pytest
 
-from ergora import agent_backends, agent_definitions, agent_runs, agents, processes, projects, task_mcp, workflow_definitions as workflows
+import ergora.agents.backends as agent_backends
+import ergora.definitions.agents as agent_definitions
+import ergora.agents.runs as agent_runs
+import ergora.agents.invocation as agents
+import ergora.configuration.projects as projects
+import ergora.agents.mcp as task_mcp
+import ergora.definitions.workflows as workflows
+from ergora.runtime import processes
 from ergora.data.drivers import deepseek
-from ergora.cli import main
-from ergora.state import State
+from ergora.interfaces.cli import main
+from ergora.storage.state import State
 
 
 def binding():
@@ -192,7 +199,7 @@ def test_current_sdk_driver_runs_one_new_input_and_retains_mcp_and_notification_
     expected = {'summary': 'one current input', 'artifacts': {'response': 'observed'}}
     request = {'binding': binding(), 'prompt': 'Read the selected evidence', 'cwd': str(cwd),
                'schema': agents.result_schema(['response']), 'mode': 'task-mcp' if task_resources else 'text-only',
-               'task_mcp': {'command': sys.executable, 'args': ['-I', '-m', 'ergora.task_mcp', 'scope', 'digest', 'audit']}
+               'task_mcp': {'command': sys.executable, 'args': ['-I', '-m', 'ergora.agents.mcp', 'scope', 'digest', 'audit']}
                            if task_resources else None}
     source = protocol / 'request.json'
     source.write_text(json.dumps(request))

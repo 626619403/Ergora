@@ -14,7 +14,7 @@ from temporalio.api.history.v1 import (HistoryEvent, WorkflowExecutionCompletedE
                                      WorkflowExecutionSignaledEventAttributes)
 from temporalio.api.workflowservice.v1 import (QueryWorkflowResponse, SignalWorkflowExecutionResponse)
 
-from ergora.reference_training_cancellation import main
+from ergora.training.runtime.cancellation import main
 from dev_platform.contracts import canonical_sha
 
 

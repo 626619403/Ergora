@@ -13,8 +13,8 @@ from temporalio.service import RPCError, RPCStatusCode
 
 from dev_platform import adapter, connection
 from dev_platform.workflow import DevelopmentWorkflow
-from ergora import reference_task_approval as approval_module
-from ergora.reference_task_approval import _Approval, main
+import ergora.development.runtime.approval as approval_module
+from ergora.development.runtime.approval import _Approval, main
 
 payload=json.load(sys.stdin)
 sys.stdin=io.StringIO(json.dumps(payload))

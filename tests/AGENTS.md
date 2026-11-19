@@ -1,5 +1,5 @@
-# 测试变更入口
+# Test change entry point
 
-增加、调整或删除测试前，读[脚本和检查协议](../docs/architecture/component-change-protocols.md#脚本和检查)，再找本行为的已有fixture和真实状态转换。测试保护可达风险，预期关系来自有效配置；原失败与修正后的运行分别记录。
+Before adding, adjusting, or deleting tests, read the [scripts and checks protocol](../docs/architecture/component-change-protocols.md#scripts-and-checks), then find existing fixtures and actual state transitions for the behavior. Tests protect against reachable risks, and expected relationships come from valid configuration; record original failures separately from runs after corrections.
 
-仅当新的测试文件有独立必要性时更新显式CI分组。纯文档不加测试；移除重复测试须说明其独特风险现在由哪个接缝覆盖。源码、安装、服务替身、真实外部调用和业务验收分别标注。
+Update explicit CI groups only when a new test file has an independent necessity. Pure documentation changes add no tests; removing duplicate tests requires explaining which seam now covers their unique risks. Label source, installation, service substitutes, actual external calls, and business acceptance separately.

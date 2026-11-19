@@ -12,12 +12,17 @@ import time
 
 import pytest
 
-from ergora import reference, registrations, task_envelopes, tasks
-from ergora.reference_inputs import execution_input
-from ergora.state import State
+import ergora.native.resources as native_resources
+import ergora
+import ergora.configuration.registrations as registrations
+import ergora.development.application as tasks
+from ergora.development import envelopes as task_envelopes
+from ergora.development.inputs import execution_input
+from ergora.storage.state import State
 from test_task_budget import budget_creation, budget_graph, full_creation, full_graph, work_creation, work_graph
 from test_registrations import design_policy, installation, registration
 from test_task_creation import creation_project, _files
+from ergora._paths import IMPORT_ROOT, PACKAGE_ROOT
 
 
 pytestmark = pytest.mark.skipif(sys.platform != 'linux', reason='Budgeted job owners require Linux/WSL2')
@@ -25,7 +30,7 @@ pytestmark = pytest.mark.skipif(sys.platform != 'linux', reason='Budgeted job ow
 
 def _prepare(budget_creation, monkeypatch, *, wall=8, reserve=2, omit_admission=False):
     pytest.importorskip('temporalio')
-    monkeypatch.syspath_prepend(str(reference.ROOT / 'platform/upstream/platform'))
+    monkeypatch.syspath_prepend(str(native_resources.ROOT / 'platform/upstream/platform'))
     state, registered, definition = budget_creation
     definition['budget'].update(wall_seconds=wall, cleanup_seconds=reserve)
     assert tasks.prepare(state, 'demo', definition, 1)['status'] == 'prepared'
@@ -46,7 +51,7 @@ def _prepare(budget_creation, monkeypatch, *, wall=8, reserve=2, omit_admission=
         envelope['job_sha256'] = task_envelopes.identity(envelope['context'])
         path.write_text(json.dumps(envelope))
     environment = dict(os.environ, AGENTFLOW_CONFIG_DIR=str(config), AGENTFLOW_STATE_DIR=str(runtime),
-        PYTHONPATH=os.pathsep.join(map(str, (Path(tasks.__file__).parent.parent,
+        PYTHONPATH=os.pathsep.join(map(str, (IMPORT_ROOT,
             Path(registered['execution']['installation']) / 'local',
             Path(registered['execution']['installation']) / 'upstream/platform'))))
     folder = runtime / 'workspaces' / definition['task_id'] / 'jobs' / job['job_id'] / 'budget'
@@ -58,30 +63,30 @@ def _launch(state, path, environment, *, worker='', owner='', service=False):
     # trusted published input; the owner and supervisor are the product code.
     body_prefix = worker
     owner_source = '''
-from ergora import processes
+from ergora.runtime import processes
 original_run = processes.run
 def instrument(argv, *args, **kwargs):
-    if argv[-1] == 'from ergora.reference_executor import pending_job;pending_job()':
+    if argv[-1] == 'from ergora.development.runtime.executor import pending_job;pending_job()':
         argv = [*argv[:-1], PREFIX + '\\n' + argv[-1]]
     return original_run(argv, *args, **kwargs)
 processes.run = instrument
-''' .replace('PREFIX', repr(body_prefix)) + owner + '\nfrom ergora.reference_job_lifecycle import main;main()'
+''' .replace('PREFIX', repr(body_prefix)) + owner + '\nfrom ergora.development.runtime.jobs import main;main()'
     source = '''
 import json,subprocess,sys
 from pathlib import Path
 original_launch = subprocess.Popen
 def launch(argv, **kwargs):
-    if argv[-1] == 'from ergora.reference_job_lifecycle import main;main()':
+    if argv[-1] == 'from ergora.development.runtime.jobs import main;main()':
         argv = [*argv[:-1], OWNER]
     return original_launch(argv, **kwargs)
 subprocess.Popen = launch
-from ergora.reference_executor import process
+from ergora.development.runtime.executor import process
 print(json.dumps(process(Path(sys.argv[1]), Path(sys.argv[2]))))
 ''' .replace('OWNER', repr(owner_source))
     if service:
         source = source.replace(
-            'from ergora.reference_executor import process\nprint(json.dumps(process(Path(sys.argv[1]), Path(sys.argv[2]))))',
-            'from ergora.reference_executor import main\nmain(Path(sys.argv[2])'
+            'from ergora.development.runtime.executor import process\nprint(json.dumps(process(Path(sys.argv[1]), Path(sys.argv[2]))))',
+            'from ergora.development.runtime.executor import main\nmain(Path(sys.argv[2])'
             + (', request=Path(sys.argv[1]))' if service == 'request' else ')'))
     return subprocess.Popen([sys.executable, '-P', '-c', source, str(path), str(state.root)],
         env=environment, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -94,7 +99,7 @@ def _result(process):
 
 
 _PENDING = '''
-from ergora import reference_executor
+import ergora.development.runtime.executor as reference_executor
 from agent_platform import executor as original
 from agent_platform.core import read,STATE
 def pending(envelope, home):
@@ -133,8 +138,8 @@ def test_v2_rejects_original_budgeted_input_before_job_constructor_or_claim(budg
     source = '''
 import hashlib,json,sys
 from pathlib import Path
-from ergora import reference_executor as driver
-from ergora.reference_job_lifecycle import BudgetedJob
+import ergora.development.runtime.executor as driver
+from ergora.development.runtime.jobs import BudgetedJob
 starts={'job':0,'claim':0,'body':0,'model':0,'commands':0}
 def observe(owner,name,label):
  original=getattr(owner,name)
@@ -163,7 +168,7 @@ print(json.dumps({'starts':starts,'executor_module':driver.__file__,
     observation = json.loads(result.stdout)
     assert set(observation['starts'].values()) == {0}
     assert observation['executor_sha256'] == hashlib.sha256(
-        Path(reference.__file__).with_name('reference_executor.py').read_bytes()).hexdigest()
+        (PACKAGE_ROOT / 'development/runtime/executor.py').read_bytes()).hexdigest()
     assert not (runtime / 'executor.sqlite3').exists() and not (runtime / 'workspaces').exists()
     assert _files(Path(budget_creation[1]['execution']['state_directory'])) == original_files
 
@@ -177,7 +182,7 @@ def test_constructor_lock_consumes_original_budget_and_cannot_reexecute(budget_c
     worker = f'''
 import fcntl
 from pathlib import Path
-from ergora.reference_executor import Executor
+from ergora.development.runtime.executor import Executor
 original_constructor = Executor.__init__
 def blocked(self, *args):
     Path({str(entered)!r}).touch()
@@ -210,7 +215,7 @@ def test_real_executor_git_lock_is_inside_original_budget(budget_creation, monke
     marker = tmp_path / 'real-prepare-entered'
     worker = f'''
 from pathlib import Path
-from ergora.reference_executor import Executor
+from ergora.development.runtime.executor import Executor
 def real_prepare(self):
     Path({str(marker)!r}).touch()
     self.prepare()
@@ -278,7 +283,7 @@ def test_slow_collection_cannot_publish_success(budget_creation, monkeypatch):
     owner = '''
 collection_run = processes.run
 def slow_collection(argv, *args, **kwargs):
-    if argv[-1] == 'from ergora.reference_job_lifecycle import collect;collect()':
+    if argv[-1] == 'from ergora.development.runtime.jobs import collect;collect()':
         argv = [*argv[:-1], 'import time;time.sleep(30);' + argv[-1]]
     return collection_run(argv, *args, **kwargs)
 processes.run = slow_collection
@@ -324,7 +329,7 @@ def test_missing_admission_still_uses_trusted_published_budget_owner(budget_crea
 def test_uncertain_original_attempt_never_executes_its_body_again(budget_creation, monkeypatch, tmp_path):
     state, document, adapter, job, path, env, folder = _prepare(budget_creation, monkeypatch)
     owner = '''
-from ergora.reference_job_lifecycle import BudgetedJob
+from ergora.development.runtime.jobs import BudgetedJob
 def lost(self, *args, **kwargs):
     raise SystemExit('Controlled loss after original attempt, before body dispatch')
 BudgetedJob.supervise = lost
@@ -347,7 +352,7 @@ def test_published_terminal_recovers_only_original_ledger_update(budget_creation
 
     state, document, adapter, job, path, env, folder = _prepare(budget_creation, monkeypatch, wall=12)
     owner = '''
-from ergora.reference_job_lifecycle import BudgetedJob
+from ergora.development.runtime.jobs import BudgetedJob
 def lost(self, receipt):
     raise SystemExit('Controlled loss after terminal link, before ledger update')
 BudgetedJob.record_terminal = lost
@@ -406,7 +411,7 @@ reference_executor._execute = blocked
 '''
     owner = '' if original_state == 'running' else f'''
 from pathlib import Path
-from ergora.reference_job_lifecycle import BudgetedJob
+from ergora.development.runtime.jobs import BudgetedJob
 def lost(self, *args, **kwargs):
     Path({str(entered)!r}).touch()
     raise SystemExit('Controlled owner loss without a stopping witness')

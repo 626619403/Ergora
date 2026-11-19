@@ -14,8 +14,10 @@ import xmlrpc.client
 
 import pytest
 
-from ergora import reference, registrations, services
-from ergora.state import State
+import ergora.native.resources as native_resources
+import ergora.configuration.registrations as registrations
+import ergora.operations.services as services
+from ergora.storage.state import State
 
 
 def wait_for_fixture_log(runtime):
@@ -40,7 +42,7 @@ def stack():
         root = Path(temporary)
         installation = root / "installation with space 项目"
         for part in ("local", "upstream/platform"):
-            shutil.copytree(reference.ROOT / "platform" / part, installation / part)
+            shutil.copytree(native_resources.ROOT / "platform" / part, installation / part)
         binary = installation / ".venv/bin"
         binary.mkdir(parents=True)
         (binary / "python").symlink_to(sys.executable)
@@ -336,7 +338,7 @@ def test_absent_selected_program_does_not_partially_start_other_selection(stack)
 def test_api_and_cli_share_status_and_protected_mutations(stack):
     pytest.importorskip("fastapi")
     from fastapi.testclient import TestClient
-    from ergora.web import create_app
+    from ergora.interfaces.web import create_app
     state, _, _ = stack
     client = TestClient(create_app(state.root), base_url="http://127.0.0.1")
     uri = "/api/projects/demo/services"

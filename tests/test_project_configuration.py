@@ -9,8 +9,13 @@ import sys
 
 import pytest
 
-from ergora import agent_runs, agents, components, memory, projects, tools
-from ergora.state import State
+import ergora.agents.runs as agent_runs
+import ergora.agents.invocation as agents
+import ergora.improvement.memory as memory
+import ergora.configuration.projects as projects
+import ergora.operations.tools as tools
+from ergora.configuration import catalog as components
+from ergora.storage.state import State
 
 
 @pytest.fixture
@@ -163,7 +168,7 @@ def test_cli_and_api_return_the_same_readonly_effective_configuration(legacy_pro
     pytest.importorskip("fastapi")
     pytest.importorskip("httpx")
     from fastapi.testclient import TestClient
-    from ergora.web import create_app
+    from ergora.interfaces.web import create_app
 
     state, project = legacy_project
     result = subprocess.run([sys.executable, "-m", "ergora", "--home", str(state.root), "project", "config", "demo"],

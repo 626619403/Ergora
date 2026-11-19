@@ -6,7 +6,10 @@ from datetime import datetime, timezone
 import hashlib
 import json
 
-from ergora import agent_definitions, agent_runs, reference, workflow_definitions as workflows
+import ergora
+import ergora.definitions.agents as agent_definitions
+import ergora.agents.runs as agent_runs
+import ergora.definitions.workflows as workflows
 
 
 def prepare(root, state, task_input, kind, examples, mode):
@@ -110,7 +113,9 @@ def prepare(root, state, task_input, kind, examples, mode):
         definition['composition']['backend_overrides']['root/review/structure/review']['binding']['model'] = 'fixture-reject'
     if mode in ('composition-work-issue-source', 'composition-work-materials-issue-source'):
         from unittest.mock import patch
-        from ergora import issue_backends, issues, projects
+        import ergora.issues.backends as issue_backends
+        import ergora.issues.application as issues
+        import ergora.configuration.projects as projects
 
         revision = state.project('demo')['revision']
         projects.bind(state, 'demo', 'tracker', {'tool': 'github', 'project': 'fixtures/demo'}, revision)
@@ -148,7 +153,8 @@ def prepare(root, state, task_input, kind, examples, mode):
             'reason': 'Complete planner original reaches the trusted plan and final measurement materials'}
         if mode.endswith('-context'):
             option['mode'] = 'task-mcp'
-            from ergora import memory, skill_assets
+            import ergora.improvement.memory as memory
+            import ergora.definitions.skills as skill_assets
 
             record = memory.save(state, 'demo', 'Frozen explicit context survives canonical deletion.',
                                  {'uri': 'repo://selected-memory', 'revision': 'fixture-v1'})
@@ -167,7 +173,7 @@ async def exercise(root, case, app, activities, installation, state, runtime, re
     from agent_platform import executor as native
     from agent_platform.core import read
     from dev_platform.workflow import StopWork
-    from ergora.reference_executor import Executor, process
+    from ergora.development.runtime.executor import Executor, process
     from temporalio import workflow
 
     workflow.now = lambda: datetime.now(timezone.utc)

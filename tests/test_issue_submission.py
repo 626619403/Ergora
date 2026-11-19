@@ -7,7 +7,9 @@ import sys
 
 import pytest
 
-from ergora import agents, projects, tasks
+import ergora.agents.invocation as agents
+import ergora.configuration.projects as projects
+import ergora.development.application as tasks
 from test_issue_tasks import issue_creation
 from test_project_issues import bind, native, source
 from test_registrations import installation, registration

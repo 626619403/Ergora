@@ -6,17 +6,20 @@ import sys
 
 import pytest
 
-from ergora import reference
+import ergora.native.commands as native_commands
+import ergora.native.resources as native_resources
+import ergora
+import shutil
 
 
 def test_public_reference_identity():
-    assert reference.verify()["files"] == 283
+    assert native_resources.verify()["files"] == 283
 
 
 def test_reference_public_payload_preserves_current_native_auth_sources():
     import runpy
 
-    root = reference.ROOT / 'platform'
+    root = native_resources.ROOT / 'platform'
     builder = runpy.run_path(str(root / 'bootstrap/report/build_report.py'))
     payload = builder['payload_files'](root)
     for module in ('setup.py', 'doctor.py', 'process_job.py', 'executor.py'):
@@ -25,21 +28,21 @@ def test_reference_public_payload_preserves_current_native_auth_sources():
 
 
 def test_template_copy_preserves_files_and_existing_destination(tmp_path):
-    for kind in reference.TEMPLATES:
+    for kind in native_resources.TEMPLATES:
         destination = tmp_path / kind
-        reference.copy_template(kind, destination)
-        source = reference.ROOT / "platform/templates" / kind
+        native_resources.copy_template(kind, destination)
+        source = native_resources.ROOT / "platform/templates" / kind
         assert (destination / "agent-contract.json").is_file()
         for file in source.rglob("*"):
             if file.is_file():
                 assert file.read_bytes() == (destination / file.relative_to(source)).read_bytes()
         with pytest.raises(ValueError, match="preserve"):
-            reference.copy_template(kind, destination)
+            native_resources.copy_template(kind, destination)
 
 
 def test_large_change_defaults_and_copies_use_the_current_complete_contract(tmp_path):
-    source = reference.ROOT / "platform"
-    current = reference.template_details("large-change")["input"]
+    source = native_resources.ROOT / "platform"
+    current = native_resources.template_details("large-change")["input"]
     request = json.loads((source / "upstream/platform/task-types/large-change/examples/request.json").read_text())
     portable = json.loads((source / "upstream/platform/portable/examples/large-change/task.json").read_text())
     assert current == request["input"] == portable["input"]
@@ -52,7 +55,7 @@ def test_large_change_defaults_and_copies_use_the_current_complete_contract(tmp_
     assert instructions == (source / "upstream/platform/portable/packages/large-change/instructions.md").read_bytes()
 
     destination = tmp_path / "api copy"
-    reference.copy_template("large-change", destination)
+    native_resources.copy_template("large-change", destination)
     cli_destination = tmp_path / "cli copy"
     command = [sys.executable, "-m", "ergora", "templates", "copy", "large-change", str(cli_destination)]
     result = subprocess.run(command, cwd=tmp_path, capture_output=True, text=True, timeout=30)
@@ -82,8 +85,8 @@ def test_native_large_change_initialization_uses_current_sources_and_preserves_e
     result = subprocess.run([sys.executable, "-I", "-S", "-B", "-c", probe, str(destination)],
                             cwd=tmp_path, env=environment, capture_output=True, text=True, timeout=30)
     assert result.returncode == 0, result.stderr
-    expected = reference.template_details("large-change")["input"]
-    instructions = (reference.ROOT / "platform/templates/large-change/instructions.md").read_bytes()
+    expected = native_resources.template_details("large-change")["input"]
+    instructions = (native_resources.ROOT / "platform/templates/large-change/instructions.md").read_bytes()
     for copied in (installation / "templates/large-change", destination):
         assert json.loads((copied / "input.json").read_bytes()) == expected
         assert (copied / "instructions.md").read_bytes() == instructions
@@ -106,8 +109,8 @@ def test_installed_compiler_runs_outside_repository(tmp_path):
     shadow.mkdir()
     (shadow / "__init__.py").write_text("")
     (shadow / "portable.py").write_text("raise RuntimeError('project must not replace the compiler')")
-    example = reference.ROOT / "platform/upstream/platform/portable/examples/repository-governance"
-    package = reference.ROOT / "platform/upstream/platform/portable/packages/repository-governance/manifest.json"
+    example = native_resources.ROOT / "platform/upstream/platform/portable/examples/repository-governance"
+    package = native_resources.ROOT / "platform/upstream/platform/portable/packages/repository-governance/manifest.json"
     result = subprocess.run(
         [sys.executable, "-m", "ergora", "workflow", "compile", "--task", str(example / "task.json"),
          "--package", str(package), "--policy", str(example / "policy.json"),
@@ -133,13 +136,17 @@ def test_worker_bootstrap_loads_ergora_without_shadowing_native_dependencies(tmp
     package = control / 'ergora'
     package.mkdir(parents=True)
     (package / '__init__.py').write_text('')
-    (package / 'reference_worker.py').write_text('def main(installation):\n import native_sdk_probe\n print(native_sdk_probe.origin)\n')
+    worker = package / 'development/runtime'
+    worker.mkdir(parents=True)
+    (worker.parent / '__init__.py').write_text('')
+    (worker / '__init__.py').write_text('')
+    (worker / 'worker.py').write_text('def main(installation):\n import native_sdk_probe\n print(native_sdk_probe.origin)\n')
     (control / 'native_sdk_probe.py').write_text("origin = 'control-shadow'")
     native = tmp_path / 'native-libraries'
     native.mkdir()
     (native / 'native_sdk_probe.py').write_text("origin = 'native-selected'")
-    monkeypatch.setattr(reference, '__file__', str(package / 'reference.py'))
-    command = reference.worker_command(tmp_path / 'installation')
+    monkeypatch.setattr(native_commands, 'IMPORT_ROOT', control)
+    command = native_commands.worker_command(tmp_path / 'installation')
     result = subprocess.run([sys.executable, *command[1:]], env={**os.environ, 'PYTHONPATH': str(native)},
                             capture_output=True, text=True, timeout=10)
     assert result.returncode == 0, result.stderr
@@ -147,9 +154,9 @@ def test_worker_bootstrap_loads_ergora_without_shadowing_native_dependencies(tmp
 
 
 def test_versioned_input_contract_imports_without_sdk_or_native_modules():
-    package_parent = str(Path(reference.__file__).parent.parent)
+    package_parent = str(Path(ergora.__file__).parent.parent)
     script = ('import sys;sys.path.insert(0,' + repr(package_parent) + ');'
-              'from ergora.reference_inputs import execution_input,CompositionInput;'
+              'from ergora.development.inputs import execution_input,CompositionInput;'
               'selected=execution_input({"request": {"task_id": "offline"}});'
               'assert selected.task_queue("q")=="q";'
               'assert CompositionInput.task_queue("q")=="q.composition-v2";'
@@ -163,7 +170,7 @@ def test_budget_worker_bootstrap_registers_its_actual_queue_adapter_and_native_a
     pytest.importorskip('temporalio')
 
     installation = tmp_path / 'installation with space'
-    reference.prepare_training(installation, protocol=reference.TRAINING_PROTOCOL)
+    native_resources.prepare_training(installation, protocol=native_resources.TRAINING_PROTOCOL)
     environment = dict(os.environ, AGENTFLOW_CONFIG_DIR=str(tmp_path / 'config'),
         AGENTFLOW_STATE_DIR=str(tmp_path / 'runtime'), PYTHONPATH=os.pathsep.join(map(str, (
             installation / 'local', installation / 'upstream/platform',
@@ -186,14 +193,14 @@ class Probe:
 connection.connect=connect
 worker.Worker=Probe
 '''
-    command = reference.training_budget_worker_command(installation)
+    command = native_commands.training_budget_worker_command(installation)
     result = subprocess.run([*command[:-1], probe + command[-1]], env=environment,
                             capture_output=True, text=True, timeout=15)
     assert result.returncode == 0, result.stderr
     registered = json.loads(result.stdout)
     assert registered['queue'] == 'ergora-training-budget-v1'
     assert registered['adapter'] == 'BudgetAdapter'
-    assert registered['factory'] == 'ergora.reference_training_worker:create_adapter'
+    assert registered['factory'] == 'ergora.training.runtime.worker:create_adapter'
     assert registered['workflows'] == ['ExperimentWorkflow']
     assert 'submit_or_lookup' in registered['activities'] and 'cancel_exact_job' in registered['activities']
 
@@ -203,7 +210,7 @@ def prepared_training_installation(tmp_path_factory):
     if sys.platform != 'linux':
         pytest.skip('Native source preparation uses Linux/WSL2 directory synchronization')
     root = tmp_path_factory.mktemp('native-source-parent') / 'training runtime with spaces'
-    receipt = reference.prepare_training(root, protocol=reference.TRAINING_PROTOCOL)
+    receipt = native_resources.prepare_training(root, protocol=native_resources.TRAINING_PROTOCOL)
     return root, receipt
 
 
@@ -300,7 +307,7 @@ env_key = "ERGORA_TEST_UNSELECTED_REFERENCE"
     names = native('from agent_platform.process_job import child_environment;import json;'
                    'print(json.dumps(sorted(child_environment("codex"))))')
     assert 'CODEX_HOME' in names and 'ERGORA_TEST_HEADER_REFERENCE' not in names
-    from ergora import agents
+    import ergora.agents.invocation as agents
     with pytest.raises(tomllib.TOMLDecodeError):
         agents.invoke({'tool': 'codex'}, 'inspector', 'unused', tmp_path, tmp_path / 'invalid-codex-output', 5,
                       codex_config=str(config / 'codex.toml'), codex_bin='/unavailable-fixture-codex')
@@ -309,14 +316,14 @@ env_key = "ERGORA_TEST_UNSELECTED_REFERENCE"
 
 def test_native_source_protocol_has_one_complete_training_identity(prepared_training_installation):
     root, receipt = prepared_training_installation
-    assert reference.validate_installation(root, training=True) == root.resolve()
-    assert reference.validate_installation(root) == root.resolve()
-    assert receipt == {'status': 'source_prepared', 'protocol': reference.TRAINING_PROTOCOL,
+    assert native_resources.validate_installation(root, training=True) == root.resolve()
+    assert native_resources.validate_installation(root) == root.resolve()
+    assert receipt == {'status': 'source_prepared', 'protocol': native_resources.TRAINING_PROTOCOL,
         'installation': str(root.resolve()), 'dependencies_installed': False,
         'runtime_started': False, 'execution_authorized': False}
     assert not (root / '.venv').exists()
     assert (root / 'local/agent_platform/training_executor.py').read_bytes() == (
-        reference.ROOT / 'platform/local/agent_platform/training_executor.py').read_bytes()
+        native_resources.ROOT / 'platform/local/agent_platform/training_executor.py').read_bytes()
 
 
 def test_source_capability_pins_complete_current_gate_and_offline_saved_shape(
@@ -324,15 +331,15 @@ def test_source_capability_pins_complete_current_gate_and_offline_saved_shape(
     from copy import deepcopy
     import shutil
     import venv
-    from ergora import training_execution_protocol as protocol
+    import ergora.training.execution_protocol as protocol
 
-    monkeypatch.syspath_prepend(str(reference.ROOT / 'platform/upstream/platform'))
+    monkeypatch.syspath_prepend(str(native_resources.ROOT / 'platform/upstream/platform'))
     source, _ = prepared_training_installation
     root = tmp_path / 'source-capability'
     shutil.copytree(source, root)
     venv.EnvBuilder(with_pip=False).create(root / '.venv')
     cap = protocol.source_capability(root, {'original': 'ready'})
-    assert {'training_configuration.py', 'reference_training_setup.py', 'reference_training_preparation.py',
+    assert {'training/configuration.py', 'training/runtime/setup.py', 'training/runtime/preparation.py',
             'data/schemas/training-cycle-v1.json', 'data/native-runtime/training-executor-admission-v3.json'} <= set(cap['gate_sources'])
     protocol.validate_sources(cap)
     owner = {'schema_version': 2, 'intent_sha256': 'a' * 64, 'authorization_sha256': 'b' * 64,
@@ -347,7 +354,7 @@ def test_source_capability_pins_complete_current_gate_and_offline_saved_shape(
         invalid = deepcopy(owner)
         item = invalid['execution_capability']
         if changed == 'missing':
-            item['gate_sources'].pop('reference.py')
+            item['gate_sources'].pop('native/resources.py')
         else:
             item['gate_sources']['unexpected.py'] = '0' * 64
         assert protocol.owner_record(invalid) == invalid
@@ -357,7 +364,7 @@ def test_source_capability_pins_complete_current_gate_and_offline_saved_shape(
         path.write_text(json.dumps(invalid))
         assert protocol.owner_active(path, invalid) is False
     stale = deepcopy(cap)
-    stale['gate_sources']['reference.py'] = '0' * 64
+    stale['gate_sources']['native/resources.py'] = '0' * 64
     assert protocol.owner_record({**owner, 'execution_capability': stale})['execution_capability'] == stale
     with pytest.raises(ValueError, match='gate source changed'):
         protocol.validate_sources(stale)
@@ -366,13 +373,13 @@ def test_source_capability_pins_complete_current_gate_and_offline_saved_shape(
 def test_capability_birth_does_not_accept_a_descriptor_changed_after_validation(
         prepared_training_installation, tmp_path, monkeypatch):
     import shutil
-    from ergora import training_execution_protocol as protocol
+    import ergora.training.execution_protocol as protocol
 
     source, _ = prepared_training_installation
     root = tmp_path / 'racing-descriptor'
     shutil.copytree(source, root)
-    monkeypatch.syspath_prepend(str(reference.ROOT / 'platform/upstream/platform'))
-    original = reference.validate_installation
+    monkeypatch.syspath_prepend(str(native_resources.ROOT / 'platform/upstream/platform'))
+    original = native_resources.validate_installation
 
     def validate(installation, **kwargs):
         result = original(installation, **kwargs)
@@ -380,7 +387,7 @@ def test_capability_birth_does_not_accept_a_descriptor_changed_after_validation(
             stream.write(b'\n')
         return result
 
-    monkeypatch.setattr(reference, 'validate_installation', validate)
+    monkeypatch.setattr(native_resources, 'validate_installation', validate)
     with pytest.raises(ValueError, match='native runtime descriptor'):
         protocol.source_capability(root, {'original': 'ready'})
 
@@ -416,31 +423,31 @@ def test_native_source_identity_cannot_fall_back_or_accept_an_unverified_file(pr
         with (root / 'requirements.lock').open('ab') as stream:
             stream.write(b'\n')
     with pytest.raises(ValueError, match='runtime (identity|descriptor)'):
-        reference.validate_installation(root, training=True)
+        native_resources.validate_installation(root, training=True)
 
 
 def test_interrupted_source_preparation_declares_its_incomplete_identity(prepared_training_installation, tmp_path, monkeypatch):
     root = tmp_path / 'interrupted-source'
 
-    copy = reference.shutil.copy2
+    copy = shutil.copy2
     def interrupted(source, destination):
         result = copy(source, destination)
         if Path(destination) == root / 'local/agent_platform/training_executor.py':
             raise OSError('Interrupted native source copy')
         return result
 
-    monkeypatch.setattr(reference.shutil, 'copy2', interrupted)
+    monkeypatch.setattr(shutil, 'copy2', interrupted)
     with pytest.raises(OSError, match='Interrupted native source copy'):
-        reference.prepare_training(root, protocol=reference.TRAINING_PROTOCOL)
+        native_resources.prepare_training(root, protocol=native_resources.TRAINING_PROTOCOL)
     assert (root / 'ergora-native-runtime.json').read_bytes() == b''
-    original = reference.ROOT / 'platform/local/agent_platform/training_executor.py'
+    original = native_resources.ROOT / 'platform/local/agent_platform/training_executor.py'
     assert (root / 'local/agent_platform/training_executor.py').read_bytes() == original.read_bytes()
     with pytest.raises(ValueError, match='incomplete native runtime descriptor'):
-        reference.validate_installation(root, training=True)
+        native_resources.validate_installation(root, training=True)
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Native source preparation requires Linux/WSL2')
-@pytest.mark.parametrize('protocol', reference.TRAINING_PROTOCOLS)
+@pytest.mark.parametrize('protocol', native_resources.TRAINING_PROTOCOLS)
 def test_cli_prepares_only_new_native_source_without_creating_control_state(tmp_path, protocol):
     root = tmp_path / 'cli source'
     control = tmp_path / 'unused-control'

@@ -10,9 +10,15 @@ import sys
 
 import pytest
 
-from ergora import memory, reference, skill_assets, task_envelopes, tasks, workflow_definitions as workflows
-from ergora.native_six_stage import invocation
-from ergora.reference_inputs import execution_input
+import ergora.native.resources as native_resources
+import ergora
+import ergora.improvement.memory as memory
+import ergora.definitions.skills as skill_assets
+import ergora.development.application as tasks
+import ergora.definitions.workflows as workflows
+from ergora.development import envelopes as task_envelopes
+from ergora.development.six_stage import invocation
+from ergora.development.inputs import execution_input
 from test_task_budget import budget_creation, budget_graph, full_creation, full_graph, work_creation, work_graph
 from test_registrations import installation, registration
 from test_task_creation import creation_project
@@ -93,7 +99,7 @@ def test_selected_sources_are_inherited_complete_and_sdk_free(selected_context_t
     pytest.importorskip('temporalio')
     from temporalio.workflow import _Definition
 
-    monkeypatch.syspath_prepend(str(reference.ROOT / 'platform/upstream/platform'))
+    monkeypatch.syspath_prepend(str(native_resources.ROOT / 'platform/upstream/platform'))
     state, _, definition = selected_context_task
     before = skill_assets.versions(state, 'demo')
     preview, document = _prepared(selected_context_task)
@@ -111,8 +117,8 @@ def test_selected_sources_are_inherited_complete_and_sdk_free(selected_context_t
         assert frozen['memories'][0]['text'] in leaf['prompt']
         assert 'context-engineering' in {item.get('skill', {}).get('name') for item in leaf['resources']}
     assert selected.stage_material()['selected_context'] == document['context']
-    code = ('import json,sys;sys.path.insert(0,' + repr(str(Path(reference.__file__).parent.parent)) + ');'
-        'from ergora.reference_inputs import execution_input;v=execution_input(json.load(sys.stdin));'
+    code = ('import json,sys;sys.path.insert(0,' + repr(str(Path(ergora.__file__).parent.parent)) + ');'
+        'from ergora.development.inputs import execution_input;v=execution_input(json.load(sys.stdin));'
         'v.require_submission();assert not any(n in sys.modules for n in ("jsonschema","yaml","temporalio","mcp"));'
         'print(v.task_queue("dev"))')
     child = subprocess.run([sys.executable, '-I', '-S', '-B', '-c', code], input=json.dumps(document),
@@ -152,7 +158,8 @@ def test_changed_selection_cannot_publish_a_stale_preview(selected_context_task,
         expiry = frozen['memories'][0]['expires_at']
         with pytest.MonkeyPatch.context() as patch:
             _worker_injection(patch, '', f'''
-from ergora import memory, skill_assets
+import ergora.improvement.memory as memory
+import ergora.definitions.skills as skill_assets
 clock = {{'at': {frozen['observed_at']!r}}}
 memory.now = lambda: clock['at']
 original_get = skill_assets.get
@@ -184,7 +191,7 @@ def test_selected_context_recovery_keeps_original_intent_after_source_deletion(s
     state, registered, definition = selected_context_task
     preview, document = _prepared(selected_context_task)
     _worker_injection(monkeypatch, '', '''
-from ergora.reference_task_creation import _Creation
+from ergora.development.runtime.creation import _Creation
 original_publish = _Creation.publish
 def interrupted(self, record, *, save_intent):
     original_write = self.core.write
@@ -234,7 +241,7 @@ def test_native_call_freezes_parent_chain_and_recovers_without_source(native_def
     pytest.importorskip('temporalio')
     from temporalio.workflow import _Definition
 
-    monkeypatch.syspath_prepend(str(reference.ROOT / 'platform/upstream/platform'))
+    monkeypatch.syspath_prepend(str(native_resources.ROOT / 'platform/upstream/platform'))
     state, registered, definition = native_definition
     preview, document = _prepared(native_definition)
     selected = execution_input(document)
@@ -259,8 +266,8 @@ def test_native_call_freezes_parent_chain_and_recovers_without_source(native_def
     assert tasks.resume_create(state, 'demo', definition['task_id'], 1, created['intent_sha256']) == created
     assert execution_input(document).document == document
     # Original-input reading remains stdlib-only and never loads an SDK.
-    code = ('import json,sys;sys.path.insert(0,' + repr(str(Path(reference.__file__).parent.parent)) + ');'
-        'from ergora.reference_inputs import execution_input;'
+    code = ('import json,sys;sys.path.insert(0,' + repr(str(Path(ergora.__file__).parent.parent)) + ');'
+        'from ergora.development.inputs import execution_input;'
         'v=execution_input(json.load(sys.stdin));v.require_submission();'
         'assert not any(n in sys.modules for n in ("jsonschema","temporalio","mcp"));print(v.task_queue("dev"))')
     child = subprocess.run([sys.executable, '-I', '-S', '-B', '-c', code], input=json.dumps(document),
@@ -311,7 +318,7 @@ def test_native_lost_start_reuses_original_run_and_full_input(native_definition,
     codex.symlink_to(sys.executable)
     (config / 'claude').symlink_to(sys.executable)
     monkeypatch.setenv('PATH', str(config) + os.pathsep + os.environ.get('PATH', ''))
-    monkeypatch.syspath_prepend(str(reference.ROOT / 'platform/local'))
+    monkeypatch.syspath_prepend(str(native_resources.ROOT / 'platform/local'))
     from agent_platform.sandbox import container_identity
     identity = container_identity()
     if identity is None:

@@ -12,8 +12,16 @@ import zipfile
 
 import pytest
 
-from ergora import handoff, issue_sources, issues, projects, reference, registrations, task_envelopes, tasks
-from ergora.reference_inputs import execution_input
+import ergora.native.resources as native_resources
+import ergora
+import ergora.development.handoff as handoff
+import ergora.issues.application as issues
+import ergora.configuration.projects as projects
+import ergora.configuration.registrations as registrations
+import ergora.development.application as tasks
+from ergora.issues import identity as issue_sources
+from ergora.development import envelopes as task_envelopes
+from ergora.development.inputs import execution_input
 from test_handoff import evidence
 from test_project_issues import bind, native, source
 from test_registrations import installation, registration
@@ -34,7 +42,7 @@ def issue_creation(source, registration, work_graph, tmp_path, request):
     source.raw = json.dumps(native(provider, '完整工单正文\nKeep permissions unchanged.')).encode()
     saved = issues.capture(state, 'demo', '7', 2)['snapshot']
     library, grant, _, execution, units = work_graph
-    from ergora import workflow_definitions as workflows
+    import ergora.definitions.workflows as workflows
 
     manifest = workflows.prepare_manifest(library.root, 'specialist-delivery', '1.0.0', grant, tmp_path / 'manifest')
     definition = {'schema_version': 3, 'task_id': 'issue-task', 'task_type': 'repository-governance', 'issue_id': '7',
@@ -172,20 +180,20 @@ def test_source_input_reads_with_only_the_standard_library(issue_creation):
     document = tasks.preview(source.state, 'demo', definition, 2)['files']['task.spec.json']
     code = '''import json,sys
 from pathlib import Path
-from ergora.reference_inputs import execution_input
+from ergora.development.inputs import execution_input
 selected=execution_input(json.load(sys.stdin))
 assert not any(name in sys.modules for name in ('jsonschema','temporalio','mcp'))
 print(json.dumps({'source':selected.stage_material(),'queue':selected.task_queue('dev')}))
 '''
     result = subprocess.run([sys.executable, '-S', '-B', '-c', code], input=json.dumps(document), capture_output=True,
-        text=True, timeout=20, env={**os.environ, 'PYTHONPATH': str(Path(reference.__file__).parent.parent)})
+        text=True, timeout=20, env={**os.environ, 'PYTHONPATH': str(Path(ergora.__file__).parent.parent)})
     assert result.returncode == 0, result.stderr
     assert json.loads(result.stdout) == {'source': {'issue_source': saved}, 'queue': 'dev.composition-v7'}
 
 
 def test_source_version_publishes_through_its_real_adapter_and_keeps_the_original_payload(issue_creation, monkeypatch, tmp_path):
     pytest.importorskip('temporalio')
-    monkeypatch.syspath_prepend(str(reference.ROOT / 'platform/upstream/platform'))
+    monkeypatch.syspath_prepend(str(native_resources.ROOT / 'platform/upstream/platform'))
     from temporalio import workflow
     from temporalio.worker.workflow_sandbox import SandboxedWorkflowRunner
 
@@ -195,7 +203,7 @@ def test_source_version_publishes_through_its_real_adapter_and_keeps_the_origina
     run = selected.workflow_type()()
     run.spec, run.admission = selected.spec, document
     context = run.context('inventory', selected.spec['request']['repository']['starting_sha'])
-    from ergora.reference_workflows import StageResultsWorkflow
+    from ergora.development.runtime.workflows import StageResultsWorkflow
     assert context == StageResultsWorkflow.context(run, 'inventory', selected.spec['request']['repository']['starting_sha'])
     assert context['admission']['issue_source'] == saved
     config = {name: str(tmp_path / name) for name in ('requests', 'receipts', 'artifacts', 'approvals', 'fences')}
@@ -269,7 +277,7 @@ def test_source_plus_ancestor_prompt_limit_rejects_without_publishing(issue_crea
 @pytest.mark.parametrize('character', ['a', '中'])
 def test_complete_first_context_is_checked_at_publication_and_runtime(issue_creation, monkeypatch, character):
     pytest.importorskip('temporalio')
-    monkeypatch.syspath_prepend(str(reference.ROOT / 'platform/upstream/platform'))
+    monkeypatch.syspath_prepend(str(native_resources.ROOT / 'platform/upstream/platform'))
     from dev_platform.workflow import StopWork
 
     source, registered, definition, saved = issue_creation

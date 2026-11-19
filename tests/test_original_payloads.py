@@ -5,10 +5,10 @@ from types import SimpleNamespace
 
 import pytest
 
-from ergora import reference
-from ergora.reference_task_reconciliation import _Inspection
-from ergora.reference_history import find_signal_event
-from ergora.reference_task_runtime import VerifiedSpecClient
+import ergora.native.resources as native_resources
+from ergora.development.runtime.reconciliation import _Inspection
+from ergora.native.history import find_signal_event
+from ergora.development.runtime.status import VerifiedSpecClient
 
 
 @pytest.fixture
@@ -17,7 +17,7 @@ def converter(monkeypatch):
     from temporalio.api.common.v1 import Payload
     from temporalio.converter import DataConverter, PayloadCodec
 
-    monkeypatch.syspath_prepend(str(reference.ROOT / 'platform/upstream/platform'))
+    monkeypatch.syspath_prepend(str(native_resources.ROOT / 'platform/upstream/platform'))
 
     class Codec(PayloadCodec):
         async def encode(self, payloads):
@@ -72,7 +72,7 @@ def test_closed_history_requires_one_original_job_context(converter, count):
     from temporalio.api.history.v1 import HistoryEvent
     from dev_platform.contracts import canonical_sha
 
-    from ergora.reference_inputs import execution_input
+    from ergora.development.inputs import execution_input
 
     spec = {'request': {'task_id': 'task-one'}, 'request_sha256': 'a' * 64, 'profile_sha256': 'b' * 64}
     context = {'task_id': 'task-one', 'job_id': 'task-one-plan', 'stage': 'plan', 'spec': spec,

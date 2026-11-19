@@ -9,15 +9,21 @@ import sys
 
 import pytest
 
-from ergora import projects, reference, registrations, tasks
-from ergora.state import State
+import ergora.native.registration as native_registration
+import ergora.native.resources as native_resources
+import ergora
+import subprocess
+import ergora.configuration.projects as projects
+import ergora.configuration.registrations as registrations
+import ergora.development.application as tasks
+from ergora.storage.state import State
 
 
 @pytest.fixture(scope="module")
 def installation(tmp_path_factory):
     root = tmp_path_factory.mktemp("reference-installation")
     for part in ("local", "upstream/platform"):
-        shutil.copytree(reference.ROOT / "platform" / part, root / part)
+        shutil.copytree(native_resources.ROOT / "platform" / part, root / part)
     return root
 
 
@@ -29,7 +35,7 @@ def registration(tmp_path, installation):
                        GIT_COMMITTER_NAME="Fixture", GIT_COMMITTER_EMAIL="fixture@example.test")
     for argv in (["init"], ["-c", "commit.gpgsign=false", "commit", "--allow-empty", "-m", "baseline"]):
         subprocess.run(["git", "-C", str(repo), *argv], check=True, capture_output=True, env=environment)
-    definition = {"schema_version": 1, "id": "demo", "repo": str(repo), "templates": list(reference.TEMPLATES),
+    definition = {"schema_version": 1, "id": "demo", "repo": str(repo), "templates": list(native_resources.TEMPLATES),
         "execution": {"installation": str(installation), "config_directory": str(tmp_path / "config"),
                       "state_directory": str(tmp_path / "runtime")},
         "tracker": {"kind": "local", "project": "local/demo"}, "allowed_paths": ["src"],
@@ -81,12 +87,12 @@ def test_first_v2_real_native_publication_resumes_complete_policy(registration, 
     state, definition = registration
     definition.update(schema_version=2, design_policy=design_policy())
     policy = deepcopy(definition['design_policy'])
-    original_run, original_record = reference.subprocess.run, registrations._record
+    original_run, original_record = subprocess.run, registrations._record
 
     def interrupt(argv, **kwargs):
-        if 'from ergora.reference import _registration_main;_registration_main()' in argv and json.loads(kwargs['input'])['publish']:
+        if 'from ergora.native.registration import _registration_main;_registration_main()' in argv and json.loads(kwargs['input'])['publish']:
             argv = list(argv)
-            argv[-1] = '''from ergora.reference import _registration_main
+            argv[-1] = '''from ergora.native.registration import _registration_main
 from agent_platform import core
 original=core.write
 count=0
@@ -105,14 +111,14 @@ _registration_main()
             raise OSError('real native publication loss after final file')
         return original_record(path, value)
 
-    monkeypatch.setattr(reference.subprocess, 'run', interrupt)
+    monkeypatch.setattr(subprocess, 'run', interrupt)
     monkeypatch.setattr(registrations, '_record', record)
     with pytest.raises((ValueError, OSError), match='real native publication loss'):
         registrations.register(state, definition, 0)
     project = state.project('demo')
     assert project['registration']['schema_version'] == 2
     config = Path(definition['execution']['config_directory'])
-    assert sum((config / relative).exists() for relative in reference.registration_paths('demo')) == published_files
+    assert sum((config / relative).exists() for relative in native_registration.registration_paths('demo')) == published_files
     journal = state.root / 'registrations/demo' / (project['registration']['operation_id'] + '.json')
     original_intent = journal.read_bytes()
     definition['design_policy']['profile']['minimum_questions'][0]['body'] = 'Cannot replace original intent'
@@ -133,7 +139,7 @@ _registration_main()
     assert journal.read_bytes() == original_intent
     selected = original_registration(state, project)
     assert registrations.published_project(state.root, 'demo', selected['operation_id'], selected['intent_sha256']) == project
-    assert set(project['registration']['files']) == set(reference.registration_paths('demo'))
+    assert set(project['registration']['files']) == set(native_registration.registration_paths('demo'))
     assert not Path(definition['execution']['state_directory']).exists()
 
 
@@ -217,7 +223,7 @@ def test_interleaved_first_registration_at_different_roots_rejects_before_intent
     assert journals == saved['journals']
     assert _saved_files(Path(winner['execution']['config_directory'])) == saved['native']
     late_config = Path(late['execution']['config_directory'])
-    assert not any((late_config / path).exists() for path in reference.registration_paths('demo'))
+    assert not any((late_config / path).exists() for path in native_registration.registration_paths('demo'))
     assert not Path(late['execution']['state_directory']).exists()
     with state.connect() as db:
         assert tuple(db.iterdump()) == saved['database']
@@ -231,7 +237,7 @@ def test_v1_history_keeps_status_and_resume_after_input_schema_tightening(regist
     # accepted schema while writing a real journal, then reopen with today's.
     historical_schema = deepcopy(registrations._SCHEMAS[1])
     historical_schema['properties']['tracker']['properties']['project'].pop('not')
-    original_io = reference.registration_io
+    original_io = native_registration.registration_io
 
     def interrupt(execution, project_id, **kwargs):
         if kwargs.get('publish'):
@@ -241,7 +247,7 @@ def test_v1_history_keeps_status_and_resume_after_input_schema_tightening(regist
     with monkeypatch.context() as historical:
         historical.setitem(registrations._SCHEMAS, 1, historical_schema)
         if boundary == 'resume':
-            historical.setattr(reference, 'registration_io', interrupt)
+            historical.setattr(native_registration, 'registration_io', interrupt)
             with pytest.raises(OSError, match='historical publication interrupted'):
                 registrations.register(state, definition, 0)
             project = state.project('demo')
@@ -275,7 +281,7 @@ def test_policy_identity_and_effective_minimum_conflicts_fail_before_registratio
         policy['profile']['limits']['questions'] = 1
         policy['profile_sha256'] = registrations._sha(policy['profile'])
     else:
-        policy['profile'] = json.loads((Path(reference.__file__).parent / 'data/design-profiles/framework-development-v1.json').read_bytes())
+        policy['profile'] = json.loads((Path(ergora.__file__).parent / 'data/design-profiles/framework-development-v1.json').read_bytes())
         policy['profile_sha256'] = registrations._sha(policy['profile'])
     if damage not in ('profile-sha', 'policy-sha'):
         policy['sha256'] = registrations._sha({key: value for key, value in policy.items() if key != 'sha256'})
@@ -451,18 +457,18 @@ def test_conflicts_legacy_and_duplicate_tracker_never_overwrite(registration):
 @pytest.mark.parametrize("published_files", [0, 1, 2, 3, 4])
 def test_interrupted_publication_resumes_saved_intent_in_new_process(registration, monkeypatch, published_files):
     state, definition = registration
-    original = reference.registration_io
+    original = native_registration.registration_io
 
     def interrupt(execution, project_id, **kwargs):
         if kwargs.get("publish"):
-            for path in reference.registration_paths(project_id)[:published_files]:
+            for path in native_registration.registration_paths(project_id)[:published_files]:
                 target = Path(execution["config_directory"]) / path
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_text(json.dumps(kwargs["files"][path]), encoding="utf-8")
             raise OSError("simulated process loss")
         return original(execution, project_id, **kwargs)
 
-    monkeypatch.setattr(reference, "registration_io", interrupt)
+    monkeypatch.setattr(native_registration, "registration_io", interrupt)
     with pytest.raises(OSError, match="process loss"):
         registrations.register(state, definition, 0)
     pending = State(state.root).project("demo")
@@ -478,7 +484,7 @@ def test_interrupted_publication_resumes_saved_intent_in_new_process(registratio
     project = json.loads(result.stdout)
     assert project["registration"]["status"] == "published" and project["revision"] == 1
     assert project["registration"]["definition"]["checks"]["behavior"] != ["cannot-replace-intent"]
-    monkeypatch.setattr(reference, "registration_io", original)
+    monkeypatch.setattr(native_registration, "registration_io", original)
     assert registrations.status(State(state.root), "demo")["consistent"]
 
 
@@ -510,7 +516,7 @@ def test_existing_equivalent_legacy_files_require_explicit_import(registration):
     state, definition = registration
     prepared = registrations._prepare(state, definition, None)
     files = prepared["registration"]["files"]
-    for relative in reference.registration_paths("demo")[1:]:
+    for relative in native_registration.registration_paths("demo")[1:]:
         path = Path(definition["execution"]["config_directory"]) / relative
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(files[relative], indent=4), encoding="utf-8")
@@ -569,7 +575,7 @@ def test_cli_and_api_register_equivalent_projects_and_reject_coerced_revisions(r
     pytest.importorskip("fastapi")
     pytest.importorskip("httpx")
     from fastapi.testclient import TestClient
-    from ergora.web import create_app
+    from ergora.interfaces.web import create_app
 
     state, definition = registration
     path = tmp_path / "definition.json"
@@ -792,7 +798,7 @@ def test_preview_binds_the_control_owner_and_requires_matching_policy_membership
         registrations.preview_import(state, specification, 0)
 
 
-@pytest.mark.parametrize("template", reference.TEMPLATES)
+@pytest.mark.parametrize("template", native_resources.TEMPLATES)
 def test_each_template_can_adopt_legacy_configuration(legacy_registration, template):
     state, specification, _ = legacy_registration
     specification["templates"] = [template]
@@ -805,14 +811,14 @@ def test_each_template_can_adopt_legacy_configuration(legacy_registration, templ
 def test_interrupted_import_resumes_in_new_process_and_preserves_source_identity(legacy_registration, monkeypatch):
     state, specification, raw = legacy_registration
     preview = registrations.preview_import(state, specification, 0)
-    original = reference.registration_io
+    original = native_registration.registration_io
 
     def interrupt(*args, **kwargs):
         if kwargs.get("publish"):
             raise OSError("interrupted legacy adoption")
         return original(*args, **kwargs)
 
-    monkeypatch.setattr(reference, "registration_io", interrupt)
+    monkeypatch.setattr(native_registration, "registration_io", interrupt)
     with pytest.raises(OSError, match="interrupted"):
         registrations.apply_import(state, specification, 0, preview["preview_sha256"])
     assert state.project("demo")["registration"]["status"] == "pending"
@@ -848,7 +854,7 @@ def test_cli_api_import_preview_agree_and_only_explicit_approved_apply_writes(le
     pytest.importorskip("fastapi")
     pytest.importorskip("httpx")
     from fastapi.testclient import TestClient
-    from ergora.web import create_app
+    from ergora.interfaces.web import create_app
 
     state, specification, _ = legacy_registration
     path = tmp_path / "import.json"

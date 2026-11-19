@@ -11,8 +11,14 @@ import sys
 
 import pytest
 
-from ergora import backups, contracts, memory, projects, reference, registrations, skills
-from ergora.state import SCHEMA_VERSION, State
+import ergora.native.registration as native_registration
+import ergora.operations.backups as backups
+import ergora.improvement.memory as memory
+import ergora.configuration.projects as projects
+import ergora.configuration.registrations as registrations
+import ergora.definitions.skills as skill_assets
+from ergora.configuration import validation as contracts
+from ergora.storage.state import SCHEMA_VERSION, State
 from test_registrations import design_policy, installation, registration
 
 
@@ -30,7 +36,7 @@ def archive_state(tmp_path):
     (source / "run.py").write_bytes(b"print('fixture')\n")
     if os.name != "nt":
         (source / "run.py").chmod(0o755)
-    bundle = skills.import_bundle(state, "demo", source)
+    bundle = skill_assets.import_bundle(state, "demo", source)
     raw = b"Synthetic source snapshot\n"
     digest = hashlib.sha256(raw).hexdigest()
     path = state.root / "sources/demo" / f"{digest}.raw"
@@ -57,7 +63,7 @@ def test_full_roundtrip_preserves_canonical_rows_skills_sources_unknown_files_an
     restored = backups.restore(state.root, tmp_path / "snapshot", offline=True)
     assert restored["status"] == "restored" and restored["manifest_sha256"] == result["manifest_sha256"]
     reopened = State(state.root)
-    assert skills.get(reopened, "demo", skill["digest"]) == skill
+    assert skill_assets.get(reopened, "demo", skill["digest"]) == skill
     assert (state.root / "empty directory").is_dir()
     assert (state.root / "额外 文件.txt").read_text(encoding="utf-8").startswith("preserve")
     assert raw.read_bytes() == b"Synthetic source snapshot\n"
@@ -80,13 +86,13 @@ def test_v2_control_home_backup_does_not_restore_external_native_roots(registrat
     operation = project['registration']['operation_id']
     assert {'ergora.sqlite3', f'registrations/demo/{operation}.json',
             f'registrations/demo/{operation}.result.json'} <= set(manifest['files'])
-    assert not set(reference.registration_paths('demo')) & set(manifest['files'])
+    assert not set(native_registration.registration_paths('demo')) & set(manifest['files'])
     assert 'ergora/task-approvals/original.json' not in manifest['files']
     assert backed_up['database_schema_version'] == SCHEMA_VERSION
     # External state survives as it currently is; restoring the control home
     # makes no cross-root rollback promise for approvals or native projections.
     external.write_bytes(b'external journal after snapshot\n')
-    marker = config / reference.registration_paths('demo')[0]
+    marker = config / native_registration.registration_paths('demo')[0]
     marker_raw = marker.read_bytes()
     state.root.rename(tmp_path / 'kept-control')
     backups.restore(state.root, target, offline=True)
@@ -255,7 +261,7 @@ def test_copy_failure_preserves_source_and_does_not_publish_a_partial_backup(arc
         backups.create(state.root, tmp_path / "backup", offline=True)
     assert not (tmp_path / "backup").exists()
     assert not list(tmp_path.glob(".ergora-backup-*"))
-    assert skills.get(state, "demo", skill["digest"]) == skill
+    assert skill_assets.get(state, "demo", skill["digest"]) == skill
 
 
 @pytest.mark.skipif(os.name == "nt", reason="symlink creation needs an extra Windows privilege")

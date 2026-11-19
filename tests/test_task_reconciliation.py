@@ -10,8 +10,9 @@ import time
 
 import pytest
 
-from ergora import projects, tasks
-from ergora.state import State
+import ergora.configuration.projects as projects
+import ergora.development.application as tasks
+from ergora.storage.state import State
 from test_registrations import installation, registration
 from test_task_creation import creation_project, _files
 from test_task_submission import submitted_creation, native_client, _root, _calls
@@ -340,8 +341,8 @@ def test_timeout_preserves_the_original_intent_for_explicit_resume(cleanup, monk
 def test_cli_and_api_use_the_same_recoverable_operation_and_readonly_status(cleanup, capsys):
     pytest.importorskip('fastapi')
     from fastapi.testclient import TestClient
-    from ergora import cli
-    from ergora.web import create_app
+    import ergora.interfaces.cli as cli
+    from ergora.interfaces.web import create_app
 
     client = TestClient(create_app(cleanup[0].root), base_url='http://127.0.0.1',
                         headers={'X-Ergora-Request': '1', 'Origin': 'http://127.0.0.1'})

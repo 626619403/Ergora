@@ -11,7 +11,10 @@ import sys
 
 import pytest
 
-from ergora import reference, training
+import ergora.training.native as training_native
+import ergora.runtime.processes as processes
+import importlib
+import ergora.training.application as training
 from test_training_evidence import archive
 from test_training import experiments, registration
 from test_training_runtime import installation
@@ -19,7 +22,7 @@ from test_training_submission import prepared, synthetic_execution
 
 
 def test_historical_owner_decision_is_read_only_without_current_release_authority(prepared, monkeypatch):
-    from ergora.training_cycles import _sha
+    from ergora.training.cycles import _sha
 
     state, _, runtime, prefix, write, _ = prepared
     manifest_path = runtime / 'training/manifests/alpha.json'
@@ -44,20 +47,20 @@ def test_historical_owner_decision_is_read_only_without_current_release_authorit
     intent_path = Path(str(approval_prefix) + '.intent.json')
     write(intent_path, intent)
     before = {path: path.read_bytes() for path in runtime.rglob('*') if path.is_file()}
-    original = reference.importlib.util.find_spec
-    monkeypatch.setattr(reference.importlib.util, 'find_spec', lambda name: None if name == 'temporalio' else original(name))
+    original = importlib.util.find_spec
+    monkeypatch.setattr(importlib.util, 'find_spec', lambda name: None if name == 'temporalio' else original(name))
     observed = training.approval(state, 'demo', 'alpha')
     assert observed['status'] == 'prepared' and observed['intent_sha256'] == _sha(intent)
     assert observed['run_id'] == 'historical-run' and observed['evidence_sha256'] == intent['evidence_sha256']
     assert observed['release_requested'] is False and observed['authorization_status'] == 'not_evaluated'
-    monkeypatch.setattr(reference.importlib.util, 'find_spec', original)
+    monkeypatch.setattr(importlib.util, 'find_spec', original)
     if sys.platform == 'linux':
         operations = ['prepare', 'prepare-resume']
         if original('temporalio') is not None:
             operations += ['dispatch', 'resume']
         for operation in operations:
             with pytest.raises(ValueError, match='full-verify'):
-                reference.training_release(state.project('demo'), state.root, operation,
+                training_native.training_release(state.project('demo'), state.root, operation,
                     {'experiment_id': 'alpha', 'run_id': 'historical-run', 'evidence_sha256': intent['evidence_sha256'],
                      'intent_sha256': _sha(intent)}, timeout=20)
     assert {path: path.read_bytes() for path in runtime.rglob('*') if path.is_file()} == before
@@ -75,20 +78,20 @@ def submitted_archive(archive, monkeypatch, tmp_path):
         pytest.skip('Native owner approval mutations require Linux/WSL2')
     pytest.importorskip('temporalio')
     state, definition, runtime, prefix, write, folder, report = archive
-    original = reference.processes.run
+    original = processes.run
     record = tmp_path / 'release-service.json'
     fixtures = Path(__file__).parent / 'fixtures'
 
     def select(scenario):
         def invoke(argv, *args, **kwargs):
             for module, fixture in [('submission', 'training_submission_client.py'), ('release', 'training_release_client.py')]:
-                if f'from ergora.reference_training_{module} import main;main()' in argv:
+                if f'from ergora.training.runtime.{module} import main;main()' in argv:
                     argv = list(argv)
                     argv[-1] = f'import runpy;runpy.run_path({str(fixtures / fixture)!r},run_name="__main__")'
                     kwargs['env'] = {**kwargs['env'], 'ERGORA_TEST_TRAINING_SUBMISSION': scenario,
                                      'ERGORA_TEST_TRAINING_SERVICE': str(record)}
             return original(argv, *args, **kwargs)
-        monkeypatch.setattr(reference.processes, 'run', invoke)
+        monkeypatch.setattr(processes, 'run', invoke)
     select('accepted')
     # The same frozen native spec is submitted before exposing its prebuilt
     # synthetic job/gate; no actual job or training ran in this service double.
@@ -174,8 +177,8 @@ def test_original_owner_receipt_and_release_are_once_and_status_is_sdk_free(arch
     (runtime / 'training/specs/alpha.json').unlink()
     (Path(definition['execution']['config_directory']) / 'training-runners/trusted.json').unlink()
     owner.unlink()
-    original = reference.importlib.util.find_spec
-    monkeypatch.setattr(reference.importlib.util, 'find_spec', lambda name: None if name == 'temporalio' else original(name))
+    original = importlib.util.find_spec
+    monkeypatch.setattr(importlib.util, 'find_spec', lambda name: None if name == 'temporalio' else original(name))
     assert training.approval(state, 'demo', 'alpha') == result
 
 
@@ -309,8 +312,8 @@ def test_first_send_cannot_cross_a_changed_training_source(archive, submitted_ar
 def test_cli_http_confirmations_and_unknown_recovery_share_one_intent(archive, submitted_archive):
     pytest.importorskip('fastapi')
     from fastapi.testclient import TestClient
-    from ergora.cli import main
-    from ergora.web import create_app
+    from ergora.interfaces.cli import main
+    from ergora.interfaces.web import create_app
 
     state = archive[0]
     started, select, record = submitted_archive

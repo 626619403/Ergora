@@ -6,8 +6,8 @@ from pathlib import Path
 import sys
 
 sys.path.insert(0, sys.argv[1])
-from ergora.training_execution_protocol import CycleAdmission, read_raw
-from ergora.training_materials import decode_record
+from ergora.training.execution_protocol import CycleAdmission, read_raw
+from ergora.training.materials import decode_record
 
 directory, marker, mode = Path(sys.argv[2]), Path(sys.argv[3]), sys.argv[4]
 admission = CycleAdmission(directory, decode_record(read_raw(directory / 'authorization.json')))
@@ -44,5 +44,5 @@ else:
         pause()
     result = admission.request_stop(sys.argv[5])
 
-assert not any(name in sys.modules for name in ('yaml', 'jsonschema', 'temporalio', 'dev_platform', 'ergora.state'))
+assert not any(name in sys.modules for name in ('yaml', 'jsonschema', 'temporalio', 'dev_platform', 'ergora.storage.state'))
 print(json.dumps(result), flush=True)

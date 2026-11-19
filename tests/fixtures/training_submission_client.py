@@ -22,8 +22,8 @@ from temporalio.converter import DataConverter
 from temporalio.exceptions import WorkflowAlreadyStartedError
 from temporalio.service import RPCError, RPCStatusCode
 
-from ergora.reference_training_submission import main
-from ergora.state import file_lock
+from ergora.training.runtime.submission import main
+from ergora.storage.state import file_lock
 
 sys.path.insert(0, str(Path(__file__).parent))
 
@@ -43,7 +43,7 @@ if os.environ.get('ERGORA_TEST_TRAINING_CONTROLLER_PAUSE') in ('request', 'launc
 
 if (os.environ.get('ERGORA_TEST_TRAINING_CONTROLLER_PAUSE') == 'submission-attempt-sync'
         and 'mode' not in payload):
-    from ergora import training_cycles
+    import ergora.training.cycles as training_cycles
     from training_controller_pause import pause
 
     synchronized = training_cycles._sync_directory
@@ -93,7 +93,7 @@ class Service:
 
             spec = (await converter.decode(request.input.payloads, [dict]))[0]
             if os.environ.get('ERGORA_TEST_TRAINING_CONTROLLER'):
-                from ergora.reference_training_worker import create_adapter
+                from ergora.training.runtime.worker import create_adapter
             experiment = Experiment(**{**spec, 'binding': Binding(**spec['binding'])})
             adapter = create_adapter()
             manifest = await adapter.read_manifest(experiment.manifest_uri)
@@ -172,7 +172,7 @@ async def connect():
 
 connection.connect = native.connect = connect
 if scenario in ('fence-observed-receipt', 'fence-observed-rejection') and payload['operation'] == 'fence':
-    from ergora.reference_training_submission import _Submission
+    from ergora.training.runtime.submission import _Submission
 
     original_status = _Submission.status
 
@@ -195,9 +195,9 @@ def install_budget_fixture():
     fixture = Path(__file__).with_name('training_budget_client.py')
 
     def launch(argv, *args, **kwargs):
-        if argv[-1] in ('from ergora.reference_training_worker import budget_main;budget_main()',
-                       'from ergora.reference_training_submission import cycle_root_main;cycle_root_main()'):
-            light_root = argv[-1] == 'from ergora.reference_training_submission import cycle_root_main;cycle_root_main()'
+        if argv[-1] in ('from ergora.training.runtime.worker import budget_main;budget_main()',
+                       'from ergora.training.runtime.submission import cycle_root_main;cycle_root_main()'):
+            light_root = argv[-1] == 'from ergora.training.runtime.submission import cycle_root_main;cycle_root_main()'
             argv = [*argv[:-1], f'import runpy;runpy.run_path({str(fixture)!r},run_name="__main__",'
                     f'init_globals={{"light_root":{light_root!r}}})']
         return original(argv, *args, **kwargs)
@@ -209,7 +209,7 @@ if __name__ == '__main__':
     install_budget_fixture()
     if payload['operation'] == 'request':
         if os.environ.get('ERGORA_TEST_TRAINING_WRITER_LOCK'):
-            from ergora.reference_training_execution import Execution
+            from ergora.training.runtime.execution import Execution
             import time
 
             current = Execution.current
@@ -220,7 +220,7 @@ if __name__ == '__main__':
                     while not storage.with_suffix('.writer-release').exists():
                         time.sleep(.02)
             Execution.current = held_current
-        from ergora.reference_training_worker import execution_main
+        from ergora.training.runtime.worker import execution_main
 
         execution_main()
     else:

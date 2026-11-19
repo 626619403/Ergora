@@ -9,8 +9,15 @@ import time
 
 import pytest
 
-from ergora import evaluation, memory, optimization, projects, skills, tools
-from ergora.state import State
+import ergora.improvement.evaluation as evaluation
+import ergora.improvement.memory as memory
+import ergora.improvement.optimization as optimization
+import ergora.configuration.projects as projects
+import ergora.improvement.skill_adoption as skills
+import ergora.definitions.skills as skill_assets
+import ergora.operations.tools as tools
+import ergora.agents.runs as agent_runs
+from ergora.storage.state import State
 
 
 @pytest.fixture
@@ -36,7 +43,7 @@ print(json.dumps({"score":score,"passed":"INCORRECT" not in text,"cost":0,"feedb
         "timeout_seconds": 5, "minimum_gain": .1, "max_reported_cost": 1,
         "cases": [{"id": split, "split": split, "input": {"split": split, "data": "SECRET_HELDOUT_VALUE" if split == "holdout" else "public"}}
                   for split in ("train", "validation", "holdout")]})
-    baseline = skills.import_bundle(state, "demo", source)
+    baseline = skill_assets.import_bundle(state, "demo", source)
     return state, repo, source, baseline, suite
 
 
@@ -44,7 +51,7 @@ def test_candidate_evaluation_adoption_and_rollback(skill_project, tmp_path):
     state, repo, source, baseline, suite = skill_project
     text = (source / "SKILL.md").read_text().replace("BASELINE", "IMPROVED")
     (source / "SKILL.md").write_text(text)
-    candidate = skills.import_bundle(state, "demo", source, "Improve held-out fixture score")
+    candidate = skill_assets.import_bundle(state, "demo", source, "Improve held-out fixture score")
     assert candidate["parent"] == baseline["digest"]
     assert "BASELINE" in (Path(baseline["path"]) / "SKILL.md").read_text()
     base_run = evaluation.evaluate(state, "demo", baseline["digest"], suite["digest"])
@@ -52,31 +59,31 @@ def test_candidate_evaluation_adoption_and_rollback(skill_project, tmp_path):
     comparison = evaluation.compare(state, "demo", base_run["id"], candidate_run["id"])
     assert comparison["eligible"] and comparison["averages"]["candidate"]["holdout"] == .9
     skills.adopt(state, "demo", base_run["id"], candidate_run["id"], 1, "Reviewed fixture evidence")
-    active = skills.versions(State(state.root), "demo")["active"][0]
+    active = skill_assets.versions(State(state.root), "demo")["active"][0]
     assert active["digest"] == candidate["digest"] and active["revision"] == 2
     projects.bind(state, "demo", "implementer", {"tool": "command", "argv": [sys.executable, "-c", "import sys;print(sys.stdin.read())"]}, 1)
     note = memory.save(state, "demo", "Run the project verification command", {"uri": "manual:project", "revision": "v1"})
-    invocation = tools.run_agent(state, "demo", "implementer", "Use selected context", skill_names=["test-skill"], recall="verification")
+    invocation = agent_runs.run_agent(state, "demo", "implementer", "Use selected context", skill_names=["test-skill"], recall="verification")
     assert invocation["context"]["skills"][0]["digest"] == candidate["digest"]
     assert invocation["context"]["memories"][0]["id"] == note["id"]
     assert "IMPROVED" in Path(invocation["output"], "stdin.txt").read_text()
     with pytest.raises(ValueError, match="Active skill changed"):
         skills.adopt(state, "demo", base_run["id"], candidate_run["id"], 1, "stale")
-    skills.rollback(state, "demo", "test-skill", baseline["digest"], 2, "Restore previous active skill")
-    assert skills.versions(state, "demo")["active"][0]["digest"] == baseline["digest"]
-    after_rollback = tools.run_agent(state, "demo", "implementer", "Check restored context", skill_names=["test-skill"])
+    skill_assets.rollback(state, "demo", "test-skill", baseline["digest"], 2, "Restore previous active skill")
+    assert skill_assets.versions(state, "demo")["active"][0]["digest"] == baseline["digest"]
+    after_rollback = agent_runs.run_agent(state, "demo", "implementer", "Check restored context", skill_names=["test-skill"])
     assert "BASELINE" in Path(after_rollback["output"], "stdin.txt").read_text()
     target = tmp_path / "export" / "test-skill"
-    skills.export(state, "demo", candidate["digest"], target)
-    assert skills.digest_tree(target)[0] == candidate["digest"]
+    skill_assets.export(state, "demo", candidate["digest"], target)
+    assert skill_assets.digest_tree(target)[0] == candidate["digest"]
     with pytest.raises(ValueError, match="Unknown skill"):
-        skills.get(state, "other", candidate["digest"])
+        skill_assets.get(state, "other", candidate["digest"])
 
 
 def test_holdout_regression_partial_evidence_and_mutation_are_rejected(skill_project):
     state, repo, source, baseline, suite = skill_project
     (source / "SKILL.md").write_text((source / "SKILL.md").read_text().replace("BASELINE", "IMPROVED REGRESS"))
-    candidate = skills.import_bundle(state, "demo", source)
+    candidate = skill_assets.import_bundle(state, "demo", source)
     base = evaluation.evaluate(state, "demo", baseline["digest"], suite["digest"])
     bad = evaluation.evaluate(state, "demo", candidate["digest"], suite["digest"])
     assert "holdout" in " ".join(evaluation.compare(state, "demo", base["id"], bad["id"])["reasons"])
@@ -89,35 +96,35 @@ def test_holdout_regression_partial_evidence_and_mutation_are_rejected(skill_pro
         evaluation.compare(state, "demo", base["id"], bad["id"])
     (Path(candidate["path"]) / "SKILL.md").write_text("tampered")
     with pytest.raises(ValueError, match="content changed"):
-        skills.get(state, "demo", candidate["digest"])
+        skill_assets.get(state, "demo", candidate["digest"])
 
 
 def test_missing_selected_asset_is_rejected_before_agent_or_evaluator_runs(skill_project):
     state, _, _, baseline, suite = skill_project
     Path(baseline["path"], "SKILL.md").unlink()
     with pytest.raises(ValueError, match="content changed"):
-        tools.run_agent(state, "demo", "implementer", "Use selected context", skill_names=["test-skill"])
+        agent_runs.run_agent(state, "demo", "implementer", "Use selected context", skill_names=["test-skill"])
     with pytest.raises(ValueError, match="content changed"):
         evaluation.evaluate(state, "demo", baseline["digest"], suite["digest"])
-    assert tools.runs(state, "demo") == []
+    assert agent_runs.runs(state, "demo") == []
     assert evaluation.listing(state, "demo")["runs"] == []
 
 
 def test_skill_import_recovers_unregistered_partial_tree_and_preserves_valid_publication(skill_project):
     state, _, source, _, _ = skill_project
     (source / "reference.txt").write_text("Complete resource\n")
-    digest, _ = skills.digest_tree(source)
+    digest, _ = skill_assets.digest_tree(source)
     destination = state.root / "skills" / "other" / digest / source.name
     destination.mkdir(parents=True)
     shutil.copy2(source / "SKILL.md", destination / "SKILL.md")
 
-    imported = skills.import_bundle(state, "other", source)
-    assert skills.get(state, "other", digest) == imported
+    imported = skill_assets.import_bundle(state, "other", source)
+    assert skill_assets.get(state, "other", digest) == imported
     assert (destination / "reference.txt").read_bytes() == (source / "reference.txt").read_bytes()
     timestamps = {p.name: p.stat().st_mtime_ns for p in destination.iterdir()}
-    assert skills.import_bundle(state, "other", source, "Repeated import") == imported
+    assert skill_assets.import_bundle(state, "other", source, "Repeated import") == imported
     assert {p.name: p.stat().st_mtime_ns for p in destination.iterdir()} == timestamps
-    stored = skills.versions(state, "other")
+    stored = skill_assets.versions(state, "other")
     assert len(stored["versions"]) == len(stored["active"]) == len(stored["history"]) == 1
 
 
@@ -125,7 +132,7 @@ def test_skill_import_recovers_unregistered_partial_tree_and_preserves_valid_pub
 def test_interrupted_skill_import_retries_without_partial_registration(skill_project, monkeypatch, boundary):
     state, _, source, _, _ = skill_project
     (source / "reference.txt").write_text("Complete resource\n")
-    digest, _ = skills.digest_tree(source)
+    digest, _ = skill_assets.digest_tree(source)
     destination = state.root / "skills" / "other" / digest / source.name
     with monkeypatch.context() as patch:
         if boundary == "copy":
@@ -143,12 +150,12 @@ def test_interrupted_skill_import_retries_without_partial_registration(skill_pro
                 return result
             patch.setattr(Path, "rename", interrupted_publication)
         with pytest.raises(OSError, match="Injected"):
-            skills.import_bundle(state, "other", source)
-    assert skills.versions(state, "other") == {"versions": [], "active": [], "history": []}
+            skill_assets.import_bundle(state, "other", source)
+    assert skill_assets.versions(state, "other") == {"versions": [], "active": [], "history": []}
     assert destination.exists() == (boundary == "publication")
-    imported = skills.import_bundle(state, "other", source)
-    assert skills.get(state, "other", digest) == imported
-    stored = skills.versions(state, "other")
+    imported = skill_assets.import_bundle(state, "other", source)
+    assert skill_assets.get(state, "other", digest) == imported
+    stored = skill_assets.versions(state, "other")
     assert len(stored["versions"]) == len(stored["active"]) == len(stored["history"]) == 1
 
 
@@ -160,10 +167,10 @@ def test_skill_import_refuses_to_replace_registered_evidence(skill_project, dama
         (destination / "SKILL.md").write_text("Changed evidence\n")
     else:
         shutil.rmtree(destination)
-    before = skills.versions(state, "demo")
+    before = skill_assets.versions(state, "demo")
     with pytest.raises(ValueError, match="content changed"):
-        skills.import_bundle(state, "demo", source)
-    assert skills.versions(state, "demo") == before
+        skill_assets.import_bundle(state, "demo", source)
+    assert skill_assets.versions(state, "demo") == before
     if damage == "modified":
         assert (destination / "SKILL.md").read_text() == "Changed evidence\n"
     else:
@@ -173,17 +180,18 @@ def test_skill_import_refuses_to_replace_registered_evidence(skill_project, dama
 def test_concurrent_skill_imports_publish_one_complete_version(skill_project, tmp_path):
     state, _, source, _, _ = skill_project
     (source / "reference.txt").write_text("Complete resource\n" * 10000)
-    digest, _ = skills.digest_tree(source)
+    digest, _ = skill_assets.digest_tree(source)
     start = tmp_path / "start"
     script = """import json,sys,time
 from pathlib import Path
-from ergora import skills
-from ergora.state import State
+import ergora.improvement.skill_adoption as skills
+import ergora.definitions.skills as skill_assets
+from ergora.storage.state import State
 state = State(Path(sys.argv[1]))
 Path(sys.argv[3]).touch()
 while not Path(sys.argv[4]).exists():
     time.sleep(.01)
-print(json.dumps(skills.import_bundle(state, 'other', Path(sys.argv[2]))))
+print(json.dumps(skill_assets.import_bundle(state, 'other', Path(sys.argv[2]))))
 """
     ready = [tmp_path / f"ready-{i}" for i in range(4)]
     children = []
@@ -207,15 +215,15 @@ print(json.dumps(skills.import_bundle(state, 'other', Path(sys.argv[2]))))
                 child.kill()
             child.wait(timeout=5)
     assert all(result == results[0] for result in results)
-    assert skills.get(state, "other", digest) == results[0]
-    stored = skills.versions(state, "other")
+    assert skill_assets.get(state, "other", digest) == results[0]
+    stored = skill_assets.versions(state, "other")
     assert len(stored["versions"]) == len(stored["active"]) == len(stored["history"]) == 1
 
 
 def test_adoption_rejects_evidence_from_a_different_suite(skill_project):
     state, _, source, baseline, suite = skill_project
     (source / "SKILL.md").write_text((source / "SKILL.md").read_text().replace("BASELINE", "IMPROVED"))
-    candidate = skills.import_bundle(state, "demo", source)
+    candidate = skill_assets.import_bundle(state, "demo", source)
     manifest = {key: value for key, value in suite["manifest"].items() if key not in ("file_sha256", "path_bindings")}
     manifest["minimum_gain"] = .2
     other_suite = evaluation.register(state, "demo", manifest)
@@ -223,14 +231,14 @@ def test_adoption_rejects_evidence_from_a_different_suite(skill_project):
     candidate_run = evaluation.evaluate(state, "demo", candidate["digest"], other_suite["digest"])
     with pytest.raises(ValueError, match="same frozen evaluation suite"):
         skills.adopt(state, "demo", base_run["id"], candidate_run["id"], 1, "Different evidence")
-    assert skills.versions(state, "demo")["active"][0]["digest"] == baseline["digest"]
+    assert skill_assets.versions(state, "demo")["active"][0]["digest"] == baseline["digest"]
 
 
 def test_skill_symlinks_and_malformed_evaluator_output_fail_visibly(skill_project):
     state, repo, source, baseline, suite = skill_project
     source.joinpath("secret-link").symlink_to(repo / "evaluate.py")
     with pytest.raises(ValueError, match="symlinks"):
-        skills.import_bundle(state, "demo", source)
+        skill_assets.import_bundle(state, "demo", source)
     source.joinpath("secret-link").unlink()
     reserved = {k: v for k, v in suite["manifest"].items() if k not in ("file_sha256", "path_bindings")}
     reserved["cases"] = [{**case, "id": "work"} if case["split"] == "train" else case for case in reserved["cases"]]
@@ -262,7 +270,7 @@ print(json.dumps({"skill":request["candidate"]["skill"].replace("BASELINE","IMPR
     assert result["status"] == "succeeded", result
     assert result["best_candidate"] != baseline["digest"]
     assert result["metric_calls"] <= 4 and result["proposals"] <= 1
-    assert skills.versions(state, "demo")["active"][0]["digest"] == baseline["digest"]
+    assert skill_assets.versions(state, "demo")["active"][0]["digest"] == baseline["digest"]
     assert "SECRET_HELDOUT_VALUE" not in repo.joinpath("seen-proposer.json").read_text()
     for run_id in result["evaluations"]:
         assert all(c["split"] != "holdout" for c in evaluation.get(state, "demo", run_id)["cases"])
@@ -294,13 +302,13 @@ def test_executable_bits_and_undeclared_scorer_arguments_are_bound(skill_project
     script = source / "run.sh"
     script.write_text("#!/bin/sh\ntrue\n")
     script.chmod(0o600)
-    nonexecutable = skills.import_bundle(state, "demo", source)
+    nonexecutable = skill_assets.import_bundle(state, "demo", source)
     script.chmod(0o700)
-    executable = skills.import_bundle(state, "demo", source)
+    executable = skill_assets.import_bundle(state, "demo", source)
     assert executable["digest"] != nonexecutable["digest"]
     Path(executable["path"], "run.sh").chmod(0o600)
     with pytest.raises(ValueError, match="content changed"):
-        skills.get(state, "demo", executable["digest"])
+        skill_assets.get(state, "demo", executable["digest"])
     manifest = {k: v for k, v in suite["manifest"].items() if k not in ("file_sha256", "path_bindings")}
     manifest["evaluator_files"] = []
     implicit = evaluation.register(state, "demo", manifest)
@@ -378,12 +386,14 @@ print(json.dumps({"skill":request["candidate"]["skill"].replace("BASELINE","IMPR
     projects.bind(state, "demo", "optimizer", {"tool": "gepa", "proposer_argv": [sys.executable, str(proposer)]}, 1)
     result = optimization.optimize(state, "demo", baseline["digest"], suite["digest"], "Preserve trusted scorer", 3, 1, 20)
     assert result["status"] == "failed" and "evaluator changed" in result["error"]
-    assert skills.versions(state, "demo")["active"][0]["digest"] == baseline["digest"]
+    assert skill_assets.versions(state, "demo")["active"][0]["digest"] == baseline["digest"]
 
 
 @pytest.fixture
 def retrospective_case(tmp_path):
-    from ergora import handoff, skill_assets, workflow_definitions as workflows
+    import ergora.development.handoff as handoff
+    import ergora.definitions.skills as skill_assets
+    import ergora.definitions.workflows as workflows
     from test_handoff import evidence, text_evidence
 
     repo = tmp_path / 'repo'
@@ -429,7 +439,9 @@ def retrospective_result(input_path, result_path):
 
 
 def test_retrospective_freezes_full_baseline_and_rechecks_without_live_sources(retrospective_case, tmp_path):
-    from ergora import retrospectives, skill_assets, workflow_definitions as workflows
+    import ergora.improvement.retrospectives as retrospectives
+    import ergora.definitions.skills as skill_assets
+    import ergora.definitions.workflows as workflows
 
     state, packet, source, baseline, options = retrospective_case
     before = skill_assets.versions(state, 'demo')
@@ -476,7 +488,7 @@ def test_retrospective_freezes_full_baseline_and_rechecks_without_live_sources(r
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(file['text'].encode('utf-8'))
         path.chmod(0o600 | file['executable_bits'])
-    assert skills.digest_tree(candidate_dir)[0] == checked['candidate_digest']
+    assert skill_assets.digest_tree(candidate_dir)[0] == checked['candidate_digest']
 
 
 @pytest.mark.parametrize(('change', 'reason'), [
@@ -489,7 +501,8 @@ def test_retrospective_freezes_full_baseline_and_rechecks_without_live_sources(r
     ('directory-case', 'prefixes require consistent'),
 ])
 def test_retrospective_rejects_misbound_or_unsafe_candidate_without_partial_cli_output(retrospective_case, tmp_path, capsys, change, reason):
-    from ergora import cli, retrospectives
+    import ergora.interfaces.cli as cli
+    import ergora.improvement.retrospectives as retrospectives
 
     state, packet, source, baseline, options = retrospective_case
     retrospectives.prepare(state, 'demo', packet, [{'job_id': 'job-1', 'name': 'record'}], **options)
@@ -516,7 +529,8 @@ def test_retrospective_rejects_misbound_or_unsafe_candidate_without_partial_cli_
 
 
 def test_retrospective_current_head_conflict_and_no_change_proposal(retrospective_case, tmp_path):
-    from ergora import retrospectives, skill_assets
+    import ergora.improvement.retrospectives as retrospectives
+    import ergora.definitions.skills as skill_assets
 
     state, packet, source, baseline, options = retrospective_case
     skill_assets.rollback(state, 'demo', baseline['name'], baseline['digest'], 1, 'Explicit retained baseline revision')
@@ -534,7 +548,8 @@ def test_retrospective_current_head_conflict_and_no_change_proposal(retrospectiv
 
 
 def test_retrospective_accepts_crlf_metadata_without_changing_frozen_file_bytes(retrospective_case, tmp_path):
-    from ergora import retrospectives, skill_assets
+    import ergora.improvement.retrospectives as retrospectives
+    import ergora.definitions.skills as skill_assets
 
     old_state, packet, source, old_baseline, options = retrospective_case
     for path in source.rglob('*'):
@@ -554,7 +569,8 @@ def test_retrospective_accepts_crlf_metadata_without_changing_frozen_file_bytes(
 
 
 def test_retrospective_checks_complete_candidate_with_nested_json_larger_than_input(retrospective_case, tmp_path):
-    from ergora import retrospectives, skill_assets
+    import ergora.improvement.retrospectives as retrospectives
+    import ergora.definitions.skills as skill_assets
 
     old_state, packet, source, old_baseline, options = retrospective_case
     reference = '{"key":"value"}\n' * 35000
@@ -576,7 +592,9 @@ def test_retrospective_checks_complete_candidate_with_nested_json_larger_than_in
 @pytest.mark.parametrize('crlf', [False, True])
 def test_retrospective_exports_complete_skill_for_original_import_without_adoption(retrospective_case, tmp_path, crlf):
     import hashlib
-    from ergora import retrospectives, skill_assets, workflow_definitions as workflows
+    import ergora.improvement.retrospectives as retrospectives
+    import ergora.definitions.skills as skill_assets
+    import ergora.definitions.workflows as workflows
 
     state, packet, source, baseline, options = retrospective_case
     prepared = retrospectives.prepare(state, 'demo', packet, [{'job_id': 'job-1', 'name': 'record'}], **options)
@@ -613,7 +631,9 @@ def test_retrospective_exports_complete_skill_for_original_import_without_adopti
 ])
 def test_retrospective_export_rejects_before_partial_output_or_changing_existing_files(retrospective_case, tmp_path, capsys, case, reason):
     import hashlib
-    from ergora import cli, retrospectives, workflow_definitions as workflows
+    import ergora.interfaces.cli as cli
+    import ergora.improvement.retrospectives as retrospectives
+    import ergora.definitions.workflows as workflows
 
     state, packet, source, baseline, options = retrospective_case
     prepared = retrospectives.prepare(state, 'demo', packet, [{'job_id': 'job-1', 'name': 'record'}], **options)

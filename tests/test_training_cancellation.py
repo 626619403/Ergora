@@ -7,7 +7,10 @@ from pathlib import Path
 
 import pytest
 
-from ergora import projects, reference, training
+import ergora.runtime.processes as processes
+import importlib
+import ergora.training.application as training
+import ergora.configuration.projects as projects
 from test_training_submission import move_registration, prepared, service
 from test_training import experiments, registration
 from test_training_runtime import installation
@@ -19,18 +22,18 @@ def submitted(prepared, service, monkeypatch):
     _, record = service
     projects.bind(state, 'demo', 'memory', {'tool': 'sqlite'}, state.project('demo')['revision'])
     receipt = training.start(state, 'demo', 'alpha', state.project('demo')['revision'], digest)
-    original = reference.processes.run
+    original = processes.run
     fixture = Path(__file__).parent / 'fixtures/training_cancellation_client.py'
 
     def select(scenario):
         def invoke(argv, *args, **kwargs):
-            if 'from ergora.reference_training_cancellation import main;main()' in argv:
+            if 'from ergora.training.runtime.cancellation import main;main()' in argv:
                 argv = list(argv)
                 argv[-1] = f'import runpy;runpy.run_path({str(fixture)!r},run_name="__main__")'
                 kwargs['env'] = {**kwargs['env'], 'ERGORA_TEST_TRAINING_SUBMISSION': scenario,
                                  'ERGORA_TEST_TRAINING_SERVICE': str(record)}
             return original(argv, *args, **kwargs)
-        monkeypatch.setattr(reference.processes, 'run', invoke)
+        monkeypatch.setattr(processes, 'run', invoke)
     select('accepted')
     return receipt, select, record
 
@@ -48,7 +51,7 @@ def recover(prepared, intent, **kwargs):
 
 
 def test_original_registration_cancel_keeps_exact_run_history_and_current_revision(prepared, submitted, capsys):
-    from ergora.cli import main
+    from ergora.interfaces.cli import main
 
     state, definition, runtime, _, _, _ = prepared
     receipt, select, record = submitted
@@ -146,8 +149,8 @@ def test_native_cancel_is_single_run_bound_and_locally_readable_without_sdk(prep
     assert all(p.read_bytes() == raw for p, raw in before.items())
     (runtime / 'training/specs/alpha.json').unlink()
     (Path(definition['execution']['config_directory']) / 'training-runners/trusted.json').unlink()
-    original = reference.importlib.util.find_spec
-    monkeypatch.setattr(reference.importlib.util, 'find_spec', lambda name: None if name == 'temporalio' else original(name))
+    original = importlib.util.find_spec
+    monkeypatch.setattr(importlib.util, 'find_spec', lambda name: None if name == 'temporalio' else original(name))
     assert training.cancellation(state, 'demo', 'alpha', 'cancel-one') == result
 
 
@@ -240,8 +243,8 @@ def test_cancel_confirmation_and_request_id_cannot_change_the_original_intent(pr
 def test_cli_http_share_unknown_recovery_and_query_exit_semantics(prepared, submitted):
     pytest.importorskip('fastapi')
     from fastapi.testclient import TestClient
-    from ergora.cli import main
-    from ergora.web import create_app
+    from ergora.interfaces.cli import main
+    from ergora.interfaces.web import create_app
 
     state = prepared[0]
     receipt, select, record = submitted

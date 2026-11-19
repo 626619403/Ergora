@@ -1,6 +1,7 @@
 """Saved training evidence, selected content and local tickets are distinct facts."""
 
 from contextlib import redirect_stdout
+from copy import deepcopy
 import hashlib
 import io
 import json
@@ -11,13 +12,133 @@ import sys
 
 import pytest
 
-from ergora import reference, training
+from ergora._paths import IMPORT_ROOT
+
+import ergora.native.registration as native_registration; import ergora; import importlib; import subprocess
+import ergora.training.application as training
 from test_training import experiments, registration
 from test_training_runtime import installation
 from test_training_submission import prepared, service
 from test_training_runner import configuration_source
 from test_training_search import (search_request, search_input, search_execution,
                                   _prepare_cpu_screens, _execute_search)
+import ergora.native.resources as native_resources
+
+
+@pytest.fixture
+def saved_source_subject(tmp_path, request):
+    """Declaration-only source data; no archived implementation or executable fixture."""
+    import ergora.training.execution_protocol as protocol
+
+    member, count = getattr(request, 'param', ('saved/protocol.py', 30))
+    names = (list(protocol.GATE_SOURCES) if count == 49 else
+             [member, 'data/reference-manifest.json', *(f'saved/member_{index}.py' for index in range(count - 2))])
+    raw = (f'PROTOCOL = {protocol.PROTOCOL!r}\nGATE_SOURCES = {tuple(names)!r}\n').encode()
+    sources = {name: hashlib.sha256(('saved source data: ' + name).encode()).hexdigest() for name in names}
+    sources[member] = hashlib.sha256(raw).hexdigest()
+    descriptor = json.dumps({'protocol_id': native_resources.TRAINING_PROTOCOL,
+        'reference_manifest_sha256': sources['data/reference-manifest.json']}).encode()
+    installation = tmp_path / 'absent-original-installation'
+    capability = {'protocol': protocol.PROTOCOL, 'admission_protocol': native_resources.TRAINING_PROTOCOL,
+        'descriptor_sha256': hashlib.sha256(descriptor).hexdigest(), 'installation': str(installation),
+        'native_python': str(installation / '.venv/bin/python'), 'cycle_ready_sha256': '4' * 64, 'gate_sources': sources}
+    manifest = {'schema_version': 1, 'kind': 'training-execution-source-manifest',
+        'capability_sha256': protocol.CycleAdmission._sha(capability), 'gate_sources': deepcopy(sources),
+        'protocol_source_ref': {'path': 'baseline-reference-protocol-source.py.txt',
+            'sha256': hashlib.sha256(raw).hexdigest(), 'bytes': len(raw)},
+        'native_descriptor_ref': {'path': 'baseline-reference-native-descriptor.json',
+            'sha256': hashlib.sha256(descriptor).hexdigest(), 'bytes': len(descriptor)}}
+    return capability, manifest, raw, descriptor, member
+
+
+@pytest.mark.parametrize('saved_source_subject', [
+    ('training_execution_protocol.py', 30), ('training/execution_protocol.py', 49), ('saved/protocol.py', 30)], indirect=True)
+def test_saved_source_association_uses_the_exact_subject_and_supplied_raw(saved_source_subject, monkeypatch):
+    import ergora.training.execution_protocol as protocol
+
+    capability, manifest, raw, descriptor, _ = saved_source_subject
+    before = deepcopy((capability, manifest))
+    monkeypatch.setattr(protocol, 'read_raw', lambda *args: pytest.fail('Saved association cannot search current or archived files'))
+    monkeypatch.setattr(protocol.native_resources, 'validate_installation', lambda *args, **kwargs:
+        pytest.fail('Saved association cannot require a current installation'))
+    observed = protocol.observe_source_manifest(capability, manifest, raw, descriptor)
+    assert observed == {'state': 'verified', 'capability_sha256': protocol.CycleAdmission._sha(capability),
+        'declared_gate_sources_sha256': protocol.CycleAdmission._sha(capability['gate_sources']), 'reasons': []}
+    assert (capability, manifest) == before
+    if len(capability['gate_sources']) == 30:
+        with pytest.raises(ValueError, match='Current execution source coverage'):
+            protocol._current_capability(capability)
+    else:
+        # Complete current names still cannot turn synthetic saved bytes into current effects.
+        monkeypatch.setattr(protocol, 'read_raw', lambda *args: b'actual different current bytes')
+        with pytest.raises(ValueError, match='execution gate source changed'):
+            protocol.validate_sources(capability)
+
+
+@pytest.mark.parametrize('missing', ['subject', 'manifest', 'protocol', 'descriptor', 'protocol_ref', 'descriptor_ref', 'subject_ref'])
+def test_saved_source_missing_association_is_visibly_unavailable(saved_source_subject, missing):
+    import ergora.training.execution_protocol as protocol
+
+    capability, manifest, raw, descriptor, _ = saved_source_subject
+    if missing == 'subject':
+        capability = None
+    elif missing == 'manifest':
+        manifest = None
+    elif missing == 'protocol':
+        raw = None
+    elif missing == 'descriptor':
+        descriptor = None
+    else:
+        manifest.pop({'protocol_ref': 'protocol_source_ref', 'descriptor_ref': 'native_descriptor_ref',
+                      'subject_ref': 'capability_sha256'}[missing])
+    observed = protocol.observe_source_manifest(capability, manifest, raw, descriptor)
+    assert observed['state'] == 'unavailable' and observed['reasons'] == ['source_manifest_unavailable']
+
+
+@pytest.mark.parametrize('fault', ['subject', 'missing_ref_conflict', 'map', 'protocol_bytes', 'descriptor_bytes', 'path', 'size',
+                                  'zero_matches', 'multiple_matches', 'protocol_literal', 'member_literal', 'descriptor_binding'])
+def test_saved_source_rejects_conflicts_and_refuses_ambiguous_association(saved_source_subject, fault):
+    import ergora.training.execution_protocol as protocol
+
+    capability, manifest, raw, descriptor, member = saved_source_subject
+    if fault in ('subject', 'missing_ref_conflict'):
+        manifest['capability_sha256'] = '0' * 64
+        if fault == 'missing_ref_conflict':
+            manifest.pop('protocol_source_ref')
+    elif fault == 'map':
+        manifest['gate_sources'].pop(member)
+    elif fault == 'protocol_bytes':
+        raw += b'\n'
+    elif fault == 'descriptor_bytes':
+        descriptor += b'\n'
+    elif fault == 'path':
+        manifest['protocol_source_ref']['path'] = 'other-source.py.txt'
+    elif fault == 'size':
+        manifest['protocol_source_ref']['bytes'] += 1
+    else:
+        if fault == 'zero_matches':
+            capability['gate_sources'][member] = '0' * 64
+        elif fault == 'multiple_matches':
+            capability['gate_sources']['saved/member_0.py'] = capability['gate_sources'][member]
+        elif fault in ('protocol_literal', 'member_literal'):
+            raw = raw.replace(protocol.PROTOCOL.encode(), b'another-protocol') if fault == 'protocol_literal' else raw.replace(
+                b'saved/member_0.py', b'saved/different.py')
+            capability['gate_sources'][member] = hashlib.sha256(raw).hexdigest()
+            manifest['protocol_source_ref'].update(sha256=hashlib.sha256(raw).hexdigest(), bytes=len(raw))
+        else:
+            value = json.loads(descriptor)
+            value['reference_manifest_sha256'] = '0' * 64
+            descriptor = json.dumps(value).encode()
+            capability['descriptor_sha256'] = hashlib.sha256(descriptor).hexdigest()
+            manifest['native_descriptor_ref'].update(sha256=hashlib.sha256(descriptor).hexdigest(), bytes=len(descriptor))
+        manifest['gate_sources'] = deepcopy(capability['gate_sources'])
+        manifest['capability_sha256'] = protocol.CycleAdmission._sha(capability)
+    if fault in ('zero_matches', 'multiple_matches'):
+        observed = protocol.observe_source_manifest(capability, manifest, raw, descriptor)
+        assert observed['state'] == 'unavailable' and observed['reasons'] == ['reader_unsupported']
+    else:
+        with pytest.raises(ValueError):
+            protocol.observe_source_manifest(capability, manifest, raw, descriptor)
 
 
 @pytest.mark.parametrize('installation', ['managed'], indirect=True)
@@ -76,8 +197,8 @@ def test_original_archive_and_unicode_window_preserve_records_without_sdk_or_ser
     state, definition, runtime, prefix, write, folder, report = archive
     before = {path: path.read_bytes() for root in (runtime, Path(definition['execution']['config_directory']))
               for path in root.rglob('*') if path.is_file()}
-    original = reference.importlib.util.find_spec
-    monkeypatch.setattr(reference.importlib.util, 'find_spec', lambda name: None if name == 'temporalio' else original(name))
+    original = importlib.util.find_spec
+    monkeypatch.setattr(importlib.util, 'find_spec', lambda name: None if name == 'temporalio' else original(name))
     result = training.evidence(state, 'demo', 'alpha')
     assert result['archive']['evidence_sha256'] == report['evidence_sha256']
     assert result['archive']['evidence'] == json.loads((folder / 'evidence.json').read_bytes())
@@ -172,18 +293,18 @@ def test_public_reference_inventory_runs_without_site_packages_or_selected_nativ
     original_descriptor = descriptor.read_bytes()
     moved = native.with_name(native.name + '-temporarily-unavailable')
     before = {path: path.read_bytes() for path in runtime.rglob('*') if path.is_file()}
-    original_popen = reference.subprocess.Popen
+    original_popen = subprocess.Popen
     calls_path = tmp_path / 'actual-reader-operations.jsonl'
     guard = '''import sys
 class DenyApplicationImports:
     def find_spec(self, fullname, *args):
-        if fullname in ('ergora.state', 'jsonschema', 'temporalio') or fullname.startswith(('jsonschema.', 'temporalio.')):
+        if fullname in ('ergora.storage.state', 'jsonschema', 'temporalio') or fullname.startswith(('jsonschema.', 'temporalio.')):
             raise AssertionError('Forbidden reader import: ' + fullname)
 sys.meta_path.insert(0, DenyApplicationImports())
 '''
     guard += f'''import json
 from pathlib import Path
-from ergora import reference_training_evidence as evidence
+import ergora.training.runtime.evidence as evidence
 calls_path=Path({str(calls_path)!r})
 def observe(action):
     def call(payload):
@@ -195,11 +316,11 @@ evidence.inspect=observe(evidence.inspect)
 evidence.baseline_reference=observe(evidence.baseline_reference)
 '''
     def guarded(argv, *args, **kwargs):
-        if argv[-1] == 'from ergora.reference_training_evidence import main;main()':
+        if argv[-1] == 'from ergora.training.runtime.evidence import main;main()':
             assert '-S' in argv and '-P' in argv
             argv = [*argv[:-1], guard + argv[-1]]
         return original_popen(argv, *args, **kwargs)
-    monkeypatch.setattr(reference.subprocess, 'Popen', guarded)
+    monkeypatch.setattr(subprocess, 'Popen', guarded)
     try:
         if selected_installation == 'missing':
             native.rename(moved)
@@ -259,7 +380,7 @@ def test_reference_inventory_checks_every_indexed_artifact_without_blocking_on_f
 
 
 def test_inventory_keeps_the_first_file_identity_across_repeated_reads(tmp_path):
-    from ergora.reference_training_evidence import _Inventory
+    from ergora.training.runtime.evidence import _Inventory
 
     path = tmp_path / 'original.json'
     raw = b'{"saved":"original"}\n'
@@ -291,7 +412,8 @@ def test_inventory_keeps_the_first_file_identity_across_repeated_reads(tmp_path)
 
 @pytest.mark.parametrize('mutation', ('remove', 'same-raw-inode', 'dangling-link', 'stable'))
 def test_inventory_confirms_initially_present_fence_after_later_files(tmp_path, monkeypatch, mutation):
-    from ergora import reference_training_evidence as evidence, training_execution_protocol as protocol
+    import ergora.training.runtime.evidence as evidence
+    import ergora.training.execution_protocol as protocol
 
     if mutation == 'dangling-link':
         probe = tmp_path / 'symlink-permission-probe'
@@ -361,10 +483,10 @@ def test_inventory_confirms_initially_present_fence_after_later_files(tmp_path, 
 def test_complete_reference_rechecks_same_inode_after_all_artifacts_are_read(archive, monkeypatch, tmp_path):
     state, _, _, _, _, folder, report = archive
     marker = tmp_path / 'actual-archive-inode-exchange.json'
-    original_popen = reference.subprocess.Popen
+    original_popen = subprocess.Popen
     program = f'''import json
 from pathlib import Path
-from ergora import reference_training_evidence as evidence
+import ergora.training.runtime.evidence as evidence
 target=Path({str(folder / 'trace.bin')!r})
 marker=Path({str(marker)!r})
 original=evidence._Inventory.confirm
@@ -379,10 +501,10 @@ def exchange_after_inventory(inventory):
 evidence._Inventory.confirm=exchange_after_inventory
 '''
     def invoke(argv, *args, **kwargs):
-        if argv[-1] == 'from ergora.reference_training_evidence import main;main()':
+        if argv[-1] == 'from ergora.training.runtime.evidence import main;main()':
             argv = [*argv[:-1], program + argv[-1]]
         return original_popen(argv, *args, **kwargs)
-    monkeypatch.setattr(reference.subprocess, 'Popen', invoke)
+    monkeypatch.setattr(subprocess, 'Popen', invoke)
     with pytest.raises(ValueError):
         training.baseline_reference(state, 'demo', 'alpha', evidence_sha256=report['evidence_sha256'])
     exchanged = json.loads(marker.read_text())
@@ -404,14 +526,14 @@ def test_reference_rechecks_original_and_registration_guards_and_fence_absence(a
     if mutation == 'registered-manifest-lf':
         target = prefix / 'experiments/alpha/manifest.json'
     elif mutation.startswith('registration-'):
-        target = Path(definition['execution']['config_directory']) / reference.registration_paths('demo')[0]
+        target = Path(definition['execution']['config_directory']) / native_registration.registration_paths('demo')[0]
     else:
         target = runtime / 'training/fences/alpha.json'
     original_raw = target.read_bytes() if target.exists() else None
     marker = tmp_path / 'actual-reference-guard-change.json'
     program = f'''import hashlib,json
 from pathlib import Path
-from ergora import reference_training_evidence as evidence
+import ergora.training.runtime.evidence as evidence
 target=Path({str(target)!r})
 marker=Path({str(marker)!r})
 mutation={mutation!r}
@@ -441,13 +563,13 @@ def change_after_first_reads(inventory):
     return original(inventory)
 evidence._Inventory.confirm=change_after_first_reads
 '''
-    original_popen = reference.subprocess.Popen
+    original_popen = subprocess.Popen
     def inject(argv, *args, **kwargs):
-        if argv[-1] == 'from ergora.reference_training_evidence import main;main()':
+        if argv[-1] == 'from ergora.training.runtime.evidence import main;main()':
             assert '-S' in argv and '-P' in argv
             argv = [*argv[:-1], program + argv[-1]]
         return original_popen(argv, *args, **kwargs)
-    monkeypatch.setattr(reference.subprocess, 'Popen', inject)
+    monkeypatch.setattr(subprocess, 'Popen', inject)
     try:
         with pytest.raises(ValueError, match='archive_changed'):
             training.baseline_reference(state, 'demo', 'alpha', evidence_sha256=report['evidence_sha256'])
@@ -473,7 +595,7 @@ def test_reference_is_independent_of_mutable_heads_and_registration_formatting(a
     saved = training.baseline_reference(state, 'demo', 'alpha', evidence_sha256=report['evidence_sha256'])
     head = prefix / 'baseline.json'
     config = Path(definition['execution']['config_directory'])
-    guard = config / reference.registration_paths('demo')[0]
+    guard = config / native_registration.registration_paths('demo')[0]
     head_raw, guard_raw = head.read_bytes(), guard.read_bytes()
     try:
         write(head, {**json.loads(head_raw), 'baseline_id': 'different-current-head'})
@@ -484,7 +606,7 @@ def test_reference_is_independent_of_mutable_heads_and_registration_formatting(a
                    runtime / 'training/negative-results/alpha.json']
         marker = tmp_path / 'actual-mutable-head-read-guard.txt'
         program = f'''from pathlib import Path
-from ergora import training_materials as materials,training_execution_protocol as protocol
+import ergora.training.execution_protocol as protocol; from ergora.training import materials
 ignored={{Path(value) for value in {[str(path) for path in ignored]!r}}}
 marker=Path({str(marker)!r})
 original_raw,original_fd=materials.read_raw,protocol._fd
@@ -499,12 +621,12 @@ def checked_fd(path,*args,**kwargs):
 materials.read_raw=checked_raw
 protocol._fd=checked_fd
 '''
-        original_popen = reference.subprocess.Popen
+        original_popen = subprocess.Popen
         def inject(argv, *args, **kwargs):
-            if argv[-1] == 'from ergora.reference_training_evidence import main;main()':
+            if argv[-1] == 'from ergora.training.runtime.evidence import main;main()':
                 argv = [*argv[:-1], program + argv[-1]]
             return original_popen(argv, *args, **kwargs)
-        monkeypatch.setattr(reference.subprocess, 'Popen', inject)
+        monkeypatch.setattr(subprocess, 'Popen', inject)
         assert training.baseline_reference(state, 'demo', 'alpha', evidence_sha256=report['evidence_sha256']) == saved
         assert marker.is_file(), 'The mutable-head read guard must run inside the actual reader'
     finally:
@@ -527,7 +649,7 @@ protocol._fd=checked_fd
 ])
 def test_resource_metric_metadata_types_are_distinct_from_measurements(updates, expected_state):
     """Resource metadata only: no process memory observation or accepted full is synthesized."""
-    from ergora.reference_training_evidence import _resource_coverage
+    from ergora.training.runtime.evidence import _resource_coverage
 
     metric = {'metric': 'peak_memory', 'unit': 'bytes', 'aggregation': 'peak',
               'scope': 'whole_runner_process', 'observed': 7, 'limit': 8, **updates}
@@ -552,14 +674,14 @@ def test_no_archive_and_cli_http_share_the_observation(experiments):
     state = experiments[0]
     assert training.evidence(state, 'demo', 'alpha')['archive_status'] == 'no_accepted_archive'
     assert training.evidence(state, 'demo', 'beta')['recorded_gate_report'] is None
-    from ergora.cli import main
+    from ergora.interfaces.cli import main
     output = io.StringIO()
     with redirect_stdout(output):
         assert main(['--home', str(state.root), 'training', 'evidence', 'demo', 'alpha']) == 0
     assert json.loads(output.getvalue()) == training.evidence(state, 'demo', 'alpha')
     pytest.importorskip('fastapi')
     from fastapi.testclient import TestClient
-    from ergora.web import create_app
+    from ergora.interfaces.web import create_app
     headers = {'Origin': 'http://127.0.0.1:8977', 'X-Ergora-Request': '1'}
     with TestClient(create_app(state.root), base_url=headers['Origin'], headers=headers) as client:
         response = client.get('/api/projects/demo/training/alpha/evidence')
@@ -569,8 +691,8 @@ def test_no_archive_and_cli_http_share_the_observation(experiments):
 
 def test_round_index_retains_negative_unknown_and_offline_cli_read(experiments, tmp_path, monkeypatch):
     pytest.importorskip('temporalio')
-    from ergora import training_rounds
-    from ergora.cli import main
+    import ergora.training.rounds as training_rounds
+    from ergora.interfaces.cli import main
 
     state, definition, runtime, _, _ = experiments
     before = {p: p.read_bytes() for root in (runtime, Path(definition['execution']['config_directory']))
@@ -608,8 +730,8 @@ def test_round_index_retains_negative_unknown_and_offline_cli_read(experiments, 
 
     monkeypatch.setattr(training, 'inspect', no_native_observation)
     monkeypatch.setattr(training, 'submission', no_native_observation)
-    original_find = reference.importlib.util.find_spec
-    monkeypatch.setattr(reference.importlib.util, 'find_spec', lambda name: None if name == 'temporalio' else original_find(name))
+    original_find = importlib.util.find_spec
+    monkeypatch.setattr(importlib.util, 'find_spec', lambda name: None if name == 'temporalio' else original_find(name))
     output = io.StringIO()
     unused_home = tmp_path / 'unused-control-home'
     with redirect_stdout(output):
@@ -620,7 +742,7 @@ def test_round_index_retains_negative_unknown_and_offline_cli_read(experiments, 
 
 def test_round_extension_preserves_accepted_prefix_and_failed_result_after_baseline_drift(archive, tmp_path):
     pytest.importorskip('temporalio')
-    from ergora import training_rounds
+    import ergora.training.rounds as training_rounds
 
     state, _, runtime, prefix, write, _, _ = archive
     request = {'schema_version': 1, 'rounds': [{'experiment_id': 'alpha', 'change': 'Synthetic accepted evidence',
@@ -659,7 +781,7 @@ def test_round_extension_preserves_accepted_prefix_and_failed_result_after_basel
 
 
 def test_round_index_keeps_lost_start_acknowledgement_without_query_or_approval(prepared, service, tmp_path, monkeypatch):
-    from ergora import training_rounds
+    import ergora.training.rounds as training_rounds
 
     state, _, runtime, _, _, digest = prepared
     select, record = service
@@ -684,7 +806,7 @@ def test_round_index_keeps_lost_start_acknowledgement_without_query_or_approval(
 
 
 def test_round_content_validates_original_bindings_without_site_packages(experiments, tmp_path):
-    from ergora import training_rounds
+    import ergora.training.rounds as training_rounds
 
     created = training_rounds.create(experiments[0], 'demo', {'schema_version': 1, 'rounds': [{
         'experiment_id': 'alpha', 'change': '保留原始观察 🌱',
@@ -692,7 +814,7 @@ def test_round_content_validates_original_bindings_without_site_packages(experim
     isolated = subprocess.run([sys.executable, '-I', '-S', '-B', '-c', '''import hashlib,json,sys
 from pathlib import Path
 sys.path.insert(0,sys.argv[1])
-from ergora.training_execution_protocol import encode_round_content,round_content_sha,validate_round_content
+from ergora.training.execution_protocol import encode_round_content,round_content_sha,validate_round_content
 raw=Path(sys.argv[2]).read_bytes()
 report=json.loads(raw)
 validate_round_content(report)
@@ -708,7 +830,7 @@ except ValueError as error:
     assert 'different projects or revisions' in str(error)
 else:
     raise AssertionError('A self-consistent content hash cannot replace original observation bindings')
-assert not any(name in sys.modules for name in ('yaml','jsonschema','temporalio','dev_platform','ergora.state','ergora.training'))
-''', str(Path(reference.__file__).parent.parent), str(tmp_path / 'index/rounds.json'), created['sha256']],
+assert not any(name in sys.modules for name in ('yaml','jsonschema','temporalio','dev_platform','ergora.storage.state','ergora.training.application'))
+''', str(IMPORT_ROOT), str(tmp_path / 'index/rounds.json'), created['sha256']],
         capture_output=True, text=True, encoding='utf-8', timeout=10)
     assert isolated.returncode == 0, isolated.stderr

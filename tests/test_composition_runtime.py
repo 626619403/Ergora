@@ -12,8 +12,10 @@ import pytest
 
 pytest.importorskip('temporalio')
 
-from ergora import reference, task_envelopes, tasks
-from ergora.reference_task_runtime import VerifiedSpecClient
+import ergora.native.resources as native_resources
+import ergora.development.application as tasks
+from ergora.development import envelopes as task_envelopes
+from ergora.development.runtime.status import VerifiedSpecClient
 from test_composition_tasks import composed_creation
 from test_task_creation import creation_project
 from test_registrations import installation, registration
@@ -21,14 +23,14 @@ from test_registrations import installation, registration
 
 @pytest.fixture
 def original_input(composed_creation, monkeypatch):
-    monkeypatch.syspath_prepend(str(reference.ROOT / 'platform/upstream/platform'))
+    monkeypatch.syspath_prepend(str(native_resources.ROOT / 'platform/upstream/platform'))
     state, _, task = composed_creation
     return tasks.preview(state, 'demo', task, 1)['files']['task.spec.json']
 
 
 @pytest.mark.parametrize('version', [1, 2])
 def test_each_input_version_starts_its_registered_entrypoint_with_the_complete_original_payload(original_input, version):
-    from ergora.reference_inputs import execution_input
+    from ergora.development.inputs import execution_input
     from temporalio.workflow import _Definition
 
     document = original_input if version == 2 else original_input['legacy_spec']
@@ -71,7 +73,7 @@ def test_original_envelope_is_verified_before_the_native_transport_sees_its_proj
 
 
 def test_each_inherited_stage_context_carries_the_same_complete_admission_and_candidate(original_input):
-    from ergora.reference_workflows import CompositionDevelopmentWorkflow
+    from ergora.development.runtime.workflows import CompositionDevelopmentWorkflow
 
     run = CompositionDevelopmentWorkflow()
     assert run.status()['admission_sha256'] is None
@@ -85,7 +87,7 @@ def test_each_inherited_stage_context_carries_the_same_complete_admission_and_ca
 
 
 def test_complete_admission_counts_toward_the_existing_stage_payload_limit(original_input):
-    from ergora.reference_workflows import CompositionDevelopmentWorkflow
+    from ergora.development.runtime.workflows import CompositionDevelopmentWorkflow
     from dev_platform.workflow import DevelopmentWorkflow, StopWork
 
     legacy, composed = DevelopmentWorkflow(), CompositionDevelopmentWorkflow()
@@ -98,7 +100,7 @@ def test_complete_admission_counts_toward_the_existing_stage_payload_limit(origi
 
 
 def test_composition_entrypoint_rejects_legacy_input_before_any_activity(original_input):
-    from ergora.reference_workflows import CompositionDevelopmentWorkflow
+    from ergora.development.runtime.workflows import CompositionDevelopmentWorkflow
     from temporalio.exceptions import ApplicationError
 
     run = CompositionDevelopmentWorkflow()
@@ -110,7 +112,7 @@ def test_composition_entrypoint_rejects_legacy_input_before_any_activity(origina
 
 @pytest.mark.parametrize('malformation', ['numeric-path', 'duplicate-path', 'deep-graph', 'null-document'])
 def test_malformed_original_envelope_is_a_permanent_contract_failure_before_activities(original_input, malformation):
-    from ergora.reference_workflows import CompositionDevelopmentWorkflow
+    from ergora.development.runtime.workflows import CompositionDevelopmentWorkflow
     from temporalio.exceptions import ApplicationError
 
     document = deepcopy(original_input)

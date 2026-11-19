@@ -16,7 +16,11 @@ import pytest
 
 pytest.importorskip('temporalio')
 
-from ergora import agent_definitions, reference, task_envelopes, tasks, workflow_definitions as workflows
+import ergora.native.resources as native_resources
+import ergora.definitions.agents as agent_definitions
+import ergora.development.application as tasks
+import ergora.definitions.workflows as workflows
+from ergora.development import envelopes as task_envelopes
 from test_composition_tasks import composed_creation
 from test_task_creation import creation_project
 from test_registrations import installation, registration
@@ -36,7 +40,7 @@ def requirements_creation(composed_creation, tmp_path):
 
 @pytest.fixture
 def requirements_input(requirements_creation, monkeypatch):
-    monkeypatch.syspath_prepend(str(reference.ROOT / 'platform/upstream/platform'))
+    monkeypatch.syspath_prepend(str(native_resources.ROOT / 'platform/upstream/platform'))
     state, _, definition = requirements_creation
     return tasks.preview(state, 'demo', definition, 1)['files']['task.spec.json']
 
@@ -65,8 +69,8 @@ def opinion_receipt(job, artifacts, decision='request-changes', *, session=None)
 
 
 def test_v3_freezes_requirements_and_uses_a_separate_registered_workflow(requirements_input, requirements_creation):
-    from ergora.reference_inputs import execution_input
-    from ergora.reference_task_runtime import VerifiedSpecClient
+    from ergora.development.inputs import execution_input
+    from ergora.development.runtime.status import VerifiedSpecClient
     from temporalio.workflow import _Definition
 
     state, registration, definition = requirements_creation
@@ -97,7 +101,7 @@ def test_v3_freezes_requirements_and_uses_a_separate_registered_workflow(require
 @pytest.mark.skipif(sys.platform != 'linux', reason='Native FileAdapter file semantics require Linux/WSL2')
 def test_trusted_poll_distinguishes_opinions_from_process_and_contract_failures(requirements_input, tmp_path, monkeypatch, case):
     from dev_platform.adapter import canonical, publish
-    from ergora.reference_inputs import execution_input
+    from ergora.development.inputs import execution_input
     from temporalio.exceptions import ApplicationError
 
     selected = execution_input(requirements_input)
@@ -179,7 +183,7 @@ def test_trusted_poll_distinguishes_opinions_from_process_and_contract_failures(
 def test_v3_workflow_preserves_raw_receipts_and_only_relaxes_valid_advisory_opinions(requirements_input, tmp_path, monkeypatch, case):
     from dev_platform.adapter import publish
     from dev_platform.workflow import StopWork
-    from ergora.reference_inputs import execution_input
+    from ergora.development.inputs import execution_input
     from temporalio import workflow
 
     monkeypatch.setattr(workflow, 'now', lambda: datetime.now(timezone.utc))
@@ -239,7 +243,7 @@ def test_v3_workflow_preserves_raw_receipts_and_only_relaxes_valid_advisory_opin
 
 @pytest.mark.parametrize('change', ['requirement', 'graph-version', 'worker-version'])
 def test_v3_cannot_change_frozen_requirements_or_be_adopted_by_the_old_worker(requirements_input, change):
-    from ergora.reference_workflows import CompositionDevelopmentWorkflow
+    from ergora.development.runtime.workflows import CompositionDevelopmentWorkflow
     from temporalio.exceptions import ApplicationError
 
     document = deepcopy(requirements_input)

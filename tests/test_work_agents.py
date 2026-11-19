@@ -9,8 +9,13 @@ import sys
 
 import pytest
 
-from ergora import agent_definitions, agent_runs, agents, task_envelopes, tasks, workflow_definitions as workflows
-from ergora.review_dags import WorkDelivery
+import ergora.definitions.agents as agent_definitions
+import ergora.agents.runs as agent_runs
+import ergora.agents.invocation as agents
+import ergora.development.application as tasks
+import ergora.definitions.workflows as workflows
+from ergora.development import envelopes as task_envelopes
+from ergora.development.dags import WorkDelivery
 from test_registrations import installation, registration
 from test_task_creation import creation_project
 from test_workflow_definitions import EXAMPLES
@@ -18,7 +23,7 @@ from test_workflow_definitions import EXAMPLES
 
 @pytest.fixture
 def work_graph(tmp_path):
-    from ergora.state import State
+    from ergora.storage.state import State
 
     state = State(tmp_path / 'definitions')
     for path in (EXAMPLES / 'agents/kernel-implementer', EXAMPLES / 'agents/validation-implementer',
@@ -47,7 +52,7 @@ def test_one_graph_projects_work_and_review_without_reinterpreting_root_task(wor
     ports = delivery.review.input_ports('root/review/structure/review')
     assert ports['sources'] == ['root/work/validation']
     assert ports['values']['root/work/validation#result']['kind'] == 'work-result'
-    from ergora.review_dags import ReviewDAG
+    from ergora.development.dags import ReviewDAG
     with pytest.raises(ValueError, match='external'):
         ReviewDAG(graph, 'root/review')
 
@@ -93,9 +98,9 @@ def work_creation(creation_project, work_graph, tmp_path):
 @pytest.mark.parametrize('protocol,version', [('work-units-v1', 5), ('work-units-v2', 6)])
 def test_work_creation_freezes_actual_writers_and_uses_its_own_input_route(work_creation, monkeypatch, protocol, version):
     pytest.importorskip('temporalio')
-    from ergora import reference
-    monkeypatch.syspath_prepend(str(reference.ROOT / 'platform/upstream/platform'))
-    from ergora.reference_inputs import execution_input
+    import ergora.native.resources as native_resources
+    monkeypatch.syspath_prepend(str(native_resources.ROOT / 'platform/upstream/platform'))
+    from ergora.development.inputs import execution_input
     from temporalio.workflow import _Definition
 
     state, registered, definition = work_creation
@@ -167,9 +172,9 @@ def test_formal_work_reuses_original_checks_commits_and_sources(tmp_path, case):
 
 def test_original_units_admit_an_independent_branch_while_a_nested_scope_is_full(work_creation, work_graph, tmp_path, monkeypatch):
     pytest.importorskip('temporalio')
-    from ergora import reference
-    monkeypatch.syspath_prepend(str(reference.ROOT / 'platform/upstream/platform'))
-    from ergora.reference_inputs import execution_input
+    import ergora.native.resources as native_resources
+    monkeypatch.syspath_prepend(str(native_resources.ROOT / 'platform/upstream/platform'))
+    from ergora.development.inputs import execution_input
     from test_workflow_definitions import child, ref, write_bundle
 
     state, _, definition = work_creation
@@ -235,10 +240,10 @@ def test_original_units_admit_an_independent_branch_while_a_nested_scope_is_full
 
 def test_cancellation_arriving_with_work_result_does_not_dispatch_a_successor(work_creation, monkeypatch):
     pytest.importorskip('temporalio')
-    from ergora import reference
-    monkeypatch.syspath_prepend(str(reference.ROOT / 'platform/upstream/platform'))
+    import ergora.native.resources as native_resources
+    monkeypatch.syspath_prepend(str(native_resources.ROOT / 'platform/upstream/platform'))
     from dev_platform.workflow import StopWork
-    from ergora.reference_inputs import execution_input
+    from ergora.development.inputs import execution_input
 
     state, _, definition = work_creation
     document = tasks.preview(state, 'demo', definition, 1)['files']['task.spec.json']

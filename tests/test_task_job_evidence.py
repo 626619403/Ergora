@@ -9,7 +9,11 @@ import sys
 
 import pytest
 
-from ergora import reference, reference_task_approval, reference_task_evidence, tasks
+import ergora.development.native as development_native
+import ergora.native.resources as native_resources
+import ergora.development.runtime.approval as reference_task_approval
+import ergora.development.runtime.evidence as reference_task_evidence
+import ergora.development.application as tasks
 from test_task_plan import pending_plan, snapshot
 
 
@@ -194,15 +198,15 @@ def test_full_sized_artifact_returns_only_the_requested_window(original_job):
 def test_cli_and_http_forward_the_same_read_only_window(tmp_path, monkeypatch, capsys):
     pytest.importorskip('fastapi')
     from fastapi.testclient import TestClient
-    from ergora import cli
-    from ergora.web import create_app
+    import ergora.interfaces.cli as cli
+    from ergora.interfaces.web import create_app
 
     seen = []
     monkeypatch.setattr(tasks, '_project', lambda state, project: {'id': project})
     def native(project, home, payload, *, timeout):
         seen.append((project, home, payload, timeout))
         return {'read_only': True, **payload}
-    monkeypatch.setattr(reference, 'task_job', native)
+    monkeypatch.setattr(development_native, 'task_job', native)
     args = ['--home', str(tmp_path), 'task', 'job', 'demo', 'task-one', '--run-id', 'original-run',
             '--event-id', '5', '--artifact', 'model-log', '--receipt-sha256', 'a' * 64,
             '--offset', '7', '--limit', '3', '--timeout', '9']
@@ -222,7 +226,7 @@ def test_cli_and_http_forward_the_same_read_only_window(tmp_path, monkeypatch, c
     ('timeout', 'Job evidence query timed out'), ('rpc', 'Job evidence query RPC failed: UNAVAILABLE'),
 ])
 def test_native_read_failures_do_not_offer_write_recovery(original_job, monkeypatch, failure, message):
-    monkeypatch.syspath_prepend(str(reference.ROOT / 'platform/local'))
+    monkeypatch.syspath_prepend(str(native_resources.ROOT / 'platform/local'))
     from agent_platform import core
     from temporalio.service import RPCError, RPCStatusCode
 

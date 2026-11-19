@@ -20,7 +20,7 @@ from temporalio.converter import DataConverter
 from temporalio.exceptions import WorkflowAlreadyStartedError
 from temporalio.service import RPCError, RPCStatusCode
 
-from ergora.training_execution_protocol import CYCLE_MEMO_KEY, CycleAdmission, cycle_workflow_type, cycle_activity_names
+from ergora.training.execution_protocol import CYCLE_MEMO_KEY, CycleAdmission, cycle_workflow_type, cycle_activity_names
 
 
 class Service:
@@ -190,7 +190,7 @@ class RoundService(DispatchService):
             self.native_receipt = json.loads((self.runtime / ('ergora/training-submissions/' + self.ident + '.result.json')).read_bytes())
 
     async def describe_workflow_execution(self, request, **kwargs):
-        from ergora.reference_training_runtime import MEMO_KEY
+        from ergora.training.runtime.status import MEMO_KEY
         error_bytes = int(os.environ.get('ERGORA_TEST_ROUND_ERROR_BYTES', '0'))
         if error_bytes:
             marker = '原 RPC 容量 🧪'

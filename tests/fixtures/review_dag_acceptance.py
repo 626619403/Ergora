@@ -5,14 +5,16 @@ from datetime import datetime, timezone
 import hashlib
 import json
 
-from ergora import agent_runs, task_envelopes, workflow_definitions
+import ergora.agents.runs as agent_runs
+import ergora.definitions.workflows as workflow_definitions
+from ergora.development import envelopes as task_envelopes
 
 
 async def exercise(root, mode, app, activities, installation, state, runtime, requests, dependencies, candidate):
     from agent_platform import executor as original
     from agent_platform.core import read, write
     from dev_platform.workflow import StopWork
-    from ergora.reference_executor import Executor, process
+    from ergora.development.runtime.executor import Executor, process
     from temporalio import workflow
 
     workflow.now = lambda: datetime.now(timezone.utc)

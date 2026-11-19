@@ -10,9 +10,15 @@ import sys
 
 import pytest
 
-from ergora import agent_backends, agent_definitions, agent_runs, agents, processes, projects, workflow_definitions as workflows
-from ergora.cli import main
-from ergora.state import State
+import ergora.agents.backends as agent_backends
+import ergora.definitions.agents as agent_definitions
+import ergora.agents.runs as agent_runs
+import ergora.agents.invocation as agents
+import ergora.configuration.projects as projects
+import ergora.definitions.workflows as workflows
+from ergora.runtime import processes
+from ergora.interfaces.cli import main
+from ergora.storage.state import State
 
 
 EXAMPLES = Path(__file__).resolve().parents[1] / "examples"

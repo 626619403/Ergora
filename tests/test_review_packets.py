@@ -10,8 +10,16 @@ import sys
 
 import pytest
 
-from ergora import agent_backends, agent_runs, agents, cli, processes, projects, review_packets, review_requests, workflow_definitions as workflows
-from ergora.state import State
+import ergora.agents.backends as agent_backends
+import ergora.agents.runs as agent_runs
+import ergora.agents.invocation as agents
+import ergora.interfaces.cli as cli
+import ergora.configuration.projects as projects
+import ergora.development.review.packets as review_packets
+import ergora.development.review.requests as review_requests
+import ergora.definitions.workflows as workflows
+from ergora.runtime import processes
+from ergora.storage.state import State
 from test_composition_invocations import prepared as restricted_input
 
 

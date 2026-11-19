@@ -11,7 +11,8 @@ import zipfile
 
 import pytest
 
-from ergora import cli, handoff
+import ergora.interfaces.cli as cli
+import ergora.development.handoff as handoff
 from test_registrations import installation, registration
 
 
@@ -65,7 +66,9 @@ def collect(evidence, tmp_path):
 @pytest.mark.skipif(sys.platform != 'linux', reason='Budgeted native preparation requires Linux/WSL2')
 def test_complete_current_admission_roundtrips_in_portable_evidence(evidence, registration, tmp_path):
     """A real frozen admission survives the existing portable packet format."""
-    from ergora import registrations, task_envelopes, tasks
+    import ergora.configuration.registrations as registrations
+    import ergora.development.application as tasks
+    from ergora.development import envelopes as task_envelopes
     from test_presets import _publish_selected_moe
 
     state, project = registration
@@ -453,7 +456,7 @@ class NoControlDependencies(importlib.abc.MetaPathFinder):
         if fullname.split('.')[0] in ('jsonschema', 'rpds'):
             raise ImportError('Control dependencies are unavailable in this native interpreter')
 sys.meta_path.insert(0, NoControlDependencies())
-from ergora import handoff
+import ergora.development.handoff as handoff
 data = json.load(sys.stdin)
 result = handoff.create(data['index'], lambda artifact: bytes.fromhex(data['bytes']), Path(sys.argv[1]))
 assert 'jsonschema' not in sys.modules and 'rpds' not in sys.modules

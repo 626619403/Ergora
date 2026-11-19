@@ -1,36 +1,38 @@
-# ADR 0002：静态依赖保护与 R8 出口
+# ADR 0002: Static dependency protection and the R8 exit
 
-日期：2026-11-02。本ADR记录静态边界决定；当前owner与检查见[架构](../current.md#模块与依赖)和[组件协议](../component-change-protocols.md)。
+English · [Documentation](../../README.md)
 
-## 问题与选择
+Date: 2026-11-02. This ADR records the static boundary decision; see the [architecture](../module-map.md#modules-and-dependencies) and [component protocols](../component-change-protocols.md) for current owners and checks.
 
-R1–R7 已集中组件/schema/DDL、拆开资产/采用与调用用例、划定 reference 边界并拆分前端。需要在后续功能加入时及时发现反向导入和新环，不通过每个文件的全部 import 白名单锁死结构。
+## Problem and choice
 
-|方案|能力与代价|结论|
+R1–R7 centralized components/schema/DDL, separated assets/adoption from invocation use cases, established the reference boundary, and split the frontend. Subsequent feature additions need timely detection of reverse imports and new cycles, without freezing the structure through a complete import allowlist for every file.
+
+|Alternative|Capabilities and costs|Conclusion|
 |---|---|---|
-|[Import Linter](https://import-linter.readthedocs.io/)|成熟声明式 layers/forbidden/independence 合同，Grimp 构图；本次 PyPI 2.15（Python >=3.10）需 Click、Grimp、Rich、typing-extensions，新增开发依赖/配置及命令|后续出现多包/外部SDK层级合同、复杂间接依赖规则时重评；本轮不安装|
-|既有 pytest + `ast` / `graphlib`|对当前27个顶层文件及函数内 import 做少量规则，无新依赖/命令；只覆盖语法显式导入|采用，放 `tests/test_architecture_boundaries.py`，随现有 Linux/Windows 回归运行|
-|全库 Ruff/Pyright 严格化或新通用插件/图分析器|解决不同问题，会扩大到历史风格、类型及第三方代码，不能替代实际运行验收|不纳入本轮，不格式化冻结/第三方文件|
+|[Import Linter](https://import-linter.readthedocs.io/)|Mature declarative layers/forbidden/independence contracts, with Grimp graph construction; the evaluated PyPI 2.15 (Python >=3.10) requires Click, Grimp, Rich, and typing-extensions, adding development dependencies/configuration and a command|Reevaluate when multiple packages/external SDK layer contracts or complex indirect dependency rules arise; do not install in this round|
+|Existing pytest + `ast` / `graphlib`|A few rules for the current 27 top-level files and function-local imports, with no new dependencies/commands; covers only syntactically explicit imports|Adopt in `tests/test_architecture_boundaries.py`, running with the existing Linux/Windows regressions|
+|Repository-wide strict Ruff/Pyright or a new general plugin/graph analyzer|Addresses different problems and expands into historical style, types, and third-party code; cannot replace actual runtime acceptance|Exclude from this round; do not format frozen/third-party files|
 
-标准库检查只有测试消费者，不引入生产“架构框架”或通用解析命令；两个 pytest fixture 负责读取实际安装包和派生局部导入边，无持久图索引。现有动态兼容/运行测试继续使用，不再复制一份旧 API 行为实现。
+The standard-library check has only test consumers and introduces no production “architecture framework” or general parsing command. Two pytest fixtures read the actual installed package and derive local import edges, with no persistent graph index. Continue using existing dynamic compatibility/runtime tests; do not copy another implementation of old API behavior.
 
-## 约束与失败场景
+## Constraints and failure scenarios
 
-1. 自有顶层 import 图无环。包括函数内 import，防止评价重新导入采用用例或调用层反向依赖 facade；`graphlib` 报告实际环。
-2. `components / contracts / state / windows_job` 不导入应用模块；`processes` 只允许消费 `windows_job`。这些是当前底层职责边界，新增项目/评分/HTTP行为应留在上层，不搬到基础模块。
-3. 除入口自身，其他自有模块不得导入 `cli / web / __main__`。CLI 可延迟加载 Web，业务不能要求传输栈或从入口取共享规则。
-4. `agent_platform / dev_platform` 以及随包 `ergora.data.reference` 下模块的显式导入只在 `reference / reference_executor`。检查普通 `import`、绝对/相对 `from` 和函数内导入；冻结目录可作为 namespace package 导入，不能只检查原顶层包名。其他调用者使用现有资源/编译接口或既有用例，避免 HTTP/资产代码直接操作原全局/ledger。
+1. The owned top-level import graph must be acyclic. Include function-local imports to prevent evaluation from reimporting adoption use cases or the invocation layer from depending back on the facade; `graphlib` reports the actual cycle.
+2. `components / contracts / state / windows_job` must not import application modules; `processes` may consume only `windows_job`. These are current foundational responsibility boundaries. New project/scoring/HTTP behavior belongs in upper layers, not foundational modules.
+3. Other owned modules must not import `cli / web / __main__`, except for the entry points themselves. CLI may load Web lazily; business logic must not require the transport stack or obtain shared rules from entry points.
+4. Explicit imports of `agent_platform / dev_platform` and modules under the packaged `ergora.data.reference` are allowed only in `reference / reference_executor`. Check ordinary `import`, absolute/relative `from`, and function-local imports; frozen directories can be imported as namespace packages, so checking only original top-level package names is insufficient. Other callers use existing resource/compilation interfaces or use cases, preventing HTTP/asset code from directly manipulating original globals/ledgers.
 
-这些规则允许上层自由组合既有域模块，没有全库逐文件白名单。变更底层职责时先更新 ADR 和实际消费者，再按行为验收，不把新增白名单当成解决耦合的方法。没有新增子包；若后续拆包，必须同步包发现/资源验收，并将本检查范围升级到相应包图，不能让新源码静默落在保护之外。
+These rules allow upper layers to combine existing domain modules freely, without a repository-wide per-file allowlist. Before changing foundational responsibilities, update the ADR and actual consumers, then validate behavior; adding allowlist entries is not a solution to coupling. No subpackages were added. If packages are split later, update package discovery/resource acceptance and extend this check to the corresponding package graph, so new source does not silently fall outside protection.
 
-## 检查与限制
+## Checks and limitations
 
 ```bash
 python -m pytest -q tests/test_architecture_boundaries.py
 ```
 
-测试从 `ergora.__file__` 定位被测包；CI 先非 editable 安装 wheel，因此同时约束实际安装的代码。直接源码开发应显式选择对应解释器或 `PYTHONPATH=src`，避免误验旧安装。
+The test locates the package under test through `ergora.__file__`; CI first installs a non-editable wheel, so it also constrains the actually installed code. For direct source development, explicitly select the corresponding interpreter or `PYTHONPATH=src` to avoid accidentally checking an old installation.
 
-静态检查不解析字符串中的 Python、`importlib` 动态模块名、JS、子进程命令、隐式属性访问或运行时配置，不证明权限/取消/恢复/模型效果。`reference` 的专用编译/动态执行桥、SDK driver、前端 ES modules、包资源身份及平台生命周期分别由现有测试和真实探针验证。R8 使用隔离安装副本注入反向导入和环，记录检查确实拒绝的结果；不在产品或 CI 中添加自我镜像测试框架。
+Static checks do not parse Python in strings, `importlib` dynamic module names, JS, subprocess commands, implicit attribute access, or runtime configuration, and do not prove permissions/cancellation/recovery/model effectiveness. The dedicated compilation/dynamic execution bridge in `reference`, SDK drivers, frontend ES modules, package resource identities, and platform lifecycles are validated by existing tests and real probes respectively. R8 injects reverse imports and cycles into isolated installed copies and records actual rejection results; do not add a self-mirroring test framework to the product or CI.
 
-R8 不改变运行代码、默认值、证据摘要或 SQLite schema，不引入数据迁移或新增同步双写器。现有两个项目配置入口仍明确可见，单向有效配置属于 F1；正式任务/页面属于 F3/F4。回退本节点只撤销文档/测试提交，不能用它降级 R3 已迁移的数据。
+R8 changes no runtime code, defaults, evidence digests, or SQLite schema, and introduces no data migration or new synchronous dual writer. The existing two project configuration entry points remain explicit; one-way effective configuration belongs to F1, and formal tasks/pages belong to F3/F4. Reverting this node reverts only its documentation/test commit; it cannot downgrade data already migrated by R3.

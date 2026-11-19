@@ -9,8 +9,9 @@ pytest.importorskip('fastapi')
 pytest.importorskip('httpx')
 from fastapi.testclient import TestClient
 
-from ergora import handoff, tasks
-from ergora.web import create_app
+import ergora.development.handoff as handoff
+import ergora.development.application as tasks
+from ergora.interfaces.web import create_app
 from test_handoff import evidence
 
 

@@ -11,8 +11,11 @@ import subprocess
 import sys
 import time
 
-from ergora import agent_runs, reference, workflow_definitions as workflows
-from ergora.asset_trees import digest_tree
+import ergora
+import ergora.agents.runs as agent_runs
+import ergora.definitions.workflows as workflows
+from ergora.development.envelopes import preparation_dags
+from ergora.storage.assets import digest_tree
 
 
 def prepare_graph(root, state, examples, *, concurrency=2):
@@ -57,20 +60,54 @@ async def _stop_executor(daemon, requests, runtime):
     await asyncio.to_thread(daemon.wait, timeout=15)
 
 
+def _preparation_rendezvous(case, app, state, runtime):
+    if case not in {'full', 'context', 'owner-source-artifact', 'issue-source', 'development-specialists'}:
+        return None
+    groups = preparation_dags(app.admission['composition'])
+    names = ('server', 'client') if case == 'development-specialists' else ('expert-a', 'expert-b')
+    selected = {}
+    for stage, group in groups.items():
+        dag = group['dag']
+        prefix = app.admission['composition']['preparation'][stage]['instance']
+        peers = [prefix + '/' + name for name in names]
+        assert set(peers) <= dag.members.keys()
+
+        def ancestors(path):
+            found, pending = set(), list(dag.predecessors[path])
+            while pending:
+                parent = pending.pop()
+                if parent not in found:
+                    found.add(parent)
+                    pending.extend(dag.predecessors[parent])
+            return found
+
+        assert peers[0] not in ancestors(peers[1]) and peers[1] not in ancestors(peers[0])
+        scopes = [{scope['path']: scope['limit'] for scope in dag.members[peer]['concurrency_scopes']} for peer in peers]
+        assert all(min(scopes[0][path], scopes[1][path]) >= 2 for path in scopes[0].keys() & scopes[1].keys())
+        selected[stage] = {'members': peers}
+    configured = {'kind': 'fixture-preparation-rendezvous', 'control_home': str(state.root),
+                  'runtime': str(runtime), 'groups': selected}
+    path = state.root / 'fixture-preparation-rendezvous.json'
+    with path.open('x', encoding='utf-8') as stream:
+        stream.write(json.dumps(configured, sort_keys=True) + '\n')
+    return configured
+
+
 async def exercise(root, case, app, activities, adapter, installation, state, runtime, requests, records):
-    code = ('from pathlib import Path;from ergora.reference import executor;executor(Path('
+    rendezvous = _preparation_rendezvous(case, app, state, runtime)
+    code = ('from pathlib import Path;from ergora.native.commands import executor;executor(Path('
             + repr(str(installation)) + '),Path(' + repr(str(state.root)) + '))')
     with (root / 'preparation-dispatcher.log').open('wb') as log:
         daemon = subprocess.Popen([sys.executable, '-P', '-c', code], stdout=log, stderr=subprocess.STDOUT)
         try:
             return await _exercise(root, case, app, activities, adapter, installation, state,
-                                   runtime, requests, records, daemon)
+                                   runtime, requests, records, daemon, rendezvous)
         finally:
             if daemon.poll() is None:
                 await _stop_executor(daemon, requests, runtime)
 
 
-async def _exercise(root, case, app, activities, adapter, installation, state, runtime, requests, records, daemon):
+async def _exercise(root, case, app, activities, adapter, installation, state, runtime, requests, records, daemon, rendezvous):
     from agent_platform.core import read, write
     from dev_platform.adapter import sha
     from dev_platform.workflow import StopWork
@@ -183,6 +220,21 @@ async def _exercise(root, case, app, activities, adapter, installation, state, r
         if selected and stage == 'plan':
             contract = intervals[0]
             assert all(contract['model_finished_ns'] <= item['model_started_ns'] for item in intervals[1:3])
+        if rendezvous is not None:
+            peers = rendezvous['groups'][stage]['members']
+            folder = state.root / 'fixture-preparation-rendezvous' / stage
+            release = read(folder / 'release.json')
+            assert release['stage'] == stage and release['members'] == peers
+            assert set(release['ready']) == set(peers)
+            for peer in peers:
+                ready = read(folder / (peer.rsplit('/', 1)[-1] + '.ready.json'))
+                receipt = records[app.source_stage(peer)]
+                assert release['ready'][peer] == ready and ready['member'] == peer and ready['stage'] == stage
+                assert ready['job_id'] == receipt['job_id']
+                result = read(runtime / 'workspaces/task-1/jobs' / receipt['job_id'] / 'output/selected-agent/result.json')
+                timing = json.loads(result['summary'])
+                assert timing['model_started_ns'] <= ready['ready_at_ns'] <= release['released_at_ns'] <= timing['model_finished_ns']
+                assert timing['model_finished_ns'] < ready['deadline_at'] * 1e9
         assert overlap is (case != 'serial')
         model_intervals[stage] = intervals
         receipt = records[stage]
@@ -210,12 +262,12 @@ async def _exercise(root, case, app, activities, adapter, installation, state, r
     # check supplies a controlled history label; it does not query a service.
     context = read(requests / 'task-1' / (plan['job_id'] + '.json'))['context']
     payload = {'project': state.project('demo'), 'control_home': str(state.root), 'task_id': 'task-1'}
-    code = ("import json,sys;from ergora.reference_task_submission import _Submission;"
-            "from ergora.reference_task_approval import _plan_materials;"
+    code = ("import json,sys;from ergora.development.runtime.submission import _Submission;"
+            "from ergora.development.runtime.approval import _plan_materials;"
             "p=json.load(sys.stdin);s=_Submission(p['payload']);s.prepare();"
             "print(json.dumps(_plan_materials(s,{'workflow_id':'controlled-material-reader'},"
             "'controlled-run',p['context'],1,p['plan_sha256'])))")
-    environment = dict(os.environ, PYTHONPATH=os.pathsep.join((str(Path(reference.__file__).parent.parent),
+    environment = dict(os.environ, PYTHONPATH=os.pathsep.join((str(Path(ergora.__file__).parent.parent),
         str(installation / 'local'), str(installation / 'upstream/platform'))))
     inspected = await asyncio.to_thread(subprocess.run, [sys.executable, '-P', '-c', code],
         input=json.dumps({'payload': payload, 'context': context, 'plan_sha256': plan_sha}),
@@ -269,7 +321,9 @@ async def _exercise(root, case, app, activities, adapter, installation, state, r
                 original_slot_and_clock=instance, original_server_reply_reconciled=True,
                 all_job_owners_cleanup_confirmed=True)
     if case == 'context':
-        from ergora import memory, skill_assets, task_envelopes
+        import ergora.improvement.memory as memory
+        import ergora.definitions.skills as skill_assets
+        from ergora.development import envelopes as task_envelopes
 
         frozen = task_envelopes.selected_context(app.admission)
         assert memory.records(state, 'demo') == []

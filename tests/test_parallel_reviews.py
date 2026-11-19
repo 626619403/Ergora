@@ -10,7 +10,11 @@ import sys
 
 import pytest
 
-from ergora import agent_definitions, reference, task_envelopes, tasks, workflow_definitions as workflows
+import ergora.native.resources as native_resources
+import ergora.definitions.agents as agent_definitions
+import ergora.development.application as tasks
+import ergora.definitions.workflows as workflows
+from ergora.development import envelopes as task_envelopes
 from test_composition_tasks import composed_creation
 from test_task_creation import creation_project
 from test_registrations import installation, registration
@@ -64,7 +68,7 @@ def parallel_creation(composed_creation, tmp_path, request):
 
 @pytest.fixture
 def parallel_input(parallel_creation, monkeypatch):
-    monkeypatch.syspath_prepend(str(reference.ROOT / 'platform/upstream/platform'))
+    monkeypatch.syspath_prepend(str(native_resources.ROOT / 'platform/upstream/platform'))
     state, _, definition = parallel_creation
     return tasks.preview(state, 'demo', definition, 1)['files']['task.spec.json']
 
@@ -170,7 +174,7 @@ def test_shared_join_dependencies_require_bounded_traversal(parallel_creation, t
 def test_parallel_stage_obeys_shared_ancestor_limits_and_keeps_reviewers_out_of_authors(parallel_input, monkeypatch):
     pytest.importorskip('temporalio')
     from temporalio import workflow
-    from ergora.reference_workflows import CompositionDevelopmentWorkflow
+    from ergora.development.runtime.workflows import CompositionDevelopmentWorkflow
 
     monkeypatch.setattr(workflow, 'now', lambda: datetime.now(timezone.utc))
     run = CompositionDevelopmentWorkflow()
@@ -244,7 +248,7 @@ def test_parallel_stage_never_aggregates_incomplete_or_nonindependent_reviews(pa
     pytest.importorskip('temporalio')
     from temporalio import workflow
     from dev_platform.workflow import StopWork
-    from ergora.reference_workflows import CompositionDevelopmentWorkflow
+    from ergora.development.runtime.workflows import CompositionDevelopmentWorkflow
 
     monkeypatch.setattr(workflow, 'now', lambda: datetime.now(timezone.utc))
     run = CompositionDevelopmentWorkflow()

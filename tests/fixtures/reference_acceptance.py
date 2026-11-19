@@ -12,8 +12,13 @@ import sys
 import time
 import threading
 
-from ergora import agent_runs, agents, projects, reference, registrations
-from ergora.state import State
+import ergora.native.commands as native_commands
+import ergora.native.resources as native_resources
+import ergora.agents.runs as agent_runs
+import ergora.agents.invocation as agents
+import ergora.configuration.projects as projects
+import ergora.configuration.registrations as registrations
+from ergora.storage.state import State
 
 
 async def main():
@@ -23,7 +28,7 @@ async def main():
     native_auth = mode.startswith("native-auth")
     installation = root / "installation"
     for part in ("local", "upstream/platform"):
-        shutil.copytree(reference.ROOT / "platform" / part, installation / part)
+        shutil.copytree(native_resources.ROOT / "platform" / part, installation / part)
     (installation / ".venv").symlink_to(sys.prefix, target_is_directory=True)
     config, runtime = root / "config", root / "runtime"
     config.mkdir()
@@ -113,7 +118,7 @@ async def main():
         check[-1] += '; assert not pathlib.Path(' + repr(str(root / 'fail-verify')) + ').exists()'
     checks = {key: check for key in ("behavior", "architecture", "knowledge", "integration", "compatibility", "migration-rollback")}
     write(root / "checks.json", checks)
-    task_input = json.loads((reference.ROOT / "platform/templates" / kind / "input.json").read_text())
+    task_input = json.loads((native_resources.ROOT / "platform/templates" / kind / "input.json").read_text())
     task_input.update(goal="Add a fixture module", allowed_paths=["src"],
         work_units=[{"id": "unit", "depends_on": [], "paths": ["src"], "instructions": "Add VALUE = 42 in src/new.py"}])
     if mode == 'composition-replace-object':
@@ -148,7 +153,9 @@ async def main():
     else:
         register("demo", repo, "github", "fixtures/demo", ["src"], root / "checks.json")
     if composition_mode:
-        from ergora import agent_definitions, tasks, workflow_definitions
+        import ergora.definitions.agents as agent_definitions
+        import ergora.development.application as tasks
+        import ergora.definitions.workflows as workflow_definitions
 
         examples = Path(__file__).resolve().parents[2] / 'examples'
         if mode.startswith('composition-work-'):
@@ -208,7 +215,8 @@ async def main():
         tasks.create(state, 'demo', task_definition, revision, preview['preview_sha256'],
                      **({'prepare_sha256': preview['prepare_sha256']} if task_definition['schema_version'] == 8 else {}))
         if mode == 'composition-work-materials-context':
-            from ergora import memory, skill_assets
+            import ergora.improvement.memory as memory
+            import ergora.definitions.skills as skill_assets
 
             item = task_definition['context']['memories'][0]
             memory.delete(state, 'demo', item['id'], item['revision'])
@@ -250,7 +258,7 @@ async def main():
             with state.connect() as db:
                 db.execute("UPDATE projects SET document=? WHERE id=?", (json.dumps(project), "demo"))
     if composition_mode:
-        from ergora.reference_inputs import execution_input
+        from ergora.development.inputs import execution_input
         document = read(runtime / 'tasks/task-1/task.spec.json')
         selected_input = execution_input(document)
         app = selected_input.workflow_type()()
@@ -286,7 +294,7 @@ async def main():
             write(runtime / "fences/task-1.json", {"reason": "cancellation regression"})
         thread = threading.Thread(target=cancel)
         thread.start()
-        receipt = reference.executor(installation, state.root, runtime / "requests/task-1" / (context["job_id"] + ".json"))
+        receipt = native_commands.executor(installation, state.root, runtime / "requests/task-1" / (context["job_id"] + ".json"))
         thread.join(timeout=2)
         assert await activities.poll(job) == receipt
         assert receipt["state"] == "CANCELLED", receipt
@@ -364,7 +372,7 @@ async def main():
         job = await activities.submit(context)
         request = requests / "task-1" / (context["job_id"] + ".json")
         if stage == 'inventory' and mode.startswith(('design-policy-legacy-', 'legacy-control-')):
-            from ergora import reference_executor as driver
+            import ergora.development.runtime.executor as driver
 
             starts = {name: 0 for name in ('claim', 'body', 'prepare', 'model', 'commands')}
 
@@ -470,8 +478,8 @@ async def main():
             return
         if stage == 'inventory' and mode in ('composition-missing-admission', 'composition-other-admission',
                 'composition-missing-publication', 'composition-binding-drift', 'composition-config-drift', 'composition-policy-drift', 'composition-multiple'):
-            from ergora.reference_executor import Executor
-            from ergora import task_envelopes
+            from ergora.development.runtime.executor import Executor
+            from ergora.development import envelopes as task_envelopes
             from agent_platform.core import Blocked
 
             envelope = read(request)
@@ -491,7 +499,7 @@ async def main():
             elif mode == 'composition-config-drift':
                 write(config / 'policies/demo/execution.json', {'allowed_task_types': []}, replace=True)
             elif mode == 'composition-policy-drift':
-                from ergora.agent_backends import CodexBackend
+                from ergora.agents.backends import CodexBackend
                 policy = CodexBackend.composition_policy
                 def changed_policy(self, selected_mode):
                     value = policy(self, selected_mode)
@@ -513,11 +521,11 @@ async def main():
 
                 class NoWorkerSDK(importlib.abc.MetaPathFinder):
                     def find_spec(self, fullname, path=None, target=None):
-                        if fullname == 'ergora.reference_workflows' or fullname == 'temporalio' or fullname.startswith('temporalio.'):
+                        if fullname == 'ergora.development.runtime.workflows' or fullname == 'temporalio' or fullname.startswith('temporalio.'):
                             raise ModuleNotFoundError('Optional worker SDK is deliberately unavailable: ' + fullname)
 
                 for name in list(sys.modules):
-                    if name == 'ergora.reference_workflows' or name == 'temporalio' or name.startswith('temporalio.'):
+                    if name == 'ergora.development.runtime.workflows' or name == 'temporalio' or name.startswith('temporalio.'):
                         del sys.modules[name]
                 sys.meta_path.insert(0, NoWorkerSDK())
             if mode == 'composition-replace-object':
@@ -531,7 +539,7 @@ async def main():
                 artifact = records['verify']['artifacts'][0]
                 (runtime / 'artifacts' / artifact['path']).write_text('Changed verification evidence')
             elif mode in ('composition-review-recovery', 'composition-missing-invocation'):
-                from ergora.reference_executor import Executor
+                from ergora.development.runtime.executor import Executor
 
                 first = Executor(read(request), state.root).execute()
                 if mode == 'composition-missing-invocation':
@@ -574,7 +582,7 @@ async def main():
                 policy = read(policy_path)
                 policy['protected_paths'].append('src/new.py')
                 write(policy_path, policy, replace=True)
-                from ergora.reference_executor import Executor
+                from ergora.development.runtime.executor import Executor
 
                 # Simulate interruption after error artifacts, before publishing
                 # the receipt: rerunning the same envelope must be idempotent.
@@ -596,7 +604,7 @@ async def main():
                 # Supply the deliberate attack only in this test wrapper. Keep
                 # the production monitor's environment allowlist unchanged.
                 codex.write_text(f"#!{sys.executable}\nimport runpy,sys\nsys.argv.extend(['--fixture-checkout',{str(target)!r}])\nrunpy.run_path({str(fixture)!r},run_name='__main__')\n")
-            receipt = reference.executor(installation, state.root, request)
+            receipt = native_commands.executor(installation, state.root, request)
         if mode in ('native-auth-rejected', 'selected-auth-rejected'):
             assert receipt['state'] == 'FAILED' and not receipt['checks'], receipt
             assert await activities.poll(job) == receipt
@@ -637,7 +645,7 @@ async def main():
                 'job_id': job['job_id'], 'job_sha256': job['job_sha256'],
                 'candidate_sha': records['verify']['candidate_sha'], 'decision': decision,
                 'result_sha256': invocation['result_sha256']}
-            from ergora.reference_executor import Executor
+            from ergora.development.runtime.executor import Executor
 
             original = (runtime / 'receipts/task-1' / (job['job_id'] + '.json')).read_bytes()
             assert Executor(read(request), state.root).execute() == receipt

@@ -10,7 +10,10 @@ import time
 
 import pytest
 
-from ergora import projects, reference, tasks
+import ergora.native.resources as native_resources
+import subprocess
+import ergora.configuration.projects as projects
+import ergora.development.application as tasks
 from test_registrations import installation, registration
 from test_task_creation import creation_project, _files
 from test_task_submission import submitted_creation, native_client, _start, _root, _calls
@@ -27,7 +30,7 @@ def write(path, value):
 
 @pytest.fixture
 def external_task(submitted_creation, native_client, monkeypatch):
-    monkeypatch.syspath_prepend(str(reference.ROOT / 'platform/upstream/platform'))
+    monkeypatch.syspath_prepend(str(native_resources.ROOT / 'platform/upstream/platform'))
     from dev_platform.workflow import DevelopmentWorkflow
     from dev_platform.adapter import sha
 
@@ -68,13 +71,13 @@ def external_task(submitted_creation, native_client, monkeypatch):
 
 @pytest.fixture
 def external_client(external_task, monkeypatch):
-    original = reference.subprocess.run
+    original = subprocess.run
     fixture = Path(__file__).parent / 'fixtures/task_external_status_client.py'
     def invoke(argv, **kwargs):
-        if 'from ergora.reference_task_reconciliation import main;main()' in argv:
+        if 'from ergora.development.runtime.reconciliation import main;main()' in argv:
             argv = [*argv[:-1], fixture.read_text(encoding='utf-8')]
         return original(argv, **kwargs)
-    monkeypatch.setattr(reference.subprocess, 'run', invoke)
+    monkeypatch.setattr(subprocess, 'run', invoke)
 
 
 def inspect(creation, **kwargs):
@@ -280,8 +283,8 @@ def test_queries_require_exact_run_and_bounded_timeout(external_task, external_c
 def test_cli_and_api_return_the_same_readonly_facts(external_task, external_client, capsys):
     pytest.importorskip('fastapi')
     from fastapi.testclient import TestClient
-    from ergora import cli
-    from ergora.web import create_app
+    import ergora.interfaces.cli as cli
+    from ergora.interfaces.web import create_app
 
     client = TestClient(create_app(external_task[0].root), base_url='http://127.0.0.1')
     uri = '/api/projects/demo/tasks/new-task/external-status'

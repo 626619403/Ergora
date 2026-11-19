@@ -12,7 +12,10 @@ import time
 
 import pytest
 
-from ergora import reference, training
+from ergora._paths import IMPORT_ROOT, PACKAGE_ROOT
+
+import ergora.training.native as training_native; import ergora
+import ergora.training.application as training
 from test_training_submission import (
     controller_admission, controller_dispatch, cycle_budget_root, cycle_candidate, cycle_operation_fault,
     cycle_selection, experiments, historical_execution, installation, native_budget_create, prepared,
@@ -44,8 +47,8 @@ def admission_process(admission, tmp_path, mode, *, reason='First controller sto
 def test_expired_cycle_supervisor_is_dependency_isolated_and_never_spawns_h(
         controller_admission, tmp_path):
     import shutil
-    from ergora import reference_training_worker as worker
-    from ergora import training_execution_protocol as protocol
+    import ergora.training.runtime.worker as worker
+    import ergora.training.execution_protocol as protocol
 
     state, _, _, authorized, _ = controller_admission
     operation = worker._CycleOperation(state.root, 'demo', 'controller', authorized['authorization_sha256'], 'inspect')
@@ -54,17 +57,17 @@ def test_expired_cycle_supervisor_is_dependency_isolated_and_never_spawns_h(
     payload['bootstrap'].update(started_ns=now - 2_000_000_000, deadline_ns=now - 1_000_000_000)
     raw = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(',', ':'), allow_nan=False).encode()
     isolated = tmp_path / 'pure-package'
-    shutil.copytree(Path(protocol.__file__).parent, isolated / 'ergora',
+    shutil.copytree(PACKAGE_ROOT, isolated / 'ergora',
                     ignore=shutil.ignore_patterns('__pycache__', '*.pyc', '*.pyo'))
     environment = dict(os.environ, PYTHONPATH=str(isolated), PYTHONDONTWRITEBYTECODE='1')
     program = """import subprocess,sys
-from ergora.training_execution_protocol import cycle_supervisor_main
+from ergora.training.execution_protocol import cycle_supervisor_main
 def forbidden_spawn(*args,**kwargs):
     raise AssertionError('An expired original supervisor cannot spawn H')
 subprocess.Popen=forbidden_spawn
 cycle_supervisor_main()
 assert all(name not in sys.modules for name in
-           ('temporalio','jsonschema','ergora.state','ergora.training_cycles','ergora.reference_training_worker'))
+           ('temporalio','jsonschema','ergora.storage.state','ergora.training.cycles','ergora.training.runtime.worker'))
 """
     result = subprocess.run([sys.executable, '-S', '-P', '-B', '-c', program], input=raw,
                             env=environment, capture_output=True, timeout=8)
@@ -89,7 +92,7 @@ def test_confirm_waits_only_for_its_bound_original_owner(
         cycle_candidate, controller_admission, cycle_selection, cycle_operation_fault, service, monkeypatch, pending, fault):
     import asyncio
     import signal
-    from ergora import processes
+    from ergora.runtime import processes
 
     _, _, _, _, admission = controller_admission
     runtime = cycle_selection[2]
@@ -103,7 +106,7 @@ def test_confirm_waits_only_for_its_bound_original_owner(
     assert prepared['status'] == 'new_offer', prepared
     launch = prepared['launch']
     root = subprocess.Popen([sys.executable, '-P', '-c',
-        'from ergora.reference_training_submission import cycle_root_main;cycle_root_main()'], stdin=subprocess.PIPE,
+        'from ergora.training.runtime.submission import cycle_root_main;cycle_root_main()'], stdin=subprocess.PIPE,
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
         env={**os.environ, **launch['environment']}, start_new_session=True)
     root_identity = processes.identity(root.pid)
@@ -221,7 +224,7 @@ def test_dedicated_cycle_root_refuses_original_schema2_before_birth(
     folder = cycle_selection[2] / 'ergora/training-submissions/alpha.budget'
     before = {path.relative_to(folder): path.read_bytes() for path in folder.rglob('*') if path.is_file()}
     child = subprocess.run([sys.executable, '-P', '-c',
-        'from ergora.reference_training_submission import cycle_root_main;cycle_root_main()'],
+        'from ergora.training.runtime.submission import cycle_root_main;cycle_root_main()'],
         input=json.dumps(launch['request']).encode(), capture_output=True,
         env={**os.environ, **launch['environment']}, timeout=8)
     assert child.returncode != 0 and b'original schema3 authorization' in child.stderr
@@ -232,7 +235,7 @@ def test_dedicated_cycle_root_refuses_original_schema2_before_birth(
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Controller consent requires Linux/WSL2 clocks and flock')
 def test_controller_birth_consent_retains_original_actor_clock_and_mode(controller_admission, monkeypatch):
-    from ergora import training_cycles
+    import ergora.training.cycles as training_cycles
 
     state, source, selected, authorized, admission = controller_admission
     authorization = authorized['authorization']
@@ -288,8 +291,8 @@ def test_controller_cli_records_consent_then_reads_prepares_and_stops_without_sd
         cycle_selection, tmp_path, monkeypatch, program_version):
     from contextlib import redirect_stderr, redirect_stdout
     import io
-    from ergora import training_cycles
-    from ergora.cli import main
+    import ergora.training.cycles as training_cycles
+    from ergora.interfaces.cli import main
 
     state, definition, runtime, _, _, request = cycle_selection
     source = tmp_path / 'cli-input'
@@ -346,7 +349,7 @@ def test_controller_cli_records_consent_then_reads_prepares_and_stops_without_sd
 @pytest.mark.parametrize('boundary', ['authorization-file', 'lock-file', 'lock-directory', 'ready-directory'])
 def test_controller_lock_publication_recovers_only_the_original_consent(
         cycle_selection, tmp_path, monkeypatch, boundary, program_version):
-    from ergora import training_cycles
+    import ergora.training.cycles as training_cycles
 
     state, _, _, _, _, request = cycle_selection
     source = tmp_path / 'input'
@@ -402,7 +405,7 @@ def test_controller_lock_publication_recovers_only_the_original_consent(
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Controller consent requires Linux/WSL2 clocks and flock')
 def test_controller_ready_never_recreates_or_accepts_a_changed_parent_lock(controller_admission, tmp_path):
-    from ergora import training_cycles
+    import ergora.training.cycles as training_cycles
 
     state, source, selected, _, admission = controller_admission
     outside = tmp_path / 'outside-lock'
@@ -428,7 +431,8 @@ def test_controller_ready_never_recreates_or_accepts_a_changed_parent_lock(contr
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Controller consent requires Linux/WSL2 clocks and flock')
 def test_controller_lock_sync_consumes_the_original_computation_window(cycle_selection, tmp_path, monkeypatch):
-    from ergora import budget_clock, training_cycles
+    import ergora.training.cycles as training_cycles
+    from ergora.runtime import budget_clock
 
     state, _, _, _, _, request = cycle_selection
     request['budget'].update(wall_seconds=4, cleanup_seconds=1)
@@ -461,7 +465,7 @@ def test_controller_lock_sync_consumes_the_original_computation_window(cycle_sel
 @pytest.mark.skipif(sys.platform != 'linux', reason='Controller stop requires Linux/WSL2 filesystem and flock')
 @pytest.mark.parametrize('boundary', ['create', 'file-fsync', 'directory-fsync'])
 def test_controller_visible_stop_denies_new_work_before_durable_confirmation(controller_admission, tmp_path, boundary):
-    from ergora import training_cycles
+    import ergora.training.cycles as training_cycles
 
     state, _, _, authorized, admission = controller_admission
     child = admission_process(admission, tmp_path, boundary)
@@ -490,7 +494,7 @@ def test_controller_visible_stop_denies_new_work_before_durable_confirmation(con
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Controller stop requires Linux/WSL2 filesystem and flock')
 def test_controller_parent_drain_waits_for_all_original_shared_permits(controller_admission, tmp_path):
-    from ergora import training_cycles
+    import ergora.training.cycles as training_cycles
 
     state, _, _, authorized, admission = controller_admission
     children = []
@@ -549,7 +553,7 @@ def test_controller_stop_durability_recovers_by_synchronizing_the_same_original(
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Controller stop requires Linux/WSL2 filesystem and flock')
 def test_controller_stop_binds_the_complete_saved_controller_intent(controller_admission):
-    from ergora import training_cycles
+    import ergora.training.cycles as training_cycles
 
     _, _, _, _, admission = controller_admission
     intent = saved_controller_intent(admission)
@@ -573,8 +577,8 @@ def test_controller_stop_binds_the_complete_saved_controller_intent(controller_a
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Controller preparation requires original Linux clocks and flock')
 def test_controller_intent_preparation_retains_original_publication_and_clock(controller_admission, monkeypatch):
-    from ergora import training_cycles
-    from ergora.state import file_lock
+    import ergora.training.cycles as training_cycles
+    from ergora.storage.state import file_lock
 
     state, _, _, authorized, admission = controller_admission
     original = {p: p.read_bytes() for p in admission.directory.rglob('*') if p.is_file()}
@@ -613,7 +617,7 @@ def test_controller_intent_preparation_retains_original_publication_and_clock(co
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Controller preparation requires original Linux clocks and flock')
 def test_controller_intent_stop_before_link_preserves_the_original_veto(controller_admission, monkeypatch):
-    from ergora import training_cycles
+    import ergora.training.cycles as training_cycles
 
     state, _, _, authorized, admission = controller_admission
     link, stopped = os.link, []
@@ -642,8 +646,8 @@ def test_controller_intent_stop_before_link_preserves_the_original_veto(controll
 @pytest.mark.parametrize('controller_admission', [{'wall_seconds': 12, 'cleanup_seconds': 3}], indirect=True)
 @pytest.mark.parametrize('boundary', ['directory', 'final-check', 'stop-observation'])
 def test_controller_intent_io_consumes_the_original_computation_window(controller_admission, monkeypatch, boundary):
-    from ergora import training_cycles
-    from ergora.training_execution_protocol import CycleAdmission
+    import ergora.training.cycles as training_cycles
+    from ergora.training.execution_protocol import CycleAdmission
 
     state, _, selected, authorized, admission = controller_admission
     sync, delayed = training_cycles._sync_directory, []
@@ -692,7 +696,8 @@ def test_controller_intent_io_consumes_the_original_computation_window(controlle
 def test_cycle_candidate_root_survives_short_calls_and_normal_loop_shutdown(
         controller_admission, cycle_selection, cycle_candidate, cycle_budget_root, service, monkeypatch):
     import asyncio
-    from ergora import reference_training_worker as worker, training_execution_protocol as protocol
+    import ergora.training.runtime.worker as worker
+    import ergora.training.execution_protocol as protocol
 
     state, _, _, authorized, admission = controller_admission
     runtime = cycle_selection[2]
@@ -718,9 +723,9 @@ def test_cycle_candidate_root_survives_short_calls_and_normal_loop_shutdown(
         assert result['submission']['status'] == 'submitted'
         assert operation.handed_off is True and operation.root.poll() is None
         assert cycle_budget_root == [
-            'from ergora.reference_training_submission import cycle_root_main;cycle_root_main()'
+            'from ergora.training.runtime.submission import cycle_root_main;cycle_root_main()'
             if admission.authorization['schema_version'] in (3, 4)
-            else 'from ergora.reference_training_worker import budget_main;budget_main()']
+            else 'from ergora.training.runtime.worker import budget_main;budget_main()']
         owner = result['confirmation']['owner']
         assert recorded_process_is_active(owner)
         requests = [json.loads((Path(result[name]['output']) / 'request.json').read_bytes())
@@ -806,7 +811,7 @@ def test_cycle_candidate_cancellation_distinguishes_root_handoff(
         assert observed['status'] == 'observed' and 'launch' not in observed
         assert (json.loads(service[1].read_bytes()) if service[1].exists() else {'starts': 0})['starts'] == record['starts']
         if boundary == 'sdk-start':
-            from ergora import reference_training_worker as worker
+            import ergora.training.runtime.worker as worker
 
             owner_path = prefix / 'alpha.budget/owner.json'
             owner_raw = owner_path.read_bytes()
@@ -895,7 +900,7 @@ def test_cycle_candidate_cancel_retains_a_late_popen_handle_without_sending_inpu
     operation = cycle_candidate()
 
     def pending(argv, *args, **kwargs):
-        if argv[-1] == 'from ergora.reference_training_submission import cycle_root_main;cycle_root_main()':
+        if argv[-1] == 'from ergora.training.runtime.submission import cycle_root_main;cycle_root_main()':
             entered.set()
             release.wait()
         return original(argv, *args, **kwargs)
@@ -939,7 +944,7 @@ def test_cycle_candidate_loop_shutdown_reaps_a_pending_root(
         cycle_candidate, cycle_selection, cycle_operation_fault, monkeypatch, boundary):
     import asyncio
     import threading
-    from ergora import processes
+    from ergora.runtime import processes
 
     entered, release = threading.Event(), threading.Event()
     original, roots, tasks, waits = subprocess.Popen, [], [], []
@@ -954,7 +959,7 @@ def test_cycle_candidate_loop_shutdown_reaps_a_pending_root(
         return notify(expected, signum)
 
     def pending(argv, *args, **kwargs):
-        root = argv[-1] == 'from ergora.reference_training_submission import cycle_root_main;cycle_root_main()'
+        root = argv[-1] == 'from ergora.training.runtime.submission import cycle_root_main;cycle_root_main()'
         if root and boundary == 'spawn':
             entered.set()
             release.wait(20)
@@ -1007,7 +1012,8 @@ def test_cycle_candidate_loop_shutdown_reaps_a_pending_root(
 @pytest.mark.parametrize('fault', ['natural-exit', 'notification-error'])
 def test_cycle_candidate_root_cleanup_waits_after_notification_races(monkeypatch, fault):
     import asyncio
-    from ergora import processes, reference_training_worker as worker
+    import ergora.training.runtime.worker as worker
+    from ergora.runtime import processes
 
     child = subprocess.Popen([sys.executable, '-I', '-S', '-c',
         'import sys,time;sys.stdin.buffer.read();time.sleep(.2)'], stdin=subprocess.PIPE,
@@ -1086,7 +1092,7 @@ def test_controller_prepare_binds_complete_parent_records_and_original_position(
     prefix = runtime / 'ergora/training-submissions'
 
     def prepare(value):
-        return reference.training_submission(state.project('demo'), state.root, 'prepare',
+        return training_native.training_submission(state.project('demo'), state.root, 'prepare',
             {'experiment_id': 'alpha', 'manifest_sha256': manifest, 'budget': value}, timeout=20)
 
     for key, value in (('ordinal', True), ('ordinal', -1), ('ordinal', 1), ('ordinal', 31),
@@ -1121,14 +1127,14 @@ def test_controller_prepare_binds_complete_parent_records_and_original_position(
     isolated = subprocess.run([sys.executable, '-I', '-S', '-c', '''import json,sys
 from pathlib import Path
 sys.path.insert(0,sys.argv[1])
-from ergora.training_execution_protocol import CycleAdmission,read_raw
-from ergora.training_materials import decode_record
+from ergora.training.execution_protocol import CycleAdmission,read_raw
+from ergora.training.materials import decode_record
 directory=Path(sys.argv[2])
 parent=CycleAdmission(directory,decode_record(read_raw(directory/'authorization.json')))
 parent.bind(decode_record(read_raw(Path(sys.argv[3]))),decode_record(read_raw(directory/'cycle.json',10_000_000)))
-assert not any(name in sys.modules for name in ('yaml','jsonschema','temporalio','dev_platform','ergora.state'))
+assert not any(name in sys.modules for name in ('yaml','jsonschema','temporalio','dev_platform','ergora.storage.state'))
 print('complete original binding verified without site packages')
-''', str(Path(reference.__file__).parent.parent), str(admission.directory), str(prefix / 'alpha.intent.json')],
+''', str(Path(ergora.__file__).parent.parent), str(admission.directory), str(prefix / 'alpha.intent.json')],
         capture_output=True, text=True, timeout=10)
     assert isolated.returncode == 0, isolated.stderr
 
@@ -1139,7 +1145,8 @@ print('complete original binding verified without site packages')
 @pytest.mark.parametrize('case', ['not-found', 'closed', 'run', 'memo', 'type', 'queue', 'input', 'accepted'])
 def test_controller_fixed_history_gates_the_one_original_start(
         controller_admission, cycle_selection, cycle_candidate, service, monkeypatch, case):
-    from ergora import processes, training_cycles
+    import ergora.training.cycles as training_cycles
+    from ergora.runtime import processes
     import signal
 
     state, _, _, _, admission = controller_admission
@@ -1223,7 +1230,7 @@ def test_controller_stop_drains_original_rpc_and_denies_its_late_create(
 @pytest.mark.parametrize('controller_admission', [{'control_timeout_seconds': 30}], indirect=True)
 def test_controller_worker_rechecks_stop_inside_original_registry_lock(
         controller_admission, cycle_selection, cycle_candidate, service, monkeypatch):
-    from ergora.state import file_lock
+    from ergora.storage.state import file_lock
 
     state, _, _, _, admission = controller_admission
     _, definition, runtime, _, _, request = cycle_selection
@@ -1256,7 +1263,7 @@ def test_controller_worker_rechecks_stop_inside_original_registry_lock(
 @pytest.mark.parametrize('controller_admission', [{'control_timeout_seconds': 30}], indirect=True)
 def test_controller_stop_after_attempt_sync_never_resends_the_consumed_rpc(
         controller_admission, cycle_selection, cycle_candidate, service, tmp_path, monkeypatch):
-    from ergora import training_cycles
+    import ergora.training.cycles as training_cycles
 
     state, _, _, _, admission = controller_admission
     runtime = cycle_selection[2]
@@ -1300,7 +1307,7 @@ def test_controller_stop_after_attempt_sync_never_resends_the_consumed_rpc(
 @pytest.mark.skipif(sys.platform != 'linux', reason='Original start-attempt synchronization and H/SDK gate require Linux')
 def test_controller_remote_close_after_attempt_sync_never_sends_the_consumed_start(
         controller_admission, cycle_selection, cycle_candidate, service, tmp_path, monkeypatch):
-    from ergora import training_cycles
+    import ergora.training.cycles as training_cycles
 
     state, _, _, _, admission = controller_admission
     runtime = cycle_selection[2]
@@ -1501,7 +1508,7 @@ def test_controller_concurrent_stops_preserve_one_original_and_never_repair_corr
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Controller submission requires Linux/WSL2')
 def test_controller_consent_cannot_dispatch_through_either_manual_binding_path(controller_admission, cycle_selection, service):
-    from ergora import training_cycles
+    import ergora.training.cycles as training_cycles
 
     state, _, selected, authorized, admission = controller_admission
     _, _, runtime, _, _, request = cycle_selection
@@ -1527,7 +1534,7 @@ def test_controller_consent_cannot_dispatch_through_either_manual_binding_path(c
 def test_controller_cli_reconciles_only_its_original_lost_reply(controller_dispatch, cycle_operation_fault):
     from contextlib import redirect_stdout
     import io
-    from ergora.cli import main
+    from ergora.interfaces.cli import main
 
     state, admission, storage, _ = controller_dispatch
     common = ['--home', str(state.root), 'training']
@@ -1576,7 +1583,7 @@ def test_cycle_controller_recovers_only_its_single_original_attempt(controller_d
         again = asyncio.run(operation(case).run())
         assert again['run_id'] == second['run_id'] and (receipt.read_bytes(), receipt.stat().st_ino) == original
         if case == 'closed':
-            from ergora.reference_training_runtime import lookup_controller
+            from ergora.training.runtime.status import lookup_controller
             from temporalio.client import Client
             from fixtures.training_controller_service import DispatchService
 
@@ -1839,7 +1846,7 @@ def test_cycle_controller_cancelled_sdk_start_reaps_before_metadata_recovery(con
 @pytest.mark.parametrize('controller_admission', [{'wall_seconds': 10, 'cleanup_seconds': 2, 'control_timeout_seconds': 5}], indirect=True)
 def test_cycle_controller_reconcile_after_original_total_never_renews_execution(controller_dispatch, monkeypatch):
     import asyncio
-    from ergora import budget_clock
+    from ergora.runtime import budget_clock
 
     _, admission, storage, operation = controller_dispatch
     starting = operation('lost-reply')
@@ -1870,15 +1877,15 @@ def test_cycle_controller_reconcile_after_original_total_never_renews_execution(
 @pytest.mark.skipif(sys.platform != 'linux', reason='Controller consent requires Linux/WSL2 clocks and flock')
 @pytest.mark.parametrize('controller_admission', [{'program_version': 2}, {'program_version': 3}], indirect=True)
 def test_schema3_birth_retains_sources_bytes_and_one_clock(controller_admission, monkeypatch):
-    from ergora import training_cycles
-    from ergora.training_execution_protocol import MEASUREMENT_SOURCES
+    import ergora.training.cycles as training_cycles
+    from ergora.training.execution_protocol import MEASUREMENT_SOURCES
 
     state, source, selected, authorized, admission = controller_admission
     authorization = authorized['authorization']
     program_version = authorization['schema_version'] - 1
     assert authorization['schema_version'] in (3, 4) and authorized['coverage']['execution_authorized'] is False
     assert set(authorization['measurement_sources']) == set(MEASUREMENT_SOURCES)
-    package = Path(training_cycles.__file__).parent
+    package = PACKAGE_ROOT
     assert authorization['measurement_sources'] == {
         name: hashlib.sha256((package / name).read_bytes()).hexdigest() for name in MEASUREMENT_SOURCES}
     controller = authorization['controller']
@@ -1915,7 +1922,7 @@ def test_schema3_birth_retains_sources_bytes_and_one_clock(controller_admission,
     assert all(p.read_bytes() == raw for p, raw in original.items())
     # Shape is checked independently of the canonical digest, even offline.
     altered = deepcopy(authorization)
-    altered['measurement_sources']['arbitrary.py'] = altered['measurement_sources'].pop(MEASUREMENT_SOURCES[0])
+    altered['measurement_sources'].pop(MEASUREMENT_SOURCES[0])
     altered['sha256'] = training_cycles._sha({key: value for key, value in altered.items() if key != 'sha256'})
     (admission.directory / 'authorization.json').write_text(json.dumps(altered))
     with pytest.raises(ValueError, match='measurement source map'):
@@ -1928,17 +1935,188 @@ def test_schema3_birth_retains_sources_bytes_and_one_clock(controller_admission,
         training_cycles.status(state, 'demo', 'controller')
 
 
+def _saved_measurement_subject(controller_admission):
+    """Persist a synthetic original subject using the original four physical names."""
+    import ergora.training.cycles as training_cycles
+    from ergora.training.execution_protocol import CycleAdmission
+
+    state, source, selected, authorized, admission = controller_admission
+    authorization = deepcopy(authorized['authorization'])
+    authorization['measurement_sources'] = {
+        name: hashlib.sha256(('saved measurement data: ' + name).encode()).hexdigest()
+        for name in ('training_rounds.py', 'reference_training_evidence.py',
+                     'data/schemas/training-rounds-v1.json', 'reference_training_release.py')}
+    authorization['sha256'] = training_cycles._sha({key: value for key, value in authorization.items() if key != 'sha256'})
+    ready = {**authorized['ready'], 'authorization_sha256': authorization['sha256']}
+    (admission.directory / 'authorization.json').write_text(json.dumps(authorization))
+    (admission.directory / 'ready.json').write_text(json.dumps(ready))
+    return state, source, selected, authorization, CycleAdmission(admission.directory, authorization)
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Controller records require Linux clocks and flock')
+@pytest.mark.parametrize('controller_admission', [{'program_version': 2}, {'program_version': 3}], indirect=True)
+@pytest.mark.parametrize('receipt_saved', [False, True])
+def test_saved_measurement_subject_observes_and_stops_without_current_sources(
+        controller_admission, monkeypatch, receipt_saved):
+    import ergora.training.cycles as training_cycles
+    import ergora.training.execution_protocol as protocol
+
+    state, _, _, authorization, admission = _saved_measurement_subject(controller_admission)
+    save_controller_binding(admission)
+    if not receipt_saved:
+        (admission.folder / 'receipt.json').unlink()
+    lock = admission.directory.parent / '.controller.lock'
+    before = {path: (path.read_bytes(), path.stat().st_ino)
+              for path in (*admission.directory.rglob('*'), lock) if path.is_file()}
+
+    def forbidden(*args, **kwargs):
+        pytest.fail('Saved observation and storage stop cannot admit current work or read current sources')
+
+    monkeypatch.setattr(training_cycles, '_measurement_sources', forbidden)
+    monkeypatch.setattr(training_cycles.budget_clock, 'authorize', forbidden)
+    monkeypatch.setattr(training_cycles, '_record', forbidden)
+    monkeypatch.setattr(training, 'check_start', forbidden)
+    monkeypatch.setattr(protocol, '_CycleOperation', forbidden)
+    monkeypatch.setattr(protocol, 'source_capability', forbidden)
+    monkeypatch.setattr(protocol, 'validate_sources', forbidden)
+    observed = training_cycles.status(state, 'demo', 'controller', authorization_sha256=authorization['sha256'])
+    assert observed['authorization'] == authorization and observed['coverage']['execution_authorized'] is False
+    assert observed['ready']['authorization_sha256'] == authorization['sha256']
+    assert observed['ready']['admissions_sha256'] == training_cycles._sha(
+        training_cycles._load(state.root, 'demo', 'controller', admission.directory)[0]['admissions'])
+    submission = training_cycles.controller(state, 'demo', 'controller', authorization['sha256'], 'status')
+    assert submission['status'] == ('submitted' if receipt_saved else 'unknown')
+    assert submission['attempt_saved'] is True and submission['result_saved'] is receipt_saved
+    assert submission['read_only'] is True and submission['execution_authorized'] is False
+    with pytest.raises(ValueError, match='expected complete canonical SHA256'):
+        training_cycles.status(state, 'demo', 'controller', authorization_sha256='0' * 64)
+    stopped = training_cycles.controller(state, 'demo', 'controller', authorization['sha256'], 'stop', reason='Original storage stop')
+    assert stopped['stop_visible'] is True and stopped['stop_durable'] is True
+    stop_raw, stop_inode = admission.stop.read_bytes(), admission.stop.stat().st_ino
+    stop = json.loads(stop_raw)
+    assert all(stop[key] == value for key, value in admission.identity.items())
+    assert stop['controller_intent_sha256'] == submission['intent_sha256']
+    assert training_cycles.controller(state, 'demo', 'controller', authorization['sha256'], 'status') == submission
+    after = training_cycles.status(state, 'demo', 'controller', authorization_sha256=authorization['sha256'])
+    assert after['status'] == 'stopped' and after['authorization'] == authorization
+    training_cycles.stop_controller(state, 'demo', 'controller', authorization['sha256'], reason='Cannot replace original stop')
+    assert (admission.stop.read_bytes(), admission.stop.stat().st_ino) == (stop_raw, stop_inode)
+    assert all((path.read_bytes(), path.stat().st_ino) == original for path, original in before.items())
+    assert {path for path in admission.directory.rglob('*') if path.is_file()} == (set(before) - {lock}) | {admission.stop}
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Controller records require Linux clocks and flock')
+@pytest.mark.parametrize('controller_admission', [{'program_version': 2}, {'program_version': 3}], indirect=True)
+def test_saved_measurement_subject_cannot_complete_ready_prepare_or_claim(controller_admission, monkeypatch):
+    import ergora.training.cycles as training_cycles
+
+    state, source, selected, authorization, admission = _saved_measurement_subject(controller_admission)
+    intent = saved_controller_intent(admission)
+    (admission.folder / 'intent.json').write_text(json.dumps(intent))
+    original = {path: path.read_bytes() for path in admission.directory.rglob('*') if path.is_file()}
+    assert training_cycles.status(state, 'demo', 'controller')['authorization'] == authorization
+    with pytest.raises(ValueError, match='measurement sources changed'):
+        training_cycles.prepare_controller(state, 'demo', 'controller', authorization['sha256'], 1)
+    with pytest.raises(ValueError, match='measurement sources changed'):
+        training_cycles._claim_controller(state, admission)
+    assert {path: path.read_bytes() for path in admission.directory.rglob('*') if path.is_file()} == original
+    (admission.directory / 'ready.json').unlink()
+    monkeypatch.setattr(training, 'check_start', lambda *args: pytest.fail('Old sources cannot repeat live admission'))
+    with pytest.raises(ValueError, match='measurement sources changed'):
+        training_cycles.authorize_controller(state, 'demo', 'controller', source, selected['sha256'], 1,
+            confirm=True, execute_selected=True, program_version=authorization['schema_version'] - 1)
+    assert not (admission.directory / 'ready.json').exists() and not (admission.folder / 'attempt.json').exists()
+    assert all(path.read_bytes() == raw for path, raw in original.items() if path.name != 'ready.json')
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Controller records require Linux clocks and flock')
+@pytest.mark.parametrize('controller_admission', [{'program_version': 2}, {'program_version': 3}], indirect=True)
+@pytest.mark.parametrize('fault', ['missing', 'extra', 'unsafe', 'digest', 'canonical', 'ready'])
+def test_saved_measurement_subject_rejects_malformed_or_conflicting_identity(controller_admission, monkeypatch, fault):
+    import ergora.training.cycles as training_cycles
+
+    state, _, _, authorization, admission = _saved_measurement_subject(controller_admission)
+    sources = authorization['measurement_sources']
+    name = next(iter(sources))
+    if fault == 'missing':
+        sources.pop(name)
+    elif fault == 'extra':
+        sources['extra.py'] = '1' * 64
+    elif fault == 'unsafe':
+        sources['../outside.py'] = sources.pop(name)
+    elif fault == 'digest':
+        sources[name] = 'A' * 64
+    elif fault == 'canonical':
+        sources[name] = '0' * 64
+    else:
+        ready = json.loads((admission.directory / 'ready.json').read_bytes())
+        ready['authorization_sha256'] = '0' * 64
+        (admission.directory / 'ready.json').write_text(json.dumps(ready))
+    if fault not in ('canonical', 'ready'):
+        authorization['sha256'] = training_cycles._sha({key: value for key, value in authorization.items() if key != 'sha256'})
+    (admission.directory / 'authorization.json').write_text(json.dumps(authorization))
+    monkeypatch.setattr(training_cycles, '_measurement_sources', lambda: pytest.fail('Malformed saved data cannot read current sources'))
+    for action in ('status', 'stop'):
+        with pytest.raises(ValueError):
+            training_cycles.controller(state, 'demo', 'controller', authorization['sha256'], action, reason='Invalid identity')
+    assert not admission.stop.exists()
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Controller dispatch requires Linux clocks and flock')
+@pytest.mark.parametrize('controller_admission', [{'program_version': 2}, {'program_version': 3}], indirect=True)
+@pytest.mark.parametrize('source_read', [1, 2])
+def test_measurement_source_read_consumes_original_allowance_before_attempt_and_send(
+        controller_dispatch, monkeypatch, source_read):
+    import asyncio
+    from types import SimpleNamespace
+    from temporalio.client import Client
+    import ergora.training.cycles as training_cycles
+    import ergora.training.runtime.worker as worker
+    from fixtures.training_controller_service import DispatchService
+
+    state, admission, storage, operation = controller_dispatch
+    current = operation()
+    plan = training_cycles._load(state.root, 'demo', 'controller', admission.directory)[0]
+    sdk = DispatchService(current.payload, 'accepted')
+
+    async def connect():
+        return Client(sdk)
+
+    monkeypatch.setattr(worker, '_select_cycle_project', lambda *args: SimpleNamespace(registration=lambda: None))
+    monkeypatch.setitem(sys.modules, 'perf_temporal.connection', SimpleNamespace(connect=connect))
+    remaining = training_cycles.budget_clock.remaining
+    source_reader = training_cycles._measurement_sources
+    reads = []
+
+    def read_sources():
+        result = source_reader()
+        reads.append(result)
+        return result
+
+    monkeypatch.setattr(training_cycles, '_measurement_sources', read_sources)
+    monkeypatch.setattr(training_cycles.budget_clock, 'remaining', lambda *args, **kwargs:
+        plan['definition']['budget']['cleanup_seconds'] if len(reads) >= source_read else remaining(*args, **kwargs))
+    before = {path: path.read_bytes() for path in admission.directory.rglob('*') if path.is_file()}
+    result = asyncio.run(worker._dispatch_controller(current.payload, plan, admission, lambda: None))
+    assert result['status'] == 'unknown' and 'deadline has passed' in result['reason']
+    assert len(reads) == source_read and all(item == admission.authorization['measurement_sources'] for item in reads)
+    assert not (admission.folder / 'attempt.json').exists() and not (storage / 'request.pb').exists()
+    assert not any(json.loads(path.read_bytes())['action'] == 'start' for path in storage.glob('call-*.json'))
+    assert {path: path.read_bytes() for path in admission.directory.rglob('*') if path.is_file()} == before
+
+
 @pytest.mark.skipif(sys.platform != 'linux', reason='Controller consent requires Linux/WSL2 clocks and flock')
 @pytest.mark.parametrize('controller_admission', [{'program_version': 2}, {'program_version': 3}], indirect=True)
 def test_schema3_intent_and_claim_keep_original_sources_and_refuse_manual_binding(
         controller_admission, cycle_selection, service, monkeypatch):
-    from ergora import reference_training_worker as worker, training_cycles
+    import ergora.training.runtime.worker as worker
+    import ergora.training.cycles as training_cycles
 
     state, source, selected, authorized, admission = controller_admission
     _, _, runtime, _, _, request = cycle_selection
     original_sources = training_cycles._measurement_sources()
     source_reader = training_cycles._read_bytes
-    target = Path(training_cycles.__file__).parent / next(iter(original_sources))
+    target = PACKAGE_ROOT / next(iter(original_sources))
     monkeypatch.setattr(training_cycles, '_read_bytes',
         lambda path, limit: source_reader(path, limit) + b'\n# simulated drift\n' if path == target else source_reader(path, limit))
     assert training_cycles.status(state, 'demo', 'controller')['authorization'] == authorized['authorization']
@@ -1954,6 +2132,12 @@ def test_schema3_intent_and_claim_keep_original_sources_and_refuse_manual_bindin
     assert (admission.folder / 'intent.json').read_bytes() == raw
     assert set(first['intent']['workflow_input']) == {
         'protocol', 'control_home', 'project', 'cycle_id', 'input_sha256', 'authorization_sha256'}
+    with monkeypatch.context() as drift:
+        drift.setattr(training_cycles, '_read_bytes', lambda path, limit:
+            source_reader(path, limit) + b'\n# changed current bytes\n' if path == target else source_reader(path, limit))
+        with pytest.raises(ValueError, match='measurement sources changed'):
+            training_cycles._claim_controller(state, admission)
+    assert not (admission.folder / 'attempt.json').exists()
     assert training_cycles._claim_controller(state, admission) is True
     attempt_path = admission.folder / 'attempt.json'
     attempt = attempt_path.read_bytes(), attempt_path.stat().st_ino
@@ -2016,7 +2200,7 @@ def test_schema3_intent_and_claim_keep_original_sources_and_refuse_manual_bindin
 @pytest.mark.parametrize('controller_admission', [{'program_version': 2}, {'program_version': 3}], indirect=True)
 def test_schema3_native_callback_refuses_legacy_budget_binding_and_keeps_completed_read(
         controller_admission, request):
-    from ergora import training_cycles
+    import ergora.training.cycles as training_cycles
 
     state, _, _, authorized, admission = controller_admission
     _, definition, runtime, folder = request.getfixturevalue('historical_execution')
@@ -2057,7 +2241,7 @@ def test_schema3_native_callback_refuses_legacy_budget_binding_and_keeps_complet
     environment = dict(os.environ, PYTHONDONTWRITEBYTECODE='1',
         AGENTFLOW_CONFIG_DIR=definition['execution']['config_directory'],
         AGENTFLOW_STATE_DIR=definition['execution']['state_directory'],
-        PYTHONPATH=os.pathsep.join(map(str, (Path(training_cycles.__file__).parent.parent,
+        PYTHONPATH=os.pathsep.join(map(str, (IMPORT_ROOT,
             installation / 'local', installation / 'upstream/platform', installation / 'upstream/temporal', installation / 'upstream'))))
     command = [str(installation / '.venv/bin/python'), '-B', '-P',
         str(Path(__file__).parent / 'fixtures/training_executor_client.py'),
@@ -2087,8 +2271,8 @@ def test_schema3_native_callback_refuses_legacy_budget_binding_and_keeps_complet
 def test_controller_original_type_is_authenticated_read_only(controller_admission, tmp_path, monkeypatch):
     import asyncio
     from temporalio.client import Client
-    from ergora import training_cycles
-    from ergora.reference_training_runtime import lookup_controller_submission
+    import ergora.training.cycles as training_cycles
+    from ergora.training.runtime.status import lookup_controller_submission
     from fixtures.training_controller_service import DispatchService
 
     state, _, _, authorized, admission = controller_admission

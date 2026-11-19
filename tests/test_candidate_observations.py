@@ -6,7 +6,10 @@ from urllib.parse import quote, unquote
 
 import pytest
 
-from ergora import cli, issues, projects, tasks
+import ergora.interfaces.cli as cli
+import ergora.issues.application as issues
+import ergora.configuration.projects as projects
+import ergora.development.application as tasks
 from test_issue_writebacks import candidate, writer
 from test_project_issues import source
 
@@ -157,7 +160,7 @@ def test_source_candidate_and_project_revision_drift_do_not_redirect_reads(remot
 def test_cli_and_protected_http_use_the_same_read_only_observation(remote, capsys):
     pytest.importorskip('fastapi')
     from fastapi.testclient import TestClient
-    from ergora.web import create_app
+    from ergora.interfaces.web import create_app
 
     before = logical_state(remote.state)
     argv = ['--home', str(remote.state.root), 'issue', 'candidate-observe', 'demo', 'task',

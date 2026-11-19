@@ -11,7 +11,10 @@ from pathlib import Path
 import signal
 import sys
 
-from ergora import budget_clock, local_gpu_guard as guard, local_gpu_pool as pool, processes
+from ergora.runtime import budget_clock
+from ergora.runtime import gpu_guard as guard
+from ergora.runtime import gpu_pool as pool
+from ergora.runtime import processes
 
 
 _SETUP_FIELDS = {'schema_version', 'pool_config', 'origin', 'command', 'device_uuids',

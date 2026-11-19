@@ -13,9 +13,14 @@ import sys
 
 import pytest
 
-from ergora import agent_definitions as definitions
-from ergora import agents, backups, contracts, definition_bundles, projects, skill_assets
-from ergora.state import SCHEMA_VERSION, State
+import ergora.definitions.agents as definitions
+import ergora.agents.invocation as agents
+import ergora.operations.backups as backups
+import ergora.definitions.bundles as definition_bundles
+import ergora.configuration.projects as projects
+import ergora.definitions.skills as skill_assets
+from ergora.configuration import validation as contracts
+from ergora.storage.state import SCHEMA_VERSION, State
 
 
 EXAMPLES = Path(__file__).resolve().parents[1] / "examples/agents"
@@ -424,7 +429,7 @@ def test_offline_restore_preserves_definitions_resources_and_exact_references(bu
 
 @pytest.mark.parametrize("policy_change", ["removed-role", "removed-backend", "stricter-binding"])
 def test_historical_assets_survive_current_admission_changes(bundle, tmp_path, monkeypatch, capsys, policy_change):
-    from ergora.cli import main
+    from ergora.interfaces.cli import main
 
     state = State(tmp_path / "state")
     original = definitions.import_bundle(state, bundle)

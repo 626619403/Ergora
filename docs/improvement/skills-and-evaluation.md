@@ -1,0 +1,75 @@
+# Evaluate and adopt Skill candidates
+
+English · [Documentation](../README.md)
+
+## Skill candidates, evaluation, and adoption
+
+Import directories follow [Agent Skills](https://agentskills.io/specification): `my-skill/SKILL.md`, with YAML frontmatter containing `name: my-skill` and `description`; scripts, references, and resources are addressed with the complete directory. Import rejects symlinks / `.git`, with limits of 500 files / 10 MB. The first import of a name is an explicit initial baseline; later imports create candidates without replacing the active version.
+
+Import verifies a complete copy before publishing and registering it; concurrent or interrupted retries for the same project and version remain idempotent. Unregistered partial trees can be recovered from verified sources. If a registered version is missing or modified, import and reads reject using or overwriting it; restore from a trusted backup and recheck evidence. Reimporting does not repair registered evidence.
+
+```bash
+ergora skill import my-project ./my-skill
+ergora skill list my-project
+# 修改独立来源目录，再导入候选
+ergora skill import my-project ./my-skill --hypothesis '一个可检验的改进假设'
+ergora evaluation register my-project evaluation.json
+ergora evaluation run my-project BASELINE_DIGEST --suite SUITE_DIGEST
+ergora evaluation run my-project CANDIDATE_DIGEST --suite SUITE_DIGEST
+ergora evaluation compare my-project BASELINE_RUN_ID CANDIDATE_RUN_ID
+ergora skill adopt my-project --baseline-run BASELINE_RUN_ID --candidate-run CANDIDATE_RUN_ID --revision 1 --reason '已审阅实际证据'
+ergora skill rollback my-project my-skill BASELINE_DIGEST --revision 2 --reason '记录回退原因'
+```
+
+The project maintainer supplies `evaluation.json`; the example structure follows. Fill in data, commands, and thresholds for the actual task:
+
+```json
+{
+  "schema_version": 1,
+  "evaluator_argv": ["python3", "evaluate-skill.py"],
+  "evaluator_files": ["evaluate-skill.py"],
+  "timeout_seconds": 60,
+  "minimum_gain": 0.05,
+  "max_reported_cost": 2,
+  "cases": [
+    {"id":"train-1","split":"train","input":{"task":"填写构造任务"}},
+    {"id":"validation-1","split":"validation","input":{"task":"填写迭代评价任务"}},
+    {"id":"holdout-1","split":"holdout","input":{"task":"填写独立保留任务"}}
+  ]
+}
+```
+
+The trusted evaluator reads `{"skill_dir":"版本目录","case":具体input}` from stdin, runs in an independent working directory, and writes one JSON object to stdout, for example `{"score":0.8,"passed":true,"cost":0.01,"feedback":"具体执行反馈"}`. score must be 0–1 and cost a nonnegative finite number; `passed` denotes actual project correctness checks and cannot be self-declared by the candidate. stderr can contain diagnostics. `evaluator_files` declares scoring source and dependency files to fix; their SHAs and the interpreter's SHA are recorded. The maintainer still pins and revalidates other environment, data, and imported dependencies.
+
+The suite fixes evaluation cases, command, thresholds, and file identities; existing files in argv are also fingerprinted automatically to avoid undeclared scoring entry points. After changing scoring files, register a new suite and rerun both sides. Candidate directory contents and executable bits are identity-checked before and after evaluation, during comparison, and at adoption. Adoption requires complete evaluations of both sides, candidate correctness passing, validation reaching minimum_gain, no holdout regression, and a matching current active baseline / revision. Partial train / validation search records cannot replace complete evaluation. A final holdout can be checked before adoption; repeatedly inspecting it and tuning against it contaminates independence, so maintainers should refresh holdout cases periodically.
+
+Costs come from tool reports; exceeding a budget stops later calls and is not a hard provider billing limit. Combine actual cost control with provider quotas. Process outputs, failures, and inputs are saved in private run directories; deleting memory does not retroactively rewrite archived task inputs or independent backups.
+
+### Optional GEPA
+
+Install `.[gepa]` to enable the pinned `gepa==0.1.4` engine; the default optimizer layer `{"tool":"manual"}` uses manual imports and the same evaluation / adoption process. Example GEPA binding:
+
+```json
+{"tool":"gepa","proposer_argv":["python3","/absolute/path/propose-skill.py"]}
+```
+
+```bash
+ergora project bind my-project optimizer --binding optimizer-binding.json --revision CURRENT_PROJECT_REVISION
+ergora skill optimize my-project --baseline BASELINE_DIGEST --suite SUITE_DIGEST --objective '一个可衡量的改进目标' --max-evaluations 20 --max-proposals 5 --timeout 300
+ergora skill optimizations my-project
+```
+
+Proposal commands may connect any model / agent but must follow the JSON stdin/stdout protocol. stdin contains `candidate.skill` (complete SKILL.md), `feedback`, `components`, and `objective`; stdout is `{"skill":"完整新版 SKILL.md","cost":0.01}`. The real SDK performs GEPA search / selection; the command only generates text. Other files retain the baseline, and the project owns source and model configuration. Relative command paths resolve against the project root without a shell; authentication uses the command environment.
+
+The search interface sends train / validation materials only, never holdout. There is no strong file isolation within the same Unix user; interface separation does not mean malicious tools cannot read scoring files. Search enforces actual metric-call / proposal counts, per-call and total time limits, and reported-cost constraints. Internal errors and budget termination retain status; search does not adopt automatically, change scoring, or execute candidate-supplied scripts. Candidates still require complete evaluation and manual adoption. Current validation uses real GEPA with a deterministic test proposer; it establishes no real model effect or generalization benefit.
+
+### Use in later tool calls
+
+```bash
+ergora agent run my-project implementer --prompt task.md --skill my-skill --recall '相关项目约定'
+ergora skill export my-project ADOPTED_DIGEST ./export/my-skill
+```
+
+`--skill` reads the complete currently adopted version of that name; `--recall` uses the current project memory backend. Run records save the actual skill digest, memory revisions, and prompt digest; archived inputs allow checking their actual consumption. After rollback, the next invocation reads the restored active version. Export chooses a new directory with the same name without overwriting existing project files; maintainers can install it into project `.agents/skills/` following host conventions. These operations change neither the reference six-stage executor nor global host configuration.
+
+Continue: [Carry a retrospective into the next task](workflow.md) · [Prepare a task's frozen composition](../development/preparation.md).

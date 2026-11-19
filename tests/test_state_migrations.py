@@ -11,8 +11,9 @@ import sys
 
 import pytest
 
-from ergora import backups as state_backups, state as storage
-from ergora.state import State
+import ergora.operations.backups as state_backups
+from ergora.storage import state as storage
+from ergora.storage.state import State
 
 
 LEGACY_SQL = (Path(__file__).parent / "fixtures/compatibility-v0_2_0/schema.sql").read_text(encoding="utf-8")
@@ -260,7 +261,7 @@ def test_abrupt_process_exit_during_migration_recovers_the_old_transaction(old_h
         original = list(db.iterdump())
     code = '''import os,sys
 from pathlib import Path
-from ergora import state
+from ergora.storage import state
 original=state._MIGRATIONS[-1]
 def crash(db):
  original(db)
@@ -324,8 +325,8 @@ def test_parallel_upgrade_and_project_revision_conflict_are_serialized(old_home)
     root, document = old_home
     code = '''import sys
 from pathlib import Path
-from ergora import projects
-from ergora.state import State
+import ergora.configuration.projects as projects
+from ergora.storage.state import State
 state=State(Path(sys.argv[1]))
 try:
  projects.bind(state,"demo","reviewer",{"tool":"codex","model":sys.argv[2]},3)

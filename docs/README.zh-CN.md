@@ -1,64 +1,78 @@
 # Ergora 文档
 
-[English（默认）](README.md) · 简体中文 · [项目 README](../README.zh-CN.md)
+[English](README.md) · 简体中文 · [项目 README](../README.zh-CN.md)
 
-先读[项目概览与快速试用](../README.zh-CN.md#快速试用)，再按下表选择指南。当前功能文档跟随 `main`；冻结的 v2.2 参考发行保留其文档所述范围。复现记录中的结果时，应固定完整源码提交。
+按正在执行的任务选择指南。当前文档以英文为主；明确标注的中文链接指向译文或冻结的来源材料。[当前计划（English）](PLAN.md)区分已交付行为与等待实现或验收的工作。复现结果时应固定完整源码提交。
 
-已完成的语言对默认使用英文。下表标明各指南提供的语言；当前命令和恢复义务由对应指南拥有。
+## 安装与运维
 
-## 安装与操作
-
-|指南|适用内容|语言状态|
-|---|---|---|
-|[安装与日常使用](zh-CN/USAGE.md)|安装组合／离线 wheel、Agent 认证、正式任务操作、工单来源、服务与恢复|[English](USAGE.md) / [中文](zh-CN/USAGE.md)|
-|[Windows](zh-CN/WINDOWS.md)|原生控制面、PowerShell 安装、交接核验和 WSL2 执行边界|[English](WINDOWS.md) / [中文](zh-CN/WINDOWS.md)|
-|[项目](zh-CN/PROJECTS.md)|统一登记、修订、有效绑定及显式采用旧参考登记|[English](PROJECTS.md) / [中文](zh-CN/PROJECTS.md)|
-|[备份与恢复](zh-CN/BACKUP_RECOVERY.md) · [English](BACKUP_RECOVERY.md)|控制／执行／Temporal／Git 联合离线快照与原路径恢复|中英文完整对照|
-|[测试维护](zh-CN/TESTING.md) · [English](TESTING.md)|安装后 wheel 检查、CI 选择、collection 覆盖与原失败日志|中英文完整对照|
-
-控制面安装不会启动服务、认证模型或启用可信参考执行器。控制 home 备份不包含存放在其他目录的执行数据。凭据与本地运行数据应留在公开文档之外。
-
-## 定义 Agent 与工作流
-
-|指南|适用内容|语言状态|
-|---|---|---|
-|[模板入门旅程](zh-CN/TEMPLATE_WALKTHROUGHS.md)|治理／重构／训练提案的完整旅程与 manifest|[English](TEMPLATE_WALKTHROUGHS.md) / [中文](zh-CN/TEMPLATE_WALKTHROUGHS.md)|
-|[Agent 定义](zh-CN/AGENT_DEFINITIONS.md)|独立专家定义、资源与不可变版本|[English](AGENT_DEFINITIONS.md) / [中文](zh-CN/AGENT_DEFINITIONS.md)|
-|[Agent 后端](zh-CN/AGENT_BACKENDS.md)|真实角色／模式支持、后端配置、正式执行和会话恢复|[English](AGENT_BACKENDS.md) / [中文](zh-CN/AGENT_BACKENDS.md)|
-|[工作流定义](zh-CN/WORKFLOW_DEFINITIONS.md)|嵌套引用、资源继承、权限、图编译、manifest 和显式叶调用|[English](WORKFLOW_DEFINITIONS.md) / [中文](zh-CN/WORKFLOW_DEFINITIONS.md)|
-
-有效定义、preset 安装或预览不等于执行整张图。正式开发保留受支持的六阶段运行时。逐 binding 的推理设置请求所选后端／模型支持的等级，不证明模型实际使用了该等级。自动按任务选档仍属后续设计。
-
-## 审查、训练、报告与改进
-
-|指南|适用内容|语言状态|
-|---|---|---|
-|[本地审查](LOCAL_REVIEW.md)|精确 Git／需求／上下文材料包、离线核验和显式来源采集|中文；第四批完成完整双语|
-|[预训练与后训练审查](TRAINING_REVIEW.md)|领域审查者与 CPU 合同示例|中文；第四批完成完整双语|
-|[训练](TRAINING.md)|workload／baseline／runner、实验、证据、批准、受管执行及优化提案|中文；第四批完成完整双语|
-|[完整改进旅程](IMPROVEMENT_WORKFLOW.md)|来源绑定的记忆／Skill／Workflow 候选、评价、明确采用和新任务冻结|中文；第四批完成完整双语|
-|[工具接入](INTEGRATIONS.md)|工具绑定、记忆投影、GEPA、有界研究与调度|中文；第四批完成完整双语|
-|[证据报告](zh-CN/EVIDENCE_REPORTS.md) · [English](EVIDENCE_REPORTS.md)|只读报告作者、原来源／覆盖记录及自包含 HTML 导出|中英文完整对照|
-
-训练提案与证据索引不授权实验，也不证明 GPU 质量／性能。显式授权的训练控制器在同一个原预算内执行冻结的有限候选；自适应搜索、设计关卡与通用 Repeat 仍由持续计划跟踪。外部工单评论／标签、候选采用及发布仍使用各自明确的操作／批准流程。
-
-## 理解与扩展实现
-
-以下架构指南说明当前语义owner与合同；持续计划记录当前检查和剩余工作。
-
-|指南|Owner 与用途|
+|任务|指南|
 |---|---|
-|[当前架构](architecture/current.md)|模块／调用者／数据边界和实际支持的扩展点|
-|[组件变更协议](architecture/component-change-protocols.md)|改动组件前的构造／配置、所有权、生命周期、恢复和相关验证|
-|[合同与身份](architecture/contracts-and-identities.md)|版本 schema、完整资源身份及不同摘要合同|
-|[reference 边界](architecture/reference-boundary.md)|冻结运行时访问与逐步迁移职责|
-|[状态迁移](architecture/state-migrations.md)|数据库兼容、备份与回退|
-|[领域词汇表](../CONTEXT.md)|项目术语与原领域 owner|
+|安装控制平面并准备离线 wheel|[Linux/WSL2](zh-CN/install/linux.md) · [Windows/PowerShell](zh-CN/install/windows.md)|
+|配置后端登录、工具和有效 binding|[Agent 配置](zh-CN/agents/configuration.md)|
+|登记仓库、tracker、角色和可信检查|[项目登记](zh-CN/projects/registration.md)|
+|保留持久数据进行升级或重建|[升级](zh-CN/install/upgrades.md)|
+|使用本地页面和编辑工作单元草稿|[控制台](zh-CN/operations/console.md)|
+|诊断、启动、停止和恢复选定服务|[服务](zh-CN/operations/services.md)|
+|建立协调一致的离线恢复点|[备份与恢复](zh-CN/operations/backup-recovery.md)|
 
-修改仓库代码前，先读根[合作规则](../AGENTS.md)及当前计划。[编辑器比较示例](../examples/editor-comparison/README.md)是独立设计实验，有自己的构建要求。冻结 preset／reference 指令和第三方资料属于产品／来源资产，不做无差别文档翻译。
+安装不会认证 Agent、启动服务或授权任务。Control-home 备份不包含存储在其他位置的执行数据。
 
-## 当前工作
+## 运行正式开发任务
 
-[当前计划](PLAN.md)与[活动交付](delivery/2026-11-19-main-branch-integration.md)记录实际检查和剩余工作。[架构决定](architecture/decisions/)保留其日期所对应的设计背景。[冻结参考HTML](distribution/multi-agent-development-platform.html)仍是自包含v2.2 Linux发行，具有自身原始部署和训练手册范围。
+参照[模板旅程](zh-CN/development/templates.md)进行治理、大型变更和重构，然后使用相应操作：
 
-[第三方说明](../THIRD_PARTY_NOTICES.md)
+1. 为所选配方[准备组合、预算和上下文](zh-CN/development/preparation.md)。
+2. 根据这些精确输入[预览并创建任务](zh-CN/development/tasks.md)。
+3. [提交并观察原运行](zh-CN/development/run-and-recover.md)。
+4. 等待批准时，[阅读设计材料并批准精确计划](zh-CN/development/design-and-approval.md)。
+5. [读取原始证据、校验交接并导出精确候选](zh-CN/development/evidence-and-export.md)。
+
+[工单上下文](zh-CN/projects/issues.md)冻结明确的来源观察。[候选操作](zh-CN/projects/candidate-actions.md)涵盖原候选观察、明确评论/标签和已有 PR/MR 关联；这些操作不会合并或批准远端变更。
+
+## 定义 Agent 和工作流
+
+|任务|指南|
+|---|---|
+|选择后端并检查实际角色/模式支持|[后端选择](zh-CN/agents/backends.md)|
+|使用可选原生集成|[DeepSeek Harness](zh-CN/agents/deepseek-harness.md) · [正式六阶段桥接](zh-CN/agents/formal-execution.md) · [ForgeKernel](zh-CN/agents/forgekernel.md)|
+|创建或派生不可变专家定义|[Agent 定义](zh-CN/definitions/agents.md)|
+|修订/读取完整资源与附件|[共享定义资源](zh-CN/definitions/resources.md)|
+|导入、组合、预览和冻结工作流|[组合](zh-CN/definitions/workflows/compose.md)|
+|理解数据端口、工作单元和审查职责|[工作流合同](zh-CN/definitions/workflows/contracts.md)|
+|检查祖先资源、权限和静态预算|[继承与权限](zh-CN/definitions/workflows/permissions.md)|
+|发布精确新版本并分享依赖|[工作流修订](zh-CN/definitions/workflows/revisions.md)|
+|明确调用/检查一个受支持的叶及固定 MCP 资源|[叶调用](zh-CN/definitions/workflows/leaf-calls.md)|
+
+静态预览或已安装 preset 不会执行图。逐 binding 的 reasoning 字段请求受支持的级别，不能证明实际使用了该级别。
+
+## 审查和解释原始证据
+
+从[精确本地/PR/MR 材料（English）](review/materials.md)开始，再[调用并汇总冻结的审查者（English）](review/invoke-and-aggregate.md)。[训练代码审查（English）](review/training.md)选择预训练/后训练专家。[证据报告](zh-CN/review/evidence-reports.md)将原始材料转成可读 Markdown/HTML，并明确覆盖限制。
+
+## 训练与测量
+
+从[训练概览和 CPU 合同演示（English）](training/overview.md)开始，继续阅读[实验准备（English）](training/prepare-experiments.md)、[原执行与恢复（English）](training/execution.md)、[有限控制器授权（English）](training/controllers.md)或[证据/轮次/精确批准（English）](training/evidence-and-approval.md)。
+
+[专家提案（English）](training/proposals.md)将源码流程与瓶颈分析映射到实验合同；[优化专家（English）](training/specialists.md)选择聚焦方向。提案叶和合成 CPU 检查不能认证真实 GPU 质量或性能。
+
+## 改进后续任务
+
+[改进工作流（English）](improvement/workflow.md)连接[来源绑定的复盘候选](zh-CN/improvement/retrospectives.md)、[项目记忆与可选 ReMe](zh-CN/improvement/memory.md)、[可信 Skill 评价/采用（English）](improvement/skills-and-evaluation.md)及[有界调研/调度（English）](improvement/research-and-schedules.md)。生成、评价、采用和新任务冻结上下文是独立操作。
+
+## 理解和修改实现
+
+阅读[架构概览（English）](architecture/current.md)、[源码所有权地图（English）](architecture/module-map.md)、[组件变更协议（English）](architecture/component-change-protocols.md)和[领域词汇表（English）](../CONTEXT.md)。
+
+|参考|用途|
+|---|---|
+|[结构化格式（English）](architecture/contracts/formats.md) · [内容身份（English）](architecture/contracts/identities.md)|版本化记录及各自独立的编码/摘要合同|
+|[开发执行（English）](architecture/execution/development.md) · [训练执行（English）](architecture/execution/training.md)|原状态、预算、恢复和进程所有权|
+|[CLI/HTTP/控制台（English）](architecture/interfaces.md)|传输与异步视图所有权|
+|[原生参考访问（English）](architecture/reference-boundary.md)|固定源码、原生进程和迁移职责|
+|[数据库迁移（English）](architecture/state-migrations.md) · [测试](zh-CN/architecture/testing.md)|持久数据恢复与尊重证据边界的检查|
+|[架构决策](architecture/decisions/)|带日期的决策，当前所有者另行链接|
+
+修改仓库前遵循根[协作规则（English）](../AGENTS.md)和活动[计划（English）](PLAN.md)。[编辑器比较（English）](../examples/editor-comparison/README.md)是独立原型。[冻结的 v2.2 发行版（中文）](distribution/multi-agent-development-platform.html)及随包参考手册保留原范围；它们是来源产物，并非当前指南的译文。
+
+[第三方声明（English）](../THIRD_PARTY_NOTICES.md)

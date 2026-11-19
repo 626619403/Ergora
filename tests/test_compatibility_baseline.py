@@ -1,4 +1,4 @@
-"""Pinned pre-refactor identities and synthetic 0.2.0 persisted documents."""
+"""Persisted identity contracts and synthetic stored documents."""
 
 import hashlib
 import json
@@ -10,36 +10,32 @@ import sys
 
 import pytest
 
-from ergora import drafts, evaluation, kernel, memory, optimization, projects, reference, research, skills, tools
-from ergora.state import State
+import ergora.native.resources as native_resources
+import ergora.development.drafts as drafts
+import ergora.improvement.evaluation as evaluation
+import ergora.improvement.kernel as kernel
+import ergora.improvement.memory as memory
+import ergora.improvement.optimization as optimization
+import ergora.configuration.projects as projects
+import ergora.improvement.research as research
+import ergora.definitions.skills as skill_assets
+import ergora.operations.tools as tools
+import ergora.agents.runs as agent_runs
+from ergora.storage.state import State
 
 
 FIXTURES = Path(__file__).parent / "fixtures/compatibility-v0_2_0"
 IDENTITIES = json.loads((FIXTURES / "identities.json").read_text(encoding="utf-8"))
 
 
-def test_legacy_python_entry_points_share_the_actual_owners():
-    from ergora import agent_runs, bindings, skill_assets
-
-    for name in ("digest_tree", "metadata", "import_bundle", "get", "versions", "export", "rollback"):
-        assert getattr(skills, name) is getattr(skill_assets, name)
-    for name in ("run_agent", "runs", "output"):
-        assert getattr(tools, name) is getattr(agent_runs, name)
-    assert tools.validate_binding is bindings.validate_binding
 
 
-def test_asset_and_invocation_consumers_import_without_compatibility_facades():
-    subprocess.run(
-        [sys.executable, "-c", "import sys;from ergora import agent_runs,backups,evaluation,optimization,projects;"
-         "assert not {'ergora.skills','ergora.tools'}.intersection(sys.modules)"],
-        capture_output=True, text=True, encoding="utf-8", check=True,
-    )
 
 
 def test_distinct_json_identity_vectors_are_preserved(tmp_path):
     payload = IDENTITIES["payload"]
     assert evaluation.manifest_sha256(payload) == IDENTITIES["evaluation_sha256"]
-    environment = dict(os.environ, PYTHONPATH=str(reference.ROOT / "platform/upstream/platform"),
+    environment = dict(os.environ, PYTHONPATH=str(native_resources.ROOT / "platform/upstream/platform"),
                        PYTHONDONTWRITEBYTECODE="1", PYTHONUTF8="1")
     result = subprocess.run(
         [sys.executable, "-P", "-S", "-c",
@@ -62,15 +58,15 @@ def test_skill_tree_identity_includes_original_exec_bits(tmp_path, executable):
         target.write_text(text, encoding="utf-8", newline="\n")
         target.chmod(0o755 if executable and relative == "scripts/check.py" else 0o644)
     expected = IDENTITIES["skill_identity"]["executable" if executable else "plain"]
-    digest, files = skills.digest_tree(tmp_path)
+    digest, files = skill_assets.digest_tree(tmp_path)
     assert digest == expected["digest"]
     assert files == expected["files"]
 
 
 @pytest.mark.parametrize("kind", ["repository-governance"])
 def test_compiled_examples_keep_exact_pre_refactor_identity(tmp_path, kind):
-    example = reference.ROOT / "platform/upstream/platform/portable/examples" / kind
-    package = reference.ROOT / "platform/upstream/platform/portable/packages" / kind / "manifest.json"
+    example = native_resources.ROOT / "platform/upstream/platform/portable/examples" / kind
+    package = native_resources.ROOT / "platform/upstream/platform/portable/packages" / kind / "manifest.json"
     target = tmp_path / "compiled.json"
     subprocess.run(
         [sys.executable, "-m", "ergora", "workflow", "compile", "--task", str(example / "task.json"),
@@ -87,7 +83,7 @@ def test_compiled_examples_keep_exact_pre_refactor_identity(tmp_path, kind):
 
 
 def test_current_large_change_cli_compilation_and_conversion_keep_the_complete_contract(tmp_path):
-    platform = reference.ROOT / "platform/upstream/platform"
+    platform = native_resources.ROOT / "platform/upstream/platform"
     example = platform / "portable/examples/large-change"
     package = platform / "portable/packages/large-change"
     task_type = platform / "task-types/large-change"
@@ -121,7 +117,7 @@ def test_current_large_change_cli_compilation_and_conversion_keep_the_complete_c
     assert json.loads((converted_directory / "task.spec.json").read_text(encoding="utf-8")) == converted["spec"]
     assert compiled["spec"]["request"] == request
     assert parts["task"]["input"] == converted["task"]["input"] == request["input"]
-    assert request["input"] == reference.template_details("large-change")["input"]
+    assert request["input"] == native_resources.template_details("large-change")["input"]
     for name, value in parts.items():
         assert compiled[name] == value
         assert json.loads((converted_directory / (name + ".json")).read_text(encoding="utf-8")) == converted[name]
@@ -179,8 +175,8 @@ def test_old_state_documents_survive_reopen_and_keep_domain_statuses(legacy_stat
     assert memory.history(state, project, "memory-1") == [row["document"] for row in rows["memories"]]
     assert memory.records(state, project) == [rows["memories"][-1]["document"]]
     digest = rows["skill_heads"][0]["digest"]
-    assert skills.get(state, project, digest) == rows["skill_versions"][0]["document"]
-    assert skills.versions(state, project)["active"] == rows["skill_heads"]
+    assert skill_assets.get(state, project, digest) == rows["skill_versions"][0]["document"]
+    assert skill_assets.versions(state, project)["active"] == rows["skill_heads"]
     assert evaluation.listing(state, project) == {
         "suites": [rows["evaluation_suites"][0]["document"]], "runs": [rows["evaluations"][0]["document"]]}
     assert optimization.listing(state, project) == [rows["optimizations"][0]["document"]]
@@ -188,7 +184,7 @@ def test_old_state_documents_survive_reopen_and_keep_domain_statuses(legacy_stat
     assert "Synthetic source snapshot" in research.proposal(state, project, "proposal-1")["text"]
     campaign = kernel.get(state, project, "kernel-1")
     assert campaign["status"] == "outcome_unknown" and campaign["requires_reconciliation"] is True
-    assert tools.runs(state, project)[0]["status"] == "failed"
+    assert agent_runs.runs(state, project)[0]["status"] == "failed"
     with state.connect() as db:
         for table, expected in rows.items():
             stored = [dict(row) for row in db.execute(f"SELECT * FROM {table} ORDER BY rowid")]

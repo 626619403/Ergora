@@ -1,20 +1,22 @@
 # Current implementation and delivery
 
-The current implementation comes from `ace1deade97ac39182e0d34c1a5777afc0663b3e`. Its source, tests, scripts, runtime resources and required dependencies are preserved while the existing remote branches are consolidated into `main`. Start with the [README](../README.md), [usage guide](USAGE.md) and [component change protocols](architecture/component-change-protocols.md).
+Read the root [cooperation rules](../AGENTS.md), this page and the active delivery before repository changes. Reconcile them with the actual branch, working tree and recent commits. Older decisions and results retain their original scope; they do not prove a current feature or candidate.
 
 ## Active slice
 
-[Main branch integration](delivery/2026-11-19-main-branch-integration.md) records the exact branch coverage, current checks and remaining delivery work. The 23 observed remote heads are ancestors of the integration candidate. Equivalent commits retain their original history; the process-supervision experiment remains an experiment.
+[English-first semantic documentation](delivery/2026-11-19-documentation-reorganization.md) records the current documentation reorganization, its accepted source-owner dependency and actual checks. The source baseline is `93245804d85783ae3a6a6aab1ce971666086e28f`. The working candidate splits current guides and source responsibilities without granting new runtime capabilities.
 
-The candidate keeps the current six-stage development workflow, candidate-bound evidence, original budgets, unknown-result reconciliation and existing process cleanup. Current installation guides use `main` and the actual bundled preset IDs. Working plans, diaries, research and old check artifacts remain available in their original Git commits and in a verified private archive.
+Independent design, source and documentation implementation reviews are complete; the active record identifies their exact scope. Documentation links and source bytes have been checked against the final frozen source candidate. Combined review/integration and the candidate's applicable CI retain their separate candidate-bound evidence. The actual branch, candidate and CI state are authoritative in Git. Document restructuring does not publish changes, upgrade a live installation or certify authentication, model behavior or GPU results.
 
-Delivery checkpoint (2026-11-19): content review approves `a174bdbba3441d43d39d052a8824d232cb1b1bc6` on both requirements and maintainability, with no open blocking findings. [Portability 44494319222](https://github.com/626619403/Ergora/actions/runs/44494319222) succeeds in 28m36s for exact head `792b7cf003dfef842e9540af5265b23cbecf40a0`: all 12 jobs and 11 Native regression groups pass, including Windows and PowerShell 5.1 installation/upgrade. Source, tests, scripts, required dependencies and workflow identities are identical in the reviewed documentation successor. This slice meets the main delivery gates; the exact current remote state is authoritative in Git. Status-only documentation does not relabel or rerun the original CI evidence.
+## Contracts to preserve
 
-## Remaining implementation boundaries
+Formal development keeps the existing six stages, exact plan approval, candidate-bound trusted checks and independent review. Definitions retain complete ancestor resources and narrowing permissions. Original task/run/intent identities, attempt-before-send, unknown reconciliation, nonrenewable budgets and owned-process cleanup remain with their actual owners. Optional integrations report real availability and supported operations; unsupported capabilities fail visibly.
 
-- Adaptive candidate generation and automatic per-round profiling are separate from the supported finite frozen training selection.
-- Design and knowledge gates, trusted non-Agent verification nodes, general bounded Repeat and mixed workflow canvases remain staged work.
-- Real Temporal service recovery, GPU admission/execution and workload quality/performance require their own measured acceptance.
-- Backend availability, supported operations, authentication and execution are reported separately; unsupported operations fail visibly.
+## Remaining boundaries
 
-Update this page and the active delivery record when this slice changes state. Keep credentials, runtime data and machine-specific paths outside public documents.
+- Finite training selection is distinct from adaptive candidate generation and automatic per-round profiling.
+- Stored design policy and source material are distinct from executable trusted human gates; general Repeat and unsupported mixed graphs remain separate work.
+- Real service recovery, native platform behavior, model quality and GPU workload/performance need their own evidence.
+- Source, installed wheel, live services, actual model/experiment behavior and a candidate's own CI certify different scopes.
+
+Use the [task index](README.md), [source ownership map](architecture/module-map.md) and [component protocols](architecture/component-change-protocols.md). Update this page and the active delivery when state, checks, decisions or ownership change. Keep credentials, runtime data and machine-specific paths outside public documents.

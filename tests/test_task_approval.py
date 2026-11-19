@@ -8,8 +8,10 @@ import time
 
 import pytest
 
-from ergora import projects, reference, tasks
-from ergora.state import State
+import subprocess
+import ergora.configuration.projects as projects
+import ergora.development.application as tasks
+from ergora.storage.state import State
 from test_registrations import installation, registration
 from test_task_creation import creation_project, _files
 from test_task_submission import submitted_creation, native_client, _start, _root, _calls
@@ -26,13 +28,13 @@ def approval_task(submitted_creation,native_client):
 
 @pytest.fixture
 def approval_client(approval_task,monkeypatch):
-    original=reference.subprocess.run
+    original=subprocess.run
     fixture=Path(__file__).parent/'fixtures/task_approval_client.py'
     def invoke(argv,**kwargs):
-        if 'from ergora.reference_task_approval import main;main()' in argv:
+        if 'from ergora.development.runtime.approval import main;main()' in argv:
             argv=[*argv[:-1],fixture.read_text(encoding='utf-8')]
         return original(argv,**kwargs)
-    monkeypatch.setattr(reference.subprocess,'run',invoke)
+    monkeypatch.setattr(subprocess,'run',invoke)
 
 
 def approve(creation,decision='owner-one',revision=1,**kwargs):
@@ -216,8 +218,8 @@ def test_remote_wait_leaves_other_project_writes_available_and_busy_task_prepare
 def test_cli_and_api_use_the_same_explicit_decision_and_recovery(approval_task,approval_client,monkeypatch):
     pytest.importorskip('fastapi')
     from fastapi.testclient import TestClient
-    from ergora import cli
-    from ergora.web import create_app
+    import ergora.interfaces.cli as cli
+    from ergora.interfaces.web import create_app
     state=approval_task[0]
     client=TestClient(create_app(state.root),base_url='http://127.0.0.1')
     uri='/api/projects/demo/tasks/new-task/approvals/owner-one'

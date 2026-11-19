@@ -13,7 +13,10 @@ import uuid
 
 import pytest
 
-from ergora import budget_clock, local_gpu_guard, local_gpu_pool, processes
+from ergora.runtime import budget_clock
+from ergora.runtime import gpu_guard as local_gpu_guard
+from ergora.runtime import gpu_pool as local_gpu_pool
+from ergora.runtime import processes
 from test_local_gpu_pool import fake_pool, _after_record_read, _ready, _start_session, _stop_session
 
 
@@ -74,7 +77,8 @@ def _owner(setup, *, transport_fault=None):
         # still run; no test boolean grants execution or bypasses the channel.
         script = '''import importlib.util,json,sys,time
 from pathlib import Path
-from ergora import local_gpu_guard as guard,local_gpu_pool as pool
+from ergora.runtime import gpu_guard as guard
+from ergora.runtime import gpu_pool as pool
 spec=importlib.util.spec_from_file_location('original_fixture_owner',sys.argv[1])
 fixture=importlib.util.module_from_spec(spec);spec.loader.exec_module(fixture)
 setup=Path(sys.argv[2]);fault=sys.argv[3];value=json.loads(setup.read_text())

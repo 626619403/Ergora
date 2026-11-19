@@ -2,63 +2,77 @@
 
 English · [简体中文](README.zh-CN.md) · [Project README](../README.md)
 
-Start with the [project overview and quick start](../README.md#quick-start), then choose a guide below. Current feature guidance follows `main`; the frozen v2.2 reference distribution retains its documented scope. Pin the full source commit when reproducing a recorded result.
-
-English is the default for completed language pairs. The table identifies each guide's available language; current commands and recovery obligations remain owned by the linked guides.
+Choose the task you are performing. English is the primary current documentation; explicitly labelled Chinese links select translations or frozen source material. The [current plan](PLAN.md) separates delivered behavior from work awaiting implementation or acceptance. Pin the complete source commit when reproducing a result.
 
 ## Install and operate
 
-|Guide|Use it for|Language status|
-|---|---|---|
-|[Installation and daily use](USAGE.md)|Installation profiles/offline wheels, Agent authentication, formal task operations, issue sources, services and recovery|[English](USAGE.md) / [中文](zh-CN/USAGE.md)|
-|[Windows](WINDOWS.md)|Native control plane, PowerShell installation, handoff verification and WSL2 execution boundaries|[English](WINDOWS.md) / [中文](zh-CN/WINDOWS.md)|
-|[Projects](PROJECTS.md)|Unified registration, revisions, effective bindings and explicit adoption of a reference registration|[English](PROJECTS.md) / [中文](zh-CN/PROJECTS.md)|
-|[Backup and recovery](BACKUP_RECOVERY.md) · [中文](zh-CN/BACKUP_RECOVERY.md)|Coordinated offline control/execution/Temporal/Git snapshots and same-path restoration|English and Chinese|
-|[Testing](TESTING.md) · [中文](zh-CN/TESTING.md)|Installed-wheel checks, CI selection, collection coverage and original failure logs|English and Chinese|
+|Task|Guide|
+|---|---|
+|Install the control plane and prepare offline wheels|[Linux/WSL2](install/linux.md) · [Windows/PowerShell](install/windows.md)|
+|Set up backend login, tools and effective bindings|[Agent configuration](agents/configuration.md)|
+|Register repository, tracker, roles and trusted checks|[Project registration](projects/registration.md)|
+|Upgrade or rebuild while retaining persistent data|[Upgrades](install/upgrades.md)|
+|Use local pages and edit work-unit drafts|[Console](operations/console.md)|
+|Diagnose, start, stop and recover selected services|[Services](operations/services.md)|
+|Create a coordinated offline recovery point|[Backup and recovery](operations/backup-recovery.md)|
 
-Control-plane installation does not start services, authenticate a model or enable the trusted reference executor. A control-home backup does not include execution data stored elsewhere. Keep credentials and local runtime data outside public documents.
+Installation does not authenticate an Agent, start services or authorize a task. Control-home backups do not include execution data stored elsewhere.
+
+## Run a formal development task
+
+Follow [template journeys](development/templates.md) for governance, large changes and refactoring, then use the relevant operation:
+
+1. [Prepare its composition, budget and context](development/preparation.md) for the selected recipe.
+2. [Preview and create the task](development/tasks.md) from those exact inputs.
+3. [Submit and observe the original run](development/run-and-recover.md).
+4. When it awaits approval, [read design material and approve the exact plan](development/design-and-approval.md).
+5. [Read original evidence, verify a handoff and export the exact candidate](development/evidence-and-export.md).
+
+[Issue context](projects/issues.md) freezes explicit source observations. [Candidate actions](projects/candidate-actions.md) cover original-candidate observations, explicit comments/labels and existing PR/MR associations. These do not merge or approve remote changes.
 
 ## Define Agents and workflows
 
-|Guide|Use it for|Language status|
-|---|---|---|
-|[Template walkthroughs](TEMPLATE_WALKTHROUGHS.md)|Complete governance/refactoring/training-proposal journeys and manifests|[English](TEMPLATE_WALKTHROUGHS.md) / [中文](zh-CN/TEMPLATE_WALKTHROUGHS.md)|
-|[Agent definitions](AGENT_DEFINITIONS.md)|Independent specialist definitions, resources and immutable versions|[English](AGENT_DEFINITIONS.md) / [中文](zh-CN/AGENT_DEFINITIONS.md)|
-|[Agent backends](AGENT_BACKENDS.md)|Actual role/mode support, backend configuration, formal execution and session recovery|[English](AGENT_BACKENDS.md) / [中文](zh-CN/AGENT_BACKENDS.md)|
-|[Workflow definitions](WORKFLOW_DEFINITIONS.md)|Nested references, resource inheritance, permissions, graph compilation, manifests and explicit leaf calls|[English](WORKFLOW_DEFINITIONS.md) / [中文](zh-CN/WORKFLOW_DEFINITIONS.md)|
-
-A valid definition, preset installation or preview does not execute a graph. Formal development retains the supported six-stage runtime. Per-binding reasoning settings request a level supported by the selected backend/model; they do not prove the model used that level. Automatic task-based level selection remains planned.
-
-## Review, train, report and improve
-
-|Guide|Use it for|Language status|
-|---|---|---|
-|[Local review](LOCAL_REVIEW.md)|Exact Git/requirements/context packets, offline verification and explicit source collection|Chinese|
-|[Pretraining and posttraining review](TRAINING_REVIEW.md)|Domain reviewers and CPU contract examples|Chinese|
-|[Training](TRAINING.md)|Workloads/baselines/runners, experiments, evidence, approval, managed execution and optimization proposals|Chinese|
-|[Improvement workflow](IMPROVEMENT_WORKFLOW.md)|Source-bound memory/Skill/Workflow candidates, evaluation, explicit adoption and next-task freeze|Chinese|
-|[Integrations](INTEGRATIONS.md)|Tool bindings, memory projections, GEPA, bounded research and scheduling|Chinese|
-|[Evidence reports](EVIDENCE_REPORTS.md) · [中文](zh-CN/EVIDENCE_REPORTS.md)|A read-only report author, original source/coverage records and self-contained HTML exports|English and Chinese|
-
-Training proposals and evidence indexes do not authorize experiments or establish GPU quality/performance. Explicitly authorized training controllers execute a finite frozen candidate selection under one original budget; adaptive search, design gates and general Repeat remain tracked in the live plan. External issue comments/labels, candidate adoption and publication retain their own explicit action/approval paths.
-
-## Understand and extend the implementation
-
-These architecture guides describe the current semantic owners and contracts. The live plan records current validation and remaining work.
-
-|Guide|Owner and purpose|
+|Task|Guide|
 |---|---|
-|[Current architecture](architecture/current.md)|Module/caller/data boundaries and supported extension points|
-|[Component change protocols](architecture/component-change-protocols.md)|Construction/configuration, ownership, lifecycle, recovery and relevant verification before changing a component|
-|[Contracts and identities](architecture/contracts-and-identities.md)|Versioned schemas, complete resource identities and distinct digest contracts|
-|[Reference boundary](architecture/reference-boundary.md)|Frozen runtime access and gradual migration responsibilities|
-|[State migrations](architecture/state-migrations.md)|Database compatibility, backups and rollback|
-|[Domain glossary](../CONTEXT.md)|Project terminology and original domain owners|
+|Select a backend and inspect actual role/mode support|[Backend selection](agents/backends.md)|
+|Use an optional native integration|[DeepSeek Harness](agents/deepseek-harness.md) · [formal six-stage bridge](agents/formal-execution.md) · [ForgeKernel](agents/forgekernel.md)|
+|Create or derive immutable specialist definitions|[Agent definitions](definitions/agents.md)|
+|Revise/read complete resources and attachments|[Shared definition resources](definitions/resources.md)|
+|Import, compose, preview and freeze a workflow|[Composition](definitions/workflows/compose.md)|
+|Understand data ports, work units and review responsibilities|[Workflow contracts](definitions/workflows/contracts.md)|
+|Check ancestor resources, permissions and static budgets|[Inheritance and permissions](definitions/workflows/permissions.md)|
+|Publish exact new versions and share dependencies|[Workflow revisions](definitions/workflows/revisions.md)|
+|Explicitly invoke/inspect one supported leaf and fixed MCP resources|[Leaf calls](definitions/workflows/leaf-calls.md)|
 
-Read the root [cooperation rules](../AGENTS.md) and current plan before changing repository code. The [editor comparison example](../examples/editor-comparison/README.md) is a separate design experiment with its own build requirements. Frozen preset/reference instructions and third-party materials are product/source artifacts, not targets for blanket documentation translation.
+A static preview or installed preset does not execute a graph. Per-binding reasoning fields request a supported level; they do not establish the level actually used.
 
-## Current work
+## Review and explain original evidence
 
-The [current plan](PLAN.md) and [active delivery](delivery/2026-11-19-main-branch-integration.md) record current checks and remaining work. [Architecture decisions](architecture/decisions/) retain their dated design context. The [frozen reference HTML](distribution/multi-agent-development-platform.html) remains the self-contained v2.2 Linux distribution with its own original deployment and training manuals.
+Start with [exact local/PR/MR material](review/materials.md), then [invoke and aggregate frozen reviewers](review/invoke-and-aggregate.md). [Training code review](review/training.md) selects pretraining/posttraining specialists. [Evidence reports](review/evidence-reports.md) turn original materials into readable Markdown/HTML with explicit coverage limits.
+
+## Train and measure
+
+Start with the [training overview and CPU contract demo](training/overview.md). Continue to [experiment preparation](training/prepare-experiments.md), [original execution and recovery](training/execution.md), [finite controller authorization](training/controllers.md), or [evidence/rounds/exact approval](training/evidence-and-approval.md).
+
+[Expert proposals](training/proposals.md) map source flow and bottleneck analysis into experiment contracts; [optimization specialists](training/specialists.md) select a focused direction. Proposal leaves and synthetic CPU checks do not certify real GPU quality or performance.
+
+## Improve the next task
+
+The [improvement workflow](improvement/workflow.md) connects [source-bound retrospective candidates](improvement/retrospectives.md), [project memory and optional ReMe](improvement/memory.md), [trusted Skill evaluation/adoption](improvement/skills-and-evaluation.md), and [bounded research/scheduling](improvement/research-and-schedules.md). Generation, evaluation, adoption and a new task's frozen context are separate operations.
+
+## Understand and change the implementation
+
+Read the [architecture overview](architecture/current.md), [source ownership map](architecture/module-map.md), [component change protocols](architecture/component-change-protocols.md) and [domain glossary](../CONTEXT.md).
+
+|Reference|Purpose|
+|---|---|
+|[Structured formats](architecture/contracts/formats.md) · [content identities](architecture/contracts/identities.md)|Versioned records and distinct encoding/digest contracts|
+|[Development execution](architecture/execution/development.md) · [training execution](architecture/execution/training.md)|Original state, budgets, recovery and process ownership|
+|[CLI/HTTP/console](architecture/interfaces.md)|Transport and asynchronous view ownership|
+|[Native reference access](architecture/reference-boundary.md)|Fixed source, native processes and migration responsibilities|
+|[Database migration](architecture/state-migrations.md) · [testing](architecture/testing.md)|Persistent data recovery and evidence-aware checks|
+|[Architecture decisions](architecture/decisions/)|Dated decisions, with current owners linked separately|
+
+Follow root [cooperation rules](../AGENTS.md) and the active [plan](PLAN.md) before repository changes. The [editor comparison](../examples/editor-comparison/README.md) is an independent prototype. The [frozen v2.2 distribution (Chinese)](distribution/multi-agent-development-platform.html) and packaged reference manuals retain their original scope; they are source artifacts, not translated current guides.
 
 [Third-party notices](../THIRD_PARTY_NOTICES.md)

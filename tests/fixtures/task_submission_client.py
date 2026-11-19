@@ -14,8 +14,8 @@ from temporalio.service import RPCError, RPCStatusCode
 
 from agent_platform import core, doctor, projects
 from dev_platform import connection
-from ergora.reference_task_submission import _Submission, main
-from ergora.reference_inputs import execution_input
+from ergora.development.runtime.submission import _Submission, main
+from ergora.development.inputs import execution_input
 
 
 payload = json.load(sys.stdin)
@@ -42,7 +42,8 @@ def report():
 doctor.report = report
 if selected_input:
     from agent_platform.sandbox import Sandbox
-    from ergora import processes, task_mcp
+    import ergora.agents.mcp as task_mcp
+    from ergora.runtime import processes
 
     # Only the OS-dependent probe is controlled. Source/current preparation
     # reports, real settings, selected programs and original admission all run.
@@ -88,7 +89,7 @@ class Handle:
     async def describe(self, **kwargs):
         log('describe')
         if scenario == 'budget-expire-during-lookup':
-            from ergora import reference_budget
+            from ergora.development import budget as reference_budget
             instance = core.task_spec(payload['task_id'])['budget']['instance']
             await asyncio.sleep(max(0, reference_budget.remaining(instance)) + .1)
         if scenario == 'lookup-unavailable':
@@ -159,7 +160,7 @@ def initialize(self, *args):
     def interrupted(path, value, **kwargs):
         if path == self.attempt_path and scenario == 'budget-slow-attempt':
             import time
-            from ergora import reference_budget
+            from ergora.development import budget as reference_budget
             write(path, value, **kwargs)
             time.sleep(max(0, reference_budget.remaining(self.input.document['budget']['instance'])) + .1)
             return

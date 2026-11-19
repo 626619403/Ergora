@@ -12,7 +12,7 @@ import os
 from pathlib import Path
 import subprocess
 
-from ergora import review_packets
+import ergora.development.review.packets as review_packets
 
 
 def git(repository: Path, *arguments: str) -> str:

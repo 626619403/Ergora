@@ -13,8 +13,11 @@ import time
 
 import pytest
 
-from ergora import projects, reference, tasks
-from ergora.state import State
+import ergora.development.native as development_native
+import subprocess
+import ergora.configuration.projects as projects
+import ergora.development.application as tasks
+from ergora.storage.state import State
 from test_registrations import installation, registration
 from test_task_creation import creation_project, _files
 from test_task_submission import native_client, _start, _root, _calls
@@ -63,13 +66,13 @@ def export_task(creation_project, native_client, request):
 
 @pytest.fixture
 def export_client(export_task, monkeypatch):
-    original = reference.subprocess.run
+    original = subprocess.run
     fixture = Path(__file__).parent / 'fixtures/task_export_client.py'
     def invoke(argv, **kwargs):
-        if 'from ergora.reference_task_export import main;main()' in argv:
+        if 'from ergora.development.runtime.export import main;main()' in argv:
             argv = [*argv[:-1], fixture.read_text(encoding='utf-8')]
         return original(argv, **kwargs)
-    monkeypatch.setattr(reference.subprocess, 'run', invoke)
+    monkeypatch.setattr(subprocess, 'run', invoke)
 
 
 def outcome(creation):
@@ -284,8 +287,8 @@ def test_remote_export_wait_does_not_reserve_the_control_database(export_task, e
 def test_cli_and_api_share_confirmed_export_and_original_digest_recovery(export_task, export_client, monkeypatch):
     pytest.importorskip('fastapi')
     from fastapi.testclient import TestClient
-    from ergora import cli
-    from ergora.web import create_app
+    import ergora.interfaces.cli as cli
+    from ergora.interfaces.web import create_app
     client = TestClient(create_app(export_task[0].root), base_url='http://127.0.0.1')
     uri = '/api/projects/demo/tasks/new-task/export'
     headers = {'X-Ergora-Request': '1', 'Origin': 'http://127.0.0.1'}
@@ -325,13 +328,13 @@ def test_dangling_symbolic_branch_is_not_replaced(export_task, export_client, mo
 
 
 def test_parent_reply_loss_preserves_the_completed_export(export_task, export_client, monkeypatch):
-    original = reference.task_export
+    original = development_native.task_export
     def lost(project, home, operation, payload, **kwargs):
         result = original(project, home, operation, payload, **kwargs)
         if operation == 'dispatch':
             raise ValueError('Fixture parent reply lost')
         return result
-    monkeypatch.setattr(reference, 'task_export', lost)
+    monkeypatch.setattr(development_native, 'task_export', lost)
     with pytest.raises(ValueError, match='parent reply lost'):
         export(export_task)
     result = status(export_task)

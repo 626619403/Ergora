@@ -15,10 +15,16 @@ import sys
 
 import pytest
 
-from ergora import agent_definitions, agent_runs, agents, processes, projects, task_mcp, workflow_definitions as workflows
-from ergora.asset_trees import digest_tree
-from ergora.cli import main
-from ergora.state import State
+import ergora.definitions.agents as agent_definitions
+import ergora.agents.runs as agent_runs
+import ergora.agents.invocation as agents
+import ergora.configuration.projects as projects
+import ergora.agents.mcp as task_mcp
+import ergora.definitions.workflows as workflows
+from ergora.runtime import processes
+from ergora.storage.assets import digest_tree
+from ergora.interfaces.cli import main
+from ergora.storage.state import State
 
 
 EXAMPLES = Path(__file__).resolve().parents[1] / "examples"
@@ -348,7 +354,7 @@ def test_replaced_scope_links_and_fifo_fail_without_blocking(scoped, tmp_path, k
         os.mkfifo(target)
     # A process deadline also catches the old blocking FIFO open. The native
     # service uses this same installed module under isolated Python execution.
-    program = ("from pathlib import Path;import sys;from ergora.task_mcp import ResourceView\n"
+    program = ("from pathlib import Path;import sys;from ergora.agents.mcp import ResourceView\n"
                "try: ResourceView.load(Path(sys.argv[1]),sys.argv[2])\n"
                "except (OSError,ValueError): print('refused')\n"
                "else: print('accepted')\n")

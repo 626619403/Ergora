@@ -8,8 +8,9 @@ import sys
 
 import pytest
 
-from ergora import registrations
+import ergora.configuration.registrations as registrations
 from test_registrations import design_policy
+from ergora._paths import PACKAGE_ROOT
 
 
 pytestmark = pytest.mark.skipif(sys.platform != 'linux', reason='Formal execution requires Linux / WSL2')
@@ -30,7 +31,7 @@ def test_native_legacy_job_obeys_registered_design_policy_before_claim(tmp_path,
     if summary.get('skip'):
         pytest.skip(summary['skip'])
     assert summary['executor_sha256'] == hashlib.sha256(
-        (Path(registrations.__file__).parent / 'reference_executor.py').read_bytes()).hexdigest()
+        (PACKAGE_ROOT / 'development/runtime/executor.py').read_bytes()).hexdigest()
     assert summary['legacy_request_root']
     if native_missing:
         assert summary['saved_task_identity_unchanged']
