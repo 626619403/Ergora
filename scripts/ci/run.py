@@ -6,7 +6,73 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import threading
 import time
+
+
+def _last_phase(path):
+    try:
+        with path.open('rb') as stream:
+            size = stream.seek(0, os.SEEK_END)
+            start = max(0, size - 65536)
+            stream.seek(start)
+            tail = stream.read(65536)
+    except OSError:
+        return None
+    if start:
+        tail = tail.partition(b'\n')[2]
+    for line in reversed(tail.split(b'\n')[:-1]):
+        try:
+            row = json.loads(line)
+        except (ValueError, UnicodeError, RecursionError):
+            continue
+        if isinstance(row, dict) and isinstance(row.get('event'), str):
+            return {key: row[key] for key in
+                    ('event', 'when', 'outcome', 'elapsed', 'seconds', 'exitstatus', 'nodeid')
+                    if key in row}
+    return None
+
+
+def _stdout_writer():
+    stream = sys.stdout
+    lock = threading.Lock()
+    line_start = True
+
+    def emit(text, *, annotation=False):
+        nonlocal line_start
+        with lock:
+            if annotation:
+                text = ('' if line_start else '\n') + text + '\n'
+            stream.write(text)
+            stream.flush()
+            if text:
+                line_start = text.endswith('\n')
+
+    return emit
+
+
+def _phase_notice(process, path, started, final, output):
+    row = _last_phase(path)
+    detail = json.dumps({
+        'observation': 'final' if final else 'periodic',
+        'parent_elapsed_seconds': time.monotonic() - started,
+        'owned_child_returncode': process.poll(),
+        'last_observed_complete_row': row,
+    }, ensure_ascii=True)
+    detail = detail.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')[:3000]
+    output(f'::notice title=CI phase observation::{detail}', annotation=True)
+
+
+def _monitor_phases(process, path, started, stop, output, *,
+                    offsets=(300, 600, 900, 1200, 1500, 1800, 2100, 2280), poll_interval=1):
+    notices = 0
+    while not stop.wait(poll_interval):
+        if process.poll() is not None:
+            break
+        if notices < len(offsets) and time.monotonic() - started >= offsets[notices]:
+            _phase_notice(process, path, started, final=False, output=output)
+            notices += 1
+    _phase_notice(process, path, started, final=True, output=output)
 
 
 def main():
@@ -42,22 +108,32 @@ def main():
     (directory / 'request.json').write_text(json.dumps(request, indent=2) + '\n')
     started = time.monotonic()
     tail = ''
+    output = _stdout_writer()
     with (directory / 'stdout.txt').open('x', encoding='utf-8', buffering=1) as log:
         with subprocess.Popen(command, cwd=root, env=environment, stdout=subprocess.PIPE,
                               stderr=subprocess.STDOUT, text=True, encoding='utf-8') as process:
-            for line in process.stdout:
-                log.write(line)
-                print(line, end='', flush=True)
-                tail = (tail + line)[-3500:]
-                if line.startswith('FAILED '):
-                    detail = line.rstrip()[:3000].replace('%', '%25')
-                    print(f'::error title=Failed test::{detail}', flush=True)
-            returncode = process.wait()
+            stop = threading.Event()
+            monitor = threading.Thread(target=_monitor_phases,
+                                       args=(process, directory / 'phases.jsonl', started, stop, output),
+                                       name='ergora-ci-phase-monitor')
+            monitor.start()
+            try:
+                for line in process.stdout:
+                    log.write(line)
+                    output(line)
+                    tail = (tail + line)[-3500:]
+                    if line.startswith('FAILED '):
+                        detail = line.rstrip()[:3000].replace('%', '%25')
+                        output(f'::error title=Failed test::{detail}', annotation=True)
+                returncode = process.wait()
+            finally:
+                stop.set()
+                monitor.join()
     result = {'returncode': returncode, 'seconds': time.monotonic() - started}
     (directory / 'result.json').write_text(json.dumps(result, indent=2) + '\n')
     if returncode:
         details = tail.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
-        print(f'::error title=Native regression::{details}', flush=True)
+        output(f'::error title=Native regression::{details}', annotation=True)
     return returncode
 
 
