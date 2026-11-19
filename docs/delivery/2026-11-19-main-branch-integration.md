@@ -1,6 +1,6 @@
 # Main branch integration
 
-Preparation checkpoint (2026-11-19): branch content and history are consolidated and the integration branch has been ordinarily pushed. Documentation/archive/source-identity checks have passed; final independent review and the integration Portability gate are in progress. The final `main` update and ancestry-gated remote branch cleanup follow those gates.
+Delivery gates passed (2026-11-19). Content integration and current documentation have independent requirement/maintainability approval, and the applicable integration CI succeeds. This slice meets the main delivery conditions; use Git for the exact current remote main and branch state. Original Git history is preserved and remote cleanup is restricted to heads already covered by main; local development branches and active worktrees remain intact.
 
 ## Scope and source
 
@@ -16,7 +16,7 @@ Old plans, delivery logs, research, handoffs and history documents are excluded 
 
 - Remote head OIDs were fetched and independently compared; all 23 ancestry relationships were checked after history integration.
 - The retained 77 root, guide and example Markdown files passed relative-file and Markdown-anchor checks with no missing targets. `git diff --check`, current preset-catalog checks, all archived-file byte/digest/mode checks and source/test/script/dependency identity comparisons passed.
-- A fresh-context independent reviewer has independently checked branch content equivalence, current resource references and preserved source/test/script identities. Final complete-document review is pending.
-- No new runtime, model, GPU or installation acceptance is claimed for this documentation-only delta. The published integration ref has its own Portability run in progress; the final normal `main` push waits for its actual result and complete independent review.
+- Fresh-context independent review of `a174bdbba3441d43d39d052a8824d232cb1b1bc6` approves requirements and maintainability, with zero open blocking findings. It independently checks branch content, current resource references, the complete retained-document change and preserved source/test/script identities.
+- [Portability 44494319222](https://github.com/626619403/Ergora/actions/runs/44494319222) succeeds in 28m36s at exact head `792b7cf003dfef842e9540af5265b23cbecf40a0`: 12 jobs, 11 Native regression groups, Windows and PowerShell 5.1 installation/upgrade all pass. The reviewed documentation successor retains identical source, tests, scripts, required dependencies, workflow and license identities. The CI is not relabeled as a run of that successor or later status-only records. No new model, real-service or GPU workload acceptance is inferred.
 
 The [current plan](../PLAN.md) tracks the next action and remaining implementation boundaries. Historical results retain their original source and scope.

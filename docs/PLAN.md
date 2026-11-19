@@ -8,7 +8,7 @@ The current implementation comes from `ace1deade97ac39182e0d34c1a5777afc0663b3e`
 
 The candidate keeps the current six-stage development workflow, candidate-bound evidence, original budgets, unknown-result reconciliation and existing process cleanup. Current installation guides use `main` and the actual bundled preset IDs. Working plans, diaries, research and old check artifacts remain available in their original Git commits and in a verified private archive.
 
-Preparation checkpoint (2026-11-19): the integration branch has been ordinarily pushed, documentation/archive/source-identity checks have passed, and final independent review and its own Portability gate are in progress. The final normal `main` update and ancestry-gated remote cleanup follow those gates. Earlier source, installed-package, model and CI results retain their original candidate identities.
+Delivery checkpoint (2026-11-19): content review approves `a174bdbba3441d43d39d052a8824d232cb1b1bc6` on both requirements and maintainability, with no open blocking findings. [Portability 44494319222](https://github.com/626619403/Ergora/actions/runs/44494319222) succeeds in 28m36s for exact head `792b7cf003dfef842e9540af5265b23cbecf40a0`: all 12 jobs and 11 Native regression groups pass, including Windows and PowerShell 5.1 installation/upgrade. Source, tests, scripts, required dependencies and workflow identities are identical in the reviewed documentation successor. This slice meets the main delivery gates; the exact current remote state is authoritative in Git. Status-only documentation does not relabel or rerun the original CI evidence.
 
 ## Remaining implementation boundaries
 
