@@ -158,28 +158,9 @@ def payload_files(root: Path) -> dict[str, bytes]:
                 value = json.loads(text); value['repo'] = '/absolute/path/your-project'
                 text = json.dumps(value, indent=2) + '\n'
             result[name] = text.encode()
-    for module in ('setup.py', 'doctor.py', 'templates.py'):
+    for module in ('doctor.py', 'templates.py'):
         text = result['local/agent_platform/' + module].decode()
-        if module == 'setup.py':
-            old = '''    source = tomllib.loads((Path.home() / ".codex/config.toml").read_text())
-    provider_id = source["model_provider"]
-    provider = source["model_providers"][provider_id]
-    require(provider.get("env_key"), "Codex provider must reference an environment variable")'''
-            new = '''    provider_id = "api"
-    provider = {"name": "Responses API", "base_url": "https://api.openai.com/v1",
-                "env_key": "OPENAI_API_KEY", "wire_api": "responses"}
-    source = {"model": "CONFIGURE_MODEL_BEFORE_USE", "model_provider": provider_id,
-              "model_providers": {provider_id: provider}, "model_reasoning_effort": "high"}'''
-            if old not in text and new not in text:
-                raise ValueError('Setup source has changed; review the public export')
-            text = text.replace(old, new)
-            text = text.replace("local_bin = Path.home() / '.local/bin'", "local_bin = ROOT / 'bin'")
-            text = text.replace("    path = ':'.join([str(local_bin), str(ROOT / 'bin'), config['node_root'] + '/bin'])",
-                                "    user_entry = Path.home() / '.local/bin/agentflow'\n"
-                                "    user_entry.parent.mkdir(parents=True, exist_ok=True)\n"
-                                "    if not user_entry.exists() and not user_entry.is_symlink(): user_entry.symlink_to(wrapper)\n"
-                                "    path = ':'.join([str(local_bin), str(Path.home() / '.local/bin'), config['node_root'] + '/bin'])")
-        elif module == 'doctor.py':
+        if module == 'doctor.py':
             if 'checks["model-configuration"]' not in text:
                 raise ValueError('Doctor must validate model configuration before public export')
         else:
@@ -267,8 +248,8 @@ def runtime_archive(root: Path, releases: Path) -> tuple[str, str]:
 def stack_rows(manifest: dict) -> str:
     versions = manifest['versions']
     rows = [
-        ('实现 / Codex', '0.164.0；规划、分单元实现、集成', '原生工具、Responses API 与 worktree', '使用者配置自己的模型、API URL 与凭据变量', 'https://developers.openai.com/codex/cli/'),
-        ('独立审查 / Codex', '0.164.0；新 ephemeral 会话审查固定候选', '复用 API 配置；不同角色与会话，不续接实现上下文', '默认同一模型；按只读指令审查并检查工作区与 HEAD 未变', 'https://developers.openai.com/codex/noninteractive/'),
+        ('实现 / Codex', '0.164.0；规划、分单元实现、集成', '原生工具、Responses API 与 worktree', '使用者配置支持的模型及原生登录或 provider 环境引用', 'https://developers.openai.com/codex/cli/'),
+        ('独立审查 / Codex', '0.164.0；新 ephemeral 会话审查固定候选', '复用 Codex 配置；不同角色与会话，不续接实现上下文', '默认同一模型；按只读指令审查并检查工作区与 HEAD 未变', 'https://developers.openai.com/codex/noninteractive/'),
         ('持久流程 / Temporal', 'CLI 1.9.1；SDK ' + versions['temporalio'], '历史、定时器、人工等待、重启恢复', '本地 SQLite 单机开发服务；Cloud 可后续接入', 'https://docs.temporal.io/develop/python'),
         ('工单入口 / Symphony', '固定 be10a1b79df7…；按项目 workspace + bridge', '持续领取工单与结果标签同步', '按项目配置自己的 tracker；nightly 严格校验', 'https://github.com/openai/symphony/tree/be10a1b79df723d6d7612b5651c8522704dafb2e'),
         ('互操作 / A2A', 'SDK ' + versions['a2a-sdk'] + '；版本头 1.0', '外部 agent 委托、查询、鉴权与共享所有权', 'localhost 服务；业务仍受模板与审批约束', 'https://a2a-protocol.org/v1.0.1/specification/'),

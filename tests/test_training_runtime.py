@@ -2139,7 +2139,15 @@ def test_native_reader_per_call_allowance_keeps_actual_wait(tmp_path, monkeypatc
     asyncio.run(run())
 
 
-def test_budget_completion_spends_one_allowance_across_reader_calls(tmp_path, monkeypatch):
+@pytest.mark.parametrize('timeout, lookup_elapsed, poll_elapsed, expected', [
+    pytest.param(1.2, 0, 0, (1.2, 1.2), id='zero-tick-cap'),
+    pytest.param(3.5, .25, .5, (3.25, 2.75), id='shared-deadline'),
+    pytest.param(25, 1, 6, (20, 18), id='reader-cap'),
+    pytest.param(1.2, .25, 1, (.95, 0), id='screen-exhausted'),
+    pytest.param(1.2, 1.25, 0, (0, 0), id='poll-exhausted'),
+])
+def test_budget_completion_spends_one_allowance_across_reader_calls(
+        tmp_path, monkeypatch, timeout, lookup_elapsed, poll_elapsed, expected):
     import asyncio
     from dataclasses import asdict
     from types import SimpleNamespace
@@ -2156,28 +2164,38 @@ def test_budget_completion_spends_one_allowance_across_reader_calls(tmp_path, mo
     budget.intent = {'observation': {'experiment': {'spec': spec, 'current_runner': runner}}}
     budget.operation = SimpleNamespace(native_request=lambda: {'experiment': spec, 'runner': runner},
         sha=lambda value: json.dumps(value, sort_keys=True), root=tmp_path, ident=binding.experiment_id)
+    clock = [1000.0]
 
     class Adapter:
         __slots__ = ()
 
         async def lookup_job(self, experiment):
-            await asyncio.sleep(.01)
+            await asyncio.sleep(0)
+            clock[0] += lookup_elapsed
             return job
 
         async def poll_job(self, original, *, timeout=20):
             calls.append(('poll', timeout))
-            await asyncio.sleep(.01)
+            await asyncio.sleep(0)
+            clock[0] += poll_elapsed
             return Observation(original, 'SCREEN_COMPLETED')
 
         async def collect_screen(self, original, *, timeout=20):
             calls.append(('screen', timeout))
             return ScreenDecision(original, 'SCREEN_COMPLETED', 'd' * 64, 'test://screen', 'original screen')
 
-    result = asyncio.run(budget.completion(Adapter(), timeout=1.2))
+    async def run():
+        # A real async yield need not advance the platform's observable clock.
+        with monkeypatch.context() as controlled:
+            controlled.setattr(asyncio.get_running_loop(), 'time', lambda: clock[0])
+            return await budget.completion(Adapter(), timeout=timeout)
+
+    result = asyncio.run(run())
     assert result['status'] == 'completed' and result['gate'] is None
     assert result['screen']['job'] == asdict(job)
     assert [row[0] for row in calls] == ['poll', 'screen']
-    assert 0 < calls[1][1] < calls[0][1] < 1.2
+    assert [row[1] for row in calls] == pytest.approx(expected)
+    assert all(0 <= row[1] <= min(20, timeout) for row in calls)
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Actual SIGINT, child wait and PID/boot/start identity')

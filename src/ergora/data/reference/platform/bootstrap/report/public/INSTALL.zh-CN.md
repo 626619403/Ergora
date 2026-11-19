@@ -29,13 +29,13 @@ bash install-from-report.sh --check
 
 ## 认证与首次使用
 
+使用 Codex 已支持的原生登录时，在启动服务的同一用户及 HOME/CODEX_HOME 下先完成 `codex login`，再配置模型：
+
 ```bash
-python3 ~/multi-agent-platform/bootstrap/configure-model.py \
-  --model YOUR_SUPPORTED_MODEL_ID \
-  --base-url https://api.openai.com/v1 --env-key OPENAI_API_KEY
+python3 ~/multi-agent-platform/bootstrap/configure-model.py --model YOUR_SUPPORTED_MODEL_ID
 ```
 
-通过自己的 Secret 管理方式提供 OPENAI_API_KEY；兼容网关可替换 URL、模型和变量名。实现与独立新会话审查共用同一份 Codex 配置。安装不包含任何使用者的 API key 或登录状态。订阅登录和 adapter 的 API 认证不应混淆。
+显式 API provider 可加 `--base-url https://api.openai.com/v1 --env-key OPENAI_API_KEY`，通过自己的 Secret 管理方式提供变量值。环境引用可省略，实际认证仍须符合该 provider 的支持范围，不会自动获得订阅或匿名访问。实现与独立新会话审查共用同一份 Codex 配置。安装不会登录、包含或复制使用者的凭据。静态 doctor 的认证状态为 `not_checked`，本地就绪不证明账号、额度或模型可用；实际认证错误仍明确失败。
 
 按部署手册准备可信项目执行容器，检查并明确启用：
 

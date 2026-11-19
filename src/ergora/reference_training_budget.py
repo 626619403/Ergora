@@ -671,7 +671,7 @@ class BudgetedStart:
                 or self.operation.sha(request['runner']) != self.operation.sha(self.intent['observation']['experiment']['current_runner'])):
             raise ValueError('Budget native request differs from its complete original experiment or runner')
         job = await adapter.lookup_job(experiment)
-        observation = await adapter.poll_job(job, timeout=min(20, max(0, deadline - asyncio.get_running_loop().time())))
+        observation = await adapter.poll_job(job, timeout=max(0, min(20, timeout, deadline - asyncio.get_running_loop().time())))
         if observation.state not in ('SUCCEEDED', 'FAILED', 'CANCELLED', 'SCREEN_COMPLETED', 'SCREEN_REJECTED'):
             return None
         if (self.operation.root / ('training/jobs/' + self.operation.ident + '/managed-execution')).exists():
@@ -681,7 +681,7 @@ class BudgetedStart:
                 return None
         gate = asdict(await adapter.collect_and_gate(job)) if observation.state == 'SUCCEEDED' else None
         screen = (asdict(await adapter.collect_screen(job,
-            timeout=min(20, max(0, deadline - asyncio.get_running_loop().time()))))
+            timeout=max(0, min(20, timeout, deadline - asyncio.get_running_loop().time()))))
             if observation.state in ('SCREEN_COMPLETED', 'SCREEN_REJECTED') else None)
         return {'status': 'completed', 'native': asdict(observation), 'gate': gate, 'screen': screen}
 

@@ -26,6 +26,27 @@ def test_existing_six_stage_contract_consumes_selectable_agent_evidence(tmp_path
     assert summary["template_instructions_bound"] is True
 
 
+@pytest.mark.parametrize('mode', ['native-auth', 'native-auth-rejected', 'selected-auth-rejected',
+                                 'command-invalid-codex-config', 'command-nontable-codex-config'])
+def test_backend_native_authentication_uses_the_original_stage_owners(tmp_path, mode):
+    pytest.importorskip('temporalio')
+    fixture = Path(__file__).parent / 'fixtures/reference_acceptance.py'
+    backend = 'command' if mode.startswith('command-') else 'codex'
+    result = subprocess.run([sys.executable, '-B', str(fixture), str(tmp_path), 'repository-governance', backend, mode],
+                            capture_output=True, text=True, timeout=90)
+    assert result.returncode == 0, result.stdout + result.stderr
+    summary = json.loads(result.stdout)
+    if summary.get('skip'):
+        pytest.skip(summary['skip'])
+    if backend == 'command':
+        assert summary['backend'] == 'command' and summary['candidate_bound'] and len(summary['stages']) == 6
+    elif mode == 'native-auth':
+        assert summary['native_auth'] and summary['candidate_bound'] and len(summary['stages']) == 6
+    else:
+        assert summary['rejected'] == mode and summary['state'] == 'FAILED'
+        assert summary['backend_authentication_error_preserved'] and summary['original_job_id'].startswith('task-1-')
+
+
 @pytest.mark.parametrize('mode,detail', [
     ('verify-scope-mismatch', 'Immutable file already exists'),
     ('verify-scope-header', 'Immutable file already exists'),

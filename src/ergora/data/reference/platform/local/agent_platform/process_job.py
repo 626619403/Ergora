@@ -10,8 +10,9 @@ import signal
 import subprocess
 import sys
 import time
+import tomllib
 
-from .core import STATE, UPSTREAM, environment, git, read, require, settings, write
+from .core import CONFIG, STATE, UPSTREAM, environment, git, read, require, write
 
 
 def child_environment(model: str | None) -> dict[str, str]:
@@ -21,7 +22,23 @@ def child_environment(model: str | None) -> dict[str, str]:
              'HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'NO_PROXY',
              'http_proxy', 'https_proxy', 'all_proxy', 'no_proxy'}
     if model == 'codex':
-        names.add(settings()['codex_env_key'])
+        names.add('CODEX_HOME')
+        config_path = CONFIG / 'codex.toml'
+        try:
+            config = tomllib.loads(config_path.read_text()) if config_path.exists() else {}
+        except tomllib.TOMLDecodeError:
+            # Selected agents share this monitor; Codex validates its own configuration.
+            config = {}
+        providers = config.get('model_providers', {})
+        provider_id = config.get('model_provider')
+        provider = providers.get(provider_id) if isinstance(providers, dict) and isinstance(provider_id, str) else None
+        if isinstance(provider, dict):
+            credential = provider.get('env_key')
+            if provider.get('requires_openai_auth') is not True and isinstance(credential, str):
+                names.add(credential)
+            headers = provider.get('env_http_headers', {})
+            if isinstance(headers, dict):
+                names.update(name for name in headers.values() if isinstance(name, str))
     else:
         names.update({'CUDA_VISIBLE_DEVICES', 'NVIDIA_VISIBLE_DEVICES', 'LD_LIBRARY_PATH',
                       'OMP_NUM_THREADS', 'MLFLOW_TRACKING_URI'})
