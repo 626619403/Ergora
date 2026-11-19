@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "id": "ergora-large-change-work",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Project the original large-change unit dependencies onto specialized instances.",
   "resources": [
     {
@@ -43,8 +43,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-api-contract-author",
-        "version": "2.0.0",
-        "digest": "a913214cdef48dca4c769be78af07d2fe4cdded7c482aaca35219f5d0c804886"
+        "version": "2.0.1",
+        "digest": "5ce46485725bfd2014b7f737bd28e9966beb5be6b3998e612f8ebfbf3b60c715"
       },
       "role": "implementer",
       "depends_on": [],
@@ -70,8 +70,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-server-implementer",
-        "version": "2.0.0",
-        "digest": "e9700a78e9739a0ff638ef2c8b2aea8544f17d169d42e2839ed960557682341d"
+        "version": "2.0.1",
+        "digest": "a7749729d68f0989343df56083c7c62bcd01e3d130391cdcfbd02e8860836c83"
       },
       "role": "implementer",
       "depends_on": [
@@ -100,8 +100,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-client-implementer",
-        "version": "2.0.0",
-        "digest": "49ca6d22aed2c82cee3ca4c9e2189498bf7b681e216abc96ce6de51fd5cfed35"
+        "version": "2.0.1",
+        "digest": "7a44e6290a57b0842ec531b7d40cf2fd1d5fbca7557087cccd0371eb205a35a4"
       },
       "role": "implementer",
       "depends_on": [
@@ -138,8 +138,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-compatibility-validator",
-        "version": "3.0.0",
-        "digest": "2940a3be995dd86403f423072012fe55b27f6b1e80600199543964ceb5563d6f"
+        "version": "3.0.1",
+        "digest": "680282ada5d3bdfaa3a6634db90a46169e74b0008e5370401b9c3cfb1640cd72"
       },
       "role": "implementer",
       "depends_on": [

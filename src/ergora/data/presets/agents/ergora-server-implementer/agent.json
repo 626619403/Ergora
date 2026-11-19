@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "id": "ergora-server-implementer",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Inspect, plan or implement the server owners of the approved current interface.",
   "roles": [
     "inspector",
@@ -29,7 +29,7 @@
       "id": "ergora-server-implementer-skill",
       "kind": "skill",
       "path": "skills/ergora-server-implementer",
-      "digest": "b9d0a9a867cbacb42f58308eabe5a040e36efbc6cfa257f40e04e15767c1e81a"
+      "digest": "41534810df018662fc15762607509caa31d3901ae14e4a69a8e11b4c59a7e80a"
     }
   ],
   "invocation_minimum": {

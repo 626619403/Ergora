@@ -144,8 +144,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-development-preparer",
-        "version": "1.1.0",
-        "digest": "fc6a1f358afe7866ec214b842e6f0b8595526e1b24e17f06b361530df6a3aa85"
+        "version": "1.1.1",
+        "digest": "596c714c23358202c0ecfa57a02fcdcd2054ef92185cc9e8a67a414d698e12af"
       },
       "role": "inspector"
     },
@@ -181,5 +181,5 @@
     }
   ],
   "schema_version": 2,
-  "version": "1.1.0"
+  "version": "1.1.1"
 }

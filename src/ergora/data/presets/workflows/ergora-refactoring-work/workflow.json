@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "id": "ergora-refactoring-work",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Refactor the approved module, then validate the integrated caller migration and rollback.",
   "resources": [
     {
@@ -43,8 +43,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-refactoring-engineer",
-        "version": "2.0.0",
-        "digest": "535186538e0ec8280a95db42073894112e4c2c8fcf39af2af259655c69d32818"
+        "version": "2.0.1",
+        "digest": "933a2e237f7e69e9132ca3324601bd38d42e2517a6a79a8c64b9929580895eea"
       },
       "role": "implementer",
       "depends_on": [],
@@ -70,8 +70,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-compatibility-validator",
-        "version": "3.0.0",
-        "digest": "2940a3be995dd86403f423072012fe55b27f6b1e80600199543964ceb5563d6f"
+        "version": "3.0.1",
+        "digest": "680282ada5d3bdfaa3a6634db90a46169e74b0008e5370401b9c3cfb1640cd72"
       },
       "role": "implementer",
       "depends_on": [

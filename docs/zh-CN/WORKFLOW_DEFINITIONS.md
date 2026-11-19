@@ -26,8 +26,8 @@ ergora composition install-preset evidence-report
 ergora composition install-preset optimization-report
 ergora composition install-preset pretraining-review
 ergora composition install-preset posttraining-review
-ergora composition show ergora-large-change-delivery 1.5.0 --material
-ergora agent definition show ergora-server-implementer 2.0.0 --material
+ergora composition show ergora-large-change-delivery 1.5.1 --material
+ergora agent definition show ergora-server-implementer 2.0.1 --material
 ```
 
 [预训练／后训练审查](../TRAINING_REVIEW.md)复用通用三路审查并增加领域专家，独立叶调用和正式 all-join 分开说明。
@@ -38,10 +38,10 @@ ergora agent definition show ergora-server-implementer 2.0.0 --material
 
 |组合|当前随包根身份|默认关系与使用范围|
 |---|---|---|
-|repository-governance|`ergora-governance-template@1.1.0`|知识地图、架构回归两个专家并行，再经可信integrate/verify接三审查；包含独立盘点／规划与原工作／审查阶段|
-|large-change|`ergora-large-change-template@1.1.0`|接口合同 → 服务端与客户端并行 → 集成/兼容验证 → 三审查；包含独立盘点／规划与原工作／审查阶段|
+|repository-governance|`ergora-governance-template@1.1.1`|知识地图、架构回归两个专家并行，再经可信integrate/verify接三审查；包含独立盘点／规划与原工作／审查阶段|
+|large-change|`ergora-large-change-template@1.1.1`|接口合同 → 服务端与客户端并行 → 集成/兼容验证 → 三审查；包含独立盘点／规划与原工作／审查阶段|
 |training-optimization|`ergora-training-proposal@4.2.2`|源码流程 → 并行规划／诊断 → kernel实施方案评估 → 测量审查；全部五叶继承库／环境选择规则，只读建议与手工完整交接|
-|refactoring|`ergora-refactoring-template@1.3.0`|普通父 → 原生六阶段：准备 → rewrite／compatibility串行工作 → 三类独立审查；正式task type沿用large-change，显式schema8／input12|
+|refactoring|`ergora-refactoring-template@1.3.1`|普通父 → 原生六阶段：准备 → rewrite／compatibility串行工作 → 三类独立审查；正式task type沿用large-change，显式schema8／input12|
 |optimization-performance-diagnosis|`ergora-opt-performance-diagnosis-proposal@1.2.1`|同症状复现与兼容报告 reader；只读 design／profile→measurement 提案叶，原 runner 保留实验执行|
 |training-flow-map|`ergora-training-flow-map@1.1.0`|只读 `root/map` 分别产出算法／执行依赖图、状态生命周期和可证伪冗余假设；不自动运行后续专家或训练|
 |evidence-report|`ergora-evidence-report@1.0.1`|只读 `root/author` 生成来源绑定的 Markdown／静态 HTML 报告；原证据、运行记录与独立审查／release 保持|
@@ -49,7 +49,7 @@ ergora agent definition show ergora-server-implementer 2.0.0 --material
 |pretraining-review|`ergora-pretraining-review@1.1.0`|原通用三路与预训练专家并列 required／all-join；共享后端说明由四叶继承；领域叶可独立调用|
 |posttraining-review|`ergora-posttraining-review@1.1.0`|原通用三路与后训练专家并列 required／all-join；共享后端说明由四叶继承；领域叶可独立调用|
 
-开发组合共用 `ergora-delivery-review`，它引用结构、正确性、测试价值三份可单独使用的子模板。每份专家有独立初始指令、专长和Skill，沿自己的结构父链完整装载资料。全部内置专家默认Codex gpt-6.1-sol并按[定义下限](AGENT_DEFINITIONS.md)验证model／effort；逐实例覆盖须满足下限。实际可用性和认证仍由调用准入核验；同后端选择需遵守多样性政策并记录原因。
+开发delivery祖先提供语义归属、当前接口、可达失败验证、最小提交范围和候选绑定证据的共同规则；各写者在返回前复核自己的改动。开发组合共用 `ergora-delivery-review`，它引用结构、正确性、测试价值三份可单独使用的子模板。每份专家有独立初始指令、专长和Skill，沿自己的结构父链完整装载资料。全部内置专家默认Codex gpt-6.1-sol并按[定义下限](AGENT_DEFINITIONS.md)验证model／effort；逐实例覆盖须满足下限。实际可用性和认证仍由调用准入核验；同后端选择需遵守多样性政策并记录原因。
 
 在明确的preview grant下，按[完整组合分享](#保存和分享完整组合)执行`prepare-manifest`，把上面的根ID/版本换入即可。开发正式选择沿[work-units-v2](#专长执行者与原工作单元)，使用`root/development/work`和`root/development/review`；unit ID映射真实执行叶，例如`contract`→`root/development/work/contract`。原`templates copy`取得的领域input包含对应unit ID、路径和依赖；改变原units关系时，应同时修订对应工作子模板。workspace写调用仍要求每个writer显式选择可信current-container；导入组合不会自动选择此边界。
 

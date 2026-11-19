@@ -22,8 +22,8 @@
       "ref": {
         "kind": "workflow",
         "id": "ergora-optimization-inventory",
-        "version": "1.1.0",
-        "digest": "7123084895742f5910627213887b734d40993810569bcf10289d190ca126df85"
+        "version": "1.1.1",
+        "digest": "0f0259ef884b6eb08cb1254f064042d2e9b96a816e0ff4aefee8a274bbbc055f"
       }
     },
     {
@@ -37,8 +37,8 @@
       "ref": {
         "kind": "workflow",
         "id": "ergora-optimization-plan",
-        "version": "1.1.0",
-        "digest": "6c60e6b8aa2735ad423573324292bf5969b157a60b5d9ac54ca105f987ab9274"
+        "version": "1.1.1",
+        "digest": "914893ebbef3b805f2b110432969ff3c032dd5fbca522e14213d2870b051556e"
       }
     }
   ],
@@ -66,5 +66,5 @@
     }
   ],
   "schema_version": 2,
-  "version": "1.4.0"
+  "version": "1.4.1"
 }

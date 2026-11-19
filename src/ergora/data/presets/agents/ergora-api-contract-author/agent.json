@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "id": "ergora-api-contract-author",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Inspect, plan or implement one current interface and migration of its real consumers.",
   "roles": [
     "inspector",
@@ -29,7 +29,7 @@
       "id": "ergora-api-contract-author-skill",
       "kind": "skill",
       "path": "skills/ergora-api-contract-author",
-      "digest": "dd98d7ead0320b83b7237b5813a09e516992b6391d4d4d6ec7e8d32374845fed"
+      "digest": "a0afd974514d7231555cfdc25df727df80639d0abdbd6a33928c18aefc3f2c60"
     }
   ],
   "invocation_minimum": {

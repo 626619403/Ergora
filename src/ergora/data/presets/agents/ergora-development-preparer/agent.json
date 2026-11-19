@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "id": "ergora-development-preparer",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Coordinate complete specialist results into the original development inventory or execution plan.",
   "roles": [
     "inspector",
@@ -28,7 +28,7 @@
       "id": "ergora-development-preparer-skill",
       "kind": "skill",
       "path": "skills/ergora-development-preparer",
-      "digest": "c7b7066dd0bca5b5abd2a25b3d325d063f58a5c0cc6ae4d93044448fe46e2728"
+      "digest": "8d148524fb27cc796a22d1eef6d436719da0b31d8b9aef4152c98a45ef999674"
     }
   ],
   "invocation_minimum": {

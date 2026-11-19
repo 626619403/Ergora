@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "id": "ergora-client-implementer",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Inspect, plan or implement real frontend, CLI or SDK consumers of one current interface.",
   "roles": [
     "inspector",
@@ -29,7 +29,7 @@
       "id": "ergora-client-implementer-skill",
       "kind": "skill",
       "path": "skills/ergora-client-implementer",
-      "digest": "2e65a3ac81b51a8073975d1c32be69d13e2f6cbef94cc1f9704d8703ec7919cc"
+      "digest": "f1241760cb9a96e7d22e12830b95cf3ccc813577ea4ddf17931ab90b9ebbc84e"
     }
   ],
   "invocation_minimum": {
