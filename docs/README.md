@@ -2,7 +2,7 @@
 
 English · [简体中文](README.zh-CN.md) · [Project README](../README.md)
 
-Start with the [project overview and quick start](../README.md#quick-start), then choose a guide below. Current feature guidance follows `refactor/architecture-foundations`; the default `main` branch and frozen v2.2 reference distribution have different scopes. Pin the full source commit when reproducing a recorded result.
+Start with the [project overview and quick start](../README.md#quick-start), then choose a guide below. Current feature guidance follows `main`; the frozen v2.2 reference distribution retains its documented scope. Pin the full source commit when reproducing a recorded result.
 
 English is the default for completed language pairs. The table explicitly marks guides still written in Chinese while their complete English counterparts are prepared under the [bilingual maintenance plan](plans/2026-11-16-bilingual-documentation-and-branch-cleanup.md). Existing guide paths remain stable. An English counterpart must preserve the complete commands, limits and recovery behavior before its row is marked bilingual.
 

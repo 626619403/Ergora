@@ -20,12 +20,12 @@ Per-Agent explicit reasoning fields can request a level supported by the selecte
 
 The basic requirements are Linux, Git, Python 3.11+ and venv / pip. On Ubuntu 24.04, you can install the system prerequisites first:
 
-This guide uses the `refactor/architecture-foundations` development branch, which includes the current composition and execution features. The clone command below selects that branch explicitly. In an existing clone, select the same branch, or pin the full commit from the acceptance record you need, before running the installer from that source. Do not treat `main` or an identical package version as proof of identical features or source identity.
+This guide uses the `main` branch, which includes the current composition and execution features. In an existing clone, select `main`, or pin the full commit from the acceptance record you need, before running the installer from that source. An identical package version alone does not establish source identity.
 
 ```bash
 sudo apt-get update
 sudo apt-get install -y ca-certificates curl git python3 python3-venv
-git clone --branch refactor/architecture-foundations https://github.com/626619403/Ergora.git
+git clone --branch main https://github.com/626619403/Ergora.git
 cd Ergora
 bash scripts/install.sh
 export PATH="$HOME/.local/bin:$PATH"

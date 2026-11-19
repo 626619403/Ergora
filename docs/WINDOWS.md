@@ -30,11 +30,11 @@ Structural inheritance, serial/parallel dependencies, named ports and per-leaf d
 <a id="安装控制面"></a>
 ## Install the control plane
 
-With Python 3.11+ and Git already installed, run the following in an ordinary PowerShell session. The composition/execution capabilities described here currently ship on `refactor/architecture-foundations`. The clone and empty-environment ZIP instructions select that same branch. In an existing clone, select it first or pin the full commit required by the acceptance record, then run the installer. Identical package versions do not imply identical source.
+With Python 3.11+ and Git already installed, run the following in an ordinary PowerShell session. The capabilities described here ship on `main`. The clone and empty-environment ZIP instructions select that branch. In an existing clone, select `main` or pin the full commit required by the acceptance record, then run the installer. Identical package versions do not imply identical source.
 
 ```powershell
 New-Item -ItemType Directory -Force "$HOME\source" | Out-Null
-git clone --branch refactor/architecture-foundations https://github.com/626619403/Ergora.git "$HOME\source\Ergora"
+git clone --branch main https://github.com/626619403/Ergora.git "$HOME\source\Ergora"
 Set-Location "$HOME\source\Ergora"
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\install.ps1 -AddToPath
 & "$env:LOCALAPPDATA\Ergora\bin\ergora.exe" --version
@@ -43,7 +43,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\install.ps1 -A
 
 Open `http://127.0.0.1:8977`. The console assets ship in the package; Node and a frontend build are unnecessary. `-AddToPath` adds the command directory to the current user's PATH. New terminals can use `ergora` directly; existing terminals can use the absolute path above. ExecutionPolicy in this command applies only to that PowerShell process. Organization policies may still require signed scripts or administrator deployment.
 
-In an empty environment, download the [source ZIP for the same branch](https://github.com/626619403/Ergora/archive/refs/heads/refactor/architecture-foundations.zip), extract it to a persistent user directory, and open PowerShell in the directory containing `pyproject.toml`:
+In an empty environment, download the [source ZIP for the same branch](https://github.com/626619403/Ergora/archive/refs/heads/main.zip), extract it to a persistent user directory, and open PowerShell in the directory containing `pyproject.toml`:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\install.ps1 -InstallPrerequisites -AddToPath

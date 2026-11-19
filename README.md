@@ -25,12 +25,12 @@ Source checks, a new wheel installation, a real service run, model behavior, tra
 <a id="快速试用"></a>
 ## Quick start
 
-The features described here are delivered on `refactor/architecture-foundations`. The repository's default branch is `main`, which has a different feature baseline. Select the development branch explicitly; to reproduce an acceptance record, pin its complete Git commit before installation. The `0.2.0` package version alone does not identify equivalent source.
+The features described here are delivered on the repository's default `main` branch. To reproduce an acceptance record, pin its complete Git commit before installation. The `0.2.0` package version alone does not identify equivalent source.
 
 On Linux, provide Git, Python 3.11+, venv/pip and access to dependency sources. Use a source destination that does not already exist:
 
 ```bash
-git clone --branch refactor/architecture-foundations \
+git clone --branch main \
   https://github.com/626619403/Ergora.git "$HOME/Ergora"
 cd "$HOME/Ergora"
 bash scripts/install.sh
@@ -38,7 +38,6 @@ export PATH="$HOME/.local/bin:$PATH"
 
 ergora composition presets
 ergora composition install-preset repository-governance
-ergora composition install-preset refactoring
 ergora composition install-preset refactoring
 ergora serve
 ```

@@ -23,12 +23,12 @@ Ergora 将任务目标、角色、允许的修改、人工决定、并行工作�
 
 ## 快速试用
 
-本文功能随 `refactor/architecture-foundations` 开发分支交付。仓库默认分支为 `main`，其功能基线不同。安装时显式选择开发分支；复现验收记录时，先固定记录中的完整 Git 提交。仅凭 `0.2.0` 包版本号不能确认源码等价。
+本文功能随仓库默认 `main` 分支交付。复现验收记录时，先固定记录中的完整 Git 提交。仅凭 `0.2.0` 包版本号不能确认源码等价。
 
 Linux 需准备 Git、Python 3.11+、venv／pip，并能访问依赖源。使用一个尚不存在的源码目录：
 
 ```bash
-git clone --branch refactor/architecture-foundations \
+git clone --branch main \
   https://github.com/626619403/Ergora.git "$HOME/Ergora"
 cd "$HOME/Ergora"
 bash scripts/install.sh
@@ -37,7 +37,6 @@ export PATH="$HOME/.local/bin:$PATH"
 ergora composition presets
 ergora composition install-preset repository-governance
 ergora composition install-preset refactoring
-ergora composition install-preset refactoring-quality
 ergora serve
 ```
 
@@ -59,8 +58,8 @@ ergora serve
 |---|---|---|
 |治理已有仓库|`repository-governance`|盘点、架构／知识检查和限定范围的修改|
 |开发跨模块变更|`large-change`|有 owner 的工作单元、集成、兼容及迁移／回滚检查|
-|保持行为的重构|`refactoring` 或 `refactoring-quality`|准备、重构、兼容验证，以及原六阶段中的三类独立审查|
-|准备训练优化|`training-optimization-v3`|源码流程图谱、瓶颈分析、kernel 评估和测量审查；显式调用提案叶|
+|保持行为的重构|`refactoring`|准备、重构、兼容验证，以及原六阶段中的三类独立审查|
+|准备训练优化|`training-optimization`|源码流程图谱、瓶颈分析、kernel 评估和测量审查；显式调用提案叶|
 |收集精确 PR／MR 审查材料|[本地审查](docs/LOCAL_REVIEW.md)|完整 Git 源、需求与显式上下文；采集本身不调用审查模型|
 |将已有证据整理成可读报告|[证据报告](docs/zh-CN/EVIDENCE_REPORTS.md)|一次明确的只读作者调用；Markdown 与自包含 HTML，保留来源／覆盖范围|
 |审查预训练／后训练代码|[训练领域审查](docs/TRAINING_REVIEW.md)|领域专家与通用审查组合，附 CPU 合同示例|
@@ -71,7 +70,7 @@ ergora serve
 
 优化方向涵盖显存／重算／卸载、CUDA Graphs／packing、并行／FSDP／层次 CP、通信／MoE、profiling／显存快照、配方／模型核验、集群恢复、低精度与 kernel。提案叶每次显式选择一叶，操作者提供完整前驱结果。安装 preset 不会执行整张图或提交训练。
 
-专家定义、提示和随包 Skill 属于 Ergora 自有实现，设计参考已列明的[工程调研](docs/research/2026-11-14-local-engineering-skills.md)与[组合研究](docs/research/2026-11-08-agent-composition.md)。Codex 与 Claude Code 是可选择的执行后端。`refactoring-quality` 通过继承资源补充目标仓库规范、真实调用者和测试价值指导，保留既有角色与运行时合同。
+专家定义、提示和随包 Skill 属于 Ergora 自有实现，设计参考已列明的[工程调研](docs/research/2026-11-14-local-engineering-skills.md)与[组合研究](docs/research/2026-11-08-agent-composition.md)。Codex 与 Claude Code 是可选择的执行后端。`refactoring` 通过继承资源补充目标仓库规范、真实调用者和测试价值指导，保留既有角色与运行时合同。
 
 ## 当前工作流
 
