@@ -1,5 +1,5 @@
-# 脚本变更入口
+# Script change entry point
 
-修改安装、升级、运行或CI脚本前，读[脚本和检查协议](../docs/architecture/component-change-protocols.md#脚本和检查)，并沿脚本调用的领域owner核参数、持久路径、平台支持及恢复合同。
+Before changing installation, upgrade, runtime, or CI scripts, read the [scripts and checks protocol](../docs/architecture/component-change-protocols.md#scripts-and-checks), then follow the domain owners called by the script to check parameters, persistent paths, platform support, and recovery contracts.
 
-脚本消费现有库接口；可复用行为归实际owner，避免另一份配置选择、评分或批准。修改可观察的安装／平台行为时选已有安装接缝；只修改说明时检查链接及命令与实际入口相符。版本／固定源码／许可信息按原工具安装合同维护。
+Scripts consume existing library interfaces; reusable behavior belongs to its actual owner, avoiding another implementation of configuration selection, scoring, or approval. When changing observable installation/platform behavior, select existing installation seams; when changing only explanatory text, check links and ensure commands match actual entry points. Maintain version/fixed-source/license information under the original tool installation contract.

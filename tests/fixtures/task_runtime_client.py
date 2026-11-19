@@ -13,9 +13,9 @@ from temporalio.client import WorkflowExecutionStatus
 from temporalio.service import RPCError, RPCStatusCode
 
 from dev_platform import connection
-from ergora.reference_task_runtime import main
-from ergora.reference_inputs import execution_input
-from ergora import task_envelopes
+from ergora.development.runtime.status import main
+from ergora.development.inputs import execution_input
+from ergora.development import envelopes as task_envelopes
 
 
 payload = json.load(sys.stdin)

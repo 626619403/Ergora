@@ -17,7 +17,7 @@ ergora --home ./review-home composition prepare-manifest ergora-selected-enginee
 
 Save the returned manifest `digest`. The exact member paths are `root/structure/review`, `root/correctness/review`, `root/test-value/review`, `root/performance` and `root/resource-lifecycle`. They consume the same root task independently and all feed the existing all-join. The grant is readonly: read workspace/definitions, write none, shell false and network none. Performance keeps its existing `gpt-6.1-sol/max` minimum because it also serves planning; the other reviewers require at least `gpt-6.1-sol/high`.
 
-For an independent PR/MR source, first prepare the complete local or external source as described in [LOCAL_REVIEW](../../../docs/LOCAL_REVIEW.md), including requirements, exact base/head/diff-base, all changes and explicit callers/configuration/protocols/check originals. Then prepare and call each leaf explicitly. The following is the full five-member invocation list; replace source/manifest digests and the backend reason with their actual values. Project registration does not collect or fetch source objects.
+For an independent PR/MR source, first prepare the complete local or external source as described in [LOCAL_REVIEW](../../../docs/review/materials.md), including requirements, exact base/head/diff-base, all changes and explicit callers/configuration/protocols/check originals. Then prepare and call each leaf explicitly. The following is the full five-member invocation list; replace source/manifest digests and the backend reason with their actual values. Project registration does not collect or fetch source objects.
 
 ```bash
 ergora --home ./review-home project add review-project --repo /path/to/repository

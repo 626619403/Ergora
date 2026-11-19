@@ -81,7 +81,7 @@ def process(folder: Path, *, admit: Callable[[Path, dict], None] | None = None,
             manifest_path = TRAINING / 'manifests' / (ident + '.json')
             require(hashlib.sha256(manifest_path.read_bytes()).hexdigest() == binding.manifest_sha, 'Frozen manifest changed')
             manifest = read(manifest_path)
-            from ergora.training_materials import execution_plan
+            from ergora.training.materials import execution_plan
             execution = execution_plan(manifest, record['runner'])
             write(folder / 'started.json', {'binding': asdict(binding), 'job_id': record['job_id']})
             mirror = folder / 'repo.git'
@@ -105,7 +105,7 @@ def process(folder: Path, *, admit: Callable[[Path, dict], None] | None = None,
                 active()
             runner_timeout = record['runner']['timeout_seconds']
             if execution['operation'] == 'training-screen-v1':
-                from ergora import training_execution_protocol as protocol
+                import ergora.training.execution_protocol as protocol
                 configuration = read(folder / 'configuration-request.json')
                 context = configuration['context']
                 active()
@@ -117,8 +117,8 @@ def process(folder: Path, *, admit: Callable[[Path, dict], None] | None = None,
             require(code == 0, f'Training runner exited {code}; inspect {output}/execution.log')
             require(not fence.exists(), 'Cancelled before evidence validation')
             if execution['operation'] == 'training-screen-v1':
-                from ergora.reference_training_evidence import _screen_bundle
-                from ergora.training_materials import confirm_file, read_raw
+                from ergora.training.runtime.evidence import _screen_bundle
+                from ergora.training.materials import confirm_file, read_raw
                 configuration_raw = read_raw(folder / 'configuration-request.json', 16 * 1_048_576)
                 configuration = read(folder / 'configuration-request.json')
                 configuration['_raw_sha256'] = hashlib.sha256(configuration_raw).hexdigest()

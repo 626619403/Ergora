@@ -10,6 +10,7 @@ import platform
 import sys
 import time
 import uuid
+from ergora._paths import PACKAGE_ROOT
 
 
 INTEGER_ORACLE_SCHEME = 'fixture-independent-integer-output-v1'
@@ -162,7 +163,8 @@ def describe(context):
             'last-source-fence', 'last-source-deadline', 'last-source-request-drift',
             'last-material-fence', 'last-material-deadline'):
         import sys
-        from ergora import training_execution_protocol as protocol
+        import ergora.training.execution_protocol as protocol
+        from ergora._paths import PACKAGE_ROOT
 
         wrapper = sys.modules['__main__']
         source_bytes, chain = wrapper._source_bytes, wrapper._chain
@@ -220,7 +222,7 @@ def describe(context):
 
         wrapper._chain = record_rejection
         if context['configurations']['candidate']['fault'].startswith('last-material'):
-            from ergora import training_materials
+            from ergora.training import materials as training_materials
 
             original_read = training_materials.read_raw
             def final_material(path, *args, **kwargs):
@@ -637,7 +639,8 @@ def baseline_reference_read(context, request, reference):
                         Job(training.binding_from(record['experiment']['binding']), record['job_id'])))
                 else:
                     from datetime import timedelta
-                    from ergora import training_execution_protocol as protocol
+                    import ergora.training.execution_protocol as protocol
+                    from ergora._paths import PACKAGE_ROOT
                     clock, policy = request['context']['authorization']['clock'], request['context']['policy']
                     original_clock, original_datetime = protocol.budget_clock._clock, protocol.budget_clock.datetime
                     _, ticks = original_clock()
@@ -656,9 +659,10 @@ def baseline_reference_read(context, request, reference):
             return result
         os.fsync = stop_after_read_sync
     if current['fault'] == 'reference-current-coverage-extension':
-        from ergora import training_execution_protocol as protocol
-        name = 'training_search.py'
-        assert name not in protocol.GATE_SOURCES and Path(protocol.__file__).with_name(name).is_file()
+        import ergora.training.execution_protocol as protocol
+        from ergora._paths import PACKAGE_ROOT
+        name = 'training/search.py'
+        assert name not in protocol.GATE_SOURCES and (PACKAGE_ROOT / name).is_file()
         before = list(protocol.GATE_SOURCES)
         protocol.GATE_SOURCES = (*protocol.GATE_SOURCES, name)
         marker(current['fault'], {'identity': context['identity'], 'before': before,

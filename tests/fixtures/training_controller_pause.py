@@ -15,7 +15,7 @@ def pause():
 
 
 def install():
-    from ergora import training_execution_protocol as protocol
+    import ergora.training.execution_protocol as protocol
 
     boundary = os.environ['ERGORA_TEST_TRAINING_CONTROLLER_PAUSE']
     if boundary == 'executor-lock':

@@ -8,7 +8,9 @@ import time
 
 import pytest
 
-from ergora import reference, reference_budget, tasks
+import ergora.native.resources as native_resources
+import ergora.development.application as tasks
+from ergora.development import budget as reference_budget
 from test_task_budget import budget_creation, budget_graph, full_creation, full_graph, work_creation, work_graph
 from test_registrations import installation, registration
 from test_task_creation import creation_project
@@ -33,7 +35,7 @@ def budget_submission(budget_creation, monkeypatch):
     codex.symlink_to(sys.executable)
     (config / 'claude').symlink_to(sys.executable)
     monkeypatch.setenv('PATH', str(config) + os.pathsep + os.environ.get('PATH', ''))
-    monkeypatch.syspath_prepend(str(reference.ROOT / 'platform/local'))
+    monkeypatch.syspath_prepend(str(native_resources.ROOT / 'platform/local'))
     from agent_platform.sandbox import container_identity
     (config / 'platform.json').write_text(json.dumps({'execution_enabled': True, 'codex_bin': str(codex),
         'current_container_trust_acknowledged': True, 'container_boundary': container_identity()}))

@@ -235,7 +235,7 @@ def main():
             # Ordinary native jobs keep their standalone reader. Complete
             # Ergora jobs require only the pure, current admission contract.
             try:
-                from ergora import task_envelopes
+                from ergora.development import envelopes as task_envelopes
             except ImportError as error:
                 raise ContractViolation("Complete current task jobs require Ergora's pure admission reader") from error
             if oversized:

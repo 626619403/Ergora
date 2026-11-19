@@ -9,8 +9,14 @@ import sys
 
 import pytest
 
-from ergora import projects, reference, registrations, tasks
-from ergora.state import State
+import ergora.native.resources as native_resources
+import ergora
+import subprocess
+import sys
+import ergora.configuration.projects as projects
+import ergora.configuration.registrations as registrations
+import ergora.development.application as tasks
+from ergora.storage.state import State
 from test_registrations import installation, registration
 from test_task_creation import creation_project
 
@@ -26,8 +32,8 @@ def task_store(registration, tmp_path):
     input_file = tmp_path / 'input.json'
     environment = dict(os.environ, AGENTFLOW_CONFIG_DIR=execution['config_directory'],
                        AGENTFLOW_STATE_DIR=execution['state_directory'],
-                       PYTHONPATH=os.pathsep.join([str(Path(reference.__file__).parent.parent),
-                           *(str(reference.ROOT / 'platform' / p) for p in ('local', 'upstream/platform'))]))
+                       PYTHONPATH=os.pathsep.join([str(Path(ergora.__file__).parent.parent),
+                           *(str(native_resources.ROOT / 'platform' / p) for p in ('local', 'upstream/platform'))]))
     for task_id, template in [('first', 'repository-governance'), ('second', 'large-change')]:
         inputs['risk'] = 'high' if template == 'large-change' else 'standard'
         input_file.write_text(json.dumps(inputs), encoding='utf-8')
@@ -36,7 +42,7 @@ def task_store(registration, tmp_path):
 from pathlib import Path
 from dev_platform import adapter, portable
 if os.name == 'nt':
-    from ergora.reference import _read_windows_contract
+    from ergora.native.files import _read_windows_contract
     portable._read_bytes = _read_windows_contract
     adapter.read_raw = _read_windows_contract
 from agent_platform.projects import create_task
@@ -172,7 +178,7 @@ def test_lightweight_and_pending_projects_have_no_formal_task_store(task_store):
 def test_cli_and_api_read_the_same_contracts(task_store):
     pytest.importorskip('fastapi')
     from fastapi.testclient import TestClient
-    from ergora.web import create_app
+    from ergora.interfaces.web import create_app
     state, _ = task_store
     client=TestClient(create_app(state.root),base_url='http://127.0.0.1')
     uri='/api/projects/demo/tasks'
@@ -217,7 +223,7 @@ def test_reader_failures_are_actionable_without_retries(task_store, monkeypatch,
         if failure == 'timeout':
             raise subprocess.TimeoutExpired(args[0], 30)
         return subprocess.CompletedProcess(args[0], -9, '', '')
-    monkeypatch.setattr(reference.subprocess, 'run', failed)
+    monkeypatch.setattr(subprocess, 'run', failed)
     with pytest.raises(ValueError, match='Task contract reader'):
         tasks.listing(state, 'demo')
     assert len(calls) == 1
@@ -225,10 +231,10 @@ def test_reader_failures_are_actionable_without_retries(task_store, monkeypatch,
 
 def test_submission_requires_the_registered_full_linux_environment(creation_project,monkeypatch):
     state,registration,definition=creation_project
-    monkeypatch.setattr(reference.sys,'platform','win32')
+    monkeypatch.setattr(sys,'platform','win32')
     with pytest.raises(ValueError,match='WSL2'):
         tasks.submission(state,'demo','new-task')
-    monkeypatch.setattr(reference.sys,'platform','linux')
+    monkeypatch.setattr(sys,'platform','linux')
     original=Path.is_file
     monkeypatch.setattr(Path,'is_file',lambda path:False if path.name=='python' else original(path))
     with pytest.raises(ValueError,match='full Linux environment'):

@@ -7,8 +7,9 @@ import json
 from pathlib import Path
 import tempfile
 
-from ergora import agent_definitions, workflow_definitions as workflows
-from ergora.state import State
+import ergora.definitions.agents as agent_definitions
+import ergora.definitions.workflows as workflows
+from ergora.storage.state import State
 
 
 def publish(state: State, example: Path) -> dict:

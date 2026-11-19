@@ -20,8 +20,8 @@ if fault == 'monitor-blocked' and not light_root:
     blocked_payload = json.load(sys.stdin)
     sys.stdin = io.StringIO(json.dumps(blocked_payload))
     if blocked_payload.get('mode') == 'monitor':
-        from ergora import reference_training_budget as budget
-        from ergora.reference_training_submission import _Submission
+        import ergora.training.runtime.budget as budget
+        from ergora.training.runtime.submission import _Submission
 
         context = blocked_payload['cached']
         operation = _Submission(blocked_payload)
@@ -37,8 +37,8 @@ if fault == 'monitor-blocked' and not light_root:
 
 def install_root_faults(budget, envelope):
     if fault in ('owner-before-publish', 'owner-initialization-held'):
-        from ergora import training_execution_protocol as protocol
-        from ergora.training_materials import decode_record
+        import ergora.training.execution_protocol as protocol
+        from ergora.training.materials import decode_record
 
         markers = Path(os.environ['ERGORA_TEST_CYCLE_MARKERS'])
         source = decode_record(protocol.read_raw(Path(envelope['submission']['control_home']) / 'operations/training-cycles'
@@ -49,7 +49,7 @@ def install_root_faults(budget, envelope):
             pending = markers / ('owner-held-' + str(os.getpid()) + '.pending')
             pending.write_text(json.dumps({'root': budget._process_identity(os.getpid()), 'fault': fault,
                 'entry': 'cycle_root_main' if light_root else 'budget_main', 'imports': [name for name in sys.modules
-                    if name == 'ergora.reference_training_worker' or name.startswith('temporalio')]}))
+                    if name == 'ergora.training.runtime.worker' or name.startswith('temporalio')]}))
             pending.replace(markers / 'owner-held')
             while not (markers / 'owner-release').exists():
                 if protocol.cycle_operation_remaining(source) <= 0:
@@ -101,7 +101,7 @@ def install_launch_fault(budget, payload):
 
 if light_root:
     # Select the actual root entry before importing any SDK service doubles.
-    from ergora import reference_training_budget as budget
+    import ergora.training.runtime.budget as budget
 
     envelope = json.load(sys.stdin)
     sys.stdin = io.StringIO(json.dumps(envelope))
@@ -110,17 +110,17 @@ if light_root:
     launch, start_phase = subprocess.Popen, budget._BudgetPhase.start
 
     def launch_phase(argv, *args, **kwargs):
-        if argv[-1] == 'from ergora.reference_training_worker import budget_main;budget_main()':
+        if argv[-1] == 'from ergora.training.runtime.worker import budget_main;budget_main()':
             argv = [*argv[:-1], f'import runpy;runpy.run_path({__file__!r},run_name="__main__")']
         return launch(argv, *args, **kwargs)
 
     def checked_phase(phase):
-        assert not any(name == 'ergora.reference_training_worker' or name.startswith('temporalio') for name in sys.modules)
+        assert not any(name == 'ergora.training.runtime.worker' or name.startswith('temporalio') for name in sys.modules)
         return start_phase(phase)
 
     subprocess.Popen = launch_phase
     budget._BudgetPhase.start = checked_phase
-    from ergora.reference_training_submission import cycle_root_main
+    from ergora.training.runtime.submission import cycle_root_main
 
     cycle_root_main()
     raise SystemExit(0)
@@ -129,18 +129,19 @@ sys.path.insert(0, str(Path(__file__).parent))
 import training_submission_client as base
 import training_cancellation_client
 
-from ergora.reference_training_worker import budget_main
-from ergora import reference_training_budget as budget
+from ergora.training.runtime.worker import budget_main
+import ergora.training.runtime.budget as budget
 
 if (os.environ.get('ERGORA_TEST_TRAINING_CONTROLLER_PAUSE') in ('attempt', 'ack', 'executor-lock')
         and base.payload['mode'] == 'phase-supervisor' and base.payload['phase']['mode'] == 'execute'):
-    from ergora import reference
+    import ergora.native.commands as native_commands
+    import ergora
 
-    worker_command = reference.worker_command
+    worker_command = native_commands.worker_command
     def paused_native_command(installation, **kwargs):
         command = worker_command(installation, **kwargs)
         if os.environ.get('ERGORA_TEST_NATIVE_PACKAGE'):
-            command[-1] = command[-1].replace(repr(str(Path(reference.__file__).parent.parent)),
+            command[-1] = command[-1].replace(repr(str(Path(ergora.__file__).parent.parent)),
                                             repr(os.environ['ERGORA_TEST_NATIVE_PACKAGE']))
         fixture = str(Path(__file__).with_name('training_controller_pause.py'))
         sdk_site = str(Path(sys.modules['temporalio'].__file__).parent.parent)
@@ -148,19 +149,20 @@ if (os.environ.get('ERGORA_TEST_TRAINING_CONTROLLER_PAUSE') in ('attempt', 'ack'
             f'import ergora;sys.path.pop(0);sys.path.append({sdk_site!r});'
             f'import runpy;runpy.run_path({fixture!r})["install"]();')
         return command
-    reference.worker_command = paused_native_command
+    native_commands.worker_command = paused_native_command
 
 if fault == 'configuration-full' and base.payload['mode'] == 'phase-supervisor' and base.payload['phase']['mode'] == 'execute':
-    from ergora import reference
+    import ergora.native.commands as native_commands
+    import ergora
 
-    worker_command = reference.worker_command
+    worker_command = native_commands.worker_command
     def configuration_native_command(installation, **kwargs):
         command = worker_command(installation, **kwargs)
         fixture = str(Path(__file__).with_name('training_configuration_native.py'))
         command[-1] = command[-1].replace('import ergora;sys.path.pop(0);',
             f'import ergora;sys.path.pop(0);import runpy;runpy.run_path({fixture!r})["install"]();')
         return command
-    reference.worker_command = configuration_native_command
+    native_commands.worker_command = configuration_native_command
 
 if os.environ.get('ERGORA_TEST_TRAINING_CONTROLLER') or fault == 'configuration-full':
     training_cancellation_client.Service.query_workflow = base.Service.query_workflow
@@ -172,7 +174,7 @@ if fault in ('managed-no-launch', 'managed-launch-failed'):
     training_cancellation_client.Service.query_workflow = base.Service.query_workflow
     if base.payload['mode'] == 'admission':
         from contextlib import contextmanager
-        from ergora import state as state_owner
+        from ergora.storage import state as state_owner
 
         execution_lock = state_owner.file_lock
         @contextmanager
@@ -212,7 +214,7 @@ if fault in ('phase-isolation', 'phase-reap-overrun'):
     peer_id = 'e' * 32
     peer_marker = base.storage.with_suffix('.peer')
     if base.payload['mode'] == 'cleanup' and base.payload.get('phase', {}).get('phase_id') == peer_id:
-        import ergora.reference_training_worker as worker
+        import ergora.training.runtime.worker as worker
         async def peer_cleanup(active, context):
             active.validate_cached(context)
             peer_marker.write_text(json.dumps({'supervisor': budget._process_identity(os.getppid()),
@@ -236,7 +238,7 @@ if fault in ('phase-isolation', 'phase-reap-overrun'):
             return await completion(active, adapter, timeout=timeout)
         budget.BudgetedStart.completion = with_descendant
     if fault == 'phase-isolation' and base.payload['mode'] == 'owner':
-        from ergora import reference_training_execution
+        import ergora.training.runtime.execution as reference_training_execution
 
         drive = reference_training_execution.Execution.drive
         def with_peer(execution, context, phase_type):
@@ -350,7 +352,7 @@ if fault in ('phase-slow-reader', 'phase-held-reader') and base.payload['mode'] 
         finally:
             transferring_monitor = False
     def delayed_reader(argv, *args, **kwargs):
-        selected = transferring_monitor and 'from ergora.reference_training_worker import budget_main;budget_main()' in argv
+        selected = transferring_monitor and 'from ergora.training.runtime.worker import budget_main;budget_main()' in argv
         if selected:
             delay = .25 if fault == 'phase-slow-reader' else 60
             argv = [*argv[:-1], f'import time,runpy;time.sleep({delay});runpy.run_path({__file__!r},run_name="__main__")']

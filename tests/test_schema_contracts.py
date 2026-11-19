@@ -6,8 +6,14 @@ import sys
 
 import pytest
 
-from ergora import agents, components, contracts, evaluation, projects, tools
-from ergora.state import State
+import ergora.agents.invocation as agents
+import ergora.improvement.evaluation as evaluation
+import ergora.configuration.projects as projects
+import ergora.operations.tools as tools
+import ergora.configuration.bindings as bindings
+from ergora.configuration import catalog as components
+from ergora.configuration import validation as contracts
+from ergora.storage.state import State
 
 
 def test_shipped_schemas_are_valid_and_validation_does_not_supply_defaults():
@@ -17,7 +23,7 @@ def test_shipped_schemas_are_valid_and_validation_does_not_supply_defaults():
         contracts.StrictValidator.check_schema(schema)
     binding = {"tool": "mini-swe-agent", "model": "provider/model"}
     before = deepcopy(binding)
-    tools.validate_binding("implementer", binding)
+    bindings.validate_binding("implementer", binding)
     assert binding == before and "step_limit" not in binding
 
 
@@ -26,16 +32,16 @@ def test_shipped_schemas_are_valid_and_validation_does_not_supply_defaults():
 def test_binding_keeps_python_strict_integer_limits(value, accepted):
     binding = {"tool": "mini-swe-agent", "model": "p/m", "step_limit": value}
     if accepted:
-        tools.validate_binding("implementer", binding)
+        bindings.validate_binding("implementer", binding)
     else:
         with pytest.raises(ValueError, match=r"/step_limit:"):
-            tools.validate_binding("implementer", binding)
+            bindings.validate_binding("implementer", binding)
 
 
 @pytest.mark.parametrize("value", [True, "3", 0, -1, 100.01, float("nan"), float("inf"), -float("inf")])
 def test_binding_rejects_non_numeric_nonfinite_and_out_of_budget_values(value):
     with pytest.raises(ValueError, match=r"/cost_limit:"):
-        tools.validate_binding("implementer", {"tool": "mini-swe-agent", "model": "p/m", "cost_limit": value})
+        bindings.validate_binding("implementer", {"tool": "mini-swe-agent", "model": "p/m", "cost_limit": value})
 
 
 def test_structured_results_keep_strict_fields_and_show_json_pointer():
@@ -102,7 +108,7 @@ def test_cli_and_web_share_binding_and_evaluation_decisions_with_utf8_bom(contra
     pytest.importorskip("fastapi")
     pytest.importorskip("httpx")
     from fastapi.testclient import TestClient
-    from ergora.web import create_app
+    from ergora.interfaces.web import create_app
 
     state, manifest = contract_project
     headers = {"Origin": "http://127.0.0.1:8977", "X-Ergora-Request": "1"}

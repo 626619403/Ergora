@@ -19,7 +19,7 @@ from dev_platform import connection
 from dev_platform.adapter import FileAdapter
 from dev_platform.ingress import IngressLeases
 from agent_platform import core
-from ergora.reference_task_reconciliation import main
+from ergora.development.runtime.reconciliation import main
 
 payload = json.load(sys.stdin)
 sys.stdin = io.StringIO(json.dumps(payload))

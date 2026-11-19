@@ -8,8 +8,11 @@ import time
 
 import pytest
 
-from ergora import agents, projects, tools
-from ergora.state import State
+import ergora.agents.invocation as agents
+import ergora.configuration.projects as projects
+import ergora.operations.tools as tools
+import ergora.agents.runs as agent_runs
+from ergora.storage.state import State
 
 
 @pytest.fixture
@@ -53,21 +56,21 @@ def test_agent_uses_configured_argv_and_keeps_failures(state_project):
     state, repo = state_project
     code = "import sys,pathlib;print(pathlib.Path.cwd());print(sys.stdin.read());sys.exit(7)"
     projects.bind(state, "demo", "reviewer", {"tool": "command", "argv": [sys.executable, "-c", code]}, 1)
-    result = tools.run_agent(state, "demo", "reviewer", "literal $HOME; no shell")
+    result = agent_runs.run_agent(state, "demo", "reviewer", "literal $HOME; no shell")
     assert result["status"] == "failed" and result["returncode"] == 7
     output = Path(result["output"]) / "stdout.txt"
     assert str(repo) in output.read_text()
     assert "literal $HOME; no shell" in output.read_text()
-    assert tools.runs(State(state.root), "demo")[0] == result
+    assert agent_runs.runs(State(state.root), "demo")[0] == result
 
 
 def test_agent_timeout_is_recorded_and_missing_executable_is_visible(state_project):
     state, _ = state_project
     binding = {"tool": "command", "argv": [sys.executable, "-c", "import time;time.sleep(20)"]}
     projects.bind(state, "demo", "implementer", binding, 1)
-    assert tools.run_agent(state, "demo", "implementer", "bounded", timeout=1)["status"] == "timed_out"
+    assert agent_runs.run_agent(state, "demo", "implementer", "bounded", timeout=1)["status"] == "timed_out"
     projects.bind(state, "demo", "implementer", {"tool": "command", "argv": ["/missing/tool"]}, 2)
-    result = tools.run_agent(state, "demo", "implementer", "test")
+    result = agent_runs.run_agent(state, "demo", "implementer", "test")
     assert result["status"] == "failed" and "error" in result
 
 
@@ -80,7 +83,7 @@ def test_doctor_resolves_relative_executable_in_project(state_project):
     projects.bind(state, "demo", "reviewer", {"tool": "command", "argv": ["./local-tool"]}, 1)
     check = next(c for c in tools.doctor(state, "demo")["checks"] if c["layer"] == "reviewer")
     assert check["installed"] is True
-    assert tools.run_agent(state, "demo", "reviewer", "relative path")["status"] == "succeeded"
+    assert agent_runs.run_agent(state, "demo", "reviewer", "relative path")["status"] == "succeeded"
 
 
 @pytest.mark.skipif(os.name == "nt", reason="POSIX executable / fork / SIGINT fixture; native lifecycle has portable coverage")
@@ -88,7 +91,7 @@ def test_normal_exit_also_cleans_up_same_group_descendants(state_project):
     state, repo = state_project
     code = "import os,time,pathlib; child=os.fork(); time.sleep(.5) if child==0 else None; pathlib.Path('late-write').touch() if child==0 else None"
     projects.bind(state, "demo", "implementer", {"tool": "command", "argv": [sys.executable, "-c", code]}, 1)
-    result = tools.run_agent(state, "demo", "implementer", "test")
+    result = agent_runs.run_agent(state, "demo", "implementer", "test")
     assert result["status"] == "succeeded"
     time.sleep(.7)
     assert not (repo / "late-write").exists()
@@ -113,7 +116,7 @@ def test_sigint_leaves_a_terminal_run(state_project):
         stdout, stderr = process.communicate(timeout=5)
         assert process.returncode == 1, stderr
         assert json.loads(stdout)["status"] == "cancelled"
-        assert tools.runs(state, "demo")[0]["status"] == "cancelled"
+        assert agent_runs.runs(state, "demo")[0]["status"] == "cancelled"
     finally:
         if process.poll() is None:
             process.kill()
@@ -131,7 +134,7 @@ def test_native_reviewer_starts_a_fresh_restricted_invocation(state_project, mon
         return {"status": "succeeded", "returncode": 0}
 
     monkeypatch.setattr(agents.processes, "run", invoke)
-    tools.run_agent(state, "demo", "reviewer", "review request")
+    agent_runs.run_agent(state, "demo", "reviewer", "review request")
     assert "resume" not in observed
     if tool == "codex":
         assert "--ephemeral" in observed and observed[observed.index("--sandbox") + 1] == "read-only"

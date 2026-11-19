@@ -10,9 +10,13 @@ import shutil
 
 import pytest
 
-from ergora import agent_definitions, agents, backups, contracts, workflow_definitions as workflows
-from ergora.asset_trees import digest_tree
-from ergora.cli import main
+import ergora.definitions.agents as agent_definitions
+import ergora.agents.invocation as agents
+import ergora.operations.backups as backups
+import ergora.definitions.workflows as workflows
+from ergora.configuration import validation as contracts
+from ergora.storage.assets import digest_tree
+from ergora.interfaces.cli import main
 from test_workflow_definitions import EXAMPLES, base, child, definition, grant, imported, leaf, ref, write_bundle
 
 

@@ -17,7 +17,8 @@ import subprocess
 import sys
 import time
 
-from ergora import processes, stage_driver
+import ergora.agents.stage_driver as stage_driver
+from ergora.runtime import processes
 
 root, boundary = Path(sys.argv[1]), sys.argv[2]
 signal.signal(signal.SIGTERM, stage_driver._cancel)

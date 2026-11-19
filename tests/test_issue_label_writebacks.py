@@ -8,8 +8,12 @@ import sys
 
 import pytest
 
-from ergora import backups, cli, issue_backends, issue_writebacks, projects
-from ergora.state import State
+import ergora.operations.backups as backups
+import ergora.interfaces.cli as cli
+import ergora.issues.backends as issue_backends
+import ergora.issues.writebacks as issue_writebacks
+import ergora.configuration.projects as projects
+from ergora.storage.state import State
 from test_project_issues import source
 from test_issue_writebacks import candidate_for, configure_labels, writer_for
 
@@ -159,7 +163,7 @@ def test_observe_cursor_reads_one_page_and_cannot_confirm_an_unknown_attempt(lab
 def test_label_prepare_cli_and_protected_http_use_the_shared_writeback_lifecycle(labelled, capsys):
     pytest.importorskip('fastapi')
     from fastapi.testclient import TestClient
-    from ergora.web import create_app
+    from ergora.interfaces.web import create_app
 
     command = ['--home', str(labelled.state.root), 'issue', 'writeback-label-prepare', 'demo', 'task',
         '--revision', str(labelled.revision), '--run-id', 'original-run', '--candidate-sha', '6' * 40,

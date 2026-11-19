@@ -10,8 +10,11 @@ import sys
 
 import pytest
 
-from ergora import projects, reference, registrations, tasks
-from ergora.state import State
+import subprocess
+import ergora.configuration.projects as projects
+import ergora.configuration.registrations as registrations
+import ergora.development.application as tasks
+from ergora.storage.state import State
 from test_registrations import design_policy, installation, registration
 
 
@@ -31,13 +34,13 @@ def _files(folder):
 
 
 def _inject(monkeypatch, code):
-    original = reference.subprocess.run
+    original = subprocess.run
     def invoke(argv, **kwargs):
-        if 'from ergora.reference_task_creation import main;main()' in argv:
+        if 'from ergora.development.runtime.creation import main;main()' in argv:
             argv = list(argv)
-            argv[-1] = 'from ergora.reference_task_creation import main, _Creation\n' + code + '\nmain()'
+            argv[-1] = 'from ergora.development.runtime.creation import main, _Creation\n' + code + '\nmain()'
         return original(argv, **kwargs)
-    monkeypatch.setattr(reference.subprocess, 'run', invoke)
+    monkeypatch.setattr(subprocess, 'run', invoke)
 
 
 def test_v2_old_definition_is_rejected_before_creation_intent(registration):
@@ -259,13 +262,13 @@ def test_parallel_creates_and_lost_response_keep_one_intent(creation_project, mo
     assert outcomes[0]==outcomes[1] and outcomes[0]['status']=='published'
     root=Path(registration['execution']['state_directory'])
     before=_files(root)
-    original=reference.subprocess.run
+    original=subprocess.run
     calls=[]
     def lost(argv,**kwargs):
         result=original(argv,**kwargs)
         calls.append(result)
         raise subprocess.TimeoutExpired(argv,30)
-    monkeypatch.setattr(reference.subprocess,'run',lost)
+    monkeypatch.setattr(subprocess,'run',lost)
     with pytest.raises(ValueError,match='timed out; inspect task creation status'):
         tasks.create(state,'demo',definition,1,preview['preview_sha256'])
     assert len(calls)==1 and calls[0].returncode==0
@@ -299,7 +302,7 @@ def test_saved_intent_has_a_bounded_regular_file_boundary(creation_project, kind
 def test_cli_and_api_share_preview_creation_and_recovery(creation_project, tmp_path):
     pytest.importorskip('fastapi')
     from fastapi.testclient import TestClient
-    from ergora.web import create_app
+    from ergora.interfaces.web import create_app
     state, registration, definition=creation_project
     path=tmp_path/'task.json';path.write_text(json.dumps(definition),encoding='utf-8')
     def cli(*args):

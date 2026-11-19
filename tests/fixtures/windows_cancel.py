@@ -11,7 +11,7 @@ import time
 
 
 def controller(root):
-    from ergora import processes
+    from ergora.runtime import processes
 
     # CREATE_NEW_PROCESS_GROUP disables Ctrl+C initially; explicitly enable it.
     if not ctypes.windll.kernel32.SetConsoleCtrlHandler(None, False):

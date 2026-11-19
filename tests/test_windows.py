@@ -7,8 +7,15 @@ import sys
 
 import pytest
 
-from ergora import agents, evaluation, kernel, projects, reference, tools
-from ergora.state import State
+import ergora.native.commands as native_commands
+import ergora.native.resources as native_resources
+import ergora.agents.invocation as agents
+import ergora.improvement.evaluation as evaluation
+import ergora.improvement.kernel as kernel
+import ergora.configuration.projects as projects
+import ergora.operations.tools as tools
+import ergora.agents.runs as agent_runs
+from ergora.storage.state import State
 
 
 pytestmark = pytest.mark.skipif(os.name != 'nt', reason='Native Windows contracts')
@@ -32,12 +39,12 @@ def test_linux_only_tools_and_reference_fail_with_wsl_guidance(tmp_path):
     checks = {item['layer']: item for item in tools.doctor(state, 'demo')['checks']}
     assert not checks['implementer']['installed'] and 'WSL2' in checks['implementer']['platform_note']
     assert not checks['kernel']['installed'] and 'WSL2' in checks['kernel']['reason']
-    run = tools.run_agent(state, 'demo', 'implementer', 'fixture')
+    run = agent_runs.run_agent(state, 'demo', 'implementer', 'fixture')
     assert run['status'] == 'failed' and 'WSL2' in run['error']
     with pytest.raises(ValueError, match='WSL2'):
         kernel.create(state, 'demo')
     with pytest.raises(ValueError, match='WSL2'):
-        reference.executor(repo, state.root)
+        native_commands.executor(repo, state.root)
     assert not kernel.listing(state, 'demo')
 
 
@@ -48,20 +55,24 @@ def test_legacy_codepage_does_not_change_unicode_memory_and_skill_files(tmp_path
     subprocess.run(['git', 'init', str(repo)], check=True, capture_output=True)
     script = '''import json,sys
 from pathlib import Path
-from ergora import projects,memory,skills,tools
-from ergora.state import State
+import ergora.configuration.projects as projects
+import ergora.improvement.memory as memory
+import ergora.definitions.skills as skill_assets
+import ergora.operations.tools as tools
+import ergora.agents.runs as agent_runs
+from ergora.storage.state import State
 root=Path(sys.argv[1]);state=State(root/'data')
 projects.create(state,'demo',root/'repo')
 memory.save(state,'demo','中文长期记忆',{'uri':'manual:中文','revision':'v1'})
 bundle=root/'test-skill';bundle.mkdir()
 (bundle/'SKILL.md').write_text('---\\nname: test-skill\\ndescription: 中文技能\\n---\\n中文操作说明\\n',encoding='utf-8')
-item=skills.import_bundle(state,'demo',bundle)
+item=skill_assets.import_bundle(state,'demo',bundle)
 projects.bind(state,'demo','reviewer',{'tool':'command','argv':[sys.executable,'-c','import sys;print(sys.stdin.read())']},1)
-run=tools.run_agent(state,'demo','reviewer','中文提示',skill_names=['test-skill'])
+run=agent_runs.run_agent(state,'demo','reviewer','中文提示',skill_names=['test-skill'])
 assert run['status']=='succeeded',run
 assert '中文操作说明' in Path(run['output'],'stdout.txt').read_text(encoding='utf-8')
 assert memory.search(state,'demo','中文')['results'][0]['text']=='中文长期记忆'
-print(json.dumps({'digest':skills.get(state,'demo',item['digest'])['digest']}))
+print(json.dumps({'digest':skill_assets.get(state,'demo',item['digest'])['digest']}))
 '''
     env = dict(os.environ, PYTHONUTF8='0', PYTHONIOENCODING='utf-8')
     result = subprocess.run([sys.executable, '-c', script, str(root)], env=env, capture_output=True,
@@ -97,7 +108,7 @@ def test_windows_evaluator_uses_project_relative_native_executable(tmp_path):
 
 
 def test_native_workflow_compilation_conversion_and_immutable_export(tmp_path):
-    example = reference.ROOT / 'platform/upstream/platform/task-types/repository-governance/examples/request.json'
+    example = native_resources.ROOT / 'platform/upstream/platform/task-types/repository-governance/examples/request.json'
     request = json.loads(example.read_text(encoding='utf-8'))
     request['input']['goal'] = '整理中文项目'
     source = tmp_path / 'request.json'
@@ -114,7 +125,7 @@ def test_native_workflow_compilation_conversion_and_immutable_export(tmp_path):
     call('convert-v2', '--request', source, '--out-dir', converted)
     compiled = converted / 'compiled.json'
     call('validate', compiled)
-    package = reference.ROOT / 'platform/upstream/platform/portable/packages/repository-governance/manifest.json'
+    package = native_resources.ROOT / 'platform/upstream/platform/portable/packages/repository-governance/manifest.json'
     call('compile', '--task', converted / 'task.json', '--package', package,
          '--policy', converted / 'policy.json', '--binding', converted / 'binding.json', '--out', compiled)
     exported = tmp_path / 'export.json'

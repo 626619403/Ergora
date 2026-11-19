@@ -1,81 +1,83 @@
-# ADR0005：可嵌套工作流与祖先资源继承
+# ADR0005: Nested workflows and ancestor resource inheritance
 
-日期：2026-11-08。状态：已采纳，AC3d静态包/继承编译已本地实现并验证，r2独立修正复核通过，最终交付进行中；实际资源装载、准入、冻结及嵌套执行仍待AC3b/c/4。按[AC计划](../../plans/2026-11-08-agent-composition.md)中的AC0b、AC3d和AC4d分片交付。补充[ADR0004](0004-agent-composition.md)，不将已有成员组合等同子工作流。实现依据和一手来源见[嵌套工作流研究](../../research/2026-11-08-nested-workflows.md)。
+English · [Documentation](../../README.md)
 
-## 需求与当前差距
+Date: 2026-11-08. This ADR records the nested workflow decision, supplementing [ADR0004](0004-agent-composition.md); see the [workflow guide](../../definitions/workflows/contracts.md#definitions-and-data-flow) for current configuration, inheritance, and permission contracts.
 
-用户要求模板可相互嵌套并表达串行、并行和汇合：结构审查、正确性审查、冗余测试/断言检查分别为可复用模板，三者组成并行的总审查模板，再与总执行模板串行承接。每个模板都可声明MCP、Skill、上下文与权限；子模板继承所有祖先的Skill和上下文，资源只增不减，权限不得超过父模板。可以在同一配置修订中同时提高父/子权限，最终仍不得越过任何祖先及项目授权上限。
+## Requirements and current gaps
 
-当前`drafts.save → reference.validate_input`保存的是两开发模板的任务输入。冻结`DevelopmentWorkflow.units`支持工作单元DAG和有限并行，但`run`硬编码六阶段；portable的工作流schema也固定这些阶段。当前没有通用子工作流定义、嵌套执行、祖先资源合并或多审查汇合。AC1.2只修复当前任务已固定模板说明的实际装载，不实现本ADR。
+The user requires templates to nest and express serial, parallel, and join relationships: structural review, correctness review, and redundant test/assertion checks are each reusable templates; together they form a parallel overall review template, which follows the overall execution template in sequence. Every template can declare MCP, Skills, context, and permissions; child templates inherit all ancestor Skills and context, resources only accumulate, and permissions cannot exceed the parent template. Parent/child permissions may be raised together in one configuration revision, but must still remain within every ancestor and the project grant ceiling.
 
-## 定义与运行分开
+The current `development.drafts.save → reference.validate_input` saves task inputs for two development templates. Frozen `DevelopmentWorkflow.units` supports work-unit DAGs and bounded concurrency, but `run` hardcodes six stages; the portable workflow schema also fixes these stages. There are currently no general child workflow definitions, nested execution, ancestor resource merging, or multiple-review joins. AC1.2 only fixes actual loading of the template instructions already fixed for current tasks; it does not implement this ADR.
 
-|对象|责任|
+## Separate definitions from runs
+
+|Object|Responsibility|
 |---|---|
-|AgentDefinition|可复用专家配方：职能、专长、后端、提示、资源请求和预算默认值；沿ADR0004。|
-|WorkflowDefinition|可复用有界子图：具名输入/输出、节点、显式依赖、引用版本、并发/汇合策略，以及本模板的资源和权限请求。节点可以引用Agent定义或其他工作流定义。|
-|工作流实例|一次引用产生独立实例，拥有稳定调用路径、父实例、输入、状态、尝试和子结果。同一定义被两处引用，产生两个实例。|
-|冻结运行manifest|递归解析静态定义、已知行为材料与运行态输入的装配规则，保存祖先链、有效资源/权限、成员、后端、预算、图及内容身份；摘要进入创建/批准身份链。|
+|AgentDefinition|Reusable specialist recipe: roles, specialties, backend, prompts, resource requests, and budget defaults; follows ADR0004.|
+|WorkflowDefinition|Reusable bounded subgraph: named inputs/outputs, nodes, explicit dependencies, referenced versions, concurrency/join policy, and this template's resource and permission requests. Nodes may reference Agent definitions or other workflow definitions.|
+|Workflow instance|Each reference creates an independent instance with a stable invocation path, parent instance, input, state, attempts, and child results. Referencing one definition twice creates two instances.|
+|Frozen run manifest|Recursively resolves static definitions, known behavioral materials, and assembly rules for runtime inputs; stores the ancestor chain, effective resources/permissions, members, backends, budgets, graph, and content identities; its digest enters the creation/approval identity chain.|
 
-模板像可复用的类，实例像一次构造后的对象；此类比不要求每种模板创建Python子类。第一版以版本化JSON/JSON Schema及等价YAML保存数据，用显式DAG表达顺序和并行。LangGraph的Python builder可供参考，不是可直接导入的通用JSON标准。暂不提供任意Python表达式、无限循环或运行中修改拓扑。
+Templates resemble reusable classes, and instances resemble objects after construction; this analogy does not require a Python subclass for every template. The first version stores data as versioned JSON/JSON Schema and equivalent YAML, using explicit DAGs for sequencing and concurrency. LangGraph's Python builder is a reference, not a directly importable general JSON standard. Arbitrary Python expressions, infinite loops, and runtime topology changes are not provided at this stage.
 
-工作依赖与继承分别表达。结构父模板决定资源/权限继承；依赖前驱只通过具名端口交付数据，不自动成为父模板。兄弟分支不共享可变上下文或会话。实例ID由稳定节点引用路径产生，不用画布位置、显示名称或执行完成次序作为身份。
+Work dependencies and inheritance are expressed separately. Structural parent templates determine resource/permission inheritance; dependency predecessors deliver data only through named ports and do not automatically become parent templates. Sibling branches do not share mutable context or sessions. Instance IDs derive from stable node reference paths, not canvas positions, display names, or completion order.
 
-## 资源累加，权限受限
+## Accumulating resources, bounded permissions
 
-对当前实例路径上的父节点`p`和子节点`n`，目标合同为：
+For parent node `p` and child node `n` on the current instance path, the target contract is:
 
 ```text
 required_resources(n) = required_resources(p) ∪ local_resources(n)
 effective_permissions(n) ⊆ effective_permissions(p) ⊆ project_grant
 ```
 
-这里的资源包括祖先声明的Skill指令、上下文/资料、MCP配置引用及本模板追加项；沿root→leaf确定性合并。首版所有祖先声明的Skill指令和上下文都是必读材料，不提供将其改为可选的开关。同一内容可按身份去重，但保留全部来源。相同逻辑资源ID对应不同版本/内容时，首版拒绝冲突，不用最后写入覆盖祖先；输入映射也不能删除必需的继承材料。
+Resources here include ancestor-declared Skill instructions, context/materials, MCP configuration references, and this template's additions; merge deterministically from root→leaf. In the first version, all ancestor-declared Skill instructions and context are required reading, with no switch to make them optional. Identical content may be deduplicated by identity while retaining all provenance. When one logical resource ID has different versions/content, the first version rejects the conflict rather than overwriting ancestors with the last write; input mappings cannot remove required inherited materials either.
 
-新增MCP、Skill或资料须满足子实例的有效授权。MCP服务配置的继承不授予额外工具调用权，Skill脚本不增加文件/网络/命令权限，新增资料也不能越过祖先的可读范围。如果子权限收窄后无法访问必需祖先资料，该组合在执行前拒绝，不能静默丢弃资料或扩大权限来凑成可运行配置。权限的真实`enforced/advisory/unsupported`范围继续按ADR0004核定。
+New MCP, Skills, or materials must satisfy the child instance's effective grant. Inheriting an MCP service configuration grants no additional tool invocation rights; Skill scripts add no file/network/command permissions; new materials cannot exceed ancestor read access. If narrowed child permissions prevent access to required ancestor materials, reject the composition before execution rather than silently dropping materials or expanding permissions to make it runnable. The actual `enforced/advisory/unsupported` permission scope continues to be established under ADR0004.
 
-允许一次配置修订同时调整父级及子级权限与资源，页面预览整条受影响祖先链、成员和有效差异，作为一次原子修订保存。准入检查整个修订后的链及项目授权上限；子实例运行中不修改父级授权。已批准/在途manifest不变，新的任务显式采用新修订。凭据值不保存在模板/上下文中，MCP只保存可解析的凭据引用。
+A single configuration revision may adjust parent and child permissions/resources together; the page previews the whole affected ancestor chain, members, and effective differences, saving them as one atomic revision. Admission checks the entire revised chain and project grant ceiling; a running child instance does not change parent grants. Approved/in-flight manifests remain unchanged; new tasks explicitly adopt the new revision. Credential values are not stored in templates/context; MCP stores only resolvable credential references.
 
-## 所有祖先Skill和上下文必须实际装载
+## All ancestor Skills and context must actually load
 
-每个实际叶子Agent调用前，完整装载当前结构祖先链上声明的Skill指令与上下文，再加入自身声明；不能只给资源名称、可访问目录或摘要。组合模板本身没有模型时，由编译/装配层继承并验证，不为“阅读”虚增模型调用。每次重复引用独立装配，不能复用另一父链的可变会话状态。
+Before every actual leaf Agent invocation, fully load the Skill instructions and context declared along the current structural ancestor chain, then add its own declarations; resource names, accessible directories, or digests alone are insufficient. When a composite template has no model itself, the compilation/assembly layer inherits and validates resources without inventing extra model calls for “reading.” Every repeated reference is assembled independently and cannot reuse mutable session state from another parent chain.
 
-创建时冻结已知上下文及运行态输入的schema、来源/端口和装配规则；父实例随后生成的任务材料在子调用前，沿原父实例和不可变产物身份形成完整调用快照，再绑定实际prompt。未来结果的正文不能在创建时凭空冻结，也不能恢复时读取“最新父状态”替换原调用材料。
+At creation, freeze known context and runtime input schemas, sources/ports, and assembly rules. Before a child invocation, task materials subsequently generated by the parent instance form a complete invocation snapshot through the original parent instance and immutable artifact identities, then bind to the actual prompt. Future result bodies cannot be frozen from nothing at creation, nor can recovery read “latest parent state” to replace original invocation materials.
 
-第一版选择能够完整装载的有界上下文：编译时检查已知材料，子调用前再检查加入运行态父材料后的完整输入。超出选定后端容量时，在Agent开始执行前明确拒绝并展示来源及容量缺口，不静默截断，也不把仅提供续读引用当作已完整阅读。Skill的必读指令与明确声明的上下文正文进入该合同，Skill目录内供按需调用的脚本/二进制仍按其资源协议使用，不能冒称模型理解了它们。专用adapter须证明实际加载方式，不以ambient安装或界面勾选作为证据。
+The first version chooses bounded context that can load completely: check known materials at compilation, then check the complete input again before the child invocation after adding runtime parent materials. If it exceeds the selected backend's capacity, reject explicitly before the Agent starts execution and show sources and the capacity gap; do not truncate silently or treat continuation references alone as complete reading. Required Skill instructions and explicitly declared context bodies enter this contract; on-demand scripts/binaries in Skill directories still follow their resource protocols and cannot be claimed as understood by the model. Dedicated adapters must demonstrate actual loading, without treating ambient installation or UI checkboxes as evidence.
 
-运行记录保留祖先来源、顺序、每份内容身份、装配摘要和实际交付证据，证明系统交付了什么；不能由日志宣称模型已经理解、遵从或具有相应专业能力。可信阶段/授权约束优先于继承模板说明，任务和外部材料不能提高权限。
+Run records preserve ancestor provenance, order, each content identity, assembly digest, and actual delivery evidence, proving what the system delivered; logs cannot establish that the model understood, obeyed, or possesses corresponding expertise. Trusted stage/authorization constraints take precedence over inherited template instructions, and task/external materials cannot elevate permissions.
 
-## 串行、并行与可信汇合
+## Serial, parallel, and trusted joins
 
-以下是目标关系，不是当前CLI可执行的模板：
+The following is a target relationship, not a template executable by the current CLI:
 
 ```mermaid
 flowchart LR
-  subgraph Delivery[交付工作流模板]
-    E[执行子模板：计划/批准/实现/可信验证]
-    subgraph Review[总审查子模板：并行]
-      A[结构审查子模板] --> J[全部必需审查汇合]
-      C[正确性审查子模板] --> J
-      R[冗余测试/断言审查子模板] --> J
+  subgraph Delivery[Delivery workflow template]
+    E[Execution subtemplate: planning/approval/implementation/trusted verification]
+    subgraph Review[Overall review subtemplate: parallel]
+      A[Structural review subtemplate] --> J[Join all required reviews]
+      C[Correctness review subtemplate] --> J
+      R[Redundant test/assertion review subtemplate] --> J
     end
     E --> A
     E --> C
     E --> R
-    J --> H[REVIEW_READY / 人工合并审阅]
+    J --> H[REVIEW_READY / human merge review]
   end
 ```
 
-并行汇合必须等待显式列出的全部必需分支，不按某条入边到达次数启动聚合。按稳定实例路径保存结果，避免多个分支覆盖一个共享`result`字段。审查都绑定同一精确候选、需求和可信检查；保留原始finding、作者/session/委派来源，以及ADR0004的后端多样性策略。必需分支request-changes、失败、缺失或超时均不能通过，advisory另列，不使用多数票覆盖失败。候选改变后，旧审查保留原身份并重新验收新候选。
+Parallel joins must await all explicitly listed required branches, rather than starting aggregation based on the arrival count of an incoming edge. Store results by stable instance path so branches do not overwrite one shared `result` field. All reviews bind to the same exact candidate, requirements, and trusted checks; preserve original findings, author/session/delegation provenance, and ADR0004's backend diversity policy. Required branch request-changes, failure, absence, or timeout cannot pass; advisory results are separate, and majority votes cannot override failures. After the candidate changes, old reviews retain their original identities and the new candidate undergoes acceptance again.
 
-并行执行者各有隔离工作单元/checkout的单写所有者；并行审查者不获得写入候选的权力。根任务约束递归深度、展开节点、总预算与有效并发，子图不能通过嵌套倍增突破上限。首版仅支持静态有界DAG；定义引用环、图环、未知端口/资源、无法满足的必需能力和不合法阶段放置在编译时拒绝。
+Parallel executors each have a single writer owning an isolated work unit/checkout; parallel reviewers gain no permission to write the candidate. The root task bounds recursion depth, expanded nodes, total budget, and effective concurrency; nesting cannot multiply subgraphs beyond limits. The first version supports only static bounded DAGs; compilation rejects definition reference cycles, graph cycles, unknown ports/resources, unsatisfied required capabilities, and invalid stage placement.
 
-## 持久执行、兼容与交付顺序
+## Durable execution, compatibility, and delivery order
 
-继续使用Temporal作为持久执行事实所有者，复用现有进程monitor、原生ID、可信检查和副作用意图/对账。是否采用child workflow或有界activities属于AC4d实测后的局部实现选择；不同时运行另一个顶层LangGraph调度器。LangGraph可作为将来受限叶子adapter接入，不能接管Ergora可信批准和汇合。
+Continue using Temporal as the owner of durable execution facts, reusing existing process monitors, native IDs, trusted checks, and side-effect intents/reconciliation. Choosing child workflows or bounded activities is a local implementation decision after AC4d measurements; do not run another top-level LangGraph scheduler concurrently. LangGraph may later integrate as a constrained leaf adapter, without taking over Ergora's trusted approval and joins.
 
-第一条纵向切片把执行/审查子图解析为原六阶段合同内的执行计划，先在review阶段支持并行专家子图、在work阶段支持明确工作单元。原计划批准、可信integrate/verify及REVIEW_READY出口仍不可绕过。跨越这些合同的更多拓扑须另行版本化设计；不能将完整legacy工作流嵌套运行一遍，造成重复批准、检查或审查。旧283文件及旧运行合同不改；新能力通过显式新版本准入，旧任务照原ID读取恢复。
+The first vertical slice resolves execution/review subgraphs into execution plans within the original six-stage contract, first supporting parallel specialist subgraphs in the review stage and explicit work units in the work stage. Original plan approval, trusted integrate/verify, and the REVIEW_READY exit remain mandatory. Further topologies crossing these contracts require separate versioned design; do not nest an entire legacy workflow and repeat approvals, checks, or reviews. The old 283 files and old run contracts remain unchanged; new capabilities enter through explicit new-version admission, while old tasks read and recover under original IDs.
 
-每个子实例/尝试有稳定身份，父取消向所有活动子实例传播；未知外部状态保留并沿原ID对账，不能盲重发有副作用步骤。父结束须列明未确认子进程/清理，不能因一个子分支返回就宣称整个复合模板完成。恢复时沿原manifest与原子结果继续，不重复已确认的外部写入。
+Every child instance/attempt has stable identity, and parent cancellation propagates to all active children. Unknown external state is retained and reconciled through original IDs; never blindly resend side-effecting steps. Parent completion must list unconfirmed child processes/cleanup; one child branch returning cannot establish completion of the entire composite template. Recovery continues through the original manifest and atomic results without repeating confirmed external writes.
 
-实施依赖：AC2后端interface → AC3a Agent包 → AC3d工作流/继承schema及编译 → AC3b资源真实装载与授权、AC3c递归manifest准入 → AC4a/4b成员与审查 → AC4d嵌套执行/恢复 → AC4c默认三模板组合 → AC5嵌套画布与权限修订 → AC6真实旅程。每个节点分别验证和新独立审查，配置可保存不等于运行已支持。
+Implementation dependencies: AC2 backend interface → AC3a Agent packages → AC3d workflow/inheritance schema and compilation → AC3b actual resource loading and authorization, AC3c recursive manifest admission → AC4a/4b members and review → AC4d nested execution/recovery → AC4c default three-template composition → AC5 nested canvas and permission revisions → AC6 real journeys. Each node has separate validation and a new independent review; being able to save configuration does not mean runtime support exists.

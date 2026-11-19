@@ -7,8 +7,11 @@ import time
 
 import pytest
 
-from ergora import agents, processes, projects, tools
-from ergora.state import State
+import ergora.agents.invocation as agents
+import ergora.configuration.projects as projects
+import ergora.operations.tools as tools
+from ergora.runtime import processes
+from ergora.storage.state import State
 
 
 @pytest.fixture
@@ -174,7 +177,7 @@ def test_probe_budget_is_validated(project, timeout):
 def test_http_probe_requires_local_write_header_and_uses_same_contract(project, monkeypatch):
     pytest.importorskip("fastapi")
     from fastapi.testclient import TestClient
-    from ergora.web import create_app
+    from ergora.interfaces.web import create_app
     state, _ = project
     monkeypatch.setattr(agents, "available", lambda *args: False)
     client = TestClient(create_app(state.root), base_url="http://127.0.0.1")

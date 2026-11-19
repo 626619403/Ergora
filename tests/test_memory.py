@@ -8,8 +8,9 @@ import threading
 
 import pytest
 
-from ergora import memory, projects
-from ergora.state import State
+import ergora.improvement.memory as memory
+import ergora.configuration.projects as projects
+from ergora.storage.state import State
 
 
 @pytest.fixture
@@ -191,7 +192,8 @@ def test_reme_protocol_sync_filters_scope_and_propagates_deletion(memories, monk
 
 @pytest.fixture
 def memory_retrospective(memories, tmp_path):
-    from ergora import handoff, workflow_definitions as workflows
+    import ergora.development.handoff as handoff
+    import ergora.definitions.workflows as workflows
     from test_handoff import evidence, text_evidence
 
     index, blobs = text_evidence(evidence.__wrapped__(), ['A failed source observation; cost was not recorded.\r\n'])
@@ -228,7 +230,9 @@ def memory_proposal(input_path, result_path, text):
 @pytest.mark.parametrize('creating', [False, True])
 def test_memory_retrospective_exports_full_offline_text_for_original_save_and_restore(memory_retrospective, tmp_path, capsys, creating):
     import hashlib
-    from ergora import cli, retrospectives, workflow_definitions as workflows
+    import ergora.interfaces.cli as cli
+    import ergora.improvement.retrospectives as retrospectives
+    import ergora.definitions.workflows as workflows
 
     state, packet, record, options = memory_retrospective
     if creating:
@@ -284,7 +288,8 @@ def test_memory_retrospective_exports_full_offline_text_for_original_save_and_re
 
 @pytest.mark.parametrize('change', ['revision', 'deleted', 'expired'])
 def test_memory_retrospective_observes_current_validity_after_source_io(memory_retrospective, monkeypatch, change):
-    from ergora import handoff, retrospectives
+    import ergora.development.handoff as handoff
+    import ergora.improvement.retrospectives as retrospectives
 
     state, packet, record, options = memory_retrospective
     original = handoff.evidence
@@ -311,7 +316,8 @@ def test_memory_retrospective_observes_current_validity_after_source_io(memory_r
     ('oversize', 'Retrospective proposal at /candidate'),
 ])
 def test_memory_retrospective_rejects_misbound_or_authority_changing_results(memory_retrospective, tmp_path, capsys, change, reason):
-    from ergora import cli, retrospectives
+    import ergora.interfaces.cli as cli
+    import ergora.improvement.retrospectives as retrospectives
 
     state, packet, record, options = memory_retrospective
     retrospectives.prepare_memory(state, 'alpha', packet, [{'job_id': 'job-1', 'name': 'record'}], **options)
@@ -339,7 +345,8 @@ def test_memory_retrospective_rejects_misbound_or_authority_changing_results(mem
 
 def test_memory_retrospective_null_and_explicit_export_selection_cannot_overwrite_input_or_target(memory_retrospective, tmp_path):
     import hashlib
-    from ergora import retrospectives, workflow_definitions as workflows
+    import ergora.improvement.retrospectives as retrospectives
+    import ergora.definitions.workflows as workflows
 
     state, packet, record, options = memory_retrospective
     prepared = retrospectives.prepare_memory(state, 'alpha', packet, [{'job_id': 'job-1', 'name': 'record'}], **options)

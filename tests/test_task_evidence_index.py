@@ -9,7 +9,10 @@ from types import SimpleNamespace
 
 import pytest
 
-from ergora import reference, reference_task_reconciliation, tasks
+import ergora.development.native as development_native
+import ergora.native.resources as native_resources
+import ergora.development.runtime.reconciliation as reference_task_reconciliation
+import ergora.development.application as tasks
 from test_original_payloads import converter
 from test_task_job_evidence import original_job
 from test_task_plan import pending_plan, snapshot
@@ -115,7 +118,7 @@ def handoff_evidence(closed_evidence):
 
 
 def test_native_handoff_collects_from_original_file_adapter_without_task_writes(handoff_evidence, tmp_path):
-    from ergora import handoff
+    import ergora.development.handoff as handoff
 
     data = handoff_evidence
     target = tmp_path / 'collected.zip'
@@ -140,14 +143,14 @@ def test_incomplete_native_material_cannot_publish_a_handoff(handoff_evidence, t
 
 
 def test_handoff_cli_keeps_explicit_run_output_and_read_only_error_handling(tmp_path, monkeypatch, capsys):
-    from ergora import cli
+    import ergora.interfaces.cli as cli
 
     seen = []
     monkeypatch.setattr(tasks, '_project', lambda state, project: {'id': project})
     def native(project, home, payload, *, timeout):
         seen.append((project, home, payload, timeout))
         return {'status': 'exported'}
-    monkeypatch.setattr(reference, 'task_handoff', native)
+    monkeypatch.setattr(development_native, 'task_handoff', native)
     path = tmp_path / 'explicit.zip'
     args = ['--home', str(tmp_path / 'control'), 'task', 'handoff', 'demo', 'task-one',
             '--run-id', 'original-run', '--output', str(path), '--timeout', '9']
@@ -362,15 +365,15 @@ def test_failed_temporal_run_retains_no_outcome_and_unknown_model_usage(closed_e
 def test_cli_and_api_forward_one_read_only_index_request(tmp_path, monkeypatch, capsys):
     pytest.importorskip('fastapi')
     from fastapi.testclient import TestClient
-    from ergora import cli
-    from ergora.web import create_app
+    import ergora.interfaces.cli as cli
+    from ergora.interfaces.web import create_app
 
     seen = []
     monkeypatch.setattr(tasks, '_project', lambda state, project: {'id': project})
     def native(project, home, payload, *, timeout):
         seen.append((project, home, payload, timeout))
         return {'read_only': True, **payload}
-    monkeypatch.setattr(reference, 'task_evidence', native)
+    monkeypatch.setattr(development_native, 'task_evidence', native)
     assert cli.main(['--home', str(tmp_path), 'task', 'evidence', 'demo', 'task-one',
                      '--run-id', 'original-run', '--timeout', '9']) == 0
     assert json.loads(capsys.readouterr().out)['read_only'] is True
@@ -388,7 +391,7 @@ def test_cli_and_api_forward_one_read_only_index_request(tmp_path, monkeypatch, 
                                           ('rpc', 'RPC failed: UNAVAILABLE')])
 @pytest.mark.parametrize('operation', ['inspect-index', 'export-handoff'])
 def test_index_errors_do_not_offer_write_recovery(closed_evidence, monkeypatch, failure, message, operation):
-    monkeypatch.syspath_prepend(str(reference.ROOT / 'platform/local'))
+    monkeypatch.syspath_prepend(str(native_resources.ROOT / 'platform/local'))
     from agent_platform import core
     from temporalio.service import RPCError, RPCStatusCode
 

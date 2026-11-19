@@ -13,15 +13,25 @@ import time
 
 import pytest
 
-from ergora import agent_definitions, issues, memory, projects, reference, registrations, skill_assets, task_envelopes, tasks, workflow_definitions
-from ergora.reference_inputs import execution_input, request_roots
-from ergora.state import State
+import ergora.native.resources as native_resources
+import ergora.definitions.agents as agent_definitions
+import ergora.issues.application as issues
+import ergora.improvement.memory as memory
+import ergora.configuration.projects as projects
+import ergora.configuration.registrations as registrations
+import ergora.definitions.skills as skill_assets
+import ergora.development.application as tasks
+import ergora.definitions.workflows as workflow_definitions
+from ergora.development import envelopes as task_envelopes
+from ergora.development.inputs import execution_input, request_roots
+from ergora.storage.state import State
 from test_full_stage_materials import full_creation, full_graph
 from test_work_agents import work_creation, work_graph
 from test_registrations import design_policy, installation, registration
 from test_task_creation import creation_project, _files
 from test_project_issues import bind, native, source
 from test_workflow_definitions import EXAMPLES, child, definition as workflow_document, leaf, ref, write_bundle
+from ergora._paths import IMPORT_ROOT
 
 
 pytestmark = pytest.mark.skipif(sys.platform != 'linux', reason='Budgeted native preparation requires Linux/WSL2')
@@ -198,7 +208,7 @@ def test_complete_eighteen_leaf_wire_recovers_original_publication_and_job(regis
     from test_presets import _publish_selected_moe
     from test_budget_jobs import _launch, _PENDING, _result
 
-    monkeypatch.syspath_prepend(str(reference.ROOT / 'platform/upstream/platform'))
+    monkeypatch.syspath_prepend(str(native_resources.ROOT / 'platform/upstream/platform'))
     from dev_platform.adapter import read_raw
 
     state, registered = registration
@@ -271,7 +281,7 @@ core.write = interrupted
     path = operations.adapter.path('requests', definition['task_id'] + '/' + job['job_id'] + '.json')
     assert path.stat().st_size > 1_048_576 and task_envelopes.decode_job(read_raw(path, task_envelopes.WIRE_LIMIT))['context'] == context
     environment = dict(os.environ, AGENTFLOW_CONFIG_DIR=str(config), AGENTFLOW_STATE_DIR=str(runtime),
-        PYTHONPATH=os.pathsep.join(map(str, (Path(tasks.__file__).parent.parent,
+        PYTHONPATH=os.pathsep.join(map(str, (IMPORT_ROOT,
             Path(registered['execution']['installation']) / 'local',
             Path(registered['execution']['installation']) / 'upstream/platform'))))
     receipt = _result(_launch(state, path, environment, worker=_PENDING))
@@ -288,7 +298,7 @@ import importlib.abc, runpy, sys
 class PureOnly(importlib.abc.MetaPathFinder):
     def find_spec(self, fullname, path=None, target=None):
         if fullname.split('.')[0] in {'temporalio', 'mcp', 'jsonschema'} or fullname in {
-                'ergora.state', 'ergora.reference_inputs', 'ergora.reference_workflows'}:
+                'ergora.storage.state', 'ergora.development.inputs', 'ergora.development.runtime.workflows'}:
             raise AssertionError('Publisher imported a runtime dependency: ' + fullname)
 sys.meta_path.insert(0, PureOnly())
 runpy.run_module('dev_platform.adapter', run_name='__main__')
@@ -301,7 +311,7 @@ runpy.run_module('dev_platform.adapter', run_name='__main__')
 
 def test_complete_wire_rejects_overflow_without_widening_plain_contracts(budget_creation, monkeypatch, tmp_path):
     pytest.importorskip('temporalio')
-    monkeypatch.syspath_prepend(str(reference.ROOT / 'platform/upstream/platform'))
+    monkeypatch.syspath_prepend(str(native_resources.ROOT / 'platform/upstream/platform'))
     from dev_platform.adapter import ContractViolation, FileAdapter
     from dev_platform.adapter import read_raw
     from temporalio.exceptions import ApplicationError
@@ -383,18 +393,18 @@ def _worker_injection(monkeypatch, code, owner_code=''):
     """Inject slowness at the real application worker, below the process owner."""
     original = subprocess.Popen
     def launch(argv, **kwargs):
-        if (argv[-1] == 'from ergora.reference_task_creation import main;main()'
+        if (argv[-1] == 'from ergora.development.runtime.creation import main;main()'
                 and '/operations/task-preparations/' in kwargs.get('env', {}).get('AGENTFLOW_STATE_DIR', '')):
             source = (
-                'from ergora import processes\n'
+                'from ergora.runtime import processes\n'
                 'original = processes.run\n'
                 'def invoke(argv, *args, **kwargs):\n'
                 '    argv = [*argv[:-1], ' + repr(code + '\n' +
-                    'from ergora.reference_task_creation import preparation_worker;preparation_worker()') + ']\n'
+                    'from ergora.development.runtime.creation import preparation_worker;preparation_worker()') + ']\n'
                 '    return original(argv, *args, **kwargs)\n'
                 'processes.run = invoke\n'
                 + owner_code + '\n'
-                'from ergora.reference_task_creation import main;main()')
+                'from ergora.development.runtime.creation import main;main()')
             argv = [*argv[:-1], source]
         return original(argv, **kwargs)
     monkeypatch.setattr(subprocess, 'Popen', launch)
@@ -442,11 +452,11 @@ def test_lost_preparation_reply_keeps_one_budget_and_preview_is_read_only(budget
     assert not any((_root(registered) / name).exists() for name in ('ergora/task-submissions', 'requests-composition-v12', 'ingress'))
     environment = dict(os.environ, AGENTFLOW_CONFIG_DIR=registered['execution']['config_directory'],
                        AGENTFLOW_STATE_DIR=registered['execution']['state_directory'],
-                       PYTHONPATH=os.pathsep.join((str(Path(tasks.__file__).parent.parent),
-                           str(reference.ROOT / 'platform/local'), str(reference.ROOT / 'platform/upstream/platform'))))
+                       PYTHONPATH=os.pathsep.join((str(IMPORT_ROOT),
+                           str(native_resources.ROOT / 'platform/local'), str(native_resources.ROOT / 'platform/upstream/platform'))))
     # Constructing a budgeted Executor directly cannot bypass its job owner.
     direct = subprocess.run([sys.executable, '-c',
-        'import json,sys;from pathlib import Path;from ergora.reference_executor import Executor;'
+        'import json,sys;from pathlib import Path;from ergora.development.runtime.executor import Executor;'
         'Executor({"context":{"spec":json.load(sys.stdin)}},Path(sys.argv[1]))', str(state.root)],
         input=json.dumps(document['legacy_spec']), env=environment, capture_output=True, text=True, timeout=20)
     assert direct.returncode != 0 and 'requires its original dedicated owner' in direct.stderr
@@ -485,15 +495,16 @@ def test_actual_prepare_stops_slow_materials_and_detached_descendants(budget_cre
     slow = f'''
 import json,os,subprocess,sys,time
 from pathlib import Path
-from ergora import reference, workflow_definitions
-from ergora.reference_task_creation import _Creation
+import ergora.native.resources as native_resources
+import ergora.definitions.workflows as workflow_definitions
+from ergora.development.runtime.creation import _Creation
 def slow(*args, **kwargs):
     child = subprocess.Popen([sys.executable, '-c', {detached!r}])
     stat = Path('/proc/' + str(child.pid) + '/stat').read_text().rsplit(')', 1)[1].split()
     Path({str(marker)!r}).write_text(json.dumps({{'worker': os.getpid(), 'child': child.pid, 'start_ticks': stat[19]}}))
     time.sleep(60)
 '''
-    target = {'installation': 'reference.validate_installation', 'manifest': 'workflow_definitions.inspect_manifest',
+    target = {'installation': 'native_resources.validate_installation', 'manifest': 'workflow_definitions.inspect_manifest',
               'compiler': '_Creation.compile'}[boundary]
     _worker_injection(monkeypatch, slow + '\n' + target + ' = slow')
     begin = time.monotonic()
@@ -545,11 +556,11 @@ def test_attempt_storage_cannot_move_the_absolute_work_cutoff(budget_creation, m
     worker = f'''
 import time
 from pathlib import Path
-from ergora import reference
+import ergora.native.resources as native_resources
 def slow(*args):
     Path({str(marker)!r}).write_text('work entered')
     time.sleep(60)
-reference.validate_installation = slow
+native_resources.validate_installation = slow
 '''
     owner = '''
 import time
@@ -623,7 +634,7 @@ def test_actual_publisher_keeps_revision_lock_after_observer_returns_unknown(bud
     owner = f'''
 import fcntl
 from pathlib import Path
-from ergora.reference_task_creation import _Creation
+from ergora.development.runtime.creation import _Creation
 publish = _Creation.publish
 def held_publication(self, *args, **kwargs):
     Path({str(entered)!r}).write_text('actual publisher owns revision')
@@ -732,12 +743,12 @@ processes._reap_children = held_cleanup
 def test_cli_and_http_use_the_same_original_preparation(budget_creation, tmp_path):
     pytest.importorskip('fastapi')
     from fastapi.testclient import TestClient
-    from ergora.web import create_app
+    from ergora.interfaces.web import create_app
 
     state, registered, definition = budget_creation
     source = tmp_path / 'task.json'
     source.write_text(json.dumps(definition))
-    environment = dict(os.environ, PYTHONPATH=str(Path(tasks.__file__).parent.parent))
+    environment = dict(os.environ, PYTHONPATH=str(IMPORT_ROOT))
     command = [sys.executable, '-m', 'ergora', '--home', str(state.root), 'task']
     prepared = subprocess.run([*command, 'prepare', 'demo', '--definition', str(source), '--revision', '1'],
                               capture_output=True, text=True, env=environment, timeout=40)

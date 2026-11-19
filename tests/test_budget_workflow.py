@@ -19,15 +19,19 @@ import pytest
 pytest.importorskip('temporalio')
 pytestmark = pytest.mark.skipif(sys.platform != 'linux', reason='Budgeted native execution requires Linux/WSL2')
 
-from ergora import reference, reference_budget, task_envelopes, tasks, workflow_definitions
-from ergora.reference_inputs import execution_input
+import ergora.native.resources as native_resources
+import ergora.development.application as tasks
+import ergora.definitions.workflows as workflow_definitions
+from ergora.development import budget as reference_budget
+from ergora.development import envelopes as task_envelopes
+from ergora.development.inputs import execution_input
 from test_task_budget import budget_creation, budget_graph, full_creation, full_graph, work_creation, work_graph
 from test_registrations import installation, registration
 from test_task_creation import creation_project
 
 
 def test_poll_reference_preserves_receipt_validation_and_rejects_replaced_material(budget_creation, tmp_path, monkeypatch):
-    monkeypatch.syspath_prepend(str(reference.ROOT / 'platform/upstream/platform'))
+    monkeypatch.syspath_prepend(str(native_resources.ROOT / 'platform/upstream/platform'))
     from dev_platform.adapter import publish
     from temporalio.exceptions import ApplicationError
 
@@ -70,10 +74,10 @@ def test_original_workflow_uses_one_deadline_for_real_temporal_waits(budget_crea
     if not binary:
         pytest.skip('Set ERGORA_TEST_TEMPORAL_BIN for the optional real local Temporal acceptance')
     assert Path(binary).is_file()
-    monkeypatch.syspath_prepend(str(reference.ROOT / 'platform/upstream/platform'))
+    monkeypatch.syspath_prepend(str(native_resources.ROOT / 'platform/upstream/platform'))
     from dev_platform.adapter import publish
-    from ergora.reference_worker import _ErgoraPackage
-    from ergora.reference_workflows import PreparationDAGAdapter, PreparationDAGWorkflow
+    from ergora.development.runtime.worker import _ErgoraPackage
+    from ergora.development.runtime.workflows import PreparationDAGAdapter, PreparationDAGWorkflow
     from temporalio import activity
     from temporalio.testing import WorkflowEnvironment
     from temporalio.worker import Worker

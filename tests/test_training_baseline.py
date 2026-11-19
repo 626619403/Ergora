@@ -10,7 +10,11 @@ import sys
 
 import pytest
 
-from ergora import projects, reference, registrations, training
+import ergora.runtime.processes as processes
+import importlib
+import ergora.training.application as training
+import ergora.configuration.projects as projects
+import ergora.configuration.registrations as registrations
 from test_registrations import registration
 from test_training_runtime import installation
 
@@ -27,8 +31,8 @@ def baseline_project(registration):
 
 def test_sdk_free_preview_and_confirmed_init_keep_original_baseline(baseline_project, monkeypatch):
     state, definition, baseline = baseline_project
-    original = reference.importlib.util.find_spec
-    monkeypatch.setattr(reference.importlib.util, 'find_spec', lambda name: None if name == 'temporalio' else original(name))
+    original = importlib.util.find_spec
+    monkeypatch.setattr(importlib.util, 'find_spec', lambda name: None if name == 'temporalio' else original(name))
     runtime = Path(definition['execution']['state_directory'])
     before = state.project('demo')
     preview = training.preview_baseline(state, 'demo', baseline)
@@ -57,17 +61,17 @@ def test_sdk_free_preview_and_confirmed_init_keep_original_baseline(baseline_pro
 def test_lost_reply_can_reread_and_retry_without_another_baseline(baseline_project, monkeypatch):
     state, definition, baseline = baseline_project
     preview = training.preview_baseline(state, 'demo', baseline)
-    original = reference.processes.run
+    original = processes.run
 
     def lose_reply(*args, **kwargs):
         result = original(*args, **kwargs)
         assert result['status'] == 'succeeded'
         raise ValueError('Reply lost after the actual original publisher finished')
 
-    monkeypatch.setattr(reference.processes, 'run', lose_reply)
+    monkeypatch.setattr(processes, 'run', lose_reply)
     with pytest.raises(ValueError, match='Reply lost'):
         training.initialize_baseline(state, 'demo', baseline, preview['project_revision'], preview['baseline_sha256'])
-    monkeypatch.setattr(reference.processes, 'run', original)
+    monkeypatch.setattr(processes, 'run', original)
     path = Path(definition['execution']['state_directory']) / 'training/projects/demo/perf/baseline.json'
     before = path.read_bytes()
     assert training.inspect(state, 'demo')['baseline'] == baseline
@@ -112,7 +116,7 @@ def test_baseline_setup_keeps_registration_git_root_and_read_capacity(baseline_p
         training.preview_baseline(state, 'demo', {**baseline, 'notes': 'x' * 1_048_576})
     with pytest.raises(ValueError, match='Git verification failed'):
         training.preview_baseline(state, 'demo', {**baseline, 'commit': '0' * 40})
-    from ergora.cli import main
+    from ergora.interfaces.cli import main
 
     source = tmp_path / 'padded-baseline.json'
     source.write_bytes(b' ' * 1_048_576 + json.dumps(baseline).encode('utf-8'))
@@ -146,8 +150,8 @@ def test_project_bound_baselines_do_not_share_records_and_reject_symlinked_lock(
 def test_cli_and_http_share_original_publication_and_content_sha(baseline_project, tmp_path):
     pytest.importorskip('fastapi')
     from fastapi.testclient import TestClient
-    from ergora.cli import main
-    from ergora.web import create_app
+    from ergora.interfaces.cli import main
+    from ergora.interfaces.web import create_app
 
     state, _, baseline = baseline_project
     path = tmp_path / 'baseline.json'

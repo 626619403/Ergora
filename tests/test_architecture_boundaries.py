@@ -12,28 +12,49 @@ import ergora
 
 
 @pytest.fixture(scope="module")
-def module_imports():
+def module_paths():
+    root = Path(ergora.__file__).parent
+    modules = {}
+    for path in sorted(root.rglob("*.py")):
+        relative = path.relative_to(root)
+        if relative.parts[0] == "data":
+            continue
+        parts = relative.with_suffix("").parts
+        if parts[-1] == "__init__":
+            parts = parts[:-1]
+        modules[".".join(("ergora", *parts))] = path
+    return modules
+
+
+@pytest.fixture(scope="module")
+def module_imports(module_paths):
     imports = {}
-    for path in Path(ergora.__file__).parent.glob("*.py"):
+    for module, path in module_paths.items():
+        package = module if path.name == "__init__.py" else module.rpartition(".")[0]
         names = set()
         for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"), filename=str(path))):
             if isinstance(node, ast.Import):
                 names.update(alias.name for alias in node.names)
             elif isinstance(node, ast.ImportFrom):
-                source = resolve_name("." * node.level + (node.module or ""), "ergora")
+                source = resolve_name("." * node.level + (node.module or ""), package)
                 names.add(source)
                 names.update(f"{source}.{alias.name}" for alias in node.names)
-        imports[path.stem] = names
+        imports[module] = names
     return imports
 
 
 @pytest.fixture(scope="module")
 def local_dependencies(module_imports):
     return {
-        module: {name.split(".")[1] for name in names if name.startswith("ergora.")
-                 and name.split(".")[1] in module_imports}
+        module: names & module_imports.keys()
         for module, names in module_imports.items()
     }
+
+
+def test_responsibility_packages_have_no_initialization_side_effects(module_paths):
+    for module, path in module_paths.items():
+        if module != "ergora" and path.name == "__init__.py":
+            assert not ast.parse(path.read_text(encoding="utf-8"), filename=str(path)).body, module
 
 
 def test_control_plane_import_graph_is_acyclic(local_dependencies):
@@ -41,23 +62,48 @@ def test_control_plane_import_graph_is_acyclic(local_dependencies):
 
 
 @pytest.mark.parametrize("module,allowed", [
-    ("components", set()), ("contracts", set()), ("state", set()), ("git_materials", set()),
-    ("asset_trees", set()), ("training_materials", {"asset_trees"}), ("review_dags", set()), ("issue_sources", set()), ("budget_clock", set()),
-    ("reference_budget", {"budget_clock", "review_dags"}), ("native_six_stage", set()),
-    ("task_envelopes", {"components", "review_dags", "issue_sources", "reference_budget", "native_six_stage"}),
-    ("handoff", {"contracts", "task_envelopes", "issue_sources"}),
-    ("windows_job", set()), ("processes", {"windows_job"}),
+    ("ergora._paths", set()),
+    ("ergora.configuration.catalog", {"ergora._paths"}),
+    ("ergora.configuration.validation", {"ergora._paths"}),
+    ("ergora.storage.state", set()), ("ergora.storage.git", set()),
+    ("ergora.storage.assets", set()),
+    ("ergora.training.materials", {"ergora.storage.assets"}),
+    ("ergora.development.dags", set()), ("ergora.issues.identity", set()),
+    ("ergora.runtime.budget_clock", set()),
+    ("ergora.development.budget", {
+        "ergora.runtime", "ergora.runtime.budget_clock", "ergora.development.dags",
+    }),
+    ("ergora.development.six_stage", set()),
+    ("ergora.development.envelopes", {
+        "ergora.configuration.catalog", "ergora.development.dags", "ergora.issues.identity",
+        "ergora.development.budget", "ergora.development.six_stage",
+    }),
+    ("ergora.development.handoff", {
+        "ergora._paths", "ergora.configuration", "ergora.configuration.validation",
+        "ergora.development.envelopes", "ergora.issues.identity",
+    }),
+    ("ergora.runtime.windows_job", set()),
+    ("ergora.runtime.processes", {"ergora.runtime.windows_job"}),
 ])
 def test_foundations_do_not_depend_on_application_modules(local_dependencies, module_imports, module, allowed):
-    assert local_dependencies[module] <= allowed
-    if module in {"review_dags", "task_envelopes", "issue_sources", "budget_clock", "reference_budget", "native_six_stage", "git_materials", "training_materials", "asset_trees"}:
+    assert local_dependencies[module] <= allowed, (module, local_dependencies[module] - allowed)
+    if module in {
+        "ergora._paths", "ergora.configuration.catalog", "ergora.development.dags",
+        "ergora.development.envelopes", "ergora.issues.identity", "ergora.runtime.budget_clock",
+        "ergora.development.budget", "ergora.development.six_stage", "ergora.storage.git",
+        "ergora.training.materials", "ergora.storage.assets",
+    }:
         external_roots = {name.split(".")[0] for name in module_imports[module]
                           if name.split(".")[0] != "ergora"}
         assert external_roots <= sys.stdlib_module_names
 
 
 def test_application_modules_do_not_import_entry_points(local_dependencies):
-    entry_points = {"__main__", "cli", "web"}
+    entry_points = {
+        module for module in local_dependencies
+        if module == "ergora.__main__" or module == "ergora.interfaces"
+        or module.startswith("ergora.interfaces.")
+    }
     for module, dependencies in local_dependencies.items():
         if module not in entry_points:
             assert not dependencies & entry_points, (module, dependencies & entry_points)
@@ -65,8 +111,15 @@ def test_application_modules_do_not_import_entry_points(local_dependencies):
 
 def test_reference_internals_are_imported_only_at_the_boundary(module_imports):
     internal_roots = ("agent_platform", "dev_platform", "perf_temporal", "ergora.data.reference")
+    native_owners = {
+        "ergora.development.native", "ergora.development.inputs", "ergora.training.native",
+        "ergora.training.execution_protocol",
+    }
+    native_packages = ("ergora.native", "ergora.development.runtime", "ergora.training.runtime")
     for module, names in module_imports.items():
-        if module not in {"reference", "reference_executor", "reference_job_lifecycle", "reference_task_creation", "reference_task_runtime", "reference_training_runtime", "reference_training_submission", "reference_training_cancellation", "reference_training_context", "reference_training_budget", "reference_training_worker", "reference_training_execution", "training_execution_protocol", "reference_training_setup", "reference_training_preparation", "reference_training_evidence", "reference_training_release", "reference_history", "reference_workflows", "reference_inputs", "reference_worker", "reference_review_opinions", "reference_task_events", "reference_task_evidence", "reference_task_submission", "reference_task_approval", "reference_task_cancellation", "reference_task_export", "reference_task_reconciliation"}:
+        if module not in native_owners and not any(
+            module == owner or module.startswith(owner + ".") for owner in native_packages
+        ):
             internals = {name for name in names
                          if any(name == root or name.startswith(root + ".") for root in internal_roots)}
             assert not internals, (module, internals)

@@ -1,21 +1,23 @@
-# ADR 0003：工作流编辑器的图与表单
+# ADR 0003: Graphs and forms in the workflow editor
 
-日期：2026-11-05。状态：采纳选型，生产功能按F6.2/F6.3逐片实现。依据：[LC1研究](../../research/2026-11-02-low-code-editors.md)、[F6.1实测](../../research/2026-11-05-editor-comparison.md)及[交付记录](../../delivery/2026-11-05-editor-comparison.md)。
+English · [Documentation](../../README.md)
 
-## 决定
+Date: 2026-11-05. This ADR records the frontend selection context; see the [architecture](../interfaces.md#graphical-pages-and-low-code) and [workflow guide](../../definitions/workflows/revisions.md#view-published-nested-relationships) for the current pages and formal handoff.
 
-保留当前Cytoscape、原生ES modules与现有Python发行方式。下一片在既有`workflow.js`所有者内统一图、属性表单和JSON的语义编辑状态，逐步加入有限编辑命令、撤销/重做、未保存保护及修订冲突处理。字段描述只覆盖实际使用的输入类型，不建立第二份配置DSL或通用表单框架。位置/视口与语义输入分开；服务端继续拥有合同校验、摘要、revision和正式任务事实。
+## Decision
 
-React Flow保留为可复现开发者候选；JSON Forms不成为默认依赖。这不是对两库普遍优劣的结论。此次完整React Flow入口比Cytoscape入口小，三个调整后方案的两模板旅程均通过。采用既有栈的原因是当前功能已经可实现、没有已测瓶颈要求框架迁移，且React Flow没有替代本项目必须拥有的编辑/保存语义。
+Retain the current Cytoscape, native ES modules, and existing Python distribution. The next slice will unify the semantic editing state of the graph, property form, and JSON within the existing `workflow.js` owner, progressively adding bounded editing commands, undo/redo, protection for unsaved changes, and revision conflict handling. Field descriptions cover only input types actually used; they do not create a second configuration DSL or a general form framework. Position/viewport state is separate from semantic input; the server continues to own contract validation, digests, revisions, and formal task facts.
 
-JSON Forms默认Ajv编译实际与原CSP冲突。官方NoValidation渲染配合现有后端显式校验可完成此次旅程，但不提供客户端Schema错误提示，完整入口约为原生方案的两倍。默认发行暂没有足够的动态表单需求支持引入该栈；不放宽CSP或伪装成预编译校验。
+Keep React Flow as a reproducible developer candidate; JSON Forms does not become a default dependency. This is not a general verdict on the two libraries. The complete React Flow entry was smaller than the Cytoscape entry in this comparison, and both template journeys passed for all three adjusted alternatives. The existing stack was chosen because it can already implement the current features, no measured bottleneck requires a framework migration, and React Flow does not replace the editing/saving semantics this project must own.
 
-## 边界与重评
+JSON Forms' default Ajv compilation actually conflicts with the existing CSP. Official NoValidation rendering together with explicit validation by the existing backend completed this journey, but provides no client-side Schema error messages, and its complete entry is approximately twice the size of the native alternative. The default distribution currently lacks enough dynamic form demand to justify introducing this stack; do not relax CSP or describe it as precompiled validation.
 
-图中的边目前只代表工作单元依赖；Agent实现选择仍由原角色/工具绑定拥有。角色职责、产物流、权限和执行阶段不可混成同一连线。六阶段及可信integrate/verify/review不由画布任意删改。
+## Boundaries and reevaluation
 
-框架只管理投影与交互，不拥有模板编译、Agent执行、工单、审查授权或候选证据。编辑器状态保持在实际生命周期所有者，不为了实验适配器建立默认插件系统，也不把试验UI直接复制进生产。
+Graph edges currently represent only work-unit dependencies; the original role/tool bindings still own Agent implementation selection. Role responsibilities, artifact flow, permissions, and execution stages must not be conflated into a single connection. The six stages and trusted integrate/verify/review cannot be arbitrarily removed or changed by the canvas.
 
-当真实端口交互、自定义节点、节点键盘需求或F6.3容量结果表明当前方案不足时，重新运行同旅程和相应负载，再决定React Flow迁移。当动态schema/复杂规则与客户端错误提示产生明确收益时，单独评价JSON Forms/预编译Ajv。重评要保留原CSP、领域合同及实际发行成本；当前单次loopback时间和未测大图均不能充当性能结论。
+The framework manages projections and interactions; it does not own template compilation, Agent execution, issues, review authorization, or candidate evidence. Editor state remains with its actual lifecycle owner. Do not create a default plugin system for experimental adapters or copy the experimental UI directly into production.
 
-F6.1没有改变生产代码、默认依赖或包资源。撤销本片只移除开发者例子与选型说明；后续生产功能各自具有独立验收、审查和交付记录。
+When actual port interactions, custom nodes, node keyboard requirements, or F6.3 capacity results demonstrate that the current alternative is insufficient, rerun the same journeys and relevant loads before deciding on a React Flow migration. Evaluate JSON Forms/precompiled Ajv separately when dynamic schemas/complex rules and client-side error messages offer a clear benefit. Reevaluation must preserve the original CSP, domain contracts, and actual distribution costs; the current single loopback timing and unmeasured large graphs cannot serve as performance conclusions.
+
+F6.1 changed no production code, default dependencies, or package resources. Reverting this slice removes only the developer examples and selection notes; subsequent production features each have independent acceptance, review, and delivery records.

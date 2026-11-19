@@ -8,11 +8,14 @@ import subprocess
 import sys
 import time
 
-from ergora import processes, reference, training_execution_protocol as protocol
+import ergora.native.resources as native_resources
+import ergora.training.execution_protocol as protocol
+from ergora.runtime import processes
 
 stage, fault = sys.argv[1], os.environ['ERGORA_TEST_CYCLE_OPERATION']
 if stage != 'S':
-    from ergora import training_cycles, reference_training_worker as worker
+    import ergora.training.cycles as training_cycles
+    import ergora.training.runtime.worker as worker
 markers = Path(os.environ['ERGORA_TEST_CYCLE_MARKERS'])
 
 
@@ -25,7 +28,7 @@ def mark(name, value=None):
 if stage == 'D':
     # Branch before the ordinary fixture's read-all/JSON wrapper: this is the
     # real streaming entry, watchdog, fd operations and one actual S process.
-    from ergora import budget_clock
+    from ergora.runtime import budget_clock
     synchronize, write = os.fsync, os.write
     partial = False
 
@@ -126,7 +129,7 @@ mode = payload['identity']['mode']
 if stage == 'P':
     original_create = worker.asyncio.create_subprocess_exec
     async def diagnostic(*argv, **kwargs):
-        if argv[-1] == 'from ergora.reference_training_worker import cycle_request_retention_main;cycle_request_retention_main()':
+        if argv[-1] == 'from ergora.training.runtime.worker import cycle_request_retention_main;cycle_request_retention_main()':
             argv = [argv[0], '-P', __file__, 'D']
         return await original_create(*argv, **kwargs)
     worker.asyncio.create_subprocess_exec = diagnostic
@@ -144,7 +147,7 @@ if stage == 'S':
     original_run = processes.run
 
     def invoke(argv, *args, **kwargs):
-        if argv[-1] == 'from ergora.reference_training_worker import cycle_operation_main;cycle_operation_main(False)':
+        if argv[-1] == 'from ergora.training.runtime.worker import cycle_operation_main;cycle_operation_main(False)':
             argv = [sys.executable, '-P', __file__, 'H']
             if fault == 'execution-sync-window' and mode == 'request-execution-candidate':
                 # Let the blocked H return once after its window. Its last gate,
@@ -198,7 +201,7 @@ if stage == 'S':
         protocol._read_cycle_bytes = blocked_result
 else:
     if os.environ.get('ERGORA_TEST_OWNER_CONFIRM') and mode == 'confirm-candidate':
-        from ergora.reference_training_budget import BudgetedStart
+        from ergora.training.runtime.budget import BudgetedStart
 
         record_owner, binding = BudgetedStart.owner_record, protocol.authenticate_cycle_binding
         observed_reads = {'owner': 0, 'missing': 0}
@@ -266,7 +269,9 @@ else:
         from perf_temporal import connection
         from temporalio.client import Client
         from training_controller_service import RoundService
-        from ergora import budget_clock, training, training_rounds
+        import ergora.training.application as training
+        import ergora.training.rounds as training_rounds
+        from ergora.runtime import budget_clock
 
         async def round_connect():
             return Client(RoundService(payload, fault), namespace='foreign' if fault == 'round-namespace' else 'default')
@@ -440,7 +445,7 @@ else:
                         source.write_text(json.dumps(original))
                         mark(fault)
                     else:
-                        from ergora import budget_clock
+                        from ergora.runtime import budget_clock
 
                         mark('execution-sync-blocked')
                         while budget_clock._clock()[1] <= payload['bootstrap']['deadline_ns']:
@@ -463,7 +468,7 @@ else:
 
             training_submission_client.Service.describe_workflow_execution = held_lookup
         if fault == 'candidate-owner-deadline-drift' and mode == 'dispatch-candidate':
-            from ergora import budget_clock
+            from ergora.runtime import budget_clock
 
             owner_record = worker.BudgetedStart.owner_record
 
@@ -557,7 +562,7 @@ else:
         connection.connect = connect
         mark('dispatch-helper')
         if fault == 'project-after-claim':
-            validate = reference.validate_installation
+            validate = native_resources.validate_installation
 
             def drift_project(*args, **kwargs):
                 root = validate(*args, **kwargs)
@@ -572,7 +577,7 @@ else:
                         db.execute('UPDATE projects SET document=? WHERE id=?', (json.dumps(project), authorization['project']))
                 return root
 
-            reference.validate_installation = drift_project
+            native_resources.validate_installation = drift_project
         if fault == 'blocked-attempt-sync':
             synchronize = training_cycles._sync_directory
 
@@ -646,7 +651,7 @@ else:
         sys.modules['temporalio'] = None
         def unavailable(*args, **kwargs):
             raise AssertionError('Old-owner cleanup cannot require the current installation or gate sources')
-        protocol.validate_sources = reference.validate_installation = unavailable
+        protocol.validate_sources = native_resources.validate_installation = unavailable
 
 if stage == 'S':
     protocol.cycle_supervisor_main()

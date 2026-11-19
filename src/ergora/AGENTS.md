@@ -1,10 +1,12 @@
-# 源码变更入口
+# Source changes
 
-修改本目录时，先按[组件变更协议](../../docs/architecture/component-change-protocols.md#选择实际变更点)选择实际owner；详细扩展步骤只在该文档维护。
+Before changing an implementation or its configuration, read the [component change protocols](../../docs/architecture/component-change-protocols.md#choose-the-actual-change-point) and locate the semantic owner in the [module map](../../docs/architecture/module-map.md). Follow the real configuration, construction, caller, result, and recovery path before editing.
 
-- 后端／来源：读“Agent和外部来源”，沿本族ABC／工厂构造，不让上层增加具体实现分派。
-- 定义、Skill、MCP或`data/presets`：读“定义和完整资源”；配置／`data/schemas`或持久格式：读“配置和持久格式”。
-- 任务、训练、`reference_*`、预算或证据：读“执行和证据”；记忆／评价／研究／复盘／可选工具：读“改进和可选工具”。
-- CLI、HTTP或`data/console`：读“交互入口”；检查选择读“脚本和检查”。
+- Agent backends and issue providers: [agents and external sources](../../docs/architecture/component-change-protocols.md#agents-and-external-sources). Each implementation family owns its contract, construction, and local registration.
+- Definitions, Skills, MCP, presets, and complete assets: [definitions and complete resources](../../docs/architecture/component-change-protocols.md#definitions-and-complete-resources).
+- Project configuration, schemas, SQLite, and immutable storage: [configuration and persistent formats](../../docs/architecture/component-change-protocols.md#configuration-and-persistent-formats).
+- Development or training operations, native processes, budgets, source identity, and evidence: [execution and evidence](../../docs/architecture/component-change-protocols.md#execution-and-evidence).
+- Memory, evaluation, research, retrospective proposals, and optional kernel tools: [improvement and optional tools](../../docs/architecture/component-change-protocols.md#improvement-and-optional-tools).
+- CLI, HTTP, and console resources: [interaction entry points](../../docs/architecture/component-change-protocols.md#interaction-entry-points). Installation and checks: [scripts and checks](../../docs/architecture/component-change-protocols.md#scripts-and-checks).
 
-本包采用平铺模块，按实际owner扩展；目录入口不要求先搬代码或增加继承层。目标业务项目的组件协议属于该项目，不能混入本控制面的源码或文档。
+Package initializers stay empty so isolated readers can import their owners without application state or optional SDKs. The private `_paths` owner supplies the one package, import, and data root. Source relocations must update actual subprocess entrypoints, explicit source coverage, package discovery, and resource identity together; saved records retain their original identities. Detailed obligations and checks remain in the protocols above.

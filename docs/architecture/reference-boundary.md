@@ -1,126 +1,109 @@
-# reference 访问与迁出边界
+# Native reference access and migration responsibilities
 
-当前实现：R6边界及F1注册/导入增量，2026-11-03。[R6交付](../delivery/2026-11-02-reference-boundary.md) · [F1阶段记录](../delivery/2026-11-03-f1-completion.md) · [运行契约](2026-11-02-runtime-contracts.md) · [ADR 0001](decisions/0001-refactoring-foundations.md)。
+English · [Documentation](../README.md)
 
-## 入口与所有者
+Access the reference implementation through the semantic owners on this page; see [identity contracts](contracts/formats.md) for persistent identities, the [project guide](../projects/registration.md#unified-registration) for registration, and [ADR0001](decisions/0001-refactoring-foundations.md) for the original foundational decision.
+
+## Entry points and owners
 
 ```mermaid
 flowchart LR
-  Web[Web / drafts / agent_runs] --> Ref[reference 资源与编译接口]
-  CLI[CLI workflow / templates] --> Ref
-  Registration[CLI / Web → registrations] --> Ref
-  Ref --> Resources[冻结模板 / profile / manifest]
-  Ref --> Creation[reference_task_creation 专用创建进程]
-  Creation --> Files
-  Ref --> RuntimeQuery[reference_task_runtime 专用查询进程]
-  RuntimeQuery --> Transport[原 DevelopmentTransport / Temporal]
-  Ref --> Events[reference_task_events 专用事件查询进程]
-  Events --> Submission
-  Events --> Transport
-  Ref --> Submission[reference_task_submission 专用提交进程]
-  Submission --> Transport
-  Ref --> Approval[reference_task_approval 专用审批进程]
-  Approval --> Submission
-  Approval --> Transport
-  Ref --> Cancellation[reference_task_cancellation 专用取消进程]
-  Cancellation --> Submission
-  Cancellation --> Transport
-  Ref --> Export[reference_task_export 专用导出进程]
-  Ref --> ExternalStatus[reference_task_reconciliation 证据查询与显式对账]
-  ExternalStatus --> Submission
-  ExternalStatus --> Transport
-  ExternalStatus --> Adapter[原FileAdapter 请求/回执/产物/fence]
-  ExternalStatus --> Ingress[原IngressLeases 精确claim释放]
-  Export --> Submission
-  Export --> Transport
-  Export --> Git[Git ref事务 / 原ingress.release]
-  Ref --> Compiler[专用编译子进程]
-  Compiler --> Portable[原 portable / contracts]
-  Ref --> Projection[专用注册 I/O 子进程]
-  Projection --> Files[原 write / safe_file / 路径与 scope 校验]
-  ExecCLI[CLI reference executor] --> Identity[reference 安装身份核对]
-  Identity --> Bridge[reference_executor 原生执行适配]
-  Bridge --> Original[原 Executor / Sandbox / ledger]
-  Bridge --> Driver[专用 stage_driver / agents]
-  Original --> Evidence[候选 / 检查 / 回执 / 批准]
+  UI[CLI / HTTP] --> Resources[native.resources]
+  UI --> Compiler[native.compiler]
+  UI --> Registration[configuration.registrations]
+  Registration --> Projection[native.registration]
+  UI --> Tasks[development.application]
+  Tasks --> TaskClient[development.native]
+  TaskClient --> TaskProcesses[development.runtime operation processes]
+  UI --> Training[training.application]
+  Training --> TrainingClient[training.native]
+  TrainingClient --> TrainingProcesses[training.runtime operation processes]
+  Compiler --> Portable[original portable contracts]
+  Projection --> Files[original bounded files / immutable publication]
+  TaskProcesses --> Formal[original Temporal workflow / Executor / ledger]
+  TrainingProcesses --> Experiment[original experiment / runner / archive]
+  Services[operations.services] --> Commands[native.commands]
+  Commands --> Workers[selected worker / executor interpreter]
+  Workers --> Formal
+  Workers --> Experiment
+  Resources --> Source[one packaged reference tree / manifest]
 ```
 
-|操作|当前所有者 / 实际消费者|边界|
+|Operation|Current owner / actual consumer|Boundary|
 |---|---|---|
-|随包资源身份|`reference.info / verify`；CLI|manifest负责当前资源的逐件字节身份，HTML/zip保留原分发基线身份；verify不启动runtime|
-|模板复制 / 角色合同 / 页面输入|`reference.copy_template / agent_contract / template_details`；CLI、Web、agent_runs|Web只取得结构化数据，不再拼接ROOT；复制保留源字节并附加角色合同；开发模板返回input，训练返回files，不将训练伪装为开发DAG|
-|草稿结构校验|`reference.validate_input`；drafts、Web|专用子进程调用原make_spec；只报告结构PASS及原输入摘要，不创建正式任务或批准|
-|portable编译/转换/导出|`reference.workflow`；CLI|专用Python进程使用明确的随包路径和`-P -S`，不让业务仓库/可选site package替换原编译器；Windows有界no-follow reader patch只作用于相应专用子进程|
-|当前训练来源准备／识别|`reference.prepare_training / validate_installation`；CLI与原训练入口|当前native源码直接归随包owner；只物化新目录，复制前同步不完整descriptor，复制后核完整platform来源与current descriptor；不装依赖或调用executor。普通任务安装按其实际Python来源核验；识别来源不授执行权限|
-|原执行安装定位|`reference.executor`；CLI及隔离验收fixture|仅Linux，先核对所选安装的local/upstream Python文件身份，再加载适配；不从任意配置字符串导入执行插件|
-|项目投影读取、校验与发布|`reference.registration_io / validate_installation / registration_paths`；registrations与执行入口|固定随包代码的专用子进程，按项目只读取登记文件与其他项目tracker，不读密钥或平台配置；复用原路径/scope校验、有界no-follow读取和不可变write；Windows复用reader patch|
-|新任务角色绑定快照|`bindings.development_snapshot`；tasks创建与reference_executor首次选择|复用同一快照格式冻结4角色、项目修订；执行器首次选择仍核对同一个Git根；后续阶段读同一`agent-bindings.json`；旧任务已有receipt时拒绝换为可选择执行器|
-|阶段Agent及原生继承hook|`reference_executor.Executor.model / receipt`|只替换生成阶段调用及actor标识；原Executor保留提交、只读检查、集成/验证、候选SHA和回执；stage_driver负责专用进程的凭据/信号处理|
-|原配置、文件、回执发布与ledger更新|`reference_executor`／`reference_job_lifecycle`内的原core/FileAdapter接口|原CONFIG/STATE、claim/ledger、immutable write/publish不向应用层扩散；v9专用owner确认停止和collection后才发布正式终态，原OWNED保留跨重启占用；不复制账本或调度|
-|正式任务本地合同读取|`reference.task_files` → 固定只读子进程；tasks/CLI/API|按项目/Git根/tracker/基线/目录ID复用validate_spec和有界no-follow读取；每页最多100项合同检查，目录名流式枚举为O(N)，不读取日志/凭据、不连接Temporal、不推断运行终态|
-|正式任务预览/create/创建状态/恢复|`reference.task_creation` → 专用`reference_task_creation`；tasks/CLI/API|父进程管理临时目录及超时清理；子进程在导入前使用临时STATE复用原create_task/portable，实际发布使用登记目录；原write/安全reader、Windows适配、意图/同ID非阻塞锁/结果回执集中在该边界|
-|正式任务原生运行状态|`reference.task_runtime_status` → 专用`reference_task_runtime`；tasks/CLI/API|登记安装的原Transport.lookup/poll核对原始spec并固定run ID；明确SDK/网络预算和not-found/错误区别，不start/signal/改lease/ledger|
-|原运行有界事件读取|`reference.task_events` → 专用`reference_task_events`；tasks/CLI/GET API|复用原submission/spec/memo；原验证后单SDK物理页及页内位置游标，1–100条/1 MiB响应、显式继续和live尾部保留；事件投影不解码payload，不写执行账本|
-|正式任务start/本地提交状态/原ID恢复|`reference.task_submission` → 专用`reference_task_submission`；tasks/CLI/API|创建所有者校验七合同；完整原生环境复用原task_action，短revision事务只做本地prepare，网络阶段仅持task锁；窄Transport继承只保存dispatch检查点，unknown禁止重新start，既有run持久拒绝；原生依赖/全局不进入Web|
-|精确plan批准/投递读取/恢复|`reference.task_approval` → 专用`reference_task_approval`；tasks/CLI/API|复用原创建/提交所有者、严格spec/memo/固定run、原owner receipt和approve_plan；无网络准备后释放控制库，未知只核原history；不新增授权状态机|
-|取消请求/本地记录/投递恢复|`reference.task_cancellation` → 专用`reference_task_cancellation`；tasks/CLI/API|复用原Transport.cancel、严格原spec/memo/run，实际signal前检查点及操作SHA；闭合明确无信号，unknown仅核分页history，不接管fence/租约|
-|精确候选导出/本地回执/恢复|`reference.task_export` → 专用`reference_task_export`；tasks/CLI/API|原提交固定spec/memo/run，原REVIEW_READY结果核精确candidate；写前attempt、异步Git对象fetch与条件事务，原ingress.release和export.json；unknown只核实际ref补回执，不fetch/创建；不checkout/merge/push|
-|原run外部证据查询|`reference.task_external_status` → 专用`reference_task_reconciliation`；tasks/CLI/API|原创建/提交归属、固定闭合run与最新run检查；连续全history按真实converter还原job，绑定登记STATE五根和原FileAdapter/poll；缺失/额外/无效证据保持未决；GET不发布fence、不保存运行记录或释放租约|
-|原run显式外部对账/本地记录/恢复|`reference.task_reconciliation` → 同一专用进程；tasks/CLI/API|组合原Inspection；短revision事务只保存意图，远程前保存原outcome/history检查点；原fence发布后重验完整history/两目录/可信证据，持久清理evidence后由原IngressLeases释放精确原claim；恢复保持原摘要/原run，GET只读本地记录|
-|正式任务运行结果|原`DevelopmentTransport / Runtime / Workflow`；`tasks.status`只读返回原outcome|运行事实与可信验收仍在原runtime；显式终态对账保存独立清理事实，原CANCEL_UNCONFIRMED等结果保持；适用租约释放只在明确写操作中执行|
+|Bundled resource identity|`native.resources.info / verify`; CLI|manifest owns item-by-item byte identities of current resources; HTML/zip preserve original distribution-baseline identity; verify starts no runtime|
+|Template copying / role contracts / page inputs|`native.resources.copy_template / agent_contract / template_details`; CLI, HTTP, agents.runs|Web obtains structured data without constructing ROOT paths; copies preserve source bytes and append role contracts; development templates return input, training returns files, without presenting training as a development DAG|
+|Draft structural validation|`native.compiler.validate_input`; drafts, Web|Dedicated subprocess invokes original make_spec; reports only structural PASS and original-input digest, without creating formal tasks or approvals|
+|portable compilation/conversion/export|`native.compiler.workflow`; CLI|Dedicated Python process uses explicit bundled paths and `-P -S`, preventing business repositories / optional site packages from replacing original compiler; Windows bounded no-follow reader patch applies only to the corresponding dedicated subprocess|
+|Current training-source preparation / identification|`native.resources.prepare_training / validate_installation`; CLI and original training entry|Current native source belongs directly to bundled owner; only materializes a new directory, syncing an incomplete descriptor before copying and checking complete platform sources and current descriptor afterward; installs no dependencies or invokes executor. Ordinary task installations verify actual Python sources; identifying sources grants no execution authority|
+|Original execution-installation location|`native.commands.executor`; CLI and isolated acceptance fixtures|Linux only; first verifies local/upstream Python-file identities in selected installation, then loads adapter; no execution plugins imported from arbitrary configuration strings|
+|Project projection reading, validation and publication|`native.registration.registration_io / registration_paths` and `native.resources.validate_installation`; registrations and execution entries|Dedicated subprocess with fixed bundled code reads only registration files and other projects' trackers per project, not secrets or platform configuration; reuses original path/scope validation, bounded no-follow reads and immutable write; Windows reuses reader patch|
+|New-task role-binding snapshots|`configuration.bindings.development_snapshot`; tasks creation and development.runtime.executor first selection|Reuses the same snapshot format to freeze 4 roles and project revision; executor first selection still checks the same Git root; later stages read the same `agent-bindings.json`; old tasks with existing receipts reject switching to a selectable executor|
+|Stage Agents and native inheritance hooks|`development.runtime.executor.Executor.model / receipt`|Replaces only generation-stage invocations and actor identifiers; original Executor retains commits, read-only checks, integration/verification, candidate SHAs and receipts; agents.stage_driver handles credentials/signals in dedicated processes|
+|Original configuration, files, receipt publication and ledger updates|Original core/FileAdapter interfaces in `development.runtime.executor` / `development.runtime.jobs`|Original CONFIG/STATE, claim/ledger and immutable write/publish do not spread to application layers; the current budgeted owner publishes formal terminal states only after confirmed stopping and collection, with original OWNED retaining occupancy across restarts; no duplicated ledger or scheduling|
+|Formal-task local contract reads|`development.native.task_files` → fixed read-only subprocess; tasks/CLI/API|Reuses validate_spec and bounded no-follow reads by project/Git root/tracker/baseline/directory ID; at most 100 contract checks per page, streaming O(N) directory-name enumeration, without reading logs/credentials, connecting to Temporal or inferring runtime terminal state|
+|Formal-task preview/create/creation status/recovery|`development.runtime.creation_process.task_creation` → dedicated `development.runtime.creation`; tasks/CLI/API|Parent manages temporary directories and timeout cleanup; child uses temporary STATE before importing to reuse original create_task/portable, while actual publication uses registered directories; original write/safe reader, Windows adapter, intent/same-ID nonblocking lock/result receipts stay at this boundary|
+|Formal-task native runtime status|`development.native.task_runtime_status` → dedicated `development.runtime.status`; tasks/CLI/API|Registered installation's original Transport.lookup/poll verifies original spec and fixes run ID; explicit SDK/network budgets and distinction between not-found/errors; no start/signal/lease/ledger changes|
+|Bounded original-run event reads|`development.native.task_events` → dedicated `development.runtime.events`; tasks/CLI/GET API|Reuses original submission/spec/memo; after original validation, one physical SDK page and in-page-position cursor, 1–100 events/1 MiB response, explicit continuation and live-tail retention; event projections decode no payloads and write no execution ledger|
+|Formal-task start/local submission status/original-ID recovery|`development.native.task_submission` → dedicated `development.runtime.submission`; tasks/CLI/API|Creation owner checks seven contracts; complete native environment reuses original task_action, short revision transactions only prepare locally, network phase holds only task lock; narrow Transport inheritance saves only dispatch checkpoints, unknown forbids restart, and existing runs are persistently rejected; native dependencies/globals stay out of Web|
+|Exact plan approval/delivery reads/recovery|`development.native.task_approval` → dedicated `development.runtime.approval`; tasks/CLI/API|Reuses original creation/submission owners, strict spec/memo/fixed run, original owner receipt and approve_plan; releases control database after network-free preparation, unknown only checks original history; no new authorization state machine|
+|Cancellation requests/local records/delivery recovery|`development.native.task_cancellation` → dedicated `development.runtime.cancellation`; tasks/CLI/API|Reuses original Transport.cancel, strict original spec/memo/run, checkpoints and operation SHA before actual signal; closed runs explicitly produce no signal, unknown only checks paginated history without taking over fence/leases|
+|Exact-candidate export/local receipts/recovery|`development.native.task_export` → dedicated `development.runtime.export`; tasks/CLI/API|Original submission fixes spec/memo/run; original REVIEW_READY result verifies exact candidate. attempt before write, asynchronous Git-object fetch and conditional transaction, original ingress.release and export.json; unknown only checks actual refs to supplement receipts, without fetch/creation; no checkout/merge/push|
+|Original-run external-evidence queries|`development.native.task_external_status` → dedicated `development.runtime.reconciliation`; tasks/CLI/API|Original creation/submission ownership, fixed closed run and latest-run checks; continuous complete history restores jobs with actual converter, binding five registered STATE roots and original FileAdapter/poll; missing/extra/invalid evidence stays unresolved. GET publishes no fence, saves no run records and releases no leases|
+|Original-run explicit external reconciliation/local records/recovery|`development.native.task_reconciliation` → same dedicated process; tasks/CLI/API|Composes original Inspection; short revision transactions save only intent, saving original outcome/history checkpoint before remote operations. After original fence publication it rechecks complete history/two directories/trusted evidence; after durable cleanup evidence, original IngressLeases releases exact original claim. Recovery preserves original digest/run; GET reads only local records|
+|Formal-task runtime results|Original `DevelopmentTransport / Runtime / Workflow`; `development.application.status` returns original outcome read-only|Runtime facts and trusted acceptance remain in original runtime; explicit terminal reconciliation saves separate cleanup facts, preserving original CANCEL_UNCONFIRMED and other results; applicable lease release occurs only through explicit writes|
 
-`reference.ROOT`仍保留给既有Python调用者和身份/兼容测试；生产布局知识只在reference及其专用原生边界。没有删除公共常量或改变CLI响应/退出码。`template_details`是实际Web使用的资源读取接口，没有另造模板存储层。
+`native.resources.ROOT` is the direct packaged-reference constant used by resource/tool readers. The current import is `from ergora.native.resources import ROOT`; no root facade or old-path reexport is retained. `native.resources.template_details` supplies Web's structured resource data. Domain clients and fixed native readers own path construction.
 
-## 配置与进程范围
+## Configuration and process scope
 
-安装位置由`reference executor --installation`明确提供，或由`--project ID`选择统一注册保存的安装/配置/状态。原配置/状态由导入前的`AGENTFLOW_CONFIG_DIR / AGENTFLOW_STATE_DIR`决定，未设置时继续使用原默认目录。Ergora`--home`是控制项目来源。统一注册通过单向投影生成项目/策略/归属文件，保留adapter、凭据和服务设置。旧注册仍需显式导入；在途任务继续使用原runtime与冻结快照。
+Installation location is explicitly provided by `reference executor --installation`, or `--project ID` selects installation/configuration/state saved by unified registration. Original configuration/state comes from `AGENTFLOW_CONFIG_DIR / AGENTFLOW_STATE_DIR` before import, retaining original default directories when unset. Ergora `--home` supplies the control project. Unified registration generates project/policy/ownership files through one-way projection, preserving adapter, credentials and service settings. Old registrations still require explicit import; in-flight tasks keep original runtime and frozen snapshots.
 
-`agent_platform.core`在导入时固定ROOT/CONFIG/STATE，`reference.executor`为单一安装的专用进程入口。它不是Web中可并行热切换多个安装/配置的服务对象；同一解释器内缓存模块不能用于切换runtime。当前HTTP没有调用它。F1登记I/O采用固定代码的专用子进程，明确选择配置/状态；F3若接任务查询/命令，也须隔离调用，不能把现有全局当成request-local数据。
+`agent_platform.core` fixes ROOT/CONFIG/STATE on import; `native.commands.executor` is a dedicated process entry for one installation. It is not a service object for parallel hot-switching of multiple installations/configurations in Web; cached modules in one interpreter cannot switch runtime. Current HTTP does not call it. Registration I/O and task/training queries use dedicated fixed-code processes with explicit configuration/state selection. Existing native globals are not request-local data.
 
-原编译/发布生命周期在reference_task_creation；原Executor的继承和Windows reader兼容分别留在`reference_executor.py`与`reference.py`，属于现成框架/平台接口的真实变化点。编译器的`sys.path / PYTHONPATH`及私有reader知识不下放到项目/资产/Web。没有新Runtime基类、配置镜像、文件repository或与Temporal竞争的调度器。
+Original compilation/publication lifecycle stays in development.runtime.creation; original Executor inheritance and Windows reader compatibility remain in `development/runtime/executor.py` and `native/files.py` respectively, representing actual change points of existing framework/platform interfaces. Compiler `sys.path / PYTHONPATH` and private-reader knowledge do not move into projects/assets/Web. No new Runtime base class, configuration mirror, file repository or scheduler competing with Temporal.
 
-## 身份、恢复及迁出条件
+## Identity, recovery and migration conditions
 
-六阶段状态、精确计划批准、工作单元DAG、可信integrate/verify、候选SHA、review会话和回执继续由原合同验证。项目binding变更只影响新任务；在途任务仍使用冻结快照。原submission已开始而无terminal时保持未知并拒绝自动重执行；只重启worker不应创建新任务或换引擎。训练prepare/control worker不会隐式生成执行请求；新受管execute需确认原run／request，旧run-local仍需确认manifest SHA。
+Original contracts continue to validate six-stage state, exact-plan approval, work-unit DAGs, trusted integrate/verify, candidate SHAs, review sessions and receipts. Project-binding changes affect only new tasks; in-flight tasks retain frozen snapshots. Original submissions started without terminal remain unknown and reject automatic reexecution; merely restarting workers should not create tasks or change engines. Training prepare/control workers do not implicitly generate execution requests; new managed execute requires confirmation of original run/request, and old run-local still requires manifest SHA confirmation.
 
-当前reference资源由随包manifest固定身份，生产仍消费local/bootstrap镜像及HTML／安装报告。历史283文件分发基线保留原验证身份；当前源码按现owner更新，并同步当前manifest及相应镜像。以下是迁出条件：
+The bundled manifest fixes current reference-resource identities. Original distribution, installation and measurement evidence retain their recorded identities; changed source cannot inherit an earlier run's result. Persistent field/table/schema/queue names and existing evidence keys do not move with Python modules.
 
-|尚在使用的部分|迁出 / 仅归档的前提|
+|Change point|Obligations before replacing its current consumer|
 |---|---|
-|独立项目注册、配置、原agentflow命令|F1有效项目配置单向投影与显式旧注册导入；F2安装/服务与F3任务操作可代替当前入口，保留旧在途任务恢复|
-|原正式工作流与执行文件/ledger|有实际修改需求时才逐项迁出；新路径对正常/取消/未知/重启、精确批准、候选证据与导出做等价验收，再切新任务默认；不搬迁在途history|
-|原训练runner/实验gate|F9对齐workload/baseline/evidence与人工执行授权，真实CPU/GPU范围分别验收，不把native campaign完成当作采用|
-|原工单/通信/服务和bootstrap分发镜像|对应F2/F7及通信节点有实际替代消费者，安装器/报告/手册不再依赖镜像；更新来源清单及退出记录后才能删除|
-|Windows reader兼容patch|上游/迁入编译器有真实Windows下等价的限长、no-follow/reparse拒绝与不可变发布证据；不能仅凭Linux测试移除|
+|Project registration and native configuration|Preserve one-way projection, explicit import, complete identities and recovery of original publication intents.|
+|Formal workflows, execution files and ledger|Preserve normal/cancellation/unknown/restart behavior, exact approval, candidate evidence, export and owned-process cleanup. In-flight history stays original.|
+|Training runner, gates and archives|Keep workload/baseline/evidence binding and human execution approval; CPU, real service and GPU quality/performance acceptance remain separate.|
+|Packaged sources and bootstrap payloads|Update actual source inventories, manifests and every current consumer together; retain one resource tree. Source relocation alone does not update a registered installation.|
+|Windows bounded reader|Preserve length bounds, no-follow/reparse refusal and immutable publication. Linux source checks do not certify native Windows behavior.|
 
-R6迁出资源读取，R8已增加整体依赖图及静态边界检查；F1统一项目、显式采用与单向投影复用同一边界。后续F3接正式任务用例、F9接训练闭环。新增工具仍经agents/kernel等实际适配，不修改冻结模板来绑定厂商。
+New backend/tool integration uses its actual family owner and supported modes. Neither a source refactor nor metadata declares new execution authority.
 
-## 版本化原生训练来源
+## Versioned native training sources
 
-`training-executor-admission-v3` 使用当前data/reference中的训练实现、runner示例、reference-manifest与一个固定descriptor。来源准备及完整字节校验归同一reference owner。准备先同步空descriptor，复制后核完整platform文件，再同步当前manifest绑定的最终声明；缺损／篡改声明明确失败。普通任务安装仍按其实际Python来源合同核验。
+`training-executor-admission-v3` uses current training implementation, runner examples, reference-manifest and a fixed descriptor at `data/native-runtime/training-executor-admission-v3.json`; its reference manifest is `data/reference-manifest.json`. The same reference owner owns source preparation and complete-byte validation. Preparation first syncs an empty descriptor, checks complete platform files after copying, then syncs the final declaration bound by current manifest; missing/tampered declarations fail visibly. Ordinary task installations still verify their actual Python-source contracts.
 
 ```mermaid
 flowchart LR
-  CLI[reference prepare-training] --> Prepare[reference 来源准备]
-  Current[当前源码 / manifest / descriptor] --> Prepare
-  Prepare --> Pending[新目录 / 先同步空descriptor]
-  Pending --> Copy[复制当前platform来源]
-  Copy --> Verify[完整来源校验 / 最终descriptor同步]
-  Verify --> Ready[来源已准备 / 依赖与服务未安装启动]
-  Ready -. 不自行调用 .-> Hook[原 executor.lock 内 admit / before_runner]
+  CLI[reference prepare-training] --> Prepare[reference source preparation]
+  Current[current source / manifest / descriptor] --> Prepare
+  Prepare --> Pending[new directory / sync empty descriptor first]
+  Pending --> Copy[copy current platform sources]
+  Copy --> Verify[complete source validation / final descriptor sync]
+  Verify --> Ready[sources prepared / dependencies and services not installed or started]
+  Ready -. does not call automatically .-> Hook[admit / before_runner inside original executor.lock]
 ```
 
-当前process保留同一原锁、Git两臂、Sandbox、full归档与结果owner：业务副作用前检查不确定started／缺callback的managed命名空间，admit一次发布attempt／ack；配置驱动只在原clone后进入before_runner，沿原active检查准备request。已有result先只读返回，不能据此追认停止。wrapper在末次source检查后、首work前独立复核原完整chain、parent、owner、native fence及clock；不重复admit，不建立另一实验账本。
+Current process retains the same original lock, both Git arms, Sandbox, full archiving and result owner: before business side effects it checks uncertain started / managed namespaces lacking callbacks, and admit publishes attempt/ack once; configuration drivers enter before_runner only after original clone, preparing requests under original active checks. Existing results return read-only first and cannot retrospectively confirm stopping. After the final source check and before first work, wrapper independently rechecks original complete chain, parent, owner, native fence and clock; no repeated admit or additional experiment ledger.
 
-配置材料由纯stdlib `training_materials`持有exact descriptor、raw JSON与不可变发布/持久读回；native prepare/create_job、reference原件reader和configuration wrapper共同消费，低层不反向导入wrapper、protocol、reference或State/SDK。manifest `configuration_inputs`唯一选择Git文件或prepared-json；runner只给trusted source和`prepared_json_format`能力声明。搜索完整输入包先持久，再由原preparation锁内先同步原intent文件/目录链并读回同inode/raw，才正式发布两材料与原三文件。材料raw SHA进入原source inventory/cycle，运行在原job冻结实际输入副本，同context receipt及两raw沿原full artifacts归档；不建立另一结果账本或预算。
+Pure-stdlib `training.materials` owns exact descriptor, raw JSON and immutable publication/durable readback of configuration materials; native prepare/create_job, reference-original reader and configuration wrapper share consumption. Lower layers do not import wrapper, protocol, reference or State/SDK in reverse. manifest `configuration_inputs` exclusively selects Git files or prepared-json; runner declares only trusted source and `prepared_json_format` capability. Complete search input package is persisted first; under original preparation lock, original intent file/directory chain is synced and same inode/raw reread before formal publication of two materials and original three files. Material raw SHA enters original source inventory/cycle; runs freeze actual input copies in original jobs, archiving context receipts and both raw files through original full artifacts, without another result ledger or budget.
 
-应用`_BudgetPhase`交错start／poll／finish原监管进程；父不执行phase业务文件系统I/O，S持唯一processes.run回收算法。stopped只在真实reap后发出，此后S禁止再生子进程。当前owner固定source/context能力，执行、观察、fence与清理共享原期限；来源准备自身不授执行权限。具体使用见[训练手册](../TRAINING.md#准备版本化原生来源)。
+Application `_BudgetPhase` interleaves start/poll/finish of original supervisors; parent performs no phase business filesystem I/O, and S owns the sole processes.run reaping algorithm. stopped is emitted only after actual reap, after which S cannot spawn children. Current owner fixes source/context capabilities; execution, observation, fence and cleanup share original deadlines. Source preparation itself grants no execution authority. See the [training guide](../training/prepare-experiments.md#prepare-versioned-native-sources).
 
+### Explicit execution under the same budget and frozen offline reads
 
-### 同预算显式执行与冻结离线读取
+`training.application.execute` calls a supervised application worker through `training.native.training_execution`; `training.runtime.execution.Execution` accepts original submission/budget objects and owns request/launch/original-run admission and interleaved phase supervision, without importing either owner in reverse. Its `native_main` owns the selected native-interpreter entry and admit/before_runner callbacks under original lock; `training.execution_protocol` provides complete records, context/source validation and offline reads with stdlib, shared by application writers, execution S, offline readers and native callbacks. State/file_lock imports are delayed to application control methods only; original clock, SHA, safe publication and sole reaper remain with original owners, and native interpreter independently uses its locked dependencies.
 
-`training.execute`经`reference.training_execution`调用受监督的应用worker；`reference_training_execution.Execution`接受原submission／budget对象，持有请求／launch／原run准入和交错phase监管，不反向import两owner。其`native_main`拥有所选native解释器入口与原锁内admit／before_runner回调；`training_execution_protocol`以stdlib提供完整记录、context／来源验证及离线读取，供应用writer、执行S、离线reader和native回调共用。State／file_lock只在应用控制方法内延迟导入；原clock、SHA、安全发布及唯一reaper仍沿原owner，native解释器独立使用其锁定依赖。
+Birth capabilities fix complete sources and context; request→launch→attempt→ack→stopped remain under original job's `managed-execution`, and launch is never reused. Parent owner only interleaves poll/signal; disk/RPC/locks stay in respective S subtrees. stopped follows actual reap, after which S only stores directly. Waiting for fence does not hold up stopping existing execution; compute and total constrain work and cleanup results separately.
 
-出生能力固定完整来源及context；request→launch→attempt→ack→stopped保留在原job的`managed-execution`下，launch永不复用。父owner只交错poll／signal，磁盘／RPC／锁在各自S子树中；实际reap之后发stopped，S此后只直接存储。fence等待不扣住已有执行停止，compute与total分别约束工作和清理结果。
-
-`training.execution`读取分支沿原`_training_reader`，固定随包platform来源与`-S`，先读历史原链，后用另一个有界进程观察当前来源；`training.evidence`与`training.baseline_reference`也用同一reader，所选native缺失不能挡住历史。后者与managed configuration wrapper共用现`reference_training_evidence`的完整库存算法，accepted archive绑定校验由普通inspect与固定reference共用；固定路径不消费当前head／runner／ticket等诊断副读。原证据与当前注册guard共享同一有界首次raw／device／inode及末确认，guard-only不进入immutable index／hash；fence缺席以最后lstat确认，不能忽略晚生文件或悬链。保存capability按原结构读取，原manifest／protocol字面声明和descriptor原bytes核历史来源，缺项逐维unavailable。当前效果仍要求完整current source、native安装、live owner和原clock。确认durable时仅同步／重读现存原件，不创建记录、不改原bytes或恢复运行。原`training_files`共用该reader传输实现，CLI只解析参数；历史记录按原身份观察，不授予执行能力或重启owner。完整用法见[训练手册](../TRAINING.md#显式受管执行与离线停止观察)。
+`training.application.execution` reads through original `_training_reader`, fixing bundled platform sources and `-S`, first reading original historical chain, then observing current sources in another bounded process; `training.application.evidence` and `training.application.baseline_reference` use the same reader, and missing selected native cannot block history. The latter shares current `training.runtime.evidence` complete inventory algorithm with managed configuration wrapper; ordinary inspect and fixed reference share accepted-archive binding validation. Fixed paths do not consume diagnostic side reads of current head/runner/ticket. Original evidence and current registration guard share the same bounded initial raw/device/inode and final confirmation; guard-only does not enter immutable index/hash. Fence absence is confirmed by final lstat, without ignoring late files or dangling links. Saved capability is read under original structure; original manifest/protocol literal declarations and descriptor original bytes verify historical sources, with missing dimensions each unavailable. Current effects still require complete current source, native installation, live owner and original clock. Confirming durable only syncs/rereads existing originals, without creating records, changing original bytes or resuming execution. Original `training_files` shares this reader transport implementation; CLI only parses arguments. Historical records are observed under original identities, without execution capabilities or restarting owners. See the [training guide](../training/execution.md#explicit-managed-execution-and-offline-stop-observation) for complete usage.

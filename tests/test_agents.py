@@ -10,8 +10,15 @@ import time
 
 import pytest
 
-from ergora import agents, kernel, processes, projects, reference, tools
-from ergora.state import State
+import ergora.native.resources as native_resources
+import ergora.agents.invocation as agents
+import ergora.improvement.kernel as kernel
+import ergora.configuration.projects as projects
+import ergora.operations.tools as tools
+import ergora.agents.runs as agent_runs
+from ergora.runtime import processes
+from ergora.storage.state import State
+from ergora._paths import DATA_ROOT
 
 
 def project(tmp_path):
@@ -28,24 +35,24 @@ def binding():
             "protocol": "stage-json-v1", "capabilities": agents.GENERAL_CAPABILITIES}
 
 
-@pytest.mark.parametrize("kind", reference.TEMPLATES)
+@pytest.mark.parametrize("kind", native_resources.TEMPLATES)
 def test_template_roles_switch_actual_processes_without_template_edits(tmp_path, kind):
     state, repo = project(tmp_path)
-    contract = reference.agent_contract(kind)
+    contract = native_resources.agent_contract(kind)
     before = json.dumps(contract, sort_keys=True)
     for role in contract["agents"]:
         first = binding()
         projects.bind(state, "demo", role, first, state.project("demo")["revision"])
-        run = tools.run_agent(state, "demo", role, "Inspect the same repository", template=kind)
+        run = agent_runs.run_agent(state, "demo", role, "Inspect the same repository", template=kind)
         assert run["status"] == "succeeded"
         result = json.loads(Path(run["result"]).read_text())
         assert set(result["artifacts"]) == set(contract["agents"][role]["artifacts"])
         second = {**first, "argv": [sys.executable, "-c", "import json,sys;r=json.load(sys.stdin);print(json.dumps({'summary':'second','artifacts':{k:'second '+k for k in r['result_schema']['properties']['artifacts']['required']},**({'decision':'approve'} if 'decision' in r['result_schema']['required'] else {})}))"]}
         projects.bind(state, "demo", role, second, state.project("demo")["revision"])
-        other = tools.run_agent(state, "demo", role, "Inspect the same repository", template=kind)
+        other = agent_runs.run_agent(state, "demo", role, "Inspect the same repository", template=kind)
         assert other["status"] == "succeeded"
         assert json.loads(Path(other["result"]).read_text())["summary"] == "second"
-    assert json.dumps(reference.agent_contract(kind), sort_keys=True) == before
+    assert json.dumps(native_resources.agent_contract(kind), sort_keys=True) == before
     assert not any(name in before.lower() for name in ("codex", "claude", "forgekernel", "/home/"))
 
 
@@ -57,9 +64,9 @@ def test_missing_capability_and_malformed_stage_result_are_visible(tmp_path):
         projects.bind(state, "demo", "planner", {**binding(), "capabilities": []}, 1)
     bad = {**binding(), "argv": [sys.executable, "-c", "print('{}')"]}
     projects.bind(state, "demo", "inspector", bad, 1)
-    run = tools.run_agent(state, "demo", "inspector", "Inspect", template="repository-governance")
+    run = agent_runs.run_agent(state, "demo", "inspector", "Inspect", template="repository-governance")
     assert run["status"] == "failed" and "structured" in run["error"]
-    assert tools.runs(State(state.root), "demo")[0]["id"] == run["id"]
+    assert agent_runs.runs(State(state.root), "demo")[0]["id"] == run["id"]
 
 
 @pytest.mark.parametrize("tool", ["codex", "claude-code"])
@@ -205,8 +212,8 @@ def test_real_mini_sdk_driver_and_action_cancellation(tmp_path, action):
     python = os.environ.get("ERGORA_MINI_TEST_PYTHON")
     if not python:
         pytest.skip("Explicit installed mini-swe-agent Python required; deterministic SDK fixture only")
-    from ergora import processes
-    driver = Path(agents.__file__).parent / "data/drivers/mini.py"
+    from ergora.runtime import processes
+    driver = DATA_ROOT / "drivers/mini.py"
     request = tmp_path / "request.json"
     request.write_text(json.dumps({"binding": {"model": "openai/gpt-4o-mini", "cost_limit": 3, "step_limit": 3},
         "prompt": "Exercise the real SDK without a remote model", "cwd": str(tmp_path),
@@ -319,7 +326,7 @@ def test_forge_config_drift_and_cuda_candidate_identity(tmp_path, monkeypatch):
 def native_session_case(tmp_path, monkeypatch):
     if sys.platform != 'linux':
         pytest.skip('Persistent native sessions require the Linux/WSL2 process owner')
-    from ergora import agent_runs
+    import ergora.agents.runs as agent_runs
     state, repo = project(tmp_path)
     programs = tmp_path / 'session-bin'
     programs.mkdir()
@@ -384,7 +391,7 @@ def test_native_development_session_restores_exact_uuid_across_application_proce
     assert (repo / 'turn-1.txt').read_text() == 'first change'
     assert runs.sessions(state, 'demo')['sessions'][0]['sandbox'] == 'workspace-write'
     request = {'home': str(state.root), 'session': first['id'], 'parent': first['id'], 'revision': revision}
-    code = ('import json,sys;from pathlib import Path;from ergora import agent_runs;from ergora.state import State;'
+    code = ('import json,sys;from pathlib import Path;import ergora.agents.runs as agent_runs;from ergora.storage.state import State;'
             'q=json.loads(sys.argv[1]);r=agent_runs.continue_session(State(Path(q["home"])),"demo",q["session"],q["parent"],'
             '"second change",expected_revision=q["revision"],intent_id="second",timeout=10);print(json.dumps(r))')
     fresh = subprocess.run([sys.executable, '-c', code, json.dumps(request)], capture_output=True, text=True, timeout=20)
@@ -556,17 +563,17 @@ def test_session_prebirth_rejection_is_distinct_from_consumed_attempt_failure(na
 
 
 def test_session_skill_context_is_frozen_internally_and_complete_result_is_readable(native_session_case):
-    from ergora import skills
+    import ergora.definitions.skills as skill_assets
     state, repo, config, runs = native_session_case
     skill = repo.parent / 'session-evidence'
     skill.mkdir()
     (skill / 'SKILL.md').write_text('---\nname: session-evidence\ndescription: frozen selected evidence\n---\nORIGINAL RESOURCE\n')
     (skill / 'attachment.txt').write_text('complete attachment bytes')
-    imported = skills.import_bundle(state, 'demo', skill)
+    imported = skill_assets.import_bundle(state, 'demo', skill)
     first = runs.run_agent(state, 'demo', 'implementer', 'first', 10, ['session-evidence'],
                           session_intent='resource', expected_revision=state.project('demo')['revision'], codex_config=config)
     assert first['status'] == 'succeeded', first
-    actual = skills.get(state, 'demo', imported['digest'])
+    actual = skill_assets.get(state, 'demo', imported['digest'])
     Path(actual['path'], 'SKILL.md').write_text('CURRENT SOURCE CHANGED')
     second = runs.continue_session(state, 'demo', first['id'], first['id'], 'second',
                                   expected_revision=state.project('demo')['revision'], intent_id='second', timeout=10)
@@ -584,7 +591,7 @@ def test_session_result_fsync_failure_keeps_stopped_execution_and_unknown_outcom
     state, repo, config, runs = native_session_case
     original = subprocess.Popen
     code = '''import os
-from ergora.agent_runs import session_main
+from ergora.agents.runs import session_main
 real = os.fsync
 def fail_result(descriptor):
     if os.readlink('/proc/self/fd/' + str(descriptor)).endswith('/result.txt'):
@@ -617,7 +624,7 @@ def test_session_turn_capacity_keeps_every_admitted_chain_readable_and_existing_
     import sqlite3
     import uuid
     from types import SimpleNamespace
-    from ergora import agent_runs as runs
+    import ergora.agents.runs as runs
     database = sqlite3.connect(':memory:')
     database.execute('CREATE TABLE agent_runs (id TEXT PRIMARY KEY, project TEXT, document TEXT)')
     @contextmanager
@@ -670,7 +677,7 @@ def test_published_final_requires_successful_sync_and_stable_readback_before_ter
     marker = repo.parent / 'final-sync-failure.json'
     worker = '''import json
 from pathlib import Path
-from ergora import agent_runs
+import ergora.agents.runs as agent_runs
 original = agent_runs._sync_directory_chain
 def fail_final(directory):
     if directory.name == 'final':
@@ -728,12 +735,13 @@ def test_supervised_cleanup_exception_retains_unknown_and_never_claims_the_owned
     code = r'''
 import json,os,signal,subprocess,sys
 from pathlib import Path
-from ergora import agent_runs,processes
-from ergora.state import State
+import ergora.agents.runs as agent_runs
+from ergora.runtime import processes
+from ergora.storage.state import State
 state=State(Path(sys.argv[1]));repo=Path(sys.argv[2]);config=Path(sys.argv[3])
 processes.prepare_supervised() # probe-only outer owner for exact final cleanup
 original=subprocess.Popen
-worker="from ergora import agent_runs,processes\ndef fail():\n raise OSError('fixture original reaper failed before confirmation')\nprocesses._reap_children=fail\nagent_runs.session_main()"
+worker="import ergora.agents.runs as agent_runs; from ergora.runtime import processes\ndef fail():\n raise OSError('fixture original reaper failed before confirmation')\nprocesses._reap_children=fail\nagent_runs.session_main()"
 def inject(argv,*args,**kwargs):
     if len(argv)>2 and argv[1]=='-c' and 'session_main' in argv[2]:
         argv=[*argv[:2],worker,*argv[3:]]
@@ -794,12 +802,12 @@ def test_complete_encoded_request_is_bounded_before_birth_or_continuation_reserv
 
 @pytest.mark.parametrize('resource_characters', [1_450_000, 1_700_000])
 def test_frozen_context_encoded_and_aggregate_capacity_are_checked_before_publication(native_session_case, monkeypatch, resource_characters):
-    from ergora import skills
+    import ergora.definitions.skills as skill_assets
     state, repo, config, runs = native_session_case
     skill = repo.parent / 'encoded-context'
     skill.mkdir()
     (skill / 'SKILL.md').write_text('---\nname: encoded-context\ndescription: bounded complete context\n---\n' + chr(1) * resource_characters)
-    skills.import_bundle(state, 'demo', skill)
+    skill_assets.import_bundle(state, 'demo', skill)
     published = []
     publisher = runs.publish_directory
     def capture(staged, destination):

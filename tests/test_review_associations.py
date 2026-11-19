@@ -12,9 +12,19 @@ from threading import Barrier
 import pytest
 
 from test_candidate_observations import candidate, remote, source, writer
-from ergora import agent_runs, backups, cli, issue_backends, issue_writebacks, issues, processes, projects, review_requests, review_sources, tasks
-from ergora import workflow_definitions as workflows
-from ergora.state import State
+import ergora.agents.runs as agent_runs
+import ergora.operations.backups as backups
+import ergora.interfaces.cli as cli
+import ergora.issues.backends as issue_backends
+import ergora.issues.writebacks as issue_writebacks
+import ergora.issues.application as issues
+import ergora.configuration.projects as projects
+import ergora.development.review.requests as review_requests
+import ergora.development.review.sources as review_sources
+import ergora.development.application as tasks
+from ergora.runtime import processes
+import ergora.definitions.workflows as workflows
+from ergora.storage.state import State
 from test_review_packets import commit, git, review_manifest, source as git_source
 
 
@@ -284,7 +294,7 @@ def test_full_text_has_one_explicit_canonical_budget_and_null_is_preserved(revie
 def test_cli_http_save_and_offline_show_share_the_same_record(review, capsys, monkeypatch):
     pytest.importorskip('fastapi')
     from fastapi.testclient import TestClient
-    from ergora.web import create_app
+    from ergora.interfaces.web import create_app
 
     body = {'revision': review.revision, 'task_id': 'task', 'run_id': 'original-run',
             'candidate_sha': review.exported['candidate_sha'], 'base_branch': review.remote_base_branch,

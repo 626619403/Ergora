@@ -12,7 +12,7 @@ from temporalio.client import WorkflowExecutionStatus
 from temporalio.service import RPCError, RPCStatusCode
 
 from dev_platform import connection
-from ergora.reference_task_export import _Export, main
+from ergora.development.runtime.export import _Export, main
 
 payload = json.load(sys.stdin)
 sys.stdin = io.StringIO(json.dumps(payload))

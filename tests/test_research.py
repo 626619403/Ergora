@@ -12,8 +12,9 @@ import uuid
 
 import pytest
 
-from ergora import projects, research
-from ergora.state import State
+import ergora.configuration.projects as projects
+import ergora.improvement.research as research
+from ergora.storage.state import State
 
 
 @pytest.fixture
@@ -221,7 +222,7 @@ def test_cancellation_interrupts_response_headers(source_project):
 
 def test_controller_crash_before_body_retains_uncertain_time_budget(source_project):
     state, base, _, started, _ = source_project
-    code = 'from ergora import research; from ergora.state import State; import sys; research.run(State(sys.argv[1]),"demo",[sys.argv[2]],timeout=1,allow_private=True,run_id="header-crash")'
+    code = 'import ergora.improvement.research as research; from ergora.storage.state import State; import sys; research.run(State(sys.argv[1]),"demo",[sys.argv[2]],timeout=1,allow_private=True,run_id="header-crash")'
     child = subprocess.Popen([sys.executable, "-c", code, str(state.root), base + "/slow-headers"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     try:
         assert started.wait(timeout=3)
@@ -235,7 +236,7 @@ def test_controller_crash_before_body_retains_uncertain_time_budget(source_proje
 
 def test_controller_crash_does_not_spend_unconfirmed_transfer_budget_twice(source_project):
     state, base, source, started, release = source_project
-    code = 'from ergora import research; from ergora.state import State; import sys; research.run(State(sys.argv[1]),"demo",[sys.argv[2]],max_bytes=100,timeout=10,allow_private=True,run_id="body-crash")'
+    code = 'import ergora.improvement.research as research; from ergora.storage.state import State; import sys; research.run(State(sys.argv[1]),"demo",[sys.argv[2]],max_bytes=100,timeout=10,allow_private=True,run_id="body-crash")'
     child = subprocess.Popen([sys.executable, "-c", code, str(state.root), base + "/slow"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     try:
         assert started.wait(timeout=3)
@@ -264,8 +265,8 @@ def test_controller_crash_at_atomic_snapshot_rename_can_resume(source_project):
     state, base, _, _, _ = source_project
     code = '''import os,sys
 from pathlib import Path
-from ergora import research
-from ergora.state import State
+import ergora.improvement.research as research
+from ergora.storage.state import State
 original=Path.replace
 def crash_after_rename(path,target):
  result=original(path,target)
@@ -287,7 +288,7 @@ def test_real_temporal_schedule_trigger_and_worker(source_project):
     pytest.importorskip("temporalio")
     from temporalio.client import Client
     from temporalio.worker import Worker
-    from ergora import scheduling
+    import ergora.improvement.scheduling as scheduling
 
     state, base, _, _, _ = source_project
     address = os.environ["ERGORA_TEMPORAL_TEST_ADDRESS"]

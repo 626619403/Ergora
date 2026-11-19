@@ -5,8 +5,8 @@ from copy import deepcopy
 import json
 from pathlib import Path
 
-from ergora import workflow_definitions as workflows
-from ergora.state import State
+import ergora.definitions.workflows as workflows
+from ergora.storage.state import State
 
 
 def publish(state: State, example: Path, *, version: str) -> dict:

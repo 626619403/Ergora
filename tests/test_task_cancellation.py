@@ -8,8 +8,10 @@ import time
 
 import pytest
 
-from ergora import projects, reference, tasks
-from ergora.state import State
+import subprocess
+import ergora.configuration.projects as projects
+import ergora.development.application as tasks
+from ergora.storage.state import State
 from test_registrations import installation, registration
 from test_task_creation import creation_project, _files
 from test_task_submission import submitted_creation, native_client, _start, _root, _calls
@@ -26,13 +28,13 @@ def cancellation_task(submitted_creation,native_client):
 
 @pytest.fixture
 def cancellation_client(monkeypatch):
-    original=reference.subprocess.run
+    original=subprocess.run
     fixture=Path(__file__).parent/'fixtures/task_cancellation_client.py'
     def invoke(argv,**kwargs):
-        if 'from ergora.reference_task_cancellation import main;main()' in argv:
+        if 'from ergora.development.runtime.cancellation import main;main()' in argv:
             argv=[*argv[:-1],fixture.read_text(encoding='utf-8')]
         return original(argv,**kwargs)
-    monkeypatch.setattr(reference.subprocess,'run',invoke)
+    monkeypatch.setattr(subprocess,'run',invoke)
 
 
 def cancel(creation,request='stop-one',revision=1,**kwargs):
@@ -210,8 +212,8 @@ def test_remote_cancel_wait_does_not_block_other_project_writes(cancellation_tas
 def test_cli_and_api_share_confirmed_commands_and_unknown_history_recovery(cancellation_task,cancellation_client,monkeypatch):
     pytest.importorskip('fastapi')
     from fastapi.testclient import TestClient
-    from ergora import cli
-    from ergora.web import create_app
+    import ergora.interfaces.cli as cli
+    from ergora.interfaces.web import create_app
     state=cancellation_task[0]
     client=TestClient(create_app(state.root),base_url='http://127.0.0.1')
     uri='/api/projects/demo/tasks/new-task/cancellations/stop-one'

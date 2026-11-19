@@ -6,8 +6,10 @@ import sys
 
 import pytest
 
-from ergora import agent_definitions, reference_budget, workflow_definitions as workflows
-from ergora.review_dags import ReviewDAG, preparation_members, preparation_stages
+import ergora.definitions.agents as agent_definitions
+import ergora.definitions.workflows as workflows
+from ergora.development import budget as reference_budget
+from ergora.development.dags import ReviewDAG, preparation_members, preparation_stages
 from test_workflow_definitions import EXAMPLES, base, child, definition, grant, imported, leaf, ref
 
 
@@ -98,7 +100,7 @@ def test_shared_join_dag_is_bounded_by_unique_port_addresses(base):
 
     def count(frame, event, argument):
         nonlocal calls
-        if event == 'call' and frame.f_code.co_filename.endswith('/review_dags.py'):
+        if event == 'call' and frame.f_code.co_filename.endswith('/development/dags.py'):
             calls += 1
 
     previous = sys.getprofile()

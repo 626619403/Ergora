@@ -9,8 +9,11 @@ import pytest
 pytest.importorskip('temporalio')
 pytestmark = pytest.mark.skipif(sys.platform != 'linux', reason='Formal task evidence uses Linux/WSL2')
 
-from ergora import reference_task_approval, reference_task_evidence, reference_task_reconciliation, task_envelopes
-from ergora.reference_inputs import execution_input
+import ergora.development.runtime.approval as reference_task_approval
+import ergora.development.runtime.evidence as reference_task_evidence
+import ergora.development.runtime.reconciliation as reference_task_reconciliation
+from ergora.development import envelopes as task_envelopes
+from ergora.development.inputs import execution_input
 from test_composition_runtime import original_input, composed_creation, creation_project, installation, registration
 from test_task_plan import pending_plan, snapshot
 from test_task_job_evidence import original_job

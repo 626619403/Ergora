@@ -11,8 +11,14 @@ import sys
 
 import pytest
 
-from ergora import agent_definitions, contracts, projects, reference, task_envelopes, tasks, workflow_definitions as workflows
-from ergora.asset_trees import inventory_tree
+import ergora.native.resources as native_resources
+import ergora.definitions.agents as agent_definitions
+import ergora.configuration.projects as projects
+import ergora.development.application as tasks
+import ergora.definitions.workflows as workflows
+from ergora.configuration import validation as contracts
+from ergora.development import envelopes as task_envelopes
+from ergora.storage.assets import inventory_tree
 from test_registrations import installation, registration
 from test_task_creation import creation_project, _inject, _files
 from test_task_runtime import runtime_client
@@ -54,7 +60,7 @@ def test_preview_and_creation_freeze_a_new_envelope_with_the_unchanged_legacy_pr
     assert composition['diversity']['same_backend_members'] == []
     graph = json.loads(base64.b64decode(composition['manifest']['files']['composition.json']['content_base64']))
     assert 'Required parent instructions.' in graph['instances'][-1]['prompt']
-    native = Path(reference.ROOT) / 'platform/upstream/platform'
+    native = Path(native_resources.ROOT) / 'platform/upstream/platform'
     environment = dict(os.environ, PYTHONPATH=str(native))
     rejected = subprocess.run([sys.executable, '-S', '-c',
         'import json,sys;from dev_platform.contracts import validate_spec;validate_spec(json.load(sys.stdin))'],
@@ -78,7 +84,7 @@ def test_preview_and_creation_freeze_a_new_envelope_with_the_unchanged_legacy_pr
 
 @pytest.mark.parametrize('output', ['task-forward', 'review-result', 'all-join'])
 def test_single_v3_reviewer_requires_explicit_all_join_at_submission(composed_creation, tmp_path, output):
-    from ergora.reference_inputs import execution_input
+    from ergora.development.inputs import execution_input
 
     state, registration, task = composed_creation
     agent = agent_definitions.get(state, 'architecture-reviewer', '1.0.0')

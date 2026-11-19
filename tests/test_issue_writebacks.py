@@ -10,10 +10,17 @@ from urllib.parse import quote
 
 import pytest
 
-from ergora import backups, cli, issue_backends, issue_writebacks, issues, projects, reference, tasks
-from ergora.reference_inputs import execution_input
-from ergora.state import State
-from ergora.task_envelopes import identity
+import subprocess
+import ergora.operations.backups as backups
+import ergora.interfaces.cli as cli
+import ergora.issues.backends as issue_backends
+import ergora.issues.writebacks as issue_writebacks
+import ergora.issues.application as issues
+import ergora.configuration.projects as projects
+import ergora.development.application as tasks
+from ergora.development.inputs import execution_input
+from ergora.storage.state import State
+from ergora.development.envelopes import identity
 from test_issue_submission import source_submission
 from test_issue_tasks import issue_creation
 from test_project_issues import bind, native, source
@@ -348,7 +355,7 @@ def test_created_comment_with_unconfirmed_response_never_becomes_ack(candidate, 
 def test_cli_and_protected_http_share_the_same_saved_intent(candidate, capsys):
     pytest.importorskip('fastapi')
     from fastapi.testclient import TestClient
-    from ergora.web import create_app
+    from ergora.interfaces.web import create_app
 
     command = ['--home', str(candidate.state.root), 'issue', 'writeback-prepare', 'demo', 'task',
                '--revision', str(candidate.revision), '--run-id', 'original-run', '--candidate-sha', '6' * 40]
@@ -390,15 +397,15 @@ def test_published_v7_export_is_consumed_by_a_fresh_cli(source_submission, nativ
         'request_sha256': spec['request_sha256'], 'profile_sha256': spec['profile_sha256'],
         'base_sha': base, 'candidate_sha': candidate_sha}
     (root / 'sdk-fixture/outcome.json').write_text(json.dumps(outcome))
-    original = reference.subprocess.run
+    original = subprocess.run
     fixture = Path(__file__).parent / 'fixtures/task_export_client.py'
 
     def invoke(argv, **kwargs):
-        if 'from ergora.reference_task_export import main;main()' in argv:
+        if 'from ergora.development.runtime.export import main;main()' in argv:
             argv = [*argv[:-1], fixture.read_text(encoding='utf-8')]
         return original(argv, **kwargs)
 
-    monkeypatch.setattr(reference.subprocess, 'run', invoke)
+    monkeypatch.setattr(subprocess, 'run', invoke)
     exported = tasks.export(state, 'demo', task_id, revision, run_id=started['run_id'],
                             candidate_sha=candidate_sha, branch='agent/__source-candidate__', confirm=True)
     assert exported['status'] == 'exported' and exported['lease_released'] is True
@@ -466,7 +473,7 @@ def test_published_v7_export_is_consumed_by_a_fresh_cli(source_submission, nativ
     monkeypatch.delenv('ERGORA_FIXTURE_ISSUE_TOKEN')
     assert run('review-link-show', 'demo', record['sha256']) == record
     from fastapi.testclient import TestClient
-    from ergora.web import create_app
+    from ergora.interfaces.web import create_app
     with TestClient(create_app(state.root), base_url='http://127.0.0.1') as client:
         response = client.get('/api/projects/demo/candidate-review-links/' + record['sha256'])
         assert response.status_code == 200 and response.json() == record

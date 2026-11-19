@@ -14,8 +14,17 @@ import sys
 
 import pytest
 
-from ergora import projects, reference, tasks, training, training_search
-from ergora.state import State
+import ergora.native.resources as native_resources
+import ergora.training.native as training_native
+import ergora
+import ergora.runtime.processes as processes
+import importlib
+import subprocess
+import ergora.training.application as training
+import ergora.training.search as training_search
+import ergora.configuration.projects as projects
+import ergora.development.application as tasks
+from ergora.storage.state import State
 from test_task_creation import creation_project
 from test_task_export import export as export_candidate, export_client, export_task as _original_export_task
 from test_task_submission import native_client
@@ -25,6 +34,7 @@ from test_training_preparation import stop_after
 from test_training_runner import configuration_source
 from test_training_submission import (assert_budget_process_stopped, native_budget_create, prepared, service,
                                       stop_controller_test_owner)
+from ergora._paths import PACKAGE_ROOT
 
 
 @pytest.fixture
@@ -41,7 +51,7 @@ def export_task(creation_project, native_client, request, installation, tmp_path
         'import json,temporalio,ergora;print(json.dumps({"temporalio":temporalio.__file__,"sdk_version":temporalio.__version__,"ergora":ergora.__file__}))'],
         capture_output=True, text=True, check=True, timeout=10)
     imports = json.loads(observed.stdout)
-    assert Path(imports['ergora']).resolve() == Path(reference.__file__).with_name('__init__.py').resolve()
+    assert Path(imports['ergora']).resolve() == Path(ergora.__file__).with_name('__init__.py').resolve()
     (tmp_path / 'native-sdk-reuse.json').write_text(json.dumps({
         'pth': str(path), 'content': path.read_text(), 'imports': imports}, indent=2) + '\n')
     return _original_export_task.__wrapped__(creation_project, native_client, request)
@@ -62,7 +72,7 @@ def _files(*roots):
 
 @pytest.fixture
 def search_request():
-    original = json.loads((reference.ROOT / 'platform/templates/training-optimization/experiment.json').read_bytes())
+    original = json.loads((native_resources.ROOT / 'platform/templates/training-optimization/experiment.json').read_bytes())
     template = {key: ('c' * 64 if value == 'REPLACE_SHA256' else value) for key, value in original.items()
                 if key not in ('experiment_id', 'candidate_config_sha256', 'performance_policy')}
     # Preserve noncanonical baseline bytes, including its BOM, separately from candidate serialization.
@@ -126,12 +136,12 @@ def search_input(request, search_request, configuration_source):
 @pytest.fixture
 def interrupt_publication(monkeypatch):
     """Kill the real native child after a chosen original file, using its actual search ID."""
-    original = reference.processes.run
+    original = processes.run
     fixture = Path(__file__).parent / 'fixtures/training_preparation_process.py'
 
     def select(ident=None, boundary=None, observe=None):
         def invoke(argv, *args, **kwargs):
-            if argv[-1] == 'from ergora.reference_training_preparation import main;main()':
+            if argv[-1] == 'from ergora.training.runtime.preparation import main;main()':
                 payload = json.loads(kwargs['stdin'])
                 if payload['operation'] == 'prepare' and observe is not None:
                     observe(payload)
@@ -140,7 +150,7 @@ def interrupt_publication(monkeypatch):
                     kwargs['env'] = {**kwargs['env'], 'ERGORA_TEST_PREPARATION_STOP_AFTER': str(boundary),
                                      'ERGORA_TEST_PREPARATION_ID': ident}
             return original(argv, *args, **kwargs)
-        monkeypatch.setattr(reference.processes, 'run', invoke)
+        monkeypatch.setattr(processes, 'run', invoke)
     return select
 
 
@@ -193,7 +203,7 @@ def test_trailing_newlines_are_rejected_before_reading_a_project_or_native_state
 
 
 def test_cli_passes_exact_confirmation_and_directory_to_the_search_owner(tmp_path, search_request, monkeypatch):
-    from ergora.cli import main
+    from ergora.interfaces.cli import main
 
     source = tmp_path / 'request.json'
     source.write_text(json.dumps(search_request), encoding='utf-8')
@@ -383,11 +393,11 @@ def test_two_batch_configurations_prepare_real_native_bindings_and_read_offline(
     assert all(path.read_bytes() == raw for path, raw in originals.items())
     assert state.project('demo') == project_before
     saved = _files(runtime, directory)
-    original_spec = reference.importlib.util.find_spec
-    monkeypatch.setattr(reference.importlib.util, 'find_spec', lambda name: None if name == 'temporalio' else original_spec(name))
+    original_spec = importlib.util.find_spec
+    monkeypatch.setattr(importlib.util, 'find_spec', lambda name: None if name == 'temporalio' else original_spec(name))
     def no_native(*args, **kwargs):
         pytest.fail('Offline packet reading contacted native preparation')
-    monkeypatch.setattr(reference.processes, 'run', no_native)
+    monkeypatch.setattr(processes, 'run', no_native)
     # Offline packet verification uses frozen declarations even when the live
     # source has disappeared and application state cannot be instantiated.
     source = configuration_source['source']
@@ -397,7 +407,7 @@ def test_two_batch_configurations_prepare_real_native_bindings_and_read_offline(
     assert observed['plan'] == plan and observed['sha256'] == _sha((directory / 'search.json').read_bytes())
     assert observed['coverage']['configuration_execution'] == 'requires-original-managed-execution'
     assert observed['coverage']['runtime_status'] == 'not_queried'
-    from ergora.cli import main
+    from ergora.interfaces.cli import main
     output = io.StringIO()
     with redirect_stdout(output):
         code = main(['--home', str(state.root), 'training', 'search-read', str(directory), '--sha256', result['sha256']])
@@ -409,8 +419,8 @@ class NoSDK(importlib.abc.MetaPathFinder):
         if fullname == 'temporalio' or fullname.startswith('temporalio.'):
             raise ModuleNotFoundError('SDK unavailable in the offline reader')
 sys.meta_path.insert(0, NoSDK())
-from ergora.training_search import read
-from ergora.state import State
+from ergora.training.search import read
+from ergora.storage.state import State
 State.__init__ = lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError('Offline reader constructed State'))
 print(json.dumps(read(sys.argv[1],sha256=sys.argv[2]),ensure_ascii=False))
 '''
@@ -528,23 +538,23 @@ def test_actual_lost_native_reply_and_prepared_repeat_keep_one_original_intent(s
     state, _, runtime, _, request = search_input
     preview = training_search.preview(state, 'demo', request)
     directory = tmp_path / 'search'
-    original = reference.processes.run
+    original = processes.run
     lost = []
     def lose_success(argv, *args, **kwargs):
         result = original(argv, *args, **kwargs)
-        if argv[-1] == 'from ergora.reference_training_preparation import main;main()':
+        if argv[-1] == 'from ergora.training.runtime.preparation import main;main()':
             payload = json.loads(kwargs['stdin'])
             if payload['operation'] == 'prepare' and not lost:
                 assert result['status'] == 'succeeded'
                 lost.append(payload['experiment_id'])
                 raise ValueError('Lost actual native preparation success reply')
         return result
-    monkeypatch.setattr(reference.processes, 'run', lose_success)
+    monkeypatch.setattr(processes, 'run', lose_success)
     with pytest.raises(ValueError, match='Lost actual native'):
         _prepare(state, request, preview, directory)
     assert lost == [preview['plan']['choices'][0]['experiment_id']]
     assert training.preparation(state, 'demo', lost[0])['status'] == 'prepared'
-    monkeypatch.setattr(reference.processes, 'run', original)
+    monkeypatch.setattr(processes, 'run', original)
     first_intent = runtime / f'ergora/training-preparations/{lost[0]}.intent.json'
     original_intent = first_intent.read_bytes()
     recovered = _prepare(State(state.root), request, preview, directory)
@@ -749,7 +759,7 @@ def search_execution(search_input, service, configuration_source, tmp_path, requ
 
 
 def _execute_search(item, *, limit=None, lose_reply=False, wait_completion=False):
-    from ergora import training_cycles
+    import ergora.training.cycles as training_cycles
 
     state, definition, runtime = item['state'], item['definition'], item['runtime']
     request = {'schema_version': 1, 'budget': item['request']['budget'],
@@ -781,14 +791,14 @@ def _execute_search(item, *, limit=None, lose_reply=False, wait_completion=False
                 return training.execute(state, 'demo', ident, state.project('demo')['revision'],
                     submitted['intent_sha256'], submitted['run_id'], native_sha, confirm=True)
             if lose_reply and results:
-                invoke = reference.training_execution
+                invoke = training_native.training_execution
                 def lose_actual_reply(project, home, operation, payload, **kwargs):
                     value = invoke(project, home, operation, payload, **kwargs)
                     if operation == 'request':
                         raise ValueError('Lost actual prepared-JSON execution request reply')
                     return value
                 with pytest.MonkeyPatch.context() as patch:
-                    patch.setattr(reference, 'training_execution', lose_actual_reply)
+                    patch.setattr(training_native, 'training_execution', lose_actual_reply)
                     with pytest.raises(ValueError, match='Lost actual prepared-JSON'):
                         execute()
             else:
@@ -866,7 +876,7 @@ def _assert_screen_is_not_full(item, result):
     installation = Path(item['definition']['execution']['installation'])
     environment = {**os.environ, 'AGENTFLOW_CONFIG_DIR': item['definition']['execution']['config_directory'],
         'AGENTFLOW_STATE_DIR': item['definition']['execution']['state_directory'],
-        'PYTHONPATH': os.pathsep.join(map(str, (Path(reference.__file__).parent.parent,
+        'PYTHONPATH': os.pathsep.join(map(str, (Path(ergora.__file__).parent.parent,
             installation / 'local', installation / 'upstream/platform', installation / 'upstream/temporal', installation / 'upstream')))}
     program = '''import asyncio,hashlib,json,sys
 from copy import deepcopy
@@ -902,7 +912,7 @@ async def run():
                     raise AssertionError('screen reached a full consumer')
         path.write_bytes(original)
         if json.loads(original)['state']=='SCREEN_COMPLETED':
-            from ergora.reference_training_evidence import _screen_data
+            from ergora.training.runtime.evidence import _screen_data
             output=path.parent/'run-output'
             report=json.loads((output/'screen-result.json').read_bytes())
             original_data=json.loads((output/'screen-source-report.json').read_bytes())
@@ -948,7 +958,7 @@ print(json.dumps(asyncio.run(run())))
 @pytest.mark.parametrize('search_execution', [{'baseline_reference_support': True, 'screen_support': True}], indirect=True)
 def test_typed_screen_runs_only_two_candidate_windows_against_the_original_cpu_reference(search_execution):
     item = _prepare_cpu_screens(search_execution, [{'global_batch': 24}, {'global_batch': 48}])
-    from ergora import training_cycles
+    import ergora.training.cycles as training_cycles
 
     selection = {'schema_version': 1, 'budget': item['request']['budget'], 'candidates': [
         {'experiment_id': prepared['experiment_id'], 'manifest_sha256': prepared['manifest_sha256'],
@@ -1256,28 +1266,29 @@ def test_baseline_reference_is_consumed_by_two_complete_independent_cpu_runs(sea
     extension_marker = item['tmp_path'] / 'historical-current-coverage-extension.json'
     extension = f'''import json
 from pathlib import Path
-from ergora import training_execution_protocol as protocol
-name='training_search.py'
-assert name not in protocol.GATE_SOURCES and Path(protocol.__file__).with_name(name).is_file()
+import ergora.training.execution_protocol as protocol
+from ergora._paths import PACKAGE_ROOT
+name='training/search.py'
+assert name not in protocol.GATE_SOURCES and (PACKAGE_ROOT / name).is_file()
 before=list(protocol.GATE_SOURCES)
 protocol.GATE_SOURCES=(*protocol.GATE_SOURCES,name)
 Path({str(extension_marker)!r}).write_text(json.dumps({{'before':before,'after':list(protocol.GATE_SOURCES)}}))
 '''
-    original_reader = reference.subprocess.Popen
+    original_reader = subprocess.Popen
     extended_readers = []
     def extend_current_coverage(argv, *args, **kwargs):
-        if argv[-1] == 'from ergora.reference_training_evidence import main;main()':
+        if argv[-1] == 'from ergora.training.runtime.evidence import main;main()':
             extended_readers.append(argv)
             argv = [*argv[:-1], extension + argv[-1]]
         return original_reader(argv, *args, **kwargs)
     with pytest.MonkeyPatch.context() as patch:
-        patch.setattr(reference.subprocess, 'Popen', extend_current_coverage)
+        patch.setattr(subprocess, 'Popen', extend_current_coverage)
         assert training.baseline_reference(item['state'], 'demo', source['experiment_id'],
                                            evidence_sha256=source_gate['evidence_sha256']) == saved
     assert len(extended_readers) == 1, 'The coverage extension must reach the actual training reader child'
     assert extension_marker.is_file(), 'The training reader child must record its actual coverage extension'
     extended = json.loads(extension_marker.read_bytes())
-    assert extended['after'] == [*extended['before'], 'training_search.py']
+    assert extended['after'] == [*extended['before'], 'training/search.py']
     source_output = source['job'] / 'run-output'
     source_comparison = json.loads((source_output / 'comparison-input.json').read_bytes())
     seen_runs = {pair[arm]['run_id'] for pair in source_comparison['pairs'] for arm in ('baseline', 'candidate')}
@@ -1532,7 +1543,7 @@ def test_reference_receipt_raw_durability_and_cached_windows_fail_in_managed_con
             assert mutation['before_sha256'] != mutation['after_sha256']
         if fault == 'reference-current-coverage-extension':
             injected = json.loads((item['markers'] / (fault + '.jsonl')).read_text().splitlines()[-1])
-            assert injected['after'] == [*injected['before'], 'training_search.py']
+            assert injected['after'] == [*injected['before'], 'training/search.py']
             assert injected['managed'] == {name + '_sha256': observed['record_sha256'][name]
                                           for name in ('request', 'launch', 'attempt', 'ack')}
             assert 'Current execution source coverage is incomplete or unsupported' in (job / 'run-output/execution.log').read_text()

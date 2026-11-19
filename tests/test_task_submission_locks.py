@@ -8,8 +8,10 @@ import time
 
 import pytest
 
-from ergora import projects, reference, tasks
-from ergora.state import file_lock
+import ergora.development.native as development_native
+import ergora.configuration.projects as projects
+import ergora.development.application as tasks
+from ergora.storage.state import file_lock
 from test_registrations import installation, registration
 from test_task_creation import creation_project
 from test_task_submission import submitted_creation, native_client, _start, _root, _calls, _status, _resume
@@ -32,15 +34,15 @@ def test_connection_environment_is_not_loaded_until_after_the_intent_is_saved(su
 
 
 def test_parent_interruption_after_prepare_keeps_a_resumable_intent_without_admission(submitted_creation,native_client,monkeypatch):
-    original=reference.task_submission
+    original=development_native.task_submission
     def interrupted(project,home,operation,payload,**kwargs):
         if operation=='dispatch':raise ValueError('Fixture parent interrupted before dispatch')
         return original(project,home,operation,payload,**kwargs)
-    monkeypatch.setattr(reference,'task_submission',interrupted)
+    monkeypatch.setattr(development_native, 'task_submission',interrupted)
     with pytest.raises(ValueError,match='parent interrupted'):_start(submitted_creation)
     prepared=_status(submitted_creation)
     assert prepared['status']=='prepared' and _calls(submitted_creation)==[]
-    monkeypatch.setattr(reference,'task_submission',original)
+    monkeypatch.setattr(development_native, 'task_submission',original)
     assert _start(submitted_creation)==prepared
     result=_resume(submitted_creation)
     assert result['status']=='submitted' and result['intent_sha256']==prepared['intent_sha256']
@@ -49,14 +51,14 @@ def test_parent_interruption_after_prepare_keeps_a_resumable_intent_without_admi
 
 def test_revision_changes_between_prepare_and_dispatch_keep_the_authorized_snapshot(submitted_creation,native_client,monkeypatch):
     state=submitted_creation[0]
-    original=reference.task_submission
+    original=development_native.task_submission
     snapshots=[]
     def change_revision(project,home,operation,payload,**kwargs):
         if operation=='dispatch':
             snapshots.append(project['revision'])
             assert projects.bind(state,'demo','reviewer',{'tool':'codex','model':'later-model'},1)['revision']==2
         return original(project,home,operation,payload,**kwargs)
-    monkeypatch.setattr(reference,'task_submission',change_revision)
+    monkeypatch.setattr(development_native, 'task_submission',change_revision)
     before=(_root(submitted_creation)/'tasks/new-task/agent-bindings.json').read_bytes()
     result=_start(submitted_creation)
     assert snapshots==[1] and result['status']=='submitted' and result['submitted_revision']==1

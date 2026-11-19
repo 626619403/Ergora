@@ -14,10 +14,10 @@ if mode in ('native-context', 'native-context-isolated'):
         class WithoutApplication:
             def find_spec(self, fullname, path=None, target=None):
                 if fullname.split('.')[0] in ('yaml', 'jsonschema', 'temporalio') or fullname in (
-                        'ergora.state', 'ergora.training_rounds', 'ergora.registrations'):
+                        'ergora.storage.state', 'ergora.training.rounds', 'ergora.configuration.registrations'):
                     raise AssertionError('Native callback imported application or SDK: ' + fullname)
         sys.meta_path.insert(0, WithoutApplication())
-    from ergora.reference_training_execution import native_main
+    from ergora.training.runtime.execution import native_main
     from agent_platform import core
     try:
         native_main(str(core.ROOT))

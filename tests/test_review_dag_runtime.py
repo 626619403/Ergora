@@ -13,7 +13,11 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from ergora import agent_definitions, reference, task_envelopes, tasks, workflow_definitions as workflows
+import ergora.native.resources as native_resources
+import ergora.definitions.agents as agent_definitions
+import ergora.development.application as tasks
+import ergora.definitions.workflows as workflows
+from ergora.development import envelopes as task_envelopes
 from test_composition_tasks import composed_creation
 from test_task_creation import creation_project
 from test_registrations import installation, registration
@@ -48,14 +52,14 @@ def dag_creation(composed_creation, tmp_path, request):
 @pytest.fixture
 def dag_input(dag_creation, monkeypatch):
     pytest.importorskip('temporalio')
-    monkeypatch.syspath_prepend(str(reference.ROOT / 'platform/upstream/platform'))
+    monkeypatch.syspath_prepend(str(native_resources.ROOT / 'platform/upstream/platform'))
     state, _, definition = dag_creation
     return tasks.preview(state, 'demo', definition, 1)['files']['task.spec.json']
 
 
 def test_dag_protocol_is_explicit_frozen_and_routed_by_its_original_input(dag_input, dag_creation):
-    from ergora.reference_inputs import execution_input
-    from ergora.reference_task_runtime import VerifiedSpecClient
+    from ergora.development.inputs import execution_input
+    from ergora.development.runtime.status import VerifiedSpecClient
     from temporalio.workflow import _Definition
 
     state, registered, definition = dag_creation
@@ -120,7 +124,7 @@ def test_unknown_dag_submission_requires_its_original_memo_without_restarting(da
 def test_old_workflow_refuses_dag_before_any_activity(dag_input, worker_version):
     from temporalio.exceptions import ApplicationError
 
-    from ergora.reference_workflows import CompositionDevelopmentWorkflow, ReviewRequirementsWorkflow
+    from ergora.development.runtime.workflows import CompositionDevelopmentWorkflow, ReviewRequirementsWorkflow
     run = (CompositionDevelopmentWorkflow if worker_version == 2 else ReviewRequirementsWorkflow)()
     run.call = AsyncMock(side_effect=AssertionError('No activity before exact version admission'))
     with pytest.raises(ApplicationError, match=f'requires a v{worker_version} formal admission'):
@@ -145,7 +149,7 @@ def test_dag_persisted_selection_cannot_be_downgraded_or_reinterpreted(dag_input
 @pytest.mark.parametrize('case', ['progress', 'reused-session', 'cancel-on-result'])
 def test_serial_predecessors_and_cancelled_results_cannot_launch_successors(dag_input, monkeypatch, case):
     from dev_platform.workflow import StopWork
-    from ergora.reference_inputs import execution_input
+    from ergora.development.inputs import execution_input
     from temporalio import workflow
 
     monkeypatch.setattr(workflow, 'now', lambda: datetime.now(timezone.utc))
@@ -203,7 +207,7 @@ def test_serial_predecessors_and_cancelled_results_cannot_launch_successors(dag_
 
 @pytest.mark.parametrize('dag_creation', ['unrelated'], indirect=True)
 def test_finished_predecessor_can_release_a_successor_while_an_unrelated_branch_is_running(dag_input, monkeypatch):
-    from ergora.reference_inputs import execution_input
+    from ergora.development.inputs import execution_input
     from temporalio import workflow
 
     monkeypatch.setattr(workflow, 'now', lambda: datetime.now(timezone.utc))

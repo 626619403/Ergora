@@ -2,7 +2,7 @@
 
 import pytest
 
-from ergora import tasks
+import ergora.development.application as tasks
 
 
 _ARGUMENTS = {

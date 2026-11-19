@@ -7,8 +7,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from ergora import reference, reference_task_events
-from ergora.reference_task_creation import _Creation
+import ergora.native.resources as native_resources
+import ergora.development.runtime.events as reference_task_events
+from ergora.development.runtime.creation import _Creation
 
 
 @pytest.fixture
@@ -20,7 +21,7 @@ def event_history(monkeypatch):
     from temporalio.api.workflowservice.v1 import GetWorkflowExecutionHistoryResponse
     from temporalio.client import FetchWorkflowHistoryEventsInput, WorkflowExecutionStatus, WorkflowHistoryEventAsyncIterator
 
-    monkeypatch.syspath_prepend(str(reference.ROOT / 'platform/upstream/platform'))
+    monkeypatch.syspath_prepend(str(native_resources.ROOT / 'platform/upstream/platform'))
     from dev_platform.contracts import canonical_sha
 
     data = SimpleNamespace(events=[], pages=[], looked_up=0, failure=None, next_token=None,

@@ -8,9 +8,10 @@ import sys
 
 import pytest
 
-from ergora import tasks, workflow_definitions as workflows
-from ergora.reference_inputs import execution_input
-from ergora.review_dags import WorkDelivery
+import ergora.development.application as tasks
+import ergora.definitions.workflows as workflows
+from ergora.development.inputs import execution_input
+from ergora.development.dags import WorkDelivery
 from test_work_agents import work_creation, work_graph
 from test_registrations import installation, registration
 from test_task_creation import creation_project
@@ -52,10 +53,11 @@ def full_creation(work_creation, full_graph, tmp_path):
 
 def test_frozen_preparation_survives_source_removal_and_keeps_its_original_route(full_creation, monkeypatch):
     pytest.importorskip('temporalio')
-    from ergora import reference
+    import ergora.native.resources as native_resources
+    import ergora
     from temporalio.workflow import _Definition
 
-    monkeypatch.syspath_prepend(str(reference.ROOT / 'platform/upstream/platform'))
+    monkeypatch.syspath_prepend(str(native_resources.ROOT / 'platform/upstream/platform'))
     state, registered, definition = full_creation
     assert tasks.prepare(state, 'demo', definition, 1)['status'] == 'prepared'
     preview = tasks.preview(state, 'demo', definition, 1)
@@ -68,7 +70,7 @@ def test_frozen_preparation_survives_source_removal_and_keeps_its_original_route
     sdk_definition = _Definition.must_from_run_fn(selected.entrypoint)
     assert sdk_definition.name == 'ErgoraCompositionWorkflowV12'
     import asyncio
-    from ergora.reference_worker import _ErgoraPackage
+    from ergora.development.runtime.worker import _ErgoraPackage
     from temporalio.worker.workflow_sandbox import SandboxedWorkflowRunner
 
     async def prepare_sdk():
@@ -79,8 +81,8 @@ def test_frozen_preparation_survives_source_removal_and_keeps_its_original_route
         finally:
             sys.meta_path.remove(finder)
     asyncio.run(prepare_sdk())
-    code = ('import json,sys;sys.path.insert(0,' + repr(str(Path(reference.__file__).parent.parent)) + ');'
-            'from ergora.reference_inputs import execution_input;'
+    code = ('import json,sys;sys.path.insert(0,' + repr(str(Path(ergora.__file__).parent.parent)) + ');'
+            'from ergora.development.inputs import execution_input;'
             'selected=execution_input(json.load(sys.stdin));selected.require_submission();'
             'assert not any(name in sys.modules for name in ("jsonschema","temporalio","mcp"));'
             'print(selected.task_queue("dev"))')
@@ -132,10 +134,12 @@ def test_real_preparation_calls_and_original_stage_results(tmp_path, case):
 def test_preparation_ready_loop_uses_frozen_capacity_and_stops_successors(full_creation, full_graph, monkeypatch, case):
     import asyncio
     from datetime import datetime, timezone
-    from ergora import reference, task_envelopes
+    import ergora.native.resources as native_resources
+    import ergora
+    from ergora.development import envelopes as task_envelopes
 
     pytest.importorskip('temporalio')
-    monkeypatch.syspath_prepend(str(reference.ROOT / 'platform/upstream/platform'))
+    monkeypatch.syspath_prepend(str(native_resources.ROOT / 'platform/upstream/platform'))
     from dev_platform.workflow import StopWork
     from temporalio import workflow
 

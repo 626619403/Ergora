@@ -15,7 +15,10 @@ import time
 
 import pytest
 
-from ergora import budget_clock, local_gpu_pool, processes
+from ergora.runtime import budget_clock
+from ergora.runtime import gpu_pool as local_gpu_pool
+from ergora.runtime import processes
+from ergora._paths import IMPORT_ROOT
 
 
 pytestmark = pytest.mark.skipif(sys.platform != 'linux', reason='Linux local GPU resource-owner contract')
@@ -48,7 +51,7 @@ def _start_session(tmp_path, configuration, *, recover=None, setup=''):
     if not inventory_path.exists():
         _write(inventory_path, _inventory(configuration))
     script = (
-        'import json,sys;from pathlib import Path;from ergora import local_gpu_pool\n'
+        'import json,sys;from pathlib import Path;from ergora.runtime import gpu_pool as local_gpu_pool\n'
         'configuration=json.loads(Path(sys.argv[1]).read_text())\n'
         'inventory_path=Path(sys.argv[2])\n'
         + setup + '\n'
@@ -57,7 +60,7 @@ def _start_session(tmp_path, configuration, *, recover=None, setup=''):
         'print(json.dumps(result),flush=True)\n'
     )
     environment = dict(os.environ)
-    package_root = str(Path(local_gpu_pool.__file__).resolve().parent.parent)
+    package_root = str(IMPORT_ROOT)
     environment['PYTHONPATH'] = os.pathsep.join(filter(None, [package_root, environment.get('PYTHONPATH')]))
     return subprocess.Popen([sys.executable, '-c', script, str(config_path), str(inventory_path)],
                             cwd=tmp_path, env=environment, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -673,7 +676,7 @@ def test_fabricated_stopped_file_cannot_release_a_real_guard_with_live_payload_c
 
 
 def test_cli_inspection_reports_required_inventory_failure_with_nonzero_exit(tmp_path, capsys):
-    from ergora import cli
+    import ergora.interfaces.cli as cli
 
     with fake_pool(tmp_path) as (_pool, configuration, _child):
         arguments = ['gpu-pool', 'inspect', '--config', str(tmp_path / 'config.json')]

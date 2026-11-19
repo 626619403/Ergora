@@ -15,7 +15,7 @@ from perf_temporal.models import Binding, Outcome, Status
 from temporalio.client import WorkflowExecutionStatus
 from temporalio.service import RPCError, RPCStatusCode
 
-from ergora.reference_training_runtime import main
+from ergora.training.runtime.status import main
 
 payload = json.load(sys.stdin)
 sys.stdin = io.StringIO(json.dumps(payload))

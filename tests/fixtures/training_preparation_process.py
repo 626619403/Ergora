@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 
 from agent_platform import core
-from ergora import training_materials
+from ergora.training import materials as training_materials
 
 
 state = Path(os.environ['AGENTFLOW_STATE_DIR'])
@@ -93,6 +93,6 @@ core.write = write
 training_materials.publish_material = publish_material
 os.fsync = synchronize
 os.open = open_file
-from ergora.reference_training_preparation import main
+from ergora.training.runtime.preparation import main
 
 main()

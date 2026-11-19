@@ -15,12 +15,18 @@ from unittest.mock import patch
 
 import pytest
 
-from ergora import reference, reference_task_approval, tasks
-from ergora.reference_task_creation import _Creation
+import ergora.development.native as development_native
+import ergora.native.resources as native_resources
+import ergora
+import subprocess
+import ergora.development.runtime.approval as reference_task_approval
+import ergora.development.application as tasks
+from ergora.development.runtime.creation import _Creation
 from test_registrations import installation, registration
 from test_task_creation import creation_project
 from test_task_submission import submitted_creation, native_client, _start
 from test_composition_tasks import composed_creation
+from ergora._paths import PACKAGE_ROOT
 
 
 pytestmark = pytest.mark.skipif(sys.platform != 'linux', reason='Formal task operations use Linux/WSL2')
@@ -37,7 +43,7 @@ def pending_plan(tmp_path, monkeypatch):
     from temporalio.client import FetchWorkflowHistoryEventsInput, WorkflowExecutionStatus, WorkflowHistoryEventAsyncIterator
     from temporalio.converter import DataConverter, PayloadCodec
 
-    monkeypatch.syspath_prepend(str(reference.ROOT / 'platform/upstream/platform'))
+    monkeypatch.syspath_prepend(str(native_resources.ROOT / 'platform/upstream/platform'))
     from dev_platform import adapter
     from dev_platform.contracts import canonical_sha
 
@@ -148,7 +154,7 @@ def pending_plan(tmp_path, monkeypatch):
         data.looked_up += 1
         return Handle(), data.description, converter
 
-    from ergora.reference_inputs import execution_input
+    from ergora.development.inputs import execution_input
 
     data.input = execution_input(spec)
     submission = SimpleNamespace(creation=creation, spec=spec, input=data.input,
@@ -159,8 +165,8 @@ def pending_plan(tmp_path, monkeypatch):
 
 
 def inspect(data):
-    with patch.object(reference, '_task_operation', lambda *args: asyncio.run(reference_task_approval._plan(data.payload))):
-        return reference.task_plan({}, data.creation.root, data.payload, timeout=20)
+    with patch.object(development_native, '_task_operation', lambda *args: asyncio.run(reference_task_approval._plan(data.payload))):
+        return development_native.task_plan({}, data.creation.root, data.payload, timeout=20)
 
 
 def snapshot(root):
@@ -170,7 +176,7 @@ def snapshot(root):
 @pytest.fixture
 def pending_design(pending_plan):
     data = pending_plan
-    package = Path(reference_task_approval.__file__).parent
+    package = PACKAGE_ROOT
     profile = json.loads((package / 'data/design-profiles/framework-development-v1.json').read_text())
     data.design_profile = profile
     sha = data.creation.sha
@@ -210,7 +216,7 @@ def pending_design(pending_plan):
                                          'report_section_id': section, 'basis_refs': ['report']}
                                         for section in profile['required_sections']],
         'research_adoption': [],
-        'existing_structure': [{'id': 'structure-one', 'entrypoint': 'tasks.plan', 'caller': 'reference.task_plan',
+        'existing_structure': [{'id': 'structure-one', 'entrypoint': 'tasks.plan', 'caller': 'development_native.task_plan',
                                 'owner': 'reference_task_approval', 'interface': '_plan', 'state_lifetime': 'Read-only pending run',
                                 'resource_lifetime': 'Bounded file read', 'evidence_kind': 'observed',
                                 'basis_refs': ['report'], 'existing_alternatives': ['Original FileAdapter']}],
@@ -447,7 +453,7 @@ def native_design_world(submitted_creation, native_client, pending_design, tmp_p
     project = state.project('demo')
     root = Path(definition['execution']['state_directory'])
     document = json.loads((root / 'tasks/new-task/task.spec.json').read_text())
-    from ergora.reference_inputs import execution_input
+    from ergora.development.inputs import execution_input
 
     selected = execution_input(document)
     spec = selected.spec
@@ -575,14 +581,14 @@ def test_application_task_plan_uses_selected_native_python_without_jsonschema(na
     packet_path, receipt_path, server_path = data['packet_path'], data['receipt_path'], data['server_path']
     before = snapshot(root)
     payload = {'task_id': task['task_id'], 'run_id': server['run_id'], 'plan_sha256': sha(receipt)}
-    readers = ((reference.task_plan, (project, state.root, payload)),
-               (reference.task_approval, (project, state.root, 'inspect-plan', payload)))
+    readers = ((development_native.task_plan, (project, state.root, payload)),
+               (development_native.task_approval, (project, state.root, 'inspect-plan', payload)))
     for reader, arguments in readers:
         result = reader(*arguments, timeout=20)
         assert result['design']['content_integrity']['valid'] is True
         assert result['design']['readiness']['ready'] is False and 'design_read' not in result
     assert json.loads(marker.read_text()) == {'no_site': True,
-        'command': 'from ergora.reference_task_approval import main;main()'}
+        'command': 'from ergora.development.runtime.approval import main;main()'}
     assert snapshot(root) == before
     # A read-only native handoff is never a public, partially checked success.
     del packet['problem']
@@ -649,16 +655,16 @@ def test_native_pure_design_inspection_needs_no_site_packages_or_state(pending_d
              'original_input': data.input.document}
     script = '''import json, sys
 sys.path.insert(0, sys.argv[1])
-from ergora.task_design import inspect_packet
-from ergora.reference_inputs import execution_input
+from ergora.development.design import inspect_packet
+from ergora.development.inputs import execution_input
 value = json.load(sys.stdin)
 execution_input(value.pop('original_input'))
 result = inspect_packet(**value)
 assert not result['readiness']['ready']
-assert not any(name in sys.modules for name in ('jsonschema', 'temporalio', 'ergora.state', 'ergora.contracts'))
+assert not any(name in sys.modules for name in ('jsonschema', 'temporalio', 'ergora.storage.state', 'ergora.configuration.validation'))
 print(json.dumps(result))
 '''
-    result = subprocess.run([sys.executable, '-S', '-c', script, str(Path(reference_task_approval.__file__).parents[1])],
+    result = subprocess.run([sys.executable, '-S', '-c', script, str(PACKAGE_ROOTs[1])],
                             input=json.dumps(value), text=True, capture_output=True, timeout=10)
     assert result.returncode == 0, result.stderr
     assert json.loads(result.stdout) == {key: design[key] for key in ('sources', 'content_integrity', 'declared_requirements', 'readiness')}
@@ -753,7 +759,7 @@ def test_material_at_the_byte_limit_is_returned_in_full(pending_plan):
     ('rpc', 'Plan inspection RPC failed: UNAVAILABLE'),
 ])
 def test_native_main_distinguishes_read_failures_from_decision_recovery(pending_plan, monkeypatch, failure, message):
-    monkeypatch.syspath_prepend(str(reference.ROOT / 'platform/local'))
+    monkeypatch.syspath_prepend(str(native_resources.ROOT / 'platform/local'))
     from agent_platform import core
     from dev_platform.runtime import RuntimeNotFound
     from temporalio.service import RPCError, RPCStatusCode
@@ -787,8 +793,8 @@ def test_invalid_inputs_fail_before_project_or_native_access(kwargs, error):
 def test_cli_and_api_forward_the_exact_read_request_without_confirmation(tmp_path, monkeypatch, capsys):
     pytest.importorskip('fastapi')
     from fastapi.testclient import TestClient
-    from ergora import cli
-    from ergora.web import create_app
+    import ergora.interfaces.cli as cli
+    from ergora.interfaces.web import create_app
 
     seen = []
     monkeypatch.setattr(tasks, '_project', lambda state, project: {'id': project})
@@ -797,7 +803,7 @@ def test_cli_and_api_forward_the_exact_read_request_without_confirmation(tmp_pat
         seen.append((project, home, payload, timeout))
         return {'read_only': True, **payload}
 
-    monkeypatch.setattr(reference, 'task_plan', read)
+    monkeypatch.setattr(development_native, 'task_plan', read)
     args = ['--home', str(tmp_path), 'task', 'plan', 'demo', 'task-one', '--run-id', 'original-run',
             '--plan-sha256', 'a' * 64, '--timeout', '7']
     assert cli.main(args) == 0
@@ -929,13 +935,13 @@ def source_state_snapshot(data):
 
 
 def inject_source(monkeypatch, code):
-    original = reference.subprocess.run
+    original = subprocess.run
     def invoke(argv, **kwargs):
-        if 'from ergora.reference_task_approval import main;main()' in argv:
+        if 'from ergora.development.runtime.approval import main;main()' in argv:
             argv = list(argv)
-            argv[-1] = 'from ergora.reference_task_approval import main\n' + code + '\nmain()'
+            argv[-1] = 'from ergora.development.runtime.approval import main\n' + code + '\nmain()'
         return original(argv, **kwargs)
-    monkeypatch.setattr(reference.subprocess, 'run', invoke)
+    monkeypatch.setattr(subprocess, 'run', invoke)
 
 
 @pytest.mark.parametrize('point', ['intent', 'body', 'result'])
@@ -947,7 +953,7 @@ def test_source_same_id_resume_uses_full_intent_after_real_native_exit(native_de
     body_file.write_text(json.dumps(body, ensure_ascii=False), encoding='utf-8-sig')
     if point == 'intent':
         code = '''import os
-from ergora import reference_task_approval as owner
+import ergora.development.runtime.approval as owner
 original = owner._source_confirm
 def interrupted(creation, path, expected):
     original(creation, path, expected)
@@ -955,7 +961,7 @@ def interrupted(creation, path, expected):
 owner._source_confirm = interrupted'''
     elif point == 'body':
         code = '''import os
-from ergora import reference_task_approval as owner
+import ergora.development.runtime.approval as owner
 original = owner._source_publish_body
 def interrupted(creation, item):
     original(creation, item)
@@ -969,7 +975,7 @@ def interrupted(path, value):
     if value.get('kind') == 'task-design-source-commit': os._exit(73)
     return original(path, value)
 adapter.publish = interrupted'''
-    from ergora import cli
+    import ergora.interfaces.cli as cli
     with monkeypatch.context() as fault:
         inject_source(fault, code)
         output = io.StringIO()
@@ -1026,7 +1032,7 @@ def test_source_idempotence_parent_and_schema1_namespaces_preserve_originals(nat
         tasks.approve(data['state'], 'demo', data['task']['task_id'], 'source-one', data['project']['revision'],
                       **run, confirm=True)
     assert source_state_snapshot(data) == before
-    approved = reference.task_approval(data['project'], data['state'].root, 'prepare',
+    approved = development_native.task_approval(data['project'], data['state'].root, 'prepare',
         {'task_id': data['task']['task_id'], 'decision_id': 'old-approval', **run}, timeout=20)
     assert approved['created'] is True and approved['approval']['status'] == 'prepared'
     before = source_state_snapshot(data)
@@ -1177,7 +1183,7 @@ def test_source_bad_chain_never_falls_back_or_repairs_on_get(native_design, faul
 @pytest.mark.parametrize('boundary', ['intent', 'inspection', 'journal'])
 def test_source_full_aggregate_capacity_rejects_before_publication(native_design, boundary):
     data = native_design
-    contract = json.loads((Path(reference.__file__).parent / 'data/design-profiles/design-source-storage-v1.json').read_text())
+    contract = json.loads((Path(ergora.__file__).parent / 'data/design-profiles/design-source-storage-v1.json').read_text())
     if boundary == 'inspection':
         length = contract['limits']['artifact_bytes']
         texts = {record['id']: 'x' * length for record in data['packet']['source_records'] if record['access'] == 'full'}
@@ -1195,7 +1201,7 @@ def test_source_full_aggregate_capacity_rejects_before_publication(native_design
 
 def test_source_actual_native_intent_above_old_default_read_limit_round_trips(native_design):
     data = native_design
-    contract = json.loads((Path(reference.__file__).parent / 'data/design-profiles/design-source-storage-v1.json').read_text())
+    contract = json.loads((Path(ergora.__file__).parent / 'data/design-profiles/design-source-storage-v1.json').read_text())
     length = contract['limits']['artifact_bytes']
     texts = {record['id']: 'x' * length for record in data['packet']['source_records'] if record['access'] == 'full'}
     body = source_submission(data, texts=texts)
@@ -1215,8 +1221,8 @@ def test_every_public_source_mutation_validates_packet_before_native_dispatch(pe
     del body['packet']['problem']
     def forbidden(*args, **kwargs):
         raise AssertionError('Unvalidated source must never enter the native writer')
-    monkeypatch.setattr(reference, '_task_operation', forbidden)
-    call = reference.task_design_source if reader == 'direct' else reference.task_approval
+    monkeypatch.setattr(development_native, '_task_operation', forbidden)
+    call = development_native.task_design_source if reader == 'direct' else development_native.task_approval
     with pytest.raises(ValueError, match='Design packet'):
         call({}, Path('/'), 'source-prepare', {'task_id': 'task-one', 'operation_id': 'invalid-packet',
             'run_id': 'original-run', 'plan_sha256': 'a' * 64, 'parent_record_sha256': 'b' * 64,
@@ -1246,7 +1252,7 @@ def test_source_artifact_boundary_uses_valid_nondefault_storage_limits(native_de
 
 def test_source_visible_result_does_not_substitute_for_durability_confirmation(native_design, monkeypatch):
     data = native_design
-    code = '''from ergora import reference_task_approval as owner
+    code = '''import ergora.development.runtime.approval as owner
 original = owner._source_confirm
 def confirmation(creation, path, expected):
     if path.name.endswith('.result.json'):
@@ -1275,11 +1281,11 @@ def test_public_source_reader_cannot_expose_an_unvalidated_native_handoff(native
     publish_source(data)
     payload = {'task_id': data['task']['task_id'], 'run_id': data['server']['run_id'],
                'plan_sha256': data['sha'](data['receipt'])}
-    raw = reference._task_operation(data['project'], data['state'].root, 'approval', 'source-inspect', payload, 20)
+    raw = development_native._task_operation(data['project'], data['state'].root, 'approval', 'source-inspect', payload, 20)
     del raw['design_source_read']['current_packet']['problem']
     before = source_state_snapshot(data)
-    monkeypatch.setattr(reference, '_task_operation', lambda *args: deepcopy(raw))
-    call = reference.task_design_source if reader == 'direct' else reference.task_approval
+    monkeypatch.setattr(development_native, '_task_operation', lambda *args: deepcopy(raw))
+    call = development_native.task_design_source if reader == 'direct' else development_native.task_approval
     with pytest.raises(ValueError, match='Design packet'):
         call(data['project'], data['state'].root, 'source-inspect', payload, timeout=20)
     assert source_state_snapshot(data) == before
@@ -1289,12 +1295,12 @@ def test_public_source_reader_cannot_expose_an_unvalidated_native_handoff(native
 def test_source_read_cannot_override_reserved_envelope_to_dispatch_old_approval(native_design, reader):
     data = native_design
     run = {'run_id': data['server']['run_id'], 'plan_sha256': data['sha'](data['receipt'])}
-    legacy = reference.task_approval(data['project'], data['state'].root, 'prepare',
+    legacy = development_native.task_approval(data['project'], data['state'].root, 'prepare',
         {'task_id': data['task']['task_id'], 'decision_id': 'legacy-decision', **run}, timeout=20)
     payload = {'task_id': data['task']['task_id'], 'operation_id': 'source-read', 'operation': 'dispatch',
                'decision_id': 'legacy-decision', 'intent_sha256': legacy['approval']['intent_sha256']}
     before = source_state_snapshot(data)
-    call = reference.task_design_source if reader == 'direct' else reference.task_approval
+    call = development_native.task_design_source if reader == 'direct' else development_native.task_approval
     with pytest.raises(ValueError):
         call(data['project'], data['state'].root, 'source-status', payload, timeout=20)
     assert source_state_snapshot(data) == before
@@ -1312,7 +1318,7 @@ def test_public_source_prepare_does_not_accept_a_caller_pending_claim(native_des
         'source_operation': 'publish-design', 'source': source_submission(data),
         'parent_record_sha256': parent, **run, 'preflight': preflight}
     before = source_state_snapshot(data)
-    call = reference.task_design_source if reader == 'direct' else reference.task_approval
+    call = development_native.task_design_source if reader == 'direct' else development_native.task_approval
     with pytest.raises(ValueError):
         call(data['project'], data['state'].root, 'source-prepare', payload, timeout=20)
     assert source_state_snapshot(data) == before
@@ -1323,15 +1329,15 @@ def test_public_first_source_prepare_itself_reads_the_original_live_seed(native_
     run, parent = source_context(data)
     data['server']['closed'] = True
     data['write'](data['server_path'], data['server'])
-    original = reference._task_operation
+    original = development_native._task_operation
     calls = []
     def invoke(project, home, component, operation, payload, timeout):
         calls.append(operation)
         return original(project, home, component, operation, payload, timeout)
-    monkeypatch.setattr(reference, '_task_operation', invoke)
+    monkeypatch.setattr(development_native, '_task_operation', invoke)
     before = source_state_snapshot(data)
     with pytest.raises(ValueError):
-        reference.task_design_source(data['project'], data['state'].root, 'source-prepare',
+        development_native.task_design_source(data['project'], data['state'].root, 'source-prepare',
             {'task_id': data['task']['task_id'], 'operation_id': 'closed-seed', 'source_operation': 'publish-design',
              'source': source_submission(data), 'parent_record_sha256': parent, **run}, timeout=20)
     assert calls == ['source-inspect']
@@ -1361,7 +1367,7 @@ def test_public_source_prepare_owns_valid_initial_inspection_and_commit(native_d
     run, parent = source_context(data)
     payload = {'task_id': data['task']['task_id'], 'operation_id': 'public-source', 'source_operation': 'publish-design',
                'source': source_submission(data), 'parent_record_sha256': parent, **run}
-    call = reference.task_design_source if reader == 'direct' else reference.task_approval
+    call = development_native.task_design_source if reader == 'direct' else development_native.task_approval
     prepared = call(data['project'], data['state'].root, 'source-prepare', payload, timeout=20)
     assert prepared['created'] is True and prepared['source']['status'] == 'prepared'
     result = call(data['project'], data['state'].root, 'source-commit',
@@ -1376,7 +1382,7 @@ def test_source_operation_cannot_replace_other_reserved_headers(native_design, m
     data = native_design
     def forbidden(*args, **kwargs):
         raise AssertionError('A source request must reject reserved fields before native dispatch')
-    monkeypatch.setattr(reference, '_task_operation', forbidden)
+    monkeypatch.setattr(development_native, '_task_operation', forbidden)
     with pytest.raises(ValueError, match='Design source operation payload'):
-        reference.task_design_source(data['project'], data['state'].root, 'source-status',
+        development_native.task_design_source(data['project'], data['state'].root, 'source-status',
             {'task_id': data['task']['task_id'], 'operation_id': 'read-only', reserved: value}, timeout=20)

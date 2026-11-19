@@ -8,8 +8,8 @@ import time
 
 import pytest
 
-from ergora import processes
-from ergora.state import file_lock
+from ergora.runtime import processes
+from ergora.storage.state import file_lock
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='PID-bound Linux local notification')
@@ -38,7 +38,7 @@ def test_notification_binds_the_original_identity_before_signalling(monkeypatch,
 def test_slow_supervised_reader_receives_complete_large_utf8_input(tmp_path):
     reader = 'import sys,time,hashlib;time.sleep(.35);print(hashlib.sha256(sys.stdin.buffer.read()).hexdigest())'
     controller = (
-        'import sys,time,json;from pathlib import Path;from ergora import processes;'
+        'import sys,time,json;from pathlib import Path;from ergora.runtime import processes;'
         "payload='漢字\\r\\nline\\n'*32768;started=time.monotonic();"
         f'result=processes.run([sys.executable,"-c",{reader!r}],Path({str(tmp_path)!r}),'
         f'Path({str(tmp_path / "output")!r}),5,payload,supervised=True,'
@@ -63,8 +63,10 @@ def test_unicode_paths_and_stdin_are_literal_utf8(tmp_path):
 
 
 def test_powershell_utf8_bom_inputs_roundtrip(tmp_path, capsys):
-    from ergora import cli, projects, skills
-    from ergora.state import State
+    import ergora.interfaces.cli as cli
+    import ergora.configuration.projects as projects
+    import ergora.definitions.skills as skill_assets
+    from ergora.storage.state import State
 
     repo = tmp_path / '项目'
     subprocess.run(['git', 'init', str(repo)], check=True, capture_output=True)
@@ -84,8 +86,8 @@ def test_powershell_utf8_bom_inputs_roundtrip(tmp_path, capsys):
     bundle = tmp_path / 'bom-skill'
     bundle.mkdir()
     (bundle / 'SKILL.md').write_text('---\nname: bom-skill\ndescription: 中文技能\n---\n中文操作\n', encoding='utf-8-sig')
-    imported = skills.import_bundle(state, 'demo', bundle)
-    assert skills.get(state, 'demo', imported['digest'])['name'] == 'bom-skill'
+    imported = skill_assets.import_bundle(state, 'demo', bundle)
+    assert skill_assets.get(state, 'demo', imported['digest'])['name'] == 'bom-skill'
 
 
 @pytest.mark.parametrize('finish', ['normal', 'timeout'])
@@ -107,7 +109,7 @@ def test_command_completion_stops_descendants(tmp_path, finish):
 
 def test_cross_process_file_lock_exclusion_and_recovery(tmp_path):
     path = tmp_path / 'run.lock'
-    script = ('from pathlib import Path;import sys;from ergora.state import file_lock;'
+    script = ('from pathlib import Path;import sys;from ergora.storage.state import file_lock;'
               'lock=file_lock(Path(sys.argv[1]),blocking=False);lock.__enter__();print("acquired")')
     with file_lock(path):
         result = subprocess.run([sys.executable, '-c', script, str(path)], capture_output=True, text=True, timeout=10)
@@ -120,7 +122,7 @@ def test_cross_process_file_lock_exclusion_and_recovery(tmp_path):
 def test_controller_death_kills_job_before_delayed_write(tmp_path):
     ready, late = tmp_path / 'ready', tmp_path / 'late'
     target = f'import time;from pathlib import Path;Path({str(ready)!r}).touch();time.sleep(3);Path({str(late)!r}).touch()'
-    controller = ('from pathlib import Path;import sys;from ergora import processes;'
+    controller = ('from pathlib import Path;import sys;from ergora.runtime import processes;'
                   f'processes.run([sys.executable,"-c",{target!r}],Path({str(tmp_path)!r}),Path({str(tmp_path / "output")!r}),20)')
     process = subprocess.Popen([sys.executable, '-c', controller], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     try:
@@ -150,7 +152,7 @@ def test_native_console_event_cancels_and_stops_descendants(tmp_path):
 
 @pytest.mark.skipif(os.name != 'nt', reason='Windows job assignment gate')
 def test_job_assignment_failure_never_launches_command(tmp_path, monkeypatch):
-    from ergora.windows_job import Job
+    from ergora.runtime.windows_job import Job
 
     def refuse(self, pid):
         raise OSError('fixture assignment denied')

@@ -4,7 +4,7 @@ from pathlib import Path
 
 from fastapi.staticfiles import StaticFiles
 import uvicorn
-from ergora.web import create_app
+from ergora.interfaces.web import create_app
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--home', type=Path, required=True)
