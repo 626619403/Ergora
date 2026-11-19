@@ -20,6 +20,7 @@
       "tests/test_architecture_boundaries.py",
       "tests/test_budget_jobs.py",
       "tests/test_components.py",
+      "tests/test_ci_runner.py",
       "tests/test_composition_tasks.py",
       "tests/test_installation.py",
       "tests/test_issue_mapping.py",
