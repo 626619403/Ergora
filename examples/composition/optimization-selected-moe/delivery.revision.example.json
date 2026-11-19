@@ -20,10 +20,10 @@
         }
       },
       "ref": {
-        "digest": "64e1439a6d6d0e7b3e092ee26f74833d50c0a93bf754bf86a8fcfcdd13bfcd2b",
+        "digest": "cf43bb2f2605ba1e387a2707aede9a666bbb6732d93823c4286583096fb5023a",
         "id": "ergora-development-preparation",
         "kind": "workflow",
-        "version": "1.2.1"
+        "version": "1.4.0"
       }
     },
     {
@@ -35,10 +35,10 @@
         }
       },
       "ref": {
-        "digest": "6cae44a23244810993e5c75eb7ffe78216be49d55ff0757ab01ff741d811053a",
+        "digest": "1c50beac75831a8af5e5f5b51eeec11ee0aa6c116da2c004b78ab0bf59e647e0",
         "id": "ergora-large-change-work",
         "kind": "workflow",
-        "version": "1.0.1"
+        "version": "1.1.0"
       }
     },
     {
@@ -82,7 +82,7 @@
       "id": "ergora-large-change-delivery-instructions",
       "kind": "instructions",
       "path": "instructions.md",
-      "sha256": "a3131ea41fd90dd1d854a72e7373cd5fbdcec4df5a584f360cd38697915aebe6"
+      "sha256": "acf2cb066cfb05670930a88e4e8ec00076cd640a5ff9b63d4a99161468b9d887"
     },
     {
       "digest": "90aaeb7c6041ac0f10fa8eebae48978a504a1cb213fafc0a537078fb8961ea17",
@@ -104,5 +104,5 @@
     }
   ],
   "schema_version": 2,
-  "version": "1.4.0"
+  "version": "1.6.0"
 }

@@ -1,2 +1,2 @@
-Specify the approved backward-compatible interface and consumer examples.
-Work only within the original contract unit and read all inherited material. Define old/new client and server behavior, failure semantics and rollout constraints before dependent implementations. Leave commits and formal approval to the existing owners.
+Follow the actual-role steps in the ergora-api-contract-author Skill using complete inherited material and supplied producer evidence. Inspector and planner calls remain read-only, with shell=false and network=[]; implementer changes only the original approved contract unit on its dependency-integrated candidate.
+Preserve the inherited six-stage artifact, candidate, budget and recovery contract. The current interface and its real consumers define the scope. Trusted checks, commits, plan approval and lifecycle operations retain their original owners.

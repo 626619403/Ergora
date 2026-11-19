@@ -1,36 +1,39 @@
 {
   "schema_version": 1,
   "id": "ergora-server-implementer",
-  "version": "1.0.1",
-  "description": "Implement the server side of the frozen approved interface.",
+  "version": "2.0.0",
+  "description": "Inspect, plan or implement the server owners of the approved current interface.",
   "roles": [
+    "inspector",
+    "planner",
     "implementer"
   ],
   "specialties": [
     "server-api",
-    "data-boundaries"
+    "domain-and-storage-ownership",
+    "input-and-failure-boundaries"
   ],
   "backend": {
     "tool": "codex",
     "model": "gpt-6.1-sol",
-    "reasoning_effort": "xhigh"
+    "reasoning_effort": "max"
   },
   "resources": [
     {
       "id": "ergora-server-implementer-instructions",
       "kind": "instructions",
       "path": "instructions.md",
-      "sha256": "8919237421f1da203375d2eea41b7408ad48c6bd89cc2f91c7abbb6ae35e0227"
+      "sha256": "8cde0e793d22795fdbbbd57a033239f745d0c7544b45300d636fec91435b46ff"
     },
     {
       "id": "ergora-server-implementer-skill",
       "kind": "skill",
       "path": "skills/ergora-server-implementer",
-      "digest": "3a436ef997574ca8469654352666c6b4c8ae2abb8205b8004f794a2b10f072ff"
+      "digest": "b9d0a9a867cbacb42f58308eabe5a040e36efbc6cfa257f40e04e15767c1e81a"
     }
   ],
   "invocation_minimum": {
     "model": "gpt-6.1-sol",
-    "reasoning_effort": "xhigh"
+    "reasoning_effort": "max"
   }
 }

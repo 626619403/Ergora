@@ -67,7 +67,7 @@ def test_skill_tree_identity_includes_original_exec_bits(tmp_path, executable):
     assert files == expected["files"]
 
 
-@pytest.mark.parametrize("kind", ["repository-governance", "large-change"])
+@pytest.mark.parametrize("kind", ["repository-governance"])
 def test_compiled_examples_keep_exact_pre_refactor_identity(tmp_path, kind):
     example = reference.ROOT / "platform/upstream/platform/portable/examples" / kind
     package = reference.ROOT / "platform/upstream/platform/portable/packages" / kind / "manifest.json"
@@ -84,6 +84,55 @@ def test_compiled_examples_keep_exact_pre_refactor_identity(tmp_path, kind):
     assert hashlib.sha256(encoded).hexdigest() == expected["canonical_sha256"]
     assert compiled["spec"]["request_sha256"] == expected["request_sha256"]
     assert compiled["spec"]["profile_sha256"] == expected["profile_sha256"]
+
+
+def test_current_large_change_cli_compilation_and_conversion_keep_the_complete_contract(tmp_path):
+    platform = reference.ROOT / "platform/upstream/platform"
+    example = platform / "portable/examples/large-change"
+    package = platform / "portable/packages/large-change"
+    task_type = platform / "task-types/large-change"
+    request = json.loads((task_type / "examples/request.json").read_text(encoding="utf-8"))
+    parts = {name: json.loads((example / (name + ".json")).read_text(encoding="utf-8"))
+             for name in ("task", "policy", "binding")}
+    target, spec_target = tmp_path / "compiled.json", tmp_path / "task.spec.json"
+    subprocess.run(
+        [sys.executable, "-m", "ergora", "workflow", "compile", "--task", str(example / "task.json"),
+         "--package", str(package / "manifest.json"), "--policy", str(example / "policy.json"),
+         "--binding", str(example / "binding.json"), "--out", str(target), "--spec-out", str(spec_target)],
+        cwd=tmp_path, capture_output=True, text=True, encoding="utf-8", check=True, timeout=30,
+    )
+    compiled = json.loads(target.read_text(encoding="utf-8"))
+    converted_directory = tmp_path / "converted current request"
+    subprocess.run(
+        [sys.executable, "-m", "ergora", "workflow", "convert-v2", "--request", str(task_type / "examples/request.json"),
+         "--project-id", parts["task"]["project_id"], "--out-dir", str(converted_directory)],
+        cwd=tmp_path, capture_output=True, text=True, encoding="utf-8", check=True, timeout=30,
+    )
+    converted = json.loads((converted_directory / "compiled.json").read_text(encoding="utf-8"))
+    environment = dict(os.environ, PYTHONPATH=str(platform), PYTHONDONTWRITEBYTECODE="1", PYTHONUTF8="1")
+    original = subprocess.run(
+        [sys.executable, "-P", "-S", "-c",
+         "import json,sys;from dev_platform.registry import make_spec;print(json.dumps(make_spec(json.load(sys.stdin))))"],
+        input=json.dumps(request), cwd=tmp_path, env=environment,
+        capture_output=True, text=True, encoding="utf-8", check=True, timeout=30,
+    )
+    assert compiled["spec"] == converted["spec"] == json.loads(original.stdout)
+    assert json.loads(spec_target.read_text(encoding="utf-8")) == compiled["spec"]
+    assert json.loads((converted_directory / "task.spec.json").read_text(encoding="utf-8")) == converted["spec"]
+    assert compiled["spec"]["request"] == request
+    assert parts["task"]["input"] == converted["task"]["input"] == request["input"]
+    assert request["input"] == reference.template_details("large-change")["input"]
+    for name, value in parts.items():
+        assert compiled[name] == value
+        assert json.loads((converted_directory / (name + ".json")).read_text(encoding="utf-8")) == converted[name]
+    for envelope in (compiled, converted):
+        assert envelope["task"]["package_sha256"] == envelope["policy"]["package_sha256"] == envelope["digests"]["package"]
+        assert envelope["binding"]["policy_sha256"] == envelope["digests"]["policy"]
+        assert envelope["spec"]["request"]["profile_sha256"] == envelope["package"]["manifest"]["legacy_profile_sha256"]
+        assert envelope["spec"]["profile_sha256"] == request["profile_sha256"]
+        for name in ("README.md", "instructions.md"):
+            assert envelope["package"]["templates"][name] == (package / name).read_text(encoding="utf-8")
+            assert envelope["package"]["templates"][name] == (task_type / name).read_text(encoding="utf-8")
 
 
 @pytest.fixture

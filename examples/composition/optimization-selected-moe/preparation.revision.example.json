@@ -20,10 +20,10 @@
         }
       },
       "ref": {
-        "digest": "2a26047f6578f0b25351ace07fdc1ed2a2505b2c7c4a9f23df3304fc2b6075a0",
-        "id": "ergora-optimization-inventory",
         "kind": "workflow",
-        "version": "1.0.1"
+        "id": "ergora-optimization-inventory",
+        "version": "1.1.0",
+        "digest": "7123084895742f5910627213887b734d40993810569bcf10289d190ca126df85"
       }
     },
     {
@@ -35,10 +35,10 @@
         }
       },
       "ref": {
-        "digest": "ea62ea3168a14993466aae3a14259f963251478331dfe8b79e42485dd6290252",
-        "id": "ergora-optimization-plan",
         "kind": "workflow",
-        "version": "1.0.0"
+        "id": "ergora-optimization-plan",
+        "version": "1.1.0",
+        "digest": "6c60e6b8aa2735ad423573324292bf5969b157a60b5d9ac54ca105f987ab9274"
       }
     }
   ],
@@ -62,9 +62,9 @@
       "id": "ergora-development-preparation-instructions",
       "kind": "instructions",
       "path": "instructions.md",
-      "sha256": "8caf20b3d71042124b02cdb557836c3053e12e721b7f3cf380ef66fe95a81aef"
+      "sha256": "0921438fef71c206cd1e1985a35fab94a2c6683c4eed1c4137afefec4f7c79ed"
     }
   ],
   "schema_version": 2,
-  "version": "1.2.1"
+  "version": "1.4.0"
 }

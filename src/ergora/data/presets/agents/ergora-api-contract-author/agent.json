@@ -1,14 +1,17 @@
 {
   "schema_version": 1,
   "id": "ergora-api-contract-author",
-  "version": "1.0.1",
-  "description": "Specify the approved backward-compatible interface and consumer examples.",
+  "version": "2.0.0",
+  "description": "Inspect, plan or implement one current interface and migration of its real consumers.",
   "roles": [
+    "inspector",
+    "planner",
     "implementer"
   ],
   "specialties": [
     "api-contracts",
-    "backward-compatibility"
+    "current-interface-semantics",
+    "consumer-migration"
   ],
   "backend": {
     "tool": "codex",
@@ -20,13 +23,13 @@
       "id": "ergora-api-contract-author-instructions",
       "kind": "instructions",
       "path": "instructions.md",
-      "sha256": "1f8c616ccd6cdb5608c785fdf9ed782783a739d2db966a7ca9668dc8faaaca27"
+      "sha256": "786cdef73534f6c9024cc6e11e6e7acfb777441a698e4bd688c82739069fe70f"
     },
     {
       "id": "ergora-api-contract-author-skill",
       "kind": "skill",
       "path": "skills/ergora-api-contract-author",
-      "digest": "d8fc66ad0f462538a4182817a8e108e907d4ec65619d6d051c4566b174427bbe"
+      "digest": "dd98d7ead0320b83b7237b5813a09e516992b6391d4d4d6ec7e8d32374845fed"
     }
   ],
   "invocation_minimum": {

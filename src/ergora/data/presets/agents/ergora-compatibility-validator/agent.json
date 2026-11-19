@@ -1,37 +1,40 @@
 {
   "schema_version": 1,
   "id": "ergora-compatibility-validator",
-  "version": "2.0.1",
-  "description": "Validate the integrated interface migration, behavior and rollback against the approved contract.",
+  "version": "3.0.0",
+  "description": "Inspect, plan or validate current-contract integration, persistent data and lifecycle recovery.",
   "roles": [
+    "inspector",
+    "planner",
     "implementer"
   ],
   "specialties": [
-    "integration-validation",
-    "interface-compatibility",
-    "migration-rollback"
+    "current-contract-integration",
+    "persistent-data-validation",
+    "concurrency-cancellation-unknown-recovery",
+    "rollback-validation"
   ],
   "backend": {
     "tool": "codex",
     "model": "gpt-6.1-sol",
-    "reasoning_effort": "high"
+    "reasoning_effort": "max"
   },
   "resources": [
     {
       "id": "ergora-compatibility-validator-instructions",
       "kind": "instructions",
       "path": "instructions.md",
-      "sha256": "beebae56f200c6433f74a9113417a4ebcf38ec726c4849db3694c0d7b00c0f58"
+      "sha256": "05c34205c2afc94848eaf86ff5b8c8025ddf97468257f6dd6bbda0562965f731"
     },
     {
       "id": "ergora-compatibility-validator-skill",
       "kind": "skill",
       "path": "skills/ergora-compatibility-validator",
-      "digest": "1e8dd2a33177bbcad9225b2719eebaf6dfe247422d8aa7d24990c1382776a098"
+      "digest": "8e07c4f42a5520df7c31e635ded26fcf9ab0255a6d94fc91d99911ba0fb009d4"
     }
   ],
   "invocation_minimum": {
     "model": "gpt-6.1-sol",
-    "reasoning_effort": "high"
+    "reasoning_effort": "max"
   }
 }

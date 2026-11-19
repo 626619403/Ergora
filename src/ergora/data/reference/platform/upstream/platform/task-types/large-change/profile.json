@@ -61,8 +61,8 @@
     ".agent-platform-private"
   ],
   "template_files": {
-    "README.md": "4beea30e7c92a2c9814ba5f944191526440b42c913f8f3deae7593370e86727c",
-    "instructions.md": "7518e23e5353c57b9ee2f5a245a847169ba42d937124994766fadb70884582dd",
+    "README.md": "86ae3442c40fef4f1cdf7160223ffea561ccacbae33fc6a5276d3ac0019fd102",
+    "instructions.md": "4eef59605f5819a05e89d19fc5437009c81c397229e7f2a39c4f4cab7082e054",
     "input.schema.json": "0221f76400bdc57102828ea90226d5dfa37124e17a1a6878121a25fa817b84cd",
     "output.schema.json": "d8d6877950d4ba034167f32b35d0b0c8925da86e7b9951e596e5956c246e3588"
   }

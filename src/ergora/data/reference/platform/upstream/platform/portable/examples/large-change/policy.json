@@ -3,7 +3,7 @@
   "policy_id": "demo-project-policy",
   "revision": 1,
   "project_id": "demo-project",
-  "package_sha256": "1ec51628c2e1166b495db071adbb124155d3954f58b75904e72240209664bb91",
+  "package_sha256": "145ef356acd8053f9747ddfa3d22aeec5d1bfdfa2d2a5b2e7e8c938b57b74ef5",
   "tracker_scope": {
     "kind": "gitlab",
     "project": "YOUR_GROUP/YOUR_REPO"

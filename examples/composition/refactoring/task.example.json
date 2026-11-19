@@ -30,7 +30,7 @@
         "paths": [
           "src/example"
         ],
-        "instructions": "Implement the approved module refactor and caller migration in an isolated workspace. Preserve the declared behavior and explain how the interface improves depth or locality."
+        "instructions": "Implement the approved module refactor and caller updates in an isolated workspace. Maintain one current implementation and interface, preserve the declared behavior and persistent-data/recovery obligations, and explain how the interface improves depth or locality."
       },
       {
         "id": "compatibility",
@@ -41,7 +41,7 @@
           "tests/example",
           "docs/refactoring"
         ],
-        "instructions": "Validate the dependency-integrated candidate using real caller fixtures, relevant old/new behavior and isolated rollback. Record executed checks, original failures and remaining gaps."
+        "instructions": "Validate the dependency-integrated candidate against the approved current interface using real caller fixtures, affected persistent-data and recovery checks, and isolated rollback. Record executed checks, original failures and remaining gaps."
       }
     ]
   },
@@ -87,7 +87,7 @@
           "tool": "codex",
           "sandbox": "current-container",
           "model": "gpt-6.1-sol",
-          "reasoning_effort": "xhigh"
+          "reasoning_effort": "max"
         },
         "reason": "Explicit trusted-container selection for the scoped refactoring writer."
       },
@@ -96,7 +96,7 @@
           "tool": "codex",
           "sandbox": "current-container",
           "model": "gpt-6.1-sol",
-          "reasoning_effort": "high"
+          "reasoning_effort": "max"
         },
         "reason": "Explicit trusted-container selection for the scoped compatibility validation unit."
       }
@@ -109,6 +109,6 @@
   "budget": {
     "wall_seconds": 3600,
     "cleanup_seconds": 30,
-    "model_invocations": 14
+    "model_invocations": 11
   }
 }

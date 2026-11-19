@@ -1,36 +1,39 @@
 {
   "schema_version": 1,
   "id": "ergora-architecture-test-author",
-  "version": "1.0.1",
-  "description": "Implement a focused regression for the approved architecture boundary.",
+  "version": "2.0.0",
+  "description": "Inspect validation seams, plan meaningful boundary checks or implement the assigned regression.",
   "roles": [
+    "inspector",
+    "planner",
     "implementer"
   ],
   "specialties": [
-    "architecture-regression",
-    "validation"
+    "architecture-boundaries",
+    "validation-oracles",
+    "reachable-regression-checks"
   ],
   "backend": {
     "tool": "codex",
     "model": "gpt-6.1-sol",
-    "reasoning_effort": "xhigh"
+    "reasoning_effort": "max"
   },
   "resources": [
     {
       "id": "ergora-architecture-test-author-instructions",
       "kind": "instructions",
       "path": "instructions.md",
-      "sha256": "e547a86d6b60640edb044f7556b6d2405f011acedb82d97b59f0d2867a5a5cf6"
+      "sha256": "3dc4ed1db1af968b65745fb4acdf651ce19e78a1d133bdb5410e5e20d51e2301"
     },
     {
       "id": "ergora-architecture-test-author-skill",
       "kind": "skill",
       "path": "skills/ergora-architecture-test-author",
-      "digest": "12c22f51091413e164065e8884cb130cfe6ac54f6d2c59d25e13f9e3d25dcc96"
+      "digest": "a29c71d22ffd747c47fee9ceb372214cacb7e0872f0c58bf73718cbef7a6b061"
     }
   ],
   "invocation_minimum": {
     "model": "gpt-6.1-sol",
-    "reasoning_effort": "xhigh"
+    "reasoning_effort": "max"
   }
 }

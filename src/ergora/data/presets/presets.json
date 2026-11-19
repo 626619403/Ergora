@@ -2,7 +2,7 @@
   "schema_version": 1,
   "presets": {
     "repository-governance": {
-      "description": "Parallel repository mapping and architecture regression, followed by complementary final review.",
+      "description": "Shared module/current-contract validation preparation, disjoint repository mapping/boundary checks and independent final review.",
       "runtime": "development-v5",
       "root": "ergora-governance-template",
       "agents": [
@@ -11,7 +11,9 @@
         "ergora-test-value-reviewer",
         "ergora-governance-mapper",
         "ergora-architecture-test-author",
-        "ergora-development-preparer"
+        "ergora-development-preparer",
+        "ergora-refactoring-engineer",
+        "ergora-compatibility-validator"
       ],
       "workflows": [
         "ergora-development-inventory",
@@ -27,7 +29,7 @@
       ]
     },
     "large-change": {
-      "description": "Contract, parallel client/server, integration validation and complementary final review.",
+      "description": "Shared module/current-contract validation preparation, contract then disjoint server/client implementation and independent final review.",
       "runtime": "development-v5",
       "root": "ergora-large-change-template",
       "agents": [
@@ -38,7 +40,8 @@
         "ergora-server-implementer",
         "ergora-client-implementer",
         "ergora-compatibility-validator",
-        "ergora-development-preparer"
+        "ergora-development-preparer",
+        "ergora-refactoring-engineer"
       ],
       "workflows": [
         "ergora-development-inventory",

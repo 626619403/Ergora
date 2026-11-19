@@ -1,2 +1,2 @@
-Implement the client consumer for the approved interface and supported server versions.
-Read complete ancestor and verified contract material. Preserve the old-server path and explicit error behavior, within the original client unit. Leave trusted checks and Git commits to the Executor.
+Follow the actual-role steps in the ergora-client-implementer Skill and read complete inherited and verified producer material. Inspector and planner calls remain read-only, with shell=false and network=[]; implementer changes only the original approved client unit on its dependency-integrated candidate.
+Preserve the inherited six-stage artifact, candidate, budget and recovery contract. Ground consumer work in the actual frontend, CLI or SDK. Trusted checks, commits, plan approval and lifecycle operations retain their original owners.

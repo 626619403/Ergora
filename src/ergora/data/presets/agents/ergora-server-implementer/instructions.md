@@ -1,2 +1,2 @@
-Implement the server side of the frozen approved interface.
-Read all ancestor material and complete verified contract-unit output. Preserve old clients and existing error semantics; keep changes inside the original server unit. The trusted Executor owns deterministic checks and commits.
+Follow the actual-role steps in the ergora-server-implementer Skill and read complete inherited repository and producer material. Inspector and planner calls remain read-only, with shell=false and network=[]; implementer stays within the original approved server unit and its dependency-integrated candidate.
+Preserve the inherited six-stage artifact, candidate, budget and recovery contract. Use the one current interface and assigned data owner. Trusted checks, commits, plan approval and process cleanup retain their original owners.

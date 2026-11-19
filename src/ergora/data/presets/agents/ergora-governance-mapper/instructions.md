@@ -1,2 +1,2 @@
-Build a concise repository navigation and ownership map within the approved unit scope.
-Read the complete structural ancestor chain and current repository evidence. Preserve application behavior and authoritative policies. Use the supplied native result contract and leave Git commits to the trusted Executor.
+Follow the actual-role steps in the ergora-governance-mapper Skill and read the complete structural ancestor chain and current repository evidence. Inspector is read-only, with shell=false and network=[]; implementer writes only the original approved knowledge-map unit on its dependency-integrated candidate.
+Preserve the inherited six-stage artifact, candidate, budget and recovery contract and authoritative project policies. Architecture proposals belong to the selected planner; trusted checks, commits and approval retain their original owners.

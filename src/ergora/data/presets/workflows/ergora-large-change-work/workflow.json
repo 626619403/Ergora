@@ -1,14 +1,14 @@
 {
   "schema_version": 2,
   "id": "ergora-large-change-work",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Project the original large-change unit dependencies onto specialized instances.",
   "resources": [
     {
       "id": "ergora-large-change-work-instructions",
       "kind": "instructions",
       "path": "instructions.md",
-      "sha256": "fede80577421bef430eb6dd93b52b9abe3a30225ae71b47d3964c5d7081bbfad"
+      "sha256": "5e8e7ce5979ca2e15da090090f675bf448fecdbdff28fa5c4dcf1df8cfdecff4"
     }
   ],
   "permissions": {
@@ -43,8 +43,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-api-contract-author",
-        "version": "1.0.1",
-        "digest": "a1a1588923fa096fcfb562615fadf025fca6a9c906c3e56c270911a9a73f353f"
+        "version": "2.0.0",
+        "digest": "a913214cdef48dca4c769be78af07d2fe4cdded7c482aaca35219f5d0c804886"
       },
       "role": "implementer",
       "depends_on": [],
@@ -70,8 +70,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-server-implementer",
-        "version": "1.0.1",
-        "digest": "260a4daf3cfa7ff185e21fa6b4b69b674c9cacabd0ed96422928213267584c95"
+        "version": "2.0.0",
+        "digest": "e9700a78e9739a0ff638ef2c8b2aea8544f17d169d42e2839ed960557682341d"
       },
       "role": "implementer",
       "depends_on": [
@@ -100,8 +100,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-client-implementer",
-        "version": "1.0.1",
-        "digest": "2931e1573d959b96ca8daa3a4a65a26a09433e866fab1ce6248a70c47eb8e680"
+        "version": "2.0.0",
+        "digest": "49ca6d22aed2c82cee3ca4c9e2189498bf7b681e216abc96ce6de51fd5cfed35"
       },
       "role": "implementer",
       "depends_on": [
@@ -138,8 +138,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-compatibility-validator",
-        "version": "2.0.1",
-        "digest": "94a98f388fa6abbbf0d075da339dd7418dfbe2e58d5f5ad948ae78dfc1af6952"
+        "version": "3.0.0",
+        "digest": "2940a3be995dd86403f423072012fe55b27f6b1e80600199543964ceb5563d6f"
       },
       "role": "implementer",
       "depends_on": [

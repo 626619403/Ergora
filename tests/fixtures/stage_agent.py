@@ -32,7 +32,9 @@ if '--model' in sys.argv and sys.argv[sys.argv.index('--model') + 1] in ('fixtur
     subprocess.Popen([sys.executable, '-c', child], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     time.sleep(40)
     raise SystemExit(2)
-if ('"selected_context": {' in prompt or '"kind": "formal-preparation-materials"' in prompt
+review_mcp = ('"kind": "formal-review-materials"' in prompt
+              and any(value.startswith('mcp_servers.ergora_task.') for value in sys.argv))
+if ('"selected_context": {' in prompt or '"kind": "formal-preparation-materials"' in prompt or review_mcp
         or ('decision' not in schema['required'] and '"kind": "formal-work-materials"' in prompt)):
     import asyncio
     from ergora import task_mcp
@@ -42,7 +44,7 @@ if ('"selected_context": {' in prompt or '"kind": "formal-preparation-materials"
     server = {key.removeprefix('mcp_servers.ergora_task.'): value for key, value in settings.items()
               if key.startswith('mcp_servers.ergora_task.')}
     server = {key: value for key, value in server.items() if key in ('command', 'args', 'env')}
-    if '"selected_context": {' in prompt or ('"kind": "formal-preparation-materials"' in prompt and 'fixture-unread-inventory' not in sys.argv):
+    if review_mcp or '"selected_context": {' in prompt or ('"kind": "formal-preparation-materials"' in prompt and 'fixture-unread-inventory' not in sys.argv):
         import runpy
 
         read_all = runpy.run_path(str(Path(__file__).with_name('full_stage_resources.py')))['read_all']
@@ -52,6 +54,13 @@ if ('"selected_context": {' in prompt or '"kind": "formal-preparation-materials"
     payload = json.loads(prompt.splitlines()[-1])
     if payload['kind'] == 'formal-work-materials':
         unit = payload['context']['unit']
+        if 'fixture-shared-contract' in unit['instructions']:
+            if unit['id'] in ('server', 'client', 'integration-tests'):
+                assert Path('src/contract.py').read_text() == 'VALUE = 42\n'
+            if unit['id'] == 'integration-tests':
+                assert all(Path('src/' + name + '.py').read_text() == 'VALUE = 42\n' for name in ('server', 'client'))
+            if unit['id'] in ('server', 'client'):
+                time.sleep(.3)
         target = Path(unit['paths'][0]); target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text('VALUE = 42\n')
         if 'fixture-work-scope' in unit['instructions']:
@@ -71,7 +80,7 @@ if any(model in sys.argv for model in ('fixture-complete-inventory', 'fixture-ca
 if 'fixture-complete-plan' in sys.argv:
     name = next(iter(result['artifacts']))
     result['artifacts'][name] = 'K' * 75000 + '\nComplete planner original tail: kernel 原文，未截断。\r\n'
-if '"kind": "formal-preparation-materials"' in prompt:
+if any(kind in prompt for kind in ('"kind": "formal-preparation-materials"', '"kind": "formal-work-materials"')):
     result['summary'] = json.dumps({'fixture': mode, 'model_started_ns': model_started_ns,
                                    'model_finished_ns': time.time_ns()})
 if "decision" in schema["required"]:

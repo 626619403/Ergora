@@ -25,7 +25,7 @@ Follow [source-branch selection](USAGE.md#从空环境安装) to install the cor
 |optimization-cluster-resiliency|`ergora-opt-cluster-resiliency-proposal`|Launch/original-job identity, logs and checkpoint/recovery evidence; three reused v2 read-only specialists, with cluster actions owned by the original executor|
 |optimization-low-precision|`ergora-opt-low-precision-proposal`|Read-only low-precision design/profile→kernel→measurement proposals; original experiment and quality/performance gates retained|
 |optimization-kernel|`ergora-opt-kernel-proposal`|Operator/wrapper and independent-validation design/profile→kernel→measurement proposals; native execution and actual measurements remain separate|
-|refactoring|`ergora-refactoring-template@1.1.1`|Preparation→rewrite→compatibility→original trusted integration/verification→three reviews; ordinary parent references one native large-change six-stage instance|
+|refactoring|`ergora-refactoring-template@1.3.0`|Preparation→rewrite→compatibility→original trusted integration/verification→three reviews; ordinary parent references one native large-change six-stage instance|
 |optimization-performance-diagnosis|`ergora-opt-performance-diagnosis-proposal`|Same-symptom feedback commands and report-specific tool selection; read-only design/profile→measurement proposals|
 
 Each Agent is an independently versioned package with its own specialties, initial instructions, Skills and backend. The structural parent chain accumulates complete materials and constrains child permissions. Dependency edges order execution; named ports carry results. Expand these three relationships in “Agent and composition library”. See [definition format and inheritance](WORKFLOW_DEFINITIONS.md).
@@ -64,7 +64,7 @@ Copy destinations must be new. Reimporting a preset with identical identity reta
 For governance, read the original root declaration first and save explicitly reviewed permissions/budget as a grant:
 
 ```bash
-ergora composition show ergora-governance-delivery 1.0.1 --material > "$WALKTHROUGH_HOME/root.json"
+ergora composition show ergora-governance-delivery 1.2.0 --material > "$WALKTHROUGH_HOME/root.json"
 python3 - "$WALKTHROUGH_HOME" <<'PY'
 import json, pathlib, sys
 directory = pathlib.Path(sys.argv[1])
@@ -72,13 +72,13 @@ definition = json.loads((directory / "root.json").read_text())["definition"]
 grant = {"schema_version": 1, "permissions": definition["permissions"], "limits": definition["limits"]}
 (directory / "grant.json").write_text(json.dumps(grant, indent=2) + "\n")
 PY
-ergora composition preview ergora-governance-delivery 1.0.1 --grant "$WALKTHROUGH_HOME/grant.json"
+ergora composition preview ergora-governance-delivery 1.2.0 --grant "$WALKTHROUGH_HOME/grant.json"
 ```
 
 Review the complete preview's instances, ancestor materials and authorization limits. Use the actual returned `preview_sha256` for `PREVIEW_SHA256` below:
 
 ```bash
-ergora composition freeze-manifest ergora-governance-delivery 1.0.1 --grant "$WALKTHROUGH_HOME/grant.json" --preview-sha256 PREVIEW_SHA256
+ergora composition freeze-manifest ergora-governance-delivery 1.2.0 --grant "$WALKTHROUGH_HOME/grant.json" --preview-sha256 PREVIEW_SHA256
 ```
 
 Retain returned complete-package `path`, package `digest` and `manifest.preview_sha256`, then run `ergora composition verify-manifest FULL_MANIFEST_DIRECTORY`. When changing domain, use its root ID above and obtain/review that root's grant again; training roots request neither shell nor write permission. The page can also preview and “Save current preview as complete manifest”. Downloaded preview JSON is for reading; sharing/backups need the complete directory. See [complete bundles](WORKFLOW_DEFINITIONS.md#保存和分享完整组合).

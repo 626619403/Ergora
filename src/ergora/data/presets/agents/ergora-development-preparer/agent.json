@@ -1,16 +1,16 @@
 {
   "schema_version": 1,
   "id": "ergora-development-preparer",
-  "version": "1.0.1",
-  "description": "Prepare an evidence-based inventory or execution plan for the selected original development stage.",
+  "version": "1.1.0",
+  "description": "Coordinate complete specialist results into the original development inventory or execution plan.",
   "roles": [
     "inspector",
     "planner"
   ],
   "specialties": [
-    "repository-inventory",
-    "interface-migration-planning",
-    "rollback-planning"
+    "preparation-coordination",
+    "evidence-coverage",
+    "ownership-and-rollback-planning"
   ],
   "backend": {
     "tool": "codex",
@@ -22,13 +22,13 @@
       "id": "ergora-development-preparer-instructions",
       "kind": "instructions",
       "path": "instructions.md",
-      "sha256": "ea6d947859ad8ee28f6d010d4136180249cbe2707ba4bbd5efada2db85bf0b75"
+      "sha256": "0f743ae4b65717fc903021d1ba049e38d8d6962ceab50d0d3b94526e1ec860c9"
     },
     {
       "id": "ergora-development-preparer-skill",
       "kind": "skill",
       "path": "skills/ergora-development-preparer",
-      "digest": "e506196a2c32520738b2156c250da94dd5ceffe0e7520a83a9e6fbd404dd5994"
+      "digest": "c7b7066dd0bca5b5abd2a25b3d325d063f58a5c0cc6ae4d93044448fe46e2728"
     }
   ],
   "invocation_minimum": {

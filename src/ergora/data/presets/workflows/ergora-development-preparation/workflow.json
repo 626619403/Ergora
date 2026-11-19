@@ -1,14 +1,14 @@
 {
   "schema_version": 2,
   "id": "ergora-development-preparation",
-  "version": "1.1.0",
+  "version": "1.3.0",
   "description": "Read-only inventory and plan stage DAG selections for the original six-stage development owner.",
   "resources": [
     {
       "id": "ergora-development-preparation-instructions",
       "kind": "instructions",
       "path": "instructions.md",
-      "sha256": "8caf20b3d71042124b02cdb557836c3053e12e721b7f3cf380ef66fe95a81aef"
+      "sha256": "0921438fef71c206cd1e1985a35fab94a2c6683c4eed1c4137afefec4f7c79ed"
     }
   ],
   "permissions": {
@@ -41,8 +41,8 @@
       "ref": {
         "kind": "workflow",
         "id": "ergora-development-inventory",
-        "version": "1.0.0",
-        "digest": "cdd8c9f8258d35e79fd24dee74ac17ea72f88be9caf0b01739ceea67f8baa7e5"
+        "version": "1.1.0",
+        "digest": "5fd7c056a96b2297094d25507dbd4c3dcb97716bbef07f7f0b659ac8478213d7"
       },
       "depends_on": [],
       "inputs": {
@@ -56,8 +56,8 @@
       "ref": {
         "kind": "workflow",
         "id": "ergora-development-plan",
-        "version": "1.0.0",
-        "digest": "3d82cf72d818dbe283935724876bf8509ec13960fd30da4273e526f9000dc687"
+        "version": "1.1.0",
+        "digest": "506481fbbf6a3834f58856eecb223d75a79ca52d0d6eebdcf6f95e59e917d14a"
       },
       "depends_on": [],
       "inputs": {

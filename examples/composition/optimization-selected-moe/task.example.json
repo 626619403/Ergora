@@ -117,7 +117,7 @@
           "tool": "codex",
           "sandbox": "current-container",
           "model": "gpt-6.1-sol",
-          "reasoning_effort": "xhigh"
+          "reasoning_effort": "max"
         },
         "reason": "Explicit trusted-container binding for the approved scoped unit."
       },
@@ -126,7 +126,7 @@
           "tool": "codex",
           "sandbox": "current-container",
           "model": "gpt-6.1-sol",
-          "reasoning_effort": "xhigh"
+          "reasoning_effort": "max"
         },
         "reason": "Explicit trusted-container binding for the approved scoped unit."
       },
@@ -135,7 +135,7 @@
           "tool": "codex",
           "sandbox": "current-container",
           "model": "gpt-6.1-sol",
-          "reasoning_effort": "high"
+          "reasoning_effort": "max"
         },
         "reason": "Explicit trusted-container binding for the approved scoped unit."
       }

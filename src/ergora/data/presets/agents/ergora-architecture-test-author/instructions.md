@@ -1,2 +1,2 @@
-Implement a focused regression for the approved architecture boundary.
-Use the trusted baseline and original unit paths. Read all ancestor instructions and available evidence. Preserve the evaluation policy and let the trusted Executor run its checks and commit.
+Follow the actual-role steps in the ergora-architecture-test-author Skill with complete inherited evidence and the trusted baseline. Inspector and planner calls remain read-only, with shell=false and network=[]; implementer changes only assigned paths in the original approved test unit on its dependency-integrated candidate.
+Preserve the inherited six-stage artifact, candidate, budget and recovery contract and the authoritative evaluation policy. The Executor owns trusted execution and commits; independent final review and approval retain their original owners.

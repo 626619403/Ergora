@@ -1,36 +1,39 @@
 {
   "schema_version": 1,
   "id": "ergora-client-implementer",
-  "version": "1.0.1",
-  "description": "Implement the client consumer for the approved interface and supported server versions.",
+  "version": "2.0.0",
+  "description": "Inspect, plan or implement real frontend, CLI or SDK consumers of one current interface.",
   "roles": [
+    "inspector",
+    "planner",
     "implementer"
   ],
   "specialties": [
-    "client-api",
-    "compatibility-fallbacks"
+    "client-consumers",
+    "transport-and-serialization",
+    "async-selection-lifecycle"
   ],
   "backend": {
     "tool": "codex",
     "model": "gpt-6.1-sol",
-    "reasoning_effort": "xhigh"
+    "reasoning_effort": "max"
   },
   "resources": [
     {
       "id": "ergora-client-implementer-instructions",
       "kind": "instructions",
       "path": "instructions.md",
-      "sha256": "43892ec96e6457ec23628156a771615b5b68d8b2d1cbab64f1e070109eaf7485"
+      "sha256": "b42a91ce7465f16f9bef04656d0ee77edd99ce6bf83cfb9063a84f2745d721fe"
     },
     {
       "id": "ergora-client-implementer-skill",
       "kind": "skill",
       "path": "skills/ergora-client-implementer",
-      "digest": "ad17488baeaa212e57f97684d10298d81591170e0d00d7ac5243d7d51a7c8da4"
+      "digest": "2e65a3ac81b51a8073975d1c32be69d13e2f6cbef94cc1f9704d8703ec7919cc"
     }
   ],
   "invocation_minimum": {
     "model": "gpt-6.1-sol",
-    "reasoning_effort": "xhigh"
+    "reasoning_effort": "max"
   }
 }

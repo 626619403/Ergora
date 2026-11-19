@@ -1,5 +1,5 @@
 {
-  "goal": "Introduce a backward-compatible pagination API across server and client with a reversible rollout.",
+  "goal": "Introduce one current pagination interface across server and client, migrate affected callers, and verify integration and data recovery.",
   "allowed_paths": [
     "api/contracts",
     "docs/design",
@@ -11,10 +11,10 @@
     "docs/rollout"
   ],
   "acceptance": [
-    "Old clients still work with the new server.",
-    "New clients handle old and new server responses.",
-    "End-to-end tests and compatibility matrix pass on the final integrated candidate.",
-    "Rollback procedure is rehearsed with isolated fixtures; production deployment is out of scope."
+    "Server, client and affected callers use the same approved current pagination contract.",
+    "End-to-end and failure-path tests pass on the final integrated candidate after caller migration.",
+    "Existing pagination behavior and persisted data remain correct under the approved current contract.",
+    "Rollback and data recovery are rehearsed with isolated fixtures; production deployment is out of scope."
   ],
   "constraints": [
     "No production data migration or auto-merge.",
@@ -29,7 +29,7 @@
         "api/contracts",
         "docs/design"
       ],
-      "instructions": "Publish the approved backward-compatible pagination contract and consumer fixtures."
+      "instructions": "Define the approved current pagination contract, map affected callers, and own the shared consumer fixtures."
     },
     {
       "id": "server",
@@ -40,7 +40,7 @@
         "src/server",
         "tests/server"
       ],
-      "instructions": "Implement the contract and existing API compatibility in an isolated workspace."
+      "instructions": "Implement the current contract and migrate affected server callers in an isolated workspace."
     },
     {
       "id": "client",
@@ -51,7 +51,7 @@
         "src/client",
         "tests/client"
       ],
-      "instructions": "Implement consumer support using the fixed contract; retain old-server compatibility."
+      "instructions": "Implement the current contract and migrate affected client callers in an isolated workspace."
     },
     {
       "id": "integration-tests",
@@ -63,7 +63,7 @@
         "tests/integration",
         "docs/rollout"
       ],
-      "instructions": "Exercise mixed versions, rollback conditions and end-to-end behavior against the integrated candidate."
+      "instructions": "Verify caller migration, end-to-end and failure behavior, and rollback/data recovery against the integrated candidate."
     }
   ]
 }

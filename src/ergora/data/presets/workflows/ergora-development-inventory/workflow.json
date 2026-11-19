@@ -1,14 +1,14 @@
 {
   "schema_version": 2,
   "id": "ergora-development-inventory",
-  "version": "1.0.0",
-  "description": "Readonly inventory group with a single canonical coordinator.",
+  "version": "1.1.0",
+  "description": "Readonly inventory specialists for module boundaries and current-contract validation, with one canonical coordinator.",
   "resources": [
     {
       "id": "ergora-development-inventory-instructions",
       "kind": "instructions",
       "path": "instructions.md",
-      "sha256": "d6479ab2724fa358c3b7f9bef002d441b50cc1f71df8cd646ae9909ebde503b7"
+      "sha256": "b99b2f4f37f9e480117dc692cff87039caf1223e4e61e7a5f9d96062d8a3db96"
     }
   ],
   "permissions": {
@@ -37,12 +37,12 @@
   },
   "nodes": [
     {
-      "id": "coordinator",
+      "id": "module",
       "ref": {
         "kind": "agent",
-        "id": "ergora-development-preparer",
-        "version": "1.0.1",
-        "digest": "bcb90daaffbd8251c21e1aca5614eeb9aac563dba6da6485203e838ea0f7960c"
+        "id": "ergora-refactoring-engineer",
+        "version": "2.0.0",
+        "digest": "535186538e0ec8280a95db42073894112e4c2c8fcf39af2af259655c69d32818"
       },
       "role": "inspector",
       "depends_on": [],
@@ -62,9 +62,72 @@
       }
     },
     {
+      "id": "validation",
+      "ref": {
+        "kind": "agent",
+        "id": "ergora-compatibility-validator",
+        "version": "3.0.0",
+        "digest": "2940a3be995dd86403f423072012fe55b27f6b1e80600199543964ceb5563d6f"
+      },
+      "role": "inspector",
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [],
+        "shell": false,
+        "network": []
+      }
+    },
+    {
+      "id": "expert-results",
+      "join": "all",
+      "depends_on": [
+        "module",
+        "validation"
+      ]
+    },
+    {
+      "id": "coordinator",
+      "ref": {
+        "kind": "agent",
+        "id": "ergora-development-preparer",
+        "version": "1.1.0",
+        "digest": "fc6a1f358afe7866ec214b842e6f0b8595526e1b24e17f06b361530df6a3aa85"
+      },
+      "role": "inspector",
+      "depends_on": [
+        "expert-results"
+      ],
+      "inputs": {
+        "task": {
+          "node": "expert-results",
+          "output": "result"
+        }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [],
+        "shell": false,
+        "network": []
+      }
+    },
+    {
       "id": "done",
       "join": "all",
       "depends_on": [
+        "module",
+        "validation",
         "coordinator"
       ]
     }

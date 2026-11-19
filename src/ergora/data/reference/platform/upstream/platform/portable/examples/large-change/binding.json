@@ -2,7 +2,7 @@
   "schema_version": 1,
   "binding_id": "demo-project-temporal",
   "project_id": "demo-project",
-  "policy_sha256": "5e3dba5dae9de3886944861e25d44bb8463738a3a3aced4a273142982c351520",
+  "policy_sha256": "536570994d4c48fe816dd282a3572c0dd2f8f8b0dc408f8f0476f8ae21786b42",
   "runtime": {
     "kind": "temporal-development-v1",
     "executor_protocol": "trusted-file-v1",

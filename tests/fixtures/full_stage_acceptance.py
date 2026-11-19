@@ -79,6 +79,7 @@ async def _exercise(root, case, app, activities, adapter, installation, state, r
 
     workflow.now = lambda: datetime.now(timezone.utc)
     workflow.wait = asyncio.wait
+    selected = case == 'development-specialists'
 
     async def call(name, value, result_type=dict):
         if name == 'dev_submit':
@@ -140,20 +141,30 @@ async def _exercise(root, case, app, activities, adapter, installation, state, r
             assert materials['repository']['blobs'][files[name]['git_object']]['text'] == text
         artifact = next(item for item in receipt['artifacts'] if item['name'] == 'composition-resource-coverage')
         coverage = read(runtime / 'artifacts' / artifact['path'])['attachments']
-        assert any(item['covered_bytes'] > 65536 for item in coverage.values())
+        if not selected:
+            assert any(item['covered_bytes'] > 65536 for item in coverage.values())
         assert 'approved_plan' not in materials['context']
         if case == 'issue-source':
             assert materials['issue_source'] == app.admission['issue_source']
         if stage == 'plan':
-            specialist = next(value for path, value in materials['preparation_inputs']['results'].items()
-                              if path.endswith('/expert-a'))
-            assert any(len(text.encode('utf-8')) > 60000 and text.endswith('Complete planner original tail: kernel 原文，未截断。\r\n')
-                       for text in specialist['artifacts'].values())
+            if selected:
+                group = app.admission['composition']['preparation']['plan']
+                assert set(materials['preparation_inputs']['results']) == {
+                    group['instance'] + '/' + name for name in ('contract', 'server', 'client', 'validation')}
+                for source in materials['preparation_inputs']['results'].values():
+                    assert source['artifacts'] == {item['name']: (runtime / 'artifacts' / item['path']).read_text()
+                        for item in source['receipt']['artifacts'] if item['name'] in ('execution-plan', 'ownership-map', 'rollback-plan')}
+            else:
+                specialist = next(value for path, value in materials['preparation_inputs']['results'].items()
+                                  if path.endswith('/expert-a'))
+                assert any(len(text.encode('utf-8')) > 60000 and text.endswith('Complete planner original tail: kernel 原文，未截断。\r\n')
+                           for text in specialist['artifacts'].values())
             artifacts = materials['dependency_artifacts']['inventory']
             names = set(app.spec['profile']['artifacts_by_stage']['inventory'])
             assert artifacts.keys() == names | {'preparation-sources'}
-            assert any(len(text) > 60000 and text.endswith('Complete inventory tail beyond the legacy truncation.\n')
-                       for text in artifacts.values())
+            if not selected:
+                assert any(len(text) > 60000 and text.endswith('Complete inventory tail beyond the legacy truncation.\n')
+                           for text in artifacts.values())
             for item in records['inventory']['artifacts']:
                 if item['name'] in artifacts:
                     assert artifacts[item['name']] == (runtime / 'artifacts' / item['path']).read_bytes().decode('utf-8')
@@ -162,19 +173,23 @@ async def _exercise(root, case, app, activities, adapter, installation, state, r
     model_intervals = {}
     for stage in ('inventory', 'plan'):
         intervals = []
-        for name in ('expert-a', 'expert-b'):
+        for name in (('contract', 'server', 'client', 'validation') if selected else ('expert-a', 'expert-b')):
             member = app.admission['composition']['preparation'][stage]['instance'] + '/' + name
             receipt = records[app.source_stage(member)]
             result = read(runtime / 'workspaces/task-1/jobs' / receipt['job_id'] / 'output/selected-agent/result.json')
             intervals.append(json.loads(result['summary']))
-        overlap = max(item['model_started_ns'] for item in intervals) < min(item['model_finished_ns'] for item in intervals)
+        overlap = any(max(first['model_started_ns'], second['model_started_ns']) < min(first['model_finished_ns'], second['model_finished_ns'])
+                      for index, first in enumerate(intervals) for second in intervals[index + 1:])
+        if selected and stage == 'plan':
+            contract = intervals[0]
+            assert all(contract['model_finished_ns'] <= item['model_started_ns'] for item in intervals[1:3])
         assert overlap is (case != 'serial')
         model_intervals[stage] = intervals
         receipt = records[stage]
         artifact = next(item for item in receipt['artifacts'] if item['name'] == 'preparation-sources')
         sources = read(runtime / 'artifacts' / artifact['path'])
         group = app.admission['composition']['preparation'][stage]
-        assert len(sources['members']) == 3 and sources['member'] == group['coordinator']
+        assert len(sources['members']) == (5 if selected else 3) and sources['member'] == group['coordinator']
         assert sources['members'][group['coordinator']]['receipt_sha256'] is None
         for path, row in sources['members'].items():
             assert row['receipt_sha256'] == (None if path == group['coordinator'] else sha(records[row['stage']]))
@@ -222,7 +237,7 @@ async def _exercise(root, case, app, activities, adapter, installation, state, r
     authorization = await adapter.authorize({'task_id': 'task-1', 'request_sha256': app.spec['request_sha256'],
         'profile_sha256': app.spec['profile_sha256'], 'plan_sha256': plan_sha, 'receipt_id': 'fixture-approval'})
     app.approved_plan = {'plan_sha256': plan_sha, 'receipt': plan, 'approval': authorization}
-    result = await original_work(root, 'materials-issue-source' if case == 'issue-source' else 'materials', app, activities,
+    result = await original_work(root, 'materials-specialists' if selected else ('materials-issue-source' if case == 'issue-source' else 'materials'), app, activities,
         installation, state, runtime, requests, records)
     for stage, receipt in records.items():
         if not stage.startswith('review:'):
@@ -230,19 +245,29 @@ async def _exercise(root, case, app, activities, adapter, installation, state, r
         materials = read(runtime / 'workspaces/task-1/jobs' / receipt['job_id'] / 'selected-agent/materials.json')
         plan_sources = materials['dependency_artifacts']['plan']['preparation-sources']
         assert plan_sources == trusted['text']
-        original = json.loads(plan_sources)['members'][app.admission['composition']['preparation']['plan']['instance'] + '/expert-a']
-        assert any(output['bytes'] > 60000 and output['text'].endswith('Complete planner original tail: kernel 原文，未截断。\r\n')
-                   for output in original['outputs'].values())
+        if selected:
+            assert len(json.loads(plan_sources)['members']) == 5
+        else:
+            original = json.loads(plan_sources)['members'][app.admission['composition']['preparation']['plan']['instance'] + '/expert-a']
+            assert any(output['bytes'] > 60000 and output['text'].endswith('Complete planner original tail: kernel 原文，未截断。\r\n')
+                       for output in original['outputs'].values())
     if 'budget' in app.admission:
         instance = app.admission['budget']['instance']
         owners = [runtime / 'workspaces/task-1/jobs' / receipt['job_id'] / 'budget' for receipt in records.values()]
         attempts = [read(owner / 'model-attempt.json') for owner in owners if (owner / 'model-attempt.json').exists()]
-        assert len(owners) == 13 and len(attempts) == len(app.admission['budget']['slots']) == 11
+        assert len(owners) == len(app.admission['budget']['slots']) + 2
+        assert len(attempts) == len(app.admission['budget']['slots']) == (17 if selected else 11)
         assert {item['budget_sha256'] for item in attempts} == {instance['sha256']}
         assert {item['stage'] for item in attempts} == set(app.admission['budget']['slots'])
         assert all(read(owner / 'stopped.json')['cleanup_confirmed'] is True
                    and read(owner / 'collection-stopped.json')['cleanup_confirmed'] is True for owner in owners)
         result.update(budget_job_owners=len(owners), original_model_slot_attempts=len(attempts))
+        if selected:
+            result.update(actual_selected_graph=True, source_input_version=app.admission['schema_version'],
+                actual_manifest=app.admission['composition']['manifest'],
+                selected_preparation=app.admission['composition']['preparation'],
+                original_slot_and_clock=instance, original_server_reply_reconciled=True,
+                all_job_owners_cleanup_confirmed=True)
     if case == 'context':
         from ergora import memory, skill_assets, task_envelopes
 

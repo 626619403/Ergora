@@ -3,7 +3,7 @@
   "task_type": "large-change",
   "task_version": 1,
   "task_id": "large-change-demo-r1",
-  "profile_sha256": "40711a913ab14ac3f1c60092edaecdb36db82c0d5e73e5788ebc9b8b199e1ea9",
+  "profile_sha256": "c4e3a9384df16585e6981d54a72b3d779690a7c5648ace43d5b05b7bfb0def34",
   "tracker": {
     "kind": "gitlab",
     "project": "YOUR_GROUP/YOUR_REPO",
@@ -14,7 +14,7 @@
     "starting_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
   },
   "input": {
-    "goal": "Introduce a backward-compatible pagination API across server and client with a reversible rollout.",
+    "goal": "Introduce one current pagination interface across server and client, migrate affected callers, and verify integration and data recovery.",
     "allowed_paths": [
       "api/contracts",
       "docs/design",
@@ -26,10 +26,10 @@
       "docs/rollout"
     ],
     "acceptance": [
-      "Old clients still work with the new server.",
-      "New clients handle old and new server responses.",
-      "End-to-end tests and compatibility matrix pass on the final integrated candidate.",
-      "Rollback procedure is rehearsed with isolated fixtures; production deployment is out of scope."
+      "Server, client and affected callers use the same approved current pagination contract.",
+      "End-to-end and failure-path tests pass on the final integrated candidate after caller migration.",
+      "Existing pagination behavior and persisted data remain correct under the approved current contract.",
+      "Rollback and data recovery are rehearsed with isolated fixtures; production deployment is out of scope."
     ],
     "constraints": [
       "No production data migration or auto-merge.",
@@ -44,7 +44,7 @@
           "api/contracts",
           "docs/design"
         ],
-        "instructions": "Publish the approved backward-compatible pagination contract and consumer fixtures."
+        "instructions": "Define the approved current pagination contract, map affected callers, and own the shared consumer fixtures."
       },
       {
         "id": "server",
@@ -55,7 +55,7 @@
           "src/server",
           "tests/server"
         ],
-        "instructions": "Implement the contract and existing API compatibility in an isolated workspace."
+        "instructions": "Implement the current contract and migrate affected server callers in an isolated workspace."
       },
       {
         "id": "client",
@@ -66,7 +66,7 @@
           "src/client",
           "tests/client"
         ],
-        "instructions": "Implement consumer support using the fixed contract; retain old-server compatibility."
+        "instructions": "Implement the current contract and migrate affected client callers in an isolated workspace."
       },
       {
         "id": "integration-tests",
@@ -78,7 +78,7 @@
           "tests/integration",
           "docs/rollout"
         ],
-        "instructions": "Exercise mixed versions, rollback conditions and end-to-end behavior against the integrated candidate."
+        "instructions": "Verify caller migration, end-to-end and failure behavior, and rollback/data recovery against the integrated candidate."
       }
     ]
   }

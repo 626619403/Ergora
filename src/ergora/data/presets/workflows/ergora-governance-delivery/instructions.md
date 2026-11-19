@@ -1,2 +1,4 @@
 Govern an existing repository while preserving its accepted behavior and boundary policy.
 Read every structural ancestor and supplied scope. The trusted original workflow performs owner plan approval, dependency merges, unit checks/commits, integrate and verification before final review. Static data and agent output do not grant permission or approval.
+
+The shared preparation default contains module and validation specialists plus the unique coordinator in each role-pure stage. Select domain-specific task revisions before freezing when the actual scope requires them; retain every complete producer and count every leaf in the original budget. Integrate and verify remain trusted original stages. Final reviewers read the inherited common review contract and hand follow-up proposals to the supervisor under the same frozen candidate, slots and clock.

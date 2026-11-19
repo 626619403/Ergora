@@ -4,7 +4,7 @@
   "task_type": "large-change",
   "task_version": 1,
   "title": "大型变更",
-  "legacy_profile_sha256": "40711a913ab14ac3f1c60092edaecdb36db82c0d5e73e5788ebc9b8b199e1ea9",
+  "legacy_profile_sha256": "c4e3a9384df16585e6981d54a72b3d779690a7c5648ace43d5b05b7bfb0def34",
   "components": {
     "workflow": {
       "path": "workflow.json",
@@ -20,11 +20,11 @@
     },
     "README.md": {
       "path": "README.md",
-      "sha256": "4beea30e7c92a2c9814ba5f944191526440b42c913f8f3deae7593370e86727c"
+      "sha256": "86ae3442c40fef4f1cdf7160223ffea561ccacbae33fc6a5276d3ac0019fd102"
     },
     "instructions.md": {
       "path": "instructions.md",
-      "sha256": "7518e23e5353c57b9ee2f5a245a847169ba42d937124994766fadb70884582dd"
+      "sha256": "4eef59605f5819a05e89d19fc5437009c81c397229e7f2a39c4f4cab7082e054"
     },
     "input.schema.json": {
       "path": "input.schema.json",

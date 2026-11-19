@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "id": "ergora-governance-template",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Native parent for the governance six-stage delivery.",
   "resources": [
     {
@@ -43,8 +43,8 @@
       "ref": {
         "kind": "workflow",
         "id": "ergora-governance-delivery",
-        "version": "1.1.1",
-        "digest": "4a7a03fd209694e4eb322463375d4c4e1b9a12eb8c37fb86a5780efcace73534"
+        "version": "1.2.0",
+        "digest": "b9da227b6d18119d798cdebfe7ff7af05f5467b20c993972403b9f44ebbdadc1"
       },
       "depends_on": [],
       "inputs": {

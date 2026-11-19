@@ -10,6 +10,23 @@ from ergora import agent_definitions, agent_runs, reference, workflow_definition
 
 
 def prepare(root, state, task_input, kind, examples, mode):
+    if mode == 'composition-work-materials-development-specialists':
+        import runpy
+        import subprocess
+
+        example = examples / 'composition/development-specialists'
+        published = runpy.run_path(str(example / 'publish.py'))['publish'](state, example, version='1.0.0')
+        definition = json.loads((example / 'task.example.json').read_bytes())
+        definition.update(task_id='task-1', issue_id='1', starting_sha=subprocess.check_output(
+            ['git', '-C', str(root / 'repo'), 'rev-parse', 'HEAD'], text=True).strip())
+        definition['input'].update(allowed_paths=['src'])
+        for unit in definition['input']['work_units']:
+            unit['paths'] = ['src/' + unit['id'] + '.py']
+            unit['instructions'] += ' fixture-shared-contract'
+        definition['composition']['preparation']['repository_paths'] = ['src']
+        definition['composition'].update(manifest=published['manifest']['path'], manifest_digest=published['manifest']['digest'])
+        definition['budget'].update(wall_seconds=300, cleanup_seconds=15)
+        return definition
     for path in (examples / 'agents/kernel-implementer', examples / 'agents/validation-implementer',
                  examples / 'agents/architecture-reviewer', *sorted((examples / 'composition/agents').iterdir())):
         agent_definitions.import_bundle(state, path)
@@ -154,6 +171,7 @@ async def exercise(root, case, app, activities, installation, state, runtime, re
     from temporalio import workflow
 
     workflow.now = lambda: datetime.now(timezone.utc)
+    selected = case == 'materials-specialists'
     jobs = {}
 
     async def call(name, value, result_type=dict):
@@ -216,6 +234,15 @@ async def exercise(root, case, app, activities, installation, state, runtime, re
                 assert first == second and len(agent_runs.runs(state, 'demo')) == count
                 receipt = await asyncio.to_thread(process, path, state.root)
                 assert receipt == first
+            elif selected and stage == 'work:server':
+                # Drop the completed original reply, then reconcile the same job;
+                # a second process observation must not claim another model slot.
+                first = await asyncio.to_thread(process, path, state.root)
+                invocation = read(runtime / 'workspaces/task-1/jobs' / job['job_id'] / 'output/selected-agent/invocation.json')
+                receipt = await asyncio.to_thread(process, path, state.root)
+                assert receipt == first
+                assert len([run for run in agent_runs.runs(state, 'demo')
+                            if run.get('input_digest') == invocation['input_digest']]) == 1
             else:
                 receipt = await asyncio.to_thread(process, path, state.root)
             records[stage] = receipt
@@ -240,7 +267,7 @@ async def exercise(root, case, app, activities, installation, state, runtime, re
         else:
             assert 'only the trusted Executor may commit' in receipt['detail']
         return {'case': case, 'original_owners': True, 'failed_before_successor': True, 'detail': receipt['detail']}
-    assert case in ('full', 'recovery', 'results', 'issue-source', 'materials', 'materials-issue-source')
+    assert case in ('full', 'recovery', 'results', 'issue-source', 'materials', 'materials-issue-source', 'materials-specialists')
     work_stages = ['work:' + unit['id'] for unit in app.spec['request']['input']['work_units']]
     for stage in work_stages:
         receipt = records[stage]
@@ -258,6 +285,15 @@ async def exercise(root, case, app, activities, installation, state, runtime, re
         leaf = next(item for item in prepared['composition']['instances'] if item['path'] == read(folder / 'formal-call.json')['member'])
         assert all(resource['text'] in prepared['prompt'] for resource in leaf['resources'])
         assert any(item['name'] == 'composition-native-command' for item in receipt['artifacts'])
+        if selected and stage == 'work:integration-tests':
+            inputs = materials['work_inputs']
+            prefix = app.admission['composition']['execution']['instance'] + '/'
+            assert set(inputs['results']) == {prefix + 'server', prefix + 'client'}
+            assert inputs['dependencies'] == {'server': prefix + 'server', 'client': prefix + 'client'}
+            for identity, source in inputs['results'].items():
+                assert source['receipt'] == records['work:' + identity.rsplit('/', 1)[1]]
+                assert source['artifacts'] == {item['name']: (runtime / 'artifacts' / item['path']).read_text()
+                    for item in source['receipt']['artifacts'] if item['name'] in ('change-summary', 'test-results')}
         if stage.endswith('validation'):
             if case == 'results':
                 sources = materials['work_inputs']
@@ -296,7 +332,7 @@ async def exercise(root, case, app, activities, installation, state, runtime, re
             assert json.loads((folder / 'input/task.txt').read_text().splitlines()[-1])['issue_source'] == app.admission['issue_source']
             assert materials['artifact_protocol'] == 'stage-artifacts-v1'
         if case != 'results' or path == 'root/review/structure/review':
-            assert materials['review_inputs']['results'][app.admission['composition']['execution']['assignments']['validation']]['receipt'] == records['work:validation']
+            assert materials['review_inputs']['results'][app.admission['composition']['execution']['assignments']['integration-tests' if selected else 'validation']]['receipt'] == records['work:integration-tests' if selected else 'work:validation']
         else:
             source = materials['review_inputs']['results']['root/review/structure/review']
             assert source['receipt'] == records['review:root/review/structure/review']
@@ -313,7 +349,17 @@ async def exercise(root, case, app, activities, installation, state, runtime, re
             assert await asyncio.to_thread(process, path, state.root) == receipt
         else:
             assert Executor(read(path), state.root).execute() == receipt
-    assert len(agent_runs.runs(state, 'demo')) == before == len(work_stages) + 3 + (6 if case.startswith('materials') else 0)
+    assert len(agent_runs.runs(state, 'demo')) == before == len(work_stages) + 3 + len(app.admission['composition'].get('preparation', {}).get('members', {}))
     assert len({receipt['actor']['session_id'] for receipt in records.values()}) == len(records)
+    if selected:
+        intervals = {}
+        for unit in app.spec['request']['input']['work_units']:
+            receipt = records['work:' + unit['id']]
+            output = read(runtime / 'workspaces/task-1/jobs' / receipt['job_id'] / 'output/selected-agent/result.json')
+            intervals[unit['id']] = json.loads(output['summary'])
+        assert max(intervals[name]['model_started_ns'] for name in ('server', 'client')) < min(
+            intervals[name]['model_finished_ns'] for name in ('server', 'client'))
+        assert intervals['contract']['model_finished_ns'] <= min(intervals[name]['model_started_ns'] for name in ('server', 'client'))
+        assert max(intervals[name]['model_finished_ns'] for name in ('server', 'client')) <= intervals['integration-tests']['model_started_ns']
     return {'case': case, 'original_owners': True, 'candidate': candidate, 'work_calls': len(work_stages), 'review_calls': 3,
             'complete_sources': True, 'original_call_recovery': True}

@@ -304,7 +304,11 @@ def test_bundled_recipe_is_restartable_and_freezes_complete_ancestors(tmp_path, 
     grant = {'schema_version': 1, 'permissions': root['permissions'], 'limits': root['limits']}
     before = workflows.preview(state.root, root['id'], root['version'], grant)
     leaves = [item for item in before['instances'] if item['kind'] == 'agent']
+    planners = {item['id'] for item in installed['agents']
+                if 'planner' in agent_definitions.get(state, item['id'], item['version'])['definition']['roles']}
     for item in leaves:
+        if item['ref']['id'] in planners:
+            assert item['backend_request']['reasoning_effort'] == item['invocation_minimum']['reasoning_effort'] == 'max'
         assert item['backend_request']['model'] == item['invocation_minimum']['model'] == 'gpt-6.1-sol'
         assert item['backend_request']['reasoning_effort'] == item['invocation_minimum']['reasoning_effort']
         if item['role'] in ('planner', 'experiment-planner', 'kernel-tuner') or item['ref']['id'] == 'ergora-api-contract-author':
@@ -326,6 +330,17 @@ def test_bundled_recipe_is_restartable_and_freezes_complete_ancestors(tmp_path, 
             'repository_paths': reference.template_details(kind)['input']['allowed_paths']}
         delivery = WorkDelivery(before, execution, 'root/development/review', units, preparation=preparation)
         assert set(delivery.work.members) == set(execution['assignments'].values())
+        for stage, group in delivery.preparation.items():
+            coordinator, dag = group['coordinator'], group['dag']
+            prefix = 'root/development/preparation/' + stage + '/'
+            assert {path: leaf['ref']['id'] for path, leaf in dag.members.items()} == {
+                prefix + 'module': 'ergora-refactoring-engineer',
+                prefix + 'validation': 'ergora-compatibility-validator',
+                coordinator: 'ergora-development-preparer'}
+            assert set(dag.predecessors[coordinator]) == set(dag.input_ports(coordinator)['sources']) == {
+                prefix + 'module', prefix + 'validation'}
+            assert dag.terminal_sources() == dag.members.keys()
+        assert len(leaves) == len(units) + 6 + len(delivery.review.members)
         assert {item['backend_request']['tool'] for item in leaves if item['role'] == 'reviewer'} == {'codex'}
         assert {item['backend_request']['tool'] for item in leaves if item['role'] == 'implementer'} == {'codex'}
         selected = 'root/development/review/structure/review'
@@ -531,9 +546,13 @@ def test_development_preset_creates_original_unit_contract_without_starting(regi
     with pytest.raises(ValueError, match='exactly all Agent leaves'):
         tasks.preview(state, 'demo', incomplete, 1)
     lowered = deepcopy(definition)
-    lowered['composition']['backend_overrides']['root/development/preparation/plan/coordinator'] = {
+    # A work invocation retains the max minimum of its Agent's planner role.
+    validation = next(path for path in assignments.values()
+                      if next(item for item in graph['instances'] if item['path'] == path)['ref']['id']
+                      in ('ergora-compatibility-validator', 'ergora-architecture-test-author'))
+    lowered['composition']['backend_overrides'][validation] = {
         'binding': {'tool': 'codex', 'model': 'gpt-6.1-sol', 'reasoning_effort': 'high'},
-        'reason': 'Rejected lower planner request'}
+        'reason': 'Rejected lower request for a writer sharing the planner floor'}
     lowered['task_id'] = 'lowered-preset-task'
     rejected = tasks.prepare(state, 'demo', lowered, 1)
     assert rejected['status'] == 'failed'
@@ -655,3 +674,93 @@ def test_refactoring_preset_prepares_the_original_large_change_native_contract(r
     runtime = Path(project['execution']['state_directory'])
     assert not (runtime / 'tasks' / definition['task_id']).exists()
     assert not (runtime / 'requests-composition-v12').exists()
+
+
+def test_cross_end_revision_freezes_real_experts_complete_ports_and_unchanged_default(tmp_path):
+    example = Path(__file__).parents[1] / 'examples/composition/development-specialists'
+    state = State(tmp_path / 'state')
+    publish = runpy.run_path(str(example / 'publish.py'))['publish']
+    published = publish(state, example, version='1.0.0')
+    repeated = publish(state, example, version='1.0.0')
+    assert published == repeated
+    manifest = Path(published['manifest']['path'])
+    graph = workflows.inspect_manifest(manifest, material=True)['composition']
+    task = json.loads((example / 'task.example.json').read_bytes())
+    option = task['composition']
+    delivery = WorkDelivery(graph, option['execution'], option['review_instance'],
+                            task['input']['work_units'], preparation=option['preparation'])
+    installed = published['installation']
+    references = {item['id']: item for item in installed['agents']}
+    for stage, group in delivery.preparation.items():
+        prefix = 'root/development/preparation/' + stage + '/'
+        expected = {prefix + name: references[identity] for name, identity in (
+            ('contract', 'ergora-api-contract-author'), ('server', 'ergora-server-implementer'),
+            ('client', 'ergora-client-implementer'), ('validation', 'ergora-compatibility-validator'),
+            ('coordinator', 'ergora-development-preparer'))}
+        dag, coordinator = group['dag'], group['coordinator']
+        assert {path: leaf['ref'] for path, leaf in dag.members.items()} == expected
+        assert set(dag.predecessors[coordinator]) == set(dag.input_ports(coordinator)['sources']) == expected.keys() - {coordinator}
+        assert dag.terminal_sources() == expected.keys()
+        for name in ('server', 'client'):
+            assert dag.input_ports(prefix + name)['sources'] == ([prefix + 'contract'] if stage == 'plan' else [])
+    assert len(delivery.work.members) == 4 and len(delivery.review.members) == 3
+    leaves = {item['path']: item for item in graph['instances'] if item['kind'] == 'agent'}
+    assert len(leaves) == task['budget']['model_invocations'] == 17
+    base = installed['root']
+    base_definition = workflows.get(state, base['id'], base['version'])['definition']
+    default = workflows.preview(state.root, base['id'], base['version'],
+        {'schema_version': 1, 'permissions': base_definition['permissions'], 'limits': base_definition['limits']})
+    assert len([item for item in default['instances'] if item['kind'] == 'agent']) == 13
+    for name in ('preparation', 'delivery', 'root'):
+        definition = published['publications'][name]['definition']
+        actual = {node['id']: node.get('ref') for node in definition['nodes']}
+        children = {'preparation': ('inventory', 'plan'), 'delivery': ('preparation',), 'root': ('delivery',)}[name]
+        for child in children:
+            assert published['references'][child] in actual.values()
+    methods = {identity: agent_definitions.get(state, item['id'], item['version'], material=True)['resources']
+               for identity, item in references.items()}
+    shutil.rmtree(state.root / 'agent-definitions')
+    shutil.rmtree(state.root / 'workflow-definitions')
+    for path, leaf in leaves.items():
+        prepared = workflows.prepare_input_from_manifest(manifest, path,
+            b'Exact approved candidate, original task, complete producer results and original evidence.',
+            tmp_path / path.replace('/', '-'), 100000)
+        actual = workflows.inspect_input(Path(prepared['path']), material=True)
+        assert all(resource['text'] in actual['prompt'] for resource in methods[leaf['ref']['id']])
+        if leaf['role'] in ('inspector', 'planner'):
+            assert not leaf['permissions']['write'] and not leaf['permissions']['shell'] and not leaf['permissions']['network']
+            assert leaf['backend_request']['reasoning_effort'] == leaf['invocation_minimum']['reasoning_effort'] == 'max'
+    invalid = deepcopy(graph)
+    coordinator = delivery.preparation['plan']['coordinator']
+    next(item for item in invalid['instances'] if item['path'] == coordinator)['inputs'] = {'task': {'input': 'task'}}
+    with pytest.raises(ValueError, match='coordinator'):
+        WorkDelivery(invalid, option['execution'], option['review_instance'],
+                     task['input']['work_units'], preparation=option['preparation'])
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Budgeted native preparation requires Linux/WSL2')
+def test_cross_end_revision_prepares_exact_member_slots_on_the_original_native_owner(registration, tmp_path):
+    state, project = registration
+    example = Path(__file__).parents[1] / 'examples/composition/development-specialists'
+    published = runpy.run_path(str(example / 'publish.py'))['publish'](state, example, version='1.0.0')
+    definition = json.loads((example / 'task.example.json').read_bytes())
+    definition['starting_sha'] = subprocess.check_output(['git', '-C', project['repo'], 'rev-parse', 'HEAD'], text=True).strip()
+    definition['issue_id'] = '1'
+    definition['composition'].update(manifest=published['manifest']['path'], manifest_digest=published['manifest']['digest'])
+    project['allowed_paths'] = definition['input']['allowed_paths']
+    registrations.register(state, project, 0)
+    prepared = tasks.prepare(state, 'demo', definition, 1)
+    assert prepared['status'] == 'prepared'
+    preview = tasks.preview(state, 'demo', definition, 1)
+    document = preview['files']['task.spec.json']
+    execution_input(document).require_submission()
+    assert document['schema_version'] == 12 and len(document['budget']['slots']) == 17
+    assert document['budget']['instance'] == prepared['budget']
+    assert document['composition']['preparation']['protocol'] == 'preparation-dag-v1'
+    graph = task_envelopes.manifest_graph(document['composition']['manifest'])
+    assert {item['path'] for item in graph['instances'] if item['kind'] == 'agent'} == (
+        document['composition']['preparation']['members'].keys()
+        | document['composition']['execution']['members'].keys() | document['composition']['members'].keys())
+    created = tasks.create(state, 'demo', definition, 1, preview['preview_sha256'], prepare_sha256=prepared['prepare_sha256'])
+    assert created['status'] == 'published' and created['execution_started_by_operation'] is False
+    assert tasks.show(state, 'demo', definition['task_id'])['admission_envelope'] == document

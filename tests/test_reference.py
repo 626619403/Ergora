@@ -26,6 +26,70 @@ def test_template_copy_preserves_files_and_existing_destination(tmp_path):
             reference.copy_template(kind, destination)
 
 
+def test_large_change_defaults_and_copies_use_the_current_complete_contract(tmp_path):
+    source = reference.ROOT / "platform"
+    current = reference.template_details("large-change")["input"]
+    request = json.loads((source / "upstream/platform/task-types/large-change/examples/request.json").read_text())
+    portable = json.loads((source / "upstream/platform/portable/examples/large-change/task.json").read_text())
+    assert current == request["input"] == portable["input"]
+    assert {unit["id"]: unit["depends_on"] for unit in current["work_units"]} == {
+        "contract": [], "server": ["contract"], "client": ["contract"],
+        "integration-tests": ["server", "client"],
+    }
+    instructions = (source / "templates/large-change/instructions.md").read_bytes()
+    assert instructions == (source / "upstream/platform/task-types/large-change/instructions.md").read_bytes()
+    assert instructions == (source / "upstream/platform/portable/packages/large-change/instructions.md").read_bytes()
+
+    destination = tmp_path / "api copy"
+    reference.copy_template("large-change", destination)
+    cli_destination = tmp_path / "cli copy"
+    command = [sys.executable, "-m", "ergora", "templates", "copy", "large-change", str(cli_destination)]
+    result = subprocess.run(command, cwd=tmp_path, capture_output=True, text=True, timeout=30)
+    assert result.returncode == 0, result.stderr
+    for copied in (destination, cli_destination):
+        assert json.loads((copied / "input.json").read_bytes()) == current
+        assert (copied / "instructions.md").read_bytes() == instructions
+    before = {path: path.read_bytes() for path in cli_destination.rglob("*") if path.is_file()}
+    repeated = subprocess.run(command, cwd=tmp_path, capture_output=True, text=True, timeout=30)
+    assert repeated.returncode != 0
+    assert all(path.read_bytes() == raw for path, raw in before.items())
+
+
+def test_native_large_change_initialization_uses_current_sources_and_preserves_existing_files(
+        prepared_training_installation, tmp_path):
+    import shutil
+
+    source, _ = prepared_training_installation
+    installation = tmp_path / "native installation"
+    shutil.copytree(source, installation)
+    shutil.rmtree(installation / "templates/large-change")
+    destination = tmp_path / "native copy"
+    probe = ("import sys;from pathlib import Path;sys.path.insert(0," + repr(str(installation / "local")) + ");"
+             "from agent_platform import templates;templates.install();templates.copy('large-change',Path(sys.argv[1]))")
+    environment = dict(os.environ, AGENTFLOW_CONFIG_DIR=str(tmp_path / "config"),
+                       AGENTFLOW_STATE_DIR=str(tmp_path / "runtime"))
+    result = subprocess.run([sys.executable, "-I", "-S", "-B", "-c", probe, str(destination)],
+                            cwd=tmp_path, env=environment, capture_output=True, text=True, timeout=30)
+    assert result.returncode == 0, result.stderr
+    expected = reference.template_details("large-change")["input"]
+    instructions = (reference.ROOT / "platform/templates/large-change/instructions.md").read_bytes()
+    for copied in (installation / "templates/large-change", destination):
+        assert json.loads((copied / "input.json").read_bytes()) == expected
+        assert (copied / "instructions.md").read_bytes() == instructions
+
+    existing = installation / "templates/large-change"
+    (existing / "input.json").write_bytes(b'{"goal":"existing project input"}\n')
+    (existing / "instructions.md").write_bytes(b"Existing project instructions.\n")
+    before = {path: path.read_bytes() for path in (installation / "templates").rglob("*") if path.is_file()}
+    preserved_copy = tmp_path / "preserved native copy"
+    repeated = subprocess.run([sys.executable, "-I", "-S", "-B", "-c", probe, str(preserved_copy)],
+                              cwd=tmp_path, env=environment, capture_output=True, text=True, timeout=30)
+    assert repeated.returncode == 0, repeated.stderr
+    assert all(path.read_bytes() == raw for path, raw in before.items())
+    for name in ("input.json", "instructions.md"):
+        assert (preserved_copy / name).read_bytes() == (existing / name).read_bytes()
+
+
 def test_installed_compiler_runs_outside_repository(tmp_path):
     shadow = tmp_path / "dev_platform"
     shadow.mkdir()

@@ -29,10 +29,10 @@
         "write": []
       },
       "ref": {
-        "digest": "3b0ab4852241f20d62c8562129238bee89364f959c3e8d6055ce512fbfed5c1f",
-        "id": "ergora-experiment-designer",
         "kind": "agent",
-        "version": "2.1.0"
+        "id": "ergora-experiment-designer",
+        "version": "2.1.0",
+        "digest": "3b0ab4852241f20d62c8562129238bee89364f959c3e8d6055ce512fbfed5c1f"
       },
       "role": "planner"
     },
@@ -54,10 +54,10 @@
         "write": []
       },
       "ref": {
-        "digest": "a1794054d147dfc65ee3d25908a07ca0cb77ea250c86c125fe90315fdca97d89",
-        "id": "ergora-opt-moe-dispatcher-expert",
         "kind": "agent",
-        "version": "1.1.0"
+        "id": "ergora-opt-moe-dispatcher-expert",
+        "version": "1.1.0",
+        "digest": "a1794054d147dfc65ee3d25908a07ca0cb77ea250c86c125fe90315fdca97d89"
       },
       "role": "planner"
     },
@@ -79,10 +79,10 @@
         "write": []
       },
       "ref": {
-        "digest": "2e17ee7a519df875115fa8caf8f509a9ccff15f9513b4dec2c99657760bdd6ca",
-        "id": "ergora-opt-moe-overlap-expert",
         "kind": "agent",
-        "version": "1.1.0"
+        "id": "ergora-opt-moe-overlap-expert",
+        "version": "1.1.0",
+        "digest": "2e17ee7a519df875115fa8caf8f509a9ccff15f9513b4dec2c99657760bdd6ca"
       },
       "role": "planner"
     },
@@ -116,10 +116,10 @@
         "write": []
       },
       "ref": {
-        "digest": "05d1a0ca7e33f01945dc5f58825413ac514514059a2f60c52113bc18d50f64f1",
-        "id": "ergora-kernel-designer",
         "kind": "agent",
-        "version": "2.2.0"
+        "id": "ergora-kernel-designer",
+        "version": "2.2.0",
+        "digest": "05d1a0ca7e33f01945dc5f58825413ac514514059a2f60c52113bc18d50f64f1"
       },
       "role": "planner"
     },
@@ -152,10 +152,10 @@
         "write": []
       },
       "ref": {
-        "digest": "bcb90daaffbd8251c21e1aca5614eeb9aac563dba6da6485203e838ea0f7960c",
-        "id": "ergora-development-preparer",
         "kind": "agent",
-        "version": "1.0.1"
+        "id": "ergora-development-preparer",
+        "version": "1.1.0",
+        "digest": "fc6a1f358afe7866ec214b842e6f0b8595526e1b24e17f06b361530df6a3aa85"
       },
       "role": "planner"
     },
@@ -184,12 +184,12 @@
   },
   "resources": [
     {
-      "id": "ergora-optimization-plan-instructions",
+      "id": "ergora-development-preparation-instructions",
       "kind": "instructions",
       "path": "instructions.md",
-      "sha256": "8caf20b3d71042124b02cdb557836c3053e12e721b7f3cf380ef66fe95a81aef"
+      "sha256": "0921438fef71c206cd1e1985a35fab94a2c6683c4eed1c4137afefec4f7c79ed"
     }
   ],
   "schema_version": 2,
-  "version": "1.0.0"
+  "version": "1.1.0"
 }

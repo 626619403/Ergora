@@ -4,7 +4,7 @@ This current example selects a fixed MoE dispatcher/overlap workload. A single o
 
 [publication.json](publication.json) pins every current revision base, published reference and policy file. The shared source is `ergora-training-proposal@4.2.2`; its complete two Skills and environment record are added to the development ancestor through the existing resource-preview/accepted-candidate/revise interface. The bottleneck Skill tree is `90aaeb7c6041ac0f10fa8eebae48978a504a1cb213fafc0a537078fb8961ea17`. The source tree contains one policy copy. Stored immutable revisions preserve their original bytes and executable bits.
 
-The exact root is `ergora-selected-moe-development@1.0.2`, digest `73809d969d8b697841d2ec031409823228bf434bf3b4e0521c45852e1d50ef3e`. The [fixed revision documents](root.revision.example.json) use current preparation/delivery and native-parent bases; fresh publication needs no older source tree.
+The exact current root is declared by `published.root` in [publication.json](publication.json); the publisher verifies and emits that immutable ID, version and digest.
 
 ```text
 root/development
