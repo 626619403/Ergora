@@ -62,4 +62,4 @@ A2 的固定向量、两种 compiled/request/profile 身份、Skill 执行位和
 
 已有驱动的配置结构在组件 configuration 修改，表单、目录与核心结构校验随软件包一起生效。跨字段的角色能力、凭据、可信文件和批准规则仍在责任模块实现；增加描述不会产生新的 SDK 适配。测试应验证真实输入/失败路径、CLI/API 一致性和必要的旧身份，而不是只将同一份描述抄成另一份断言。
 
-引入新的格式版本或改变摘要编码须设计迁移、旧客户端访问与回退，不能以 schema default、DTO coercion 或数据重新 dump 代替。基础包只新增 schema 栈，Web / GEPA / Temporal 等仍是可选依赖；实际跨平台分发结果记录于 [R2 交付记录](../delivery/2026-11-02-schemas.md)。
+引入新的格式版本或改变摘要编码须设计迁移、旧客户端访问与回退，不能以 schema default、DTO coercion 或数据重新 dump 代替。基础包只新增 schema 栈，Web / GEPA / Temporal 等仍是可选依赖；实际跨平台分发结果记录于 [身份合同](contracts-and-identities.md#当前格式和责任)。

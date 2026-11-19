@@ -17,7 +17,6 @@ Use the current development version for small trials on one machine with trusted
 
 - **Control plane:** Linux and native Windows CLI/web interfaces for projects, layered tool bindings, Agent/Workflow definitions, formal tasks and evidence handoff. Web assets are packaged; no Node build or runtime CDN is required.
 - **Composition:** versioned specialists, nested workflows, inherited Skills/context, per-instance supported backends and permissions narrowed along the structural parent chain. Formal development retains the six-stage runtime and its supported work/review DAGs.
-- **Recorded real runs:** the [governance](docs/delivery/2026-11-13-six-stage-native-journey.md) and [refactoring](docs/delivery/2026-11-13-refactoring-journey.md) journeys used real Codex calls, candidate verification and original-ID recovery. Their reports define exactly what was checked.
 - **Execution platform:** complete development execution uses the Linux/WSL2 reference stack in a trusted container. Native Windows supports the control plane; see [platform boundaries](docs/WINDOWS.md).
 
 Source checks, a new wheel installation, a real service run, model behavior, training quality and a candidate's [GitHub Actions](https://github.com/626619403/Ergora/actions) are separate evidence. A plan, template, installed SDK or successful standalone Agent call does not establish all of them.
@@ -73,7 +72,7 @@ Before a formal run, [authenticate the selected backend](docs/USAGE.md#安装与
 
 The optimization directions cover memory/recompute/offload, CUDA Graphs/packing, parallelism/FSDP/hierarchical CP, communication/MoE, profiling/memory snapshots, recipes/model verification, cluster recovery, low precision and kernels. Proposal leaves run one explicitly selected leaf at a time; the operator supplies complete predecessor results. Installing a preset does not execute its graph or submit a training job.
 
-Specialist definitions, prompts and bundled Skills are Ergora implementations informed by the cited [engineering](docs/research/2026-11-14-local-engineering-skills.md) and [composition](docs/research/2026-11-08-agent-composition.md) research. Codex and Claude Code are selectable execution backends. `refactoring` includes repository conventions, real-caller and test-value guidance through inherited resources while retaining existing roles and runtime contracts.
+Ergora maintains the [specialist definitions](docs/AGENT_DEFINITIONS.md), prompts and bundled Skills. Codex and Claude Code are selectable execution backends. `refactoring` includes repository conventions, real-caller and test-value guidance through inherited resources while retaining existing roles and runtime contracts.
 
 <a id="当前工作流"></a>
 ## Formal development workflow
@@ -267,9 +266,9 @@ Standalone success does not produce formal verification/review acceptance. [Agen
 <a id="仍在补齐的模板与功能"></a>
 ## Work still requiring implementation or acceptance
 
-The new versioned training-cycle schema3 path has closed runtime topology/lifecycle work, but its real controller effects remain disabled. It does not offer an automatic multi-candidate optimization loop. Full SDK capacity, real-service recovery/stop behavior, two-candidate CPU runs and actual GPU quality/performance need their own current-candidate acceptance. Existing explicitly selected experiments retain their documented path.
+Explicitly authorized training cycles execute a frozen, ordered candidate selection under one nonrenewable budget, retaining separate stop, recovery and measurement-acceptance records. Adaptive candidate generation and automatic per-round profiling remain staged work. Real-service recovery and GPU quality/performance require their own current-candidate acceptance; see the [training controller commands](docs/TRAINING.md#起算本地训练预算与恢复原授权).
 
-Mandatory design/knowledge gates, trusted non-Agent validation nodes, general bounded Repeat and mixed workflow canvases remain staged work. A design decision or statically valid definition does not make those topologies executable. Full nested ForgeKernel sessions still need complete parent resource/permission, total-budget, cancellation and unknown-result accounting; its native judge does not replace trusted training gates. Other research tools follow the [adoption matrix](docs/research/2026-11-12-specialist-adoption.md) and their actual availability.
+Mandatory design/knowledge gates, trusted non-Agent validation nodes, general bounded Repeat and mixed workflow canvases remain staged work. A design decision or statically valid definition does not make those topologies executable. Full nested ForgeKernel sessions still need complete parent resource/permission, total-budget, cancellation and unknown-result accounting; its native judge does not replace trusted training gates. Other research tools follow the [integration guide](docs/INTEGRATIONS.md) and their actual availability.
 
 Team authentication, per-Agent execution isolation, remote execution, production Temporal deployment and additional backends have separate implementation/admission requirements. Consult the [live plan](docs/PLAN.md) for the active candidates and limitations. The frozen HTML keeps its own original scope.
 

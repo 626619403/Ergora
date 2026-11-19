@@ -4,7 +4,7 @@
 
 先读[项目概览与快速试用](../README.zh-CN.md#快速试用)，再按下表选择指南。当前功能文档跟随 `main`；冻结的 v2.2 参考发行保留其文档所述范围。复现记录中的结果时，应固定完整源码提交。
 
-已完成的语言对默认使用英文。下表明确标出仍为中文的指南；其完整英文版本按[双语维护计划](plans/2026-11-16-bilingual-documentation-and-branch-cleanup.md)分批整理，现有指南路径保持稳定。英文版必须保留完整命令、限制与恢复行为后，才能将该项标为双语完成。
+已完成的语言对默认使用英文。下表标明各指南提供的语言；当前命令和恢复义务由对应指南拥有。
 
 ## 安装与操作
 
@@ -40,11 +40,11 @@
 |[工具接入](INTEGRATIONS.md)|工具绑定、记忆投影、GEPA、有界研究与调度|中文；第四批完成完整双语|
 |[证据报告](zh-CN/EVIDENCE_REPORTS.md) · [English](EVIDENCE_REPORTS.md)|只读报告作者、原来源／覆盖记录及自包含 HTML 导出|中英文完整对照|
 
-训练提案与证据索引不授权实验，也不证明 GPU 质量／性能。新版本化训练循环 schema3 controller 效果仍关闭；后继循环／关卡／Repeat 工作由持续计划跟踪。外部工单评论／标签、候选采用及发布仍使用各自明确的操作／批准流程。
+训练提案与证据索引不授权实验，也不证明 GPU 质量／性能。显式授权的训练控制器在同一个原预算内执行冻结的有限候选；自适应搜索、设计关卡与通用 Repeat 仍由持续计划跟踪。外部工单评论／标签、候选采用及发布仍使用各自明确的操作／批准流程。
 
 ## 理解与扩展实现
 
-以下持续维护指南当前仍为中文，第五批为它们提供完整语言对。指南中的日期源码清单仅对应所记提交；后续变化应查持续计划与原交付。
+以下架构指南说明当前语义owner与合同；持续计划记录当前检查和剩余工作。
 
 |指南|Owner 与用途|
 |---|---|
@@ -57,21 +57,8 @@
 
 修改仓库代码前，先读根[合作规则](../AGENTS.md)及当前计划。[编辑器比较示例](../examples/editor-comparison/README.md)是独立设计实验，有自己的构建要求。冻结 preset／reference 指令和第三方资料属于产品／来源资产，不做无差别文档翻译。
 
-## 当前工作与历史证据
+## 当前工作
 
-|记录|如何理解|
-|---|---|
-|[持续计划](PLAN.md)|当前检查点、活动候选、owner 决定及剩余验收；目前为中文|
-|[实施计划](plans/)|带日期的范围与验收条件；计划中的能力不等于已实现|
-|[交付记录](delivery/)|绑定原候选的检查、审查 finding、失败、修正和未验范围；辅助文件在 [delivery/evidence](delivery/evidence/)|
-|[调研](research/)|带日期的来源比较、设计依据和采用建议；不作为产品验收|
-|[架构决定](architecture/decisions/)|已记录决定及其原始上下文|
-|[冻结参考 HTML](distribution/multi-agent-development-platform.html)|自包含 v2.2 Linux 发行，内嵌原部署／训练手册|
+[当前计划](PLAN.md)与[活动交付](delivery/2026-11-19-main-branch-integration.md)记录实际检查和剩余工作。[架构决定](architecture/decisions/)保留其日期所对应的设计背景。[冻结参考HTML](distribution/multi-agent-development-platform.html)仍是自包含v2.2 Linux发行，具有自身原始部署和训练手册范围。
 
-历史检查点归档：[11 月 9 日](PLAN-history-2026-11-09.md)、[10 日](PLAN-history-2026-11-10.md)、[14 日](PLAN-history-2026-11-14.md)、[15 日](PLAN-history-2026-11-15.md)、[16 日](PLAN-history-2026-11-16.md)。这些文件中的“当前”“待处理”“在途”均指记录当时的日期和候选。
-
-更早架构证据仍在原路径：[11 月 1 日基线](architecture/2026-11-01-baseline.md)、[审计](architecture/2026-11-01-audit.md)、[兼容性](architecture/2026-11-01-compatibility.md)、[11 月 2 日运行合同](architecture/2026-11-02-runtime-contracts.md)、[11 月 11 日架构历史](architecture/current-history-2026-11-11.md)、[11 月 14 日 Harness 接缝](architecture/2026-11-14-harness-session-seam.md)／[续接方案](architecture/2026-11-14-harness-continuation-options.md)。
-
-历史记录保留原语言、结果与来源身份。双语整理先补导航，再在计划中的历史批次增加主题／候选索引，不删除或悄悄改写证据。新增 HTML 阅读视图可选，须自包含并链接保留的原始来源。
-
-[语言迁移计划](plans/2026-11-16-bilingual-documentation-and-branch-cleanup.md) · [本批交付与分支清理](delivery/2026-11-16-bilingual-documentation-and-branch-cleanup.md) · [第三方说明](../THIRD_PARTY_NOTICES.md)
+[第三方说明](../THIRD_PARTY_NOTICES.md)

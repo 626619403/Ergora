@@ -2,11 +2,7 @@
 
 Ergora 把项目合同、可组合的专长 Agent、正式执行和可核对证据接在一起。CLI 与网页共用应用用例；Agent 后端、工单来源和外部通信各有自己的接入位置。当前实现仍复用随包参考实现的六阶段与 Temporal，不要求每个项目使用工单，也没有第二套正式调度器。
 
-本页按 `750dd68ff2b1e41f6fe390d6a52e651bf41d5642` 的640个产品文件更新，覆盖原F7／F8／F9／F10以及Q1精确本地包、Q2领域配方、Q3流程／提案与Q4.1索引。固定[源码清单](../delivery/evidence/2026-11-15-component-source-inventory.json)为76个顶层第一方Python模块（含`__init__`／`__main__`）、312条去重本地导入边和28个第一方console JS模块；Python导入包含函数内导入，静态图无环。随包驱动、冻结reference、vendor与动态装载／子进程调用不计入这76模块的静态导入图，运行关系需另核下文。原506cc57的611文件／73模块／300边保持历史范围，不当当前清单。
-
-逐次实施说明已[逐字归档](current-history-2026-11-11.md)，[C6d原源码清单](../delivery/evidence/2026-11-11-architecture-source-inventory.json)的53模块／203边／18JS保持原身份，不当作当前清单。当前验证与开放条件以[PLAN](../PLAN.md)及各片交付为准；静态图本身不证明全部动态路径或性能。
-
-当前清单已包含Q1.1的 `review_packets` 与标准库 `git_materials`，以及Q4.1的 `training_rounds`。本地Git包入口在创建State前分派，正式executor和离线采集共用有界Git读取／完整blob；多轮索引create沿原training采集，read不构造State或查询服务。Q2／Q3新增配方不构成新的图调度器；kernel专家保留评估，可判断无需kernel修改。具体合同见[本地审查包](../LOCAL_REVIEW.md)、[训练手册](../TRAINING.md)及各片交付。修改组件前按[目录级变更协议](component-change-protocols.md)选择实际owner。
+当前实现包含 `review_packets` 与标准库 `git_materials`，以及 `training_rounds`。本地Git包入口在创建State前分派，正式executor和离线采集共用有界Git读取／完整blob；多轮索引create沿原training采集，read不构造State或查询服务。Q2／Q3新增配方不构成新的图调度器；kernel专家保留评估，可判断无需kernel修改。具体合同见[本地审查包](../LOCAL_REVIEW.md)、[训练手册](../TRAINING.md)。修改组件前按[目录级变更协议](component-change-protocols.md)选择实际owner。
 
 ## 模块与依赖
 
@@ -205,9 +201,9 @@ Skill控制台在原`skills.js`内保存当前view的选择代际：选择变化
 
 训练领域组合提供实验设计／kernel／性能／测量审查的只读提案叶。实际实验仍走 `prepare → start（控制排队）→ 操作者run-local + manifest SHA → 可信统计门禁 → owner evidence SHA → 集成复验`。控制worker不自动启动训练，Forge内部judge不替代可信门禁；GPU结果和完整实验图须有独立实测，见[训练手册](../TRAINING.md)。
 
-新项目的baseline与runner由同一training应用入口从CLI／HTTP／页面预览，再确认当前项目revision及完整canonical内容SHA登记，原文件字节SHA单列。baseline仍交原perfctl锁／原子init，仅Linux／WSL2初始化，预览与初始化无需SDK或服务。runner沿原register_runner在隔离临时CONFIG预览，确认后用规范化文档向真实config不可变发布，仅Linux／WSL2，无需SDK或服务。两者共用短本地DB预留与页面表单生命周期；失联先读原文件，同内容显式重试，不同内容不覆盖；共享config的外项目runner ID拒绝且不展示命令。实验准备的CLI／HTTP复用原多件publisher，确认精确计划后保存原意图，部分发布只能以原intent显式恢复；训练页的局部preparation面板只拥有编辑／请求序列与显式确认，发布算法仍在原owner。见[分片计划](../plans/2026-11-14-training-preparation.md)。
+新项目的baseline与runner由同一training应用入口从CLI／HTTP／页面预览，再确认当前项目revision及完整canonical内容SHA登记，原文件字节SHA单列。baseline仍交原perfctl锁／原子init，仅Linux／WSL2初始化，预览与初始化无需SDK或服务。runner沿原register_runner在隔离临时CONFIG预览，确认后用规范化文档向真实config不可变发布，仅Linux／WSL2，无需SDK或服务。两者共用短本地DB预留与页面表单生命周期；失联先读原文件，同内容显式重试，不同内容不覆盖；共享config的外项目runner ID拒绝且不展示命令。实验准备的CLI／HTTP复用原多件publisher，确认精确计划后保存原意图，部分发布只能以原intent显式恢复；训练页的局部preparation面板只拥有编辑／请求序列与显式确认，发布算法仍在原owner。见[当前合同](../TRAINING.md#预览与初始化基线)。
 
-训练证据读取由`training.evidence → reference.training_evidence → reference_training_evidence`进入隔离有界子进程，复用原注册与训练记录reader。归档gate按原JSON内容、evidence／元数据按绑定字节SHA核对；artifact只在明确选择后完整核摘要并返回Unicode窗口，原索引不冒称全部内容已验。读取原本地integration ticket不生成Task或批准，Temporal、原archive／gate与owner receipt继续拥有原职责。见[证据计划](../plans/2026-11-14-training-evidence.md)。
+训练证据读取由`training.evidence → reference.training_evidence → reference_training_evidence`进入隔离有界子进程，复用原注册与训练记录reader。归档gate按原JSON内容、evidence／元数据按绑定字节SHA核对；artifact只在明确选择后完整核摘要并返回Unicode窗口，原索引不冒称全部内容已验。读取原本地integration ticket不生成Task或批准，Temporal、原archive／gate与owner receipt继续拥有原职责。见[当前合同](../TRAINING.md#阅读归档证据与原集成票据)。
 
 ## Agent后端接入
 
@@ -319,8 +315,6 @@ flowchart LR
 |随包reference资源、local/bootstrap镜像、HTML与动态桥|当前manifest核定资源身份，仍供安装、报告、正式执行／训练消费；历史分发基线保留原验证身份，迁出条件见[reference边界](reference-boundary.md#身份恢复及迁出条件)|
 |status／list／poll与各域revision事务|分别陈述本地合同、原运行和外部事实；只读投影可组合，不能机械合并状态机|
 
-原A1的13项保留／删除判断及R1–R8证据在[历史清单](current-history-2026-11-11.md#a1-清单结案)，本次文档整理不重新授予旧验收或删除API。当前没有根据这份静态盘点新增重构层或性能优化；有实际反例／测量再改对应所有者。
-
 ## 手册、平台与验收范围
 
 - [三模板入门旅程](../TEMPLATE_WALKTHROUGHS.md)：完整组合、逐实例后端、当前页面v6创建与训练提案。
@@ -330,7 +324,7 @@ flowchart LR
 - [完整改进旅程](../IMPROVEMENT_WORKFLOW.md)：三类复盘分别采用，再由新任务明确冻结资料。
 - [换机重建](../USAGE.md#换机与新项目重建)与[联合备份](../BACKUP_RECOVERY.md)：新项目重建和同平台原路径历史恢复分别处理。
 
-原两域v6完整六阶段首先使用真实服务加确定性原生命令协议夹具，[C5c记录](../delivery/2026-11-11-composition-runtime.md)保留其范围。后续[治理原生旅程](../delivery/2026-11-13-six-stage-native-journey.md)、[重构旅程](../delivery/2026-11-13-refactoring-journey.md)、[改进冻结](../delivery/2026-11-14-improvement-freeze-journey.md)及[训练控制组合](../delivery/2026-11-14-training-control-journey.md)各记录真实模型或控制事实，不互相覆盖。画布容量不代表同数量Agent已执行；模型质量、真实GPU收益、完整Forge和生产隔离仍须各自实测，不能由定义、认证、CI或文档推出。逐片状态见[PLAN](../PLAN.md)，拓展范围见[总计划](../plans/2026-11-01-all-in-one.md)。
+正式六阶段的工作、可信集成／验证、独立审查与恢复由[工作流合同](../WORKFLOW_DEFINITIONS.md#专长执行者与原工作单元)和[使用手册](../USAGE.md#正式任务的操作顺序与恢复)规定。画布容量不代表同数量Agent已执行；模型质量、真实GPU收益、完整Forge和生产隔离须分别实测，不能由定义、认证、CI或文档推出。
 
 ## 完整材料输入 v8
 
@@ -365,12 +359,12 @@ flowchart LR
 
 Executor安装级并发取持久OWNED与本进程active的并集；重启只观察原attempt，unknown／rejected不退款。已链接receipt但账本未更新的原job仍进入对账，不能因receipt存在永久跳过。单次request入口沿同一容量门禁；没有另建调度器或表。现有版本的调度、终态与冻结参考保持；可信当前容器仍不是本工具提供的OS隔离。
 
-统一预算只覆盖单机／同boot的原六阶段输入，原生嵌套六阶段调用另片；trusted writer的advisory能力保持。当前图形向导的原生入口已沿下节definition6／input10补齐准备和预算，旧入口仍使用既有版本。材料传递和原生夹具的实际验收见[B1交付](../delivery/2026-11-12-six-stage-materials.md)，不得借旧候选结果推导新版本成功。
+统一预算覆盖单机／同boot的当前六阶段schema8／input12，支持普通父模板内的单个native六阶段调用；trusted writer的advisory边界保持。准备材料、祖先并发和完整coordinator选择沿[当前准备合同](../WORKFLOW_DEFINITIONS.md#盘点与规划的完整材料)，实际运行验收仍绑定各自候选。
 
 
 ## 单实例原生六阶段 input10
 
-控制台由原`task-composition.js`收集实例／角色对应的后端、工作单元、准备路径及预算，原`tasks.js`显式授权prepare，再preview与双摘要create；原ID查询不重发未知操作，关闭前可下载完整授权输入。`style.css`仅在任务表单内约束grid／fieldset／长路径legend，保留材料和表格滚动。服务端合同／编译／预算／调度owner保持，[页面交付](../delivery/2026-11-14-native-task-console.md)区分实际原HTTP、故障与静态生命周期范围。
+控制台由原`task-composition.js`收集实例／角色对应的后端、工作单元、准备路径及预算，原`tasks.js`显式授权prepare，再preview与双摘要create；原ID查询不重发未知操作，关闭前可下载完整授权输入。`style.css`仅在任务表单内约束grid／fieldset／长路径legend，保留材料和表格滚动。服务端合同／编译／预算／调度owner保持，原生选择与页面生命周期按[使用合同](../USAGE.md#将六阶段作为一个子模板调用)处理。
 
 `tasks`与`task_envelopes`共用纯stdlib `native_six_stage.invocation`，从既有WorkflowDefinition的完整图核单次调用形状及精确祖先链；definition6/input10不引入新图格式。父链只能直接转发task和结果，全部阶段属于同一所选实例，原WorkDelivery继续拥有叶覆盖、角色和依赖核验。原creation保存完整定义、项目revision、baseline、能力和同一预算；新WorkflowInput实现注册独立版本的queue、请求根、adapter和workflow。
 
@@ -404,7 +398,7 @@ flowchart LR
   Intent --> Recovery[按原SHA恢复 / 不再选资料]
 ```
 
-首次intent保存前核canonical有效性和完整来源，预览后变更拒绝；已经持久化intent的恢复不重新读活动资料，不热换或撤销归档。schema v5没有新增表或迁移。用法见[显式选择](../USAGE.md#为正式任务选择项目记忆与活动-skill)，实际验收与未验范围见[F10b交付](../delivery/2026-11-14-task-context-selection.md)。
+首次intent保存前核canonical有效性和完整来源，预览后变更拒绝；已经持久化intent的恢复不重新读活动资料，不热换或撤销归档。schema v5没有新增表或迁移。用法见[显式选择](../USAGE.md#为正式任务选择项目记忆与活动-skill)，
 
 F10d2在原`task-composition.js`收集显式目录选择和新根版本，唯一调用者`tasks.js`产生已有definition7并保留可选source，展示原`task_envelopes.selected_context`从冻结文件核出的完整正文／来源／期限、根派生与附件元数据；不重读活动资料，默认仅继承仍为原definition6。目录沿原`memory.catalog`及轻量`GET skills/heads → skill_assets.versions(heads_only=True)`，不借dashboard做工具诊断。目录异步代际和失效状态只属于当前表单，精确来源、完整附件、容量与首次发布准入仍归原`task_context`；没有新增资料库或迁移。
 
@@ -418,24 +412,24 @@ F10d3a的`retrospectives.js`是`app.js`既有view接口的实现，内聚当前�
 
 F10d3b1沿三个原retrospectives准备函数增加薄HTTP消费者，传输payload共享路径构造，工作流payload只特化额外target-manifest路径；原owner继续持有基线／证据／grant／完整材料／容量与原子不覆盖。完整已存input读取与原proposal reader共用同一私有request读取路径，沿原workflow inspector核原字节与三类原schema，项目匹配后才返回原请求和全部继承材料。现有view内的准备表单只消费当前完整证据选择，保留上次提交路径，失败不自动重发；独立复读走只读代际规则。没有新状态机、目标注册器或模型调度，结果检查／导出及原单叶调用页面另接。
 
-F10d3b2沿原retrospectives reader将可选project/input digest绑定到同次check/export读取，旧CLI默认离线合同保持；六条薄HTTP与原view只消费完整检查和明确导出，不接管原库、评价或采用。验收状态见[本片交付](../delivery/2026-11-14-retrospective-results-console.md)。
+F10d3b2沿原retrospectives reader将可选project/input digest绑定到同次check/export读取，旧CLI默认离线合同保持；六条薄HTTP与原view只消费完整检查和明确导出，不接管原库、评价或采用。
 
-F10d4沿原agent_runs准入读取增加可选显式input digest，薄HTTP固定text-only，原snapshot／adapter／process／运行记录保持唯一owner。agents.js内的冻结叶对话框由工具和复盘两页实际调用，依附原打开按钮的生命周期；原记录与诊断可显式观察，结果交接使用已存snapshot并由原结果表单重新检查。没有页面账本、自动图执行或模型自我批准；验收见[交付](../delivery/2026-11-14-frozen-leaf-console.md)。
+F10d4沿原agent_runs准入读取增加可选显式input digest，薄HTTP固定text-only，原snapshot／adapter／process／运行记录保持唯一owner。agents.js内的冻结叶对话框由工具和复盘两页实际调用，依附原打开按钮的生命周期；原记录与诊断可显式观察，结果交接使用已存snapshot并由原结果表单重新检查。没有页面账本、自动图执行或模型自我批准；
 
 
 ## 原训练预算提交与截止 owner
 
 `training_cycles.start`只从原有限选择取 manifest 并调用同一`training.start`。原提交 intent 持有可选 budget 引用，原 attempt 是不可归还 slot；不增训练账本或第二 start 客户端。`reference_training_budget`持有原来源／时钟与独立 owner 生命周期；`reference_training_worker`持有应用进程入口、预算 adapter factory、原取消用例接线和 SDK worker 注册，owner 不反向 import 提交／取消模块。
 
-`training_cycles.authorize_controller`是独立的应用用例，复用同一授权发布算法，在新ID出生时保存schema2完整自动执行同意；普通授权与历史读取保留schema1。ready前持久建立`controller/admission.lock`，以后只读／打开既有普通空文件。`training_execution_protocol.CycleAdmission`在stdlib边界持有父共享许可与停止记录；O_EXCL路径一旦出现就否决新准入，只有同步同一文件／目录并重读同inode与完整bytes才确认持久，排他锁只证明父准入排空，不能证明执行子树已停。`stop_controller`当前仅为独立操作进程可用的存储用例。具体出生与停止记录边界见[原实施计划](../plans/2026-11-15-training-cycle-admission.md)。
+`training_cycles.authorize_controller`是独立的应用用例，复用同一授权发布算法，在新ID出生时保存对应控制器版本的schema2／3／4完整执行同意；普通授权与历史读取保留schema1。ready前持久建立`controller/admission.lock`，以后只读／打开既有普通空文件。`training_execution_protocol.CycleAdmission`在stdlib边界持有父共享许可与停止记录；O_EXCL路径一旦出现就否决新准入，只有同步同一文件／目录并重读同inode与完整bytes才确认持久，排他锁只证明父准入排空，不能证明执行子树已停。`stop_controller`拥有本地停止否决的存储用例；公开停止调用不把存储成功当作子树停止证明。具体出生与停止记录边界见[当前合同](../TRAINING.md#起算本地训练预算与恢复原授权)。
 
-[最后门禁消费片](../plans/2026-11-15-training-cycle-gates.md)在原三字段binding上增加完整controller selector：protocol、固定workflow／run、完整intent SHA及原ordinal。`CycleAdmission.bind`由`BudgetedStart.source`和native context共同使用，核原父intent／attempt／receipt及同一admission；父attempt的`workflow_input_sha256`保存父workflow input canonical SHA，与cycle raw input SHA分列。submission、worker与Execution在原异步操作中核父run的RUNNING、describe／started memo、类型／queue和完整input；prepare的SQLite reservation及原registry／executor锁内不查询远端。父共享许可覆盖原RPC、原create、request／launch及native process，原锁与最终同步后的检查仍可否决迟到工作；已消耗attempt／launch不返还。自动actor固定为原授权，手工模式沿原明确操作者。schema2仍不能通过旧手工binding派发，schema1不得带controller。该片的消费gate检查不包含总Workflow producer；独立fan-out和cycle worker／queue已由后续片接入，见下文[独立cycle活动服务](#独立cycle活动服务)，公共自动CLI／HTTP仍后接。原片验收进度见[逐步交付](../delivery/2026-11-15-training-cycle-gates.md)，不把服务替身的消费gate检查称为可运行的自动多轮训练。
+[当前合同](../TRAINING.md#按原预算投递与持续截止监管)在原三字段binding上增加完整controller selector：protocol、固定workflow／run、完整intent SHA及原ordinal。`CycleAdmission.bind`由`BudgetedStart.source`和native context共同使用，核原父intent／attempt／receipt及同一admission；父attempt的`workflow_input_sha256`保存父workflow input canonical SHA，与cycle raw input SHA分列。submission、worker与Execution在原异步操作中核父run的RUNNING、describe／started memo、类型／queue和完整input；prepare的SQLite reservation及原registry／executor锁内不查询远端。父共享许可覆盖原RPC、原create、request／launch及native process，原锁与最终同步后的检查仍可否决迟到工作；已消耗attempt／launch不返还。自动actor固定为原授权，手工模式沿原明确操作者。schema2仍不能通过旧手工binding派发，schema1不得带controller。消费gate、独立fan-out和cycle worker沿同一当前owner连接；有限V2／V3控制器使用显式授权／prepare／submit／reconcile入口，见[训练指南](../TRAINING.md#起算本地训练预算与恢复原授权)。真实服务验收与消费gate的静态／替身检查分别成立。
 
-[独立停止操作](../plans/2026-11-15-training-cycle-stop-operations.md)的内部入口`reference_training_worker.stop_live_controller`先由异步S-H冷inspect核完整原authorization／policy及有序候选，再分别监督writer、父许可drain、逐owner精确pidfd通知与原执行链观察。所有业务文件／锁／fsync都在各自H；异步父loop只监管管道、内核身份与clock。冷inspect在spawn前固定一次1至60秒观察截止，效果分支沿原total；超限或未知保留unknown，不续权。每个S只调用原`processes.run(supervised=True)`回收一个H及后代，匹配stopped后不再spawn，最后结果读取仍受同一截止约束。通知、停止可见／持久、父许可排空和executor停止证明分别返回，原完成轮的人工release保持。共享`training_execution_protocol.PhaseFrames`只拥有两帧解析，原budget selector与新asyncio driver各留原运行边界；cycles保留Path记录读取，不反向依赖worker。具体安装／回归与发布范围见[交付](../delivery/2026-11-15-training-cycle-stop-operations.md)。该片只交付独立停止用例；cycle服务／stop queue见下文[服务边界](#独立cycle活动服务)，正式总Workflow与公共自动入口仍后接。
+[当前合同](../TRAINING.md#取消原运行与分别观察停止事实)的内部入口`reference_training_worker.stop_live_controller`先由异步S-H冷inspect核完整原authorization／policy及有序候选，再分别监督writer、父许可drain、逐owner精确pidfd通知与原执行链观察。所有业务文件／锁／fsync都在各自H；异步父loop只监管管道、内核身份与clock。冷inspect在spawn前固定一次1至60秒观察截止，效果分支沿原total；超限或未知保留unknown，不续权。每个S只调用原`processes.run(supervised=True)`回收一个H及后代，匹配stopped后不再spawn，最后结果读取仍受同一截止约束。通知、停止可见／持久、父许可排空和executor停止证明分别返回，原完成轮的人工release保持。共享`training_execution_protocol.PhaseFrames`只拥有两帧解析，原budget selector与新asyncio driver各留原运行边界；cycles保留Path记录读取，不反向依赖worker。cycle服务／stop queue见下文[服务边界](#独立cycle活动服务)；有限候选执行使用同一原预算和停止协议。
 
-[总意图准备](../plans/2026-11-15-training-controller-intent.md)由`training_cycles.prepare_controller`在本地项目reservation与原父共享许可下组合原status和无覆盖publisher；`CycleAdmission.intent_record`为producer与原完整reader生成同一身份。原ready的publisher仍持锁时不能准备；重试只同步并重读原意图，不创建attempt／receipt或更换clock。结果包含最后cycle观察，计算窗口耗尽不能报告ready；link前出现null-intent stop时保留原veto，不修复停止文件。准备不是投递／执行许可；[SDK投递与同run对账](../plans/2026-11-15-training-cycle-dispatch.md)由后续片独立提供，总Workflow与公开入口继续后接。
+[当前合同](../TRAINING.md#冻结有限候选与预算策略)由`training_cycles.prepare_controller`在本地项目reservation与原父共享许可下组合原status和无覆盖publisher；`CycleAdmission.intent_record`为producer与原完整reader生成同一身份。原ready的publisher仍持锁时不能准备；重试只同步并重读原意图，不创建attempt／receipt或更换clock。结果包含最后cycle观察，计算窗口耗尽不能报告ready；link前出现null-intent stop时保留原veto，不修复停止文件。准备不是投递／执行许可；[控制器提交与对账](../TRAINING.md#起算本地训练预算与恢复原授权)显式消费原意图。
 
-[普通准备操作](../plans/2026-11-15-training-cycle-prepare-operation.md)在原S-H driver增加`prepare-controller`mode，复用原应用准备。普通请求在spawn前固定一次BOOT窗口，受原compute remaining与control timeout共同约束；完整请求还核原boot、compute绝对上界与control跨度，父pipe／wait、S停止检查和H前后active消费同一窗口。所有State／SQLite／fsync留在H；超时只能返回unknown，意图元数据可能已保存，但没有attempt／训练权限。原cold inspect与stop total保持；调用者取消仍真实回收后重抛。该内部单次操作不代表SDK投递、跨进程恢复或独立cycle服务已完成。
+[当前合同](../TRAINING.md#冻结有限候选与预算策略)在原S-H driver增加`prepare-controller`mode，复用原应用准备。普通请求在spawn前固定一次BOOT窗口，受原compute remaining与control timeout共同约束；完整请求还核原boot、compute绝对上界与control跨度，父pipe／wait、S停止检查和H前后active消费同一窗口。所有State／SQLite／fsync留在H；超时只能返回unknown，意图元数据可能已保存，但没有attempt／训练权限。原cold inspect与stop total保持；调用者取消仍真实回收后重抛。单次准备结果不证明SDK投递、跨进程恢复或服务运行。
 
 ```mermaid
 flowchart LR
@@ -460,9 +454,9 @@ flowchart LR
 
 `_BudgetPhase`提供start／request_stop／非阻塞poll／finish，Execution消费同一生命周期。父侧只按已核预算目录拼接固定phase路径，safe_file／目录和stderr文件由对应S在实际使用时处理；stderr管道有界读取，初始化未发送请求时的失败会收尾等待进程。多个phase的调用者先全部请求停止，再轮询全部，已终止才finish；stopped之后S只直接读写／观察、不再spawn。phase接口自身不产生执行许可。
 
-[b2a共享响应整理](../delivery/2026-11-15-training-phase-frames.md)把两帧分包、完整身份／顺序、process观察和容量校验移入已有stdlib `training_execution_protocol.PhaseFrames`。原budget装配2 MiB结果容量，其poll／finish与record_phase读取同一response；selector、原clock、TERM与唯一reaper仍由原owner持有。共享codec只解析事实，不产生动作或停止证明，后继cycle operation单独使用32 KiB结果容量；当前整理本身没有fan-out或总Workflow。
+[`PhaseFrames`](../../src/ergora/training_execution_protocol.py)拥有两帧分包、完整身份／顺序、process观察和容量校验移入已有stdlib `training_execution_protocol.PhaseFrames`。原budget装配2 MiB结果容量，其poll／finish与record_phase读取同一response；selector、原clock、TERM与唯一reaper仍由原owner持有。共享codec只解析事实，不产生动作或停止证明，后继cycle operation单独使用32 KiB结果容量；codec本身不持有fan-out或Workflow调度权。
 
-[b2b0原记录读取整理](../plans/2026-11-15-training-cycle-offline-reader.md)使training_cycles五个原私有记录函数直接接收home Path；公共应用入口继续持有State并传入state.root，budget／worker全部真实调用共同迁移。后继只读inspect可以复用原完整验证而不初始化数据库；没有第二个reader、校验器或持久格式。本次整理不开放异步operation或停止入口。
+training_cycles的原私有记录函数直接接收home Path，沿[原登记恢复](../TRAINING.md#在原登记上下文中恢复)核完整身份；公共应用入口继续持有State并传入state.root，budget／worker全部真实调用共同迁移。后继只读inspect可以复用原完整验证而不初始化数据库；没有第二个reader、校验器或持久格式。异步operation与停止入口由原worker拥有。
 
 ## 独立cycle活动服务
 
@@ -482,7 +476,7 @@ flowchart LR
 
 SDK父loop只做异步进程／管道监督；所有State、锁、fsync、原生加载与业务SDK操作留在H或原预算根。原S在匹配stopped帧后读取真实stdout并计算ref，父侧后续Popen／transfer／cleanup事实以同一操作的inline保留；无完整原件不能制造ref。SDK Payloads包含metadata的32KiB容量、全`2+2N` stop分支及一次冷观察／compute∩control窗口分别在其原边界核对。typed容量异常由原training_cycles reader拥有，worker直接复用，不复制安全reader。
 
-服务以公开SDK`on_fatal_error`及时进入normal-first关闭，并协调真实run／shutdown终态；启动验证失败后不会盲等无法完成的shutdown waiter。普通活动实际资源结束后才关闭stop；已交接根继续按原预算自持。Supervisor70秒后强杀仅能证明服务PID退出，业务停止保持独立观察。四活动及使用边界见[训练手册](../TRAINING.md#独立循环服务的集成入口)；[本片交付](../delivery/2026-11-16-training-cycle-service.md)记录实际验收与开放范围，正式总Workflow／execution／collect／后继接受仍接续。
+服务以公开SDK`on_fatal_error`及时进入normal-first关闭，并协调真实run／shutdown终态；启动验证失败后不会盲等无法完成的shutdown waiter。普通活动实际资源结束后才关闭stop；已交接根继续按原预算自持。Supervisor70秒后强杀仅能证明服务PID退出，业务停止保持独立观察。四活动及使用边界见[训练手册](../TRAINING.md#独立循环服务的集成入口)；有限候选控制器的执行与恢复使用同一原worker，服务状态不代替实际验收。
 
 ## 原生训练来源与锁内准入接缝
 
@@ -528,4 +522,4 @@ launch已存在、部分发布、grant丢失、Popen失败或hook中断都不能
 
 父owner不做业务磁盘I/O；它非阻塞poll全部phase。compute／catchable取消时先实际通知业务phase，再起独立fence，不等待registry或同步；execute的工作按compute停止，回收后的完整停止结果可在原total内收集。原`processes.run(supervised=True)`是唯一回收实现，真实reap后S先发帧再直接存储。native result先出现不能触发managed completion；缺完整durable stop继续unknown。
 
-原取消owner在保存精确run的取消意图后，用pidfd与boot／start_ticks通知同一个capable owner，Python封装缺失时使用libc同一pidfd接口，无宽泛PID信号回退。远端signal仍原attempt/history。离线`training execution`走随包`-S` reader，不依赖所选native仍存在；同链现存文件与目录同步后重读不变才确认durable，source漂移独立限时观察，不返执行权。用法见[训练手册](../TRAINING.md#显式受管执行与离线停止观察)，验证范围见[本片交付](../delivery/2026-11-15-training-managed-execution.md)。
+原取消owner在保存精确run的取消意图后，用pidfd与boot／start_ticks通知同一个capable owner，Python封装缺失时使用libc同一pidfd接口，无宽泛PID信号回退。远端signal仍原attempt/history。离线`training execution`走随包`-S` reader，不依赖所选native仍存在；同链现存文件与目录同步后重读不变才确认durable，source漂移独立限时观察，不返执行权。用法见[训练手册](../TRAINING.md#显式受管执行与离线停止观察)。

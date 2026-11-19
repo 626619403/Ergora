@@ -18,7 +18,7 @@ tracker层的`manual`保留本地流程；`github`／`gitlab`通过各自的Adap
 
 新增同类实现遵循`IssueBackend`已有Interface，由本族负责原生路径、headers、身份和字段投影，在本族映射注册并增加组件描述；上层用例不分派厂商。原生issue读取、repo／精确ref和指定review读取、comment操作各有实际合同；未实现的操作明确拒绝，不因登记组件描述而宣称可用。标签是可选原生能力，当前GitLab严格追加保持unsupported。
 
-当前提供普通issue读取／不可变快照／离线列表与任务上下文关联、v7来源任务、原候选中性评论与GitHub单标签显式回写、只读本地／远端ref核对，以及同仓库已有PR／MR的本地不可变关联。格式分别由[issue-observation-v1](../src/ergora/data/schemas/issue-observation-v1.json)、原task合同、writeback所有者和[candidate-review-context-v1](../src/ergora/data/schemas/candidate-review-context-v1.json)拥有，不共用一个远端成功标记。关联不确认原attempt或批准；unknown不补发，当前观察／ETag不能作为写CAS。无自动接单、远端issue搜索／列表或PR／MR创建／合并；旧Symphony保持其原配置与行为，来源页面和事件仍按[F7分片](plans/2026-11-11-project-trackers.md)推进。
+当前提供普通issue读取／不可变快照／离线列表与任务上下文关联、v7来源任务、原候选中性评论与GitHub单标签显式回写、只读本地／远端ref核对，以及同仓库已有PR／MR的本地不可变关联。格式分别由[issue-observation-v1](../src/ergora/data/schemas/issue-observation-v1.json)、原task合同、writeback所有者和[candidate-review-context-v1](../src/ergora/data/schemas/candidate-review-context-v1.json)拥有，不共用一个远端成功标记。关联不确认原attempt或批准；unknown不补发，当前观察／ETag不能作为写CAS。无自动接单、远端issue搜索／列表或PR／MR创建／合并；旧Symphony保持其原配置与行为，页面操作按[使用手册](USAGE.md#在页面读取与保存工单)进行。
 
 ## 项目记忆
 

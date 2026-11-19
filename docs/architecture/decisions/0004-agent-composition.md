@@ -1,6 +1,6 @@
 # ADR0004：职能、专长化Agent定义、模板成员与后端分开
 
-日期：2026-11-08。状态：设计提案，按[AC计划](../../plans/2026-11-08-agent-composition.md)分片实施；不是当前发行已支持的配置格式。依据：[实现与论文对照](../../research/2026-11-08-agent-composition.md)和[完整快照独立评审](../../delivery/2026-11-08-agent-composition-review.md)。用户随后明确的可嵌套串并行工作流、所有祖先Skill/上下文强继承和父子权限修订在[ADR0005](0005-composable-workflows.md)补充，不能由本ADR的成员组合推断已经支持。保留[ADR0001](0001-refactoring-foundations.md)的兼容与可信执行约束、[ADR0003](0003-workflow-editor-stack.md)的前端选型。
+日期：2026-11-08。本ADR记录成员组合设计，嵌套、继承和父子权限由[ADR0005](0005-composable-workflows.md)补充；当前已实现配置见[Agent定义](../../AGENT_DEFINITIONS.md)和[工作流指南](../../WORKFLOW_DEFINITIONS.md)。
 
 ## 问题
 

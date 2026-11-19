@@ -1,6 +1,6 @@
 # ADR 0003：工作流编辑器的图与表单
 
-日期：2026-11-05。状态：采纳选型，生产功能按F6.2/F6.3逐片实现。依据：[LC1研究](../../research/2026-11-02-low-code-editors.md)、[F6.1实测](../../research/2026-11-05-editor-comparison.md)及[交付记录](../../delivery/2026-11-05-editor-comparison.md)。
+日期：2026-11-05。本ADR记录前端选型背景；当前页面和正式交接见[架构](../current.md#图形页面与低代码)与[工作流指南](../../WORKFLOW_DEFINITIONS.md#查看已发布嵌套关系图)。
 
 ## 决定
 

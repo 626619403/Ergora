@@ -17,7 +17,7 @@ python scripts/ci/run.py --group 0 --output .ergora/checks/run-group-0
 
 Linux 按[文件清单](../../scripts/ci/linux-groups.json)分组，每个测试文件只登记一次。新增文件时将其加入一组；移动文件时同步改该处。plugin 先收集完整范围，再选择当前组，拒绝漏登记、重复分配、缺失文件、无效组及空选择。整文件执行保持文件内 fixture 和用例顺序，组间使用独立 runner。对各组执行 `--collect-only` 后，核对其 `collected.nodeids` 并集等于全量 collection、交集为空；仅检查分组数量不足以证明完整覆盖。
 
-组数从同一 JSON 生成 GitHub Actions matrix；每组仍构建／安装 wheel 并核参考身份，Linux job 上限为 20 分钟，Windows 的 `all` job 上限为 30 分钟。调整分组前，使用实际阶段耗时评估最慢整文件和安装／上传余量；不要用删除故障／恢复检查掩盖超时。最初的分组依据见[分段成本记录](../delivery/evidence/2026-11-13-linux-ci-costs.json)，它是历史测量，不能代替新候选实际运行。
+组数从同一 JSON 生成 GitHub Actions matrix；每组仍构建／安装 wheel 并核参考身份，Linux job 上限为 20 分钟，Windows 的 `all` job 上限为 40 分钟。调整分组前，使用实际阶段耗时评估最慢整文件和安装／上传余量；不要用删除故障／恢复检查掩盖超时。
 
 结果目录保存 `request.json`、完整 `stdout.txt`、`phases.jsonl`、JUnit 和正常收尾时的 `result.json`。JSONL 即时记录全量／实际选中 nodeid、阶段起点、setup／call／teardown 的结果、耗时与失败正文、collection 跳过／失败和 session 终态。子测试的 `report_type` 与父用例不同；子报告耗时已包含在父阶段内，不应再次累加。正常的 pytest exit 0 才表示该次选择通过；`--collect-only` 只证明收集／选择，不能作为测试通过。
 

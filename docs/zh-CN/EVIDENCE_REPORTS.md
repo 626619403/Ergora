@@ -15,7 +15,7 @@ ergora composition install-preset optimization-report
 ergora composition show ergora-evidence-report 2.0.1 --material
 ```
 
-然后沿下文 grant 与显式调用流程，把 `prepare-manifest` 版本换成 `2.0.1`，选择新的 manifest／input／output 目录。原证据、静态 HTML 检查和显式导出义务保持。资源／加载验证及未运行范围见[交付记录](../delivery/2026-11-16-optimization-report-skill.md)。
+然后沿下文 grant 与显式调用流程，把 `prepare-manifest` 版本换成 `2.0.1`，选择新的 manifest／input／output 目录。原证据、静态 HTML 检查和显式导出义务保持。报告不代替工作负载验证或性能验收。
 
 ## 准备原材料
 
@@ -105,4 +105,4 @@ PY
 
 HTML 的导航、表格、内联 SVG 与原生折叠用于阅读，页面没有执行、批准、采用或 release 状态。检查通过、模型建议与真实证据验收分别记录。需要外部发布、训练、候选采用或人工 release 时，继续使用其原授权及 owner。
 
-方法来源见[研究](../research/2026-11-15-evidence-report-generation.md)及随包 [Skill](../../src/ergora/data/presets/agents/ergora-evidence-report-author/skills/ergora-evidence-report/SKILL.md)。实际验证范围与限制见[交付](../delivery/2026-11-15-evidence-report-generation.md)。
+随包[报告Skill](../../src/ergora/data/presets/agents/ergora-evidence-report-author/skills/ergora-evidence-report/SKILL.md)定义作者方法与输出义务。

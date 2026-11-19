@@ -16,7 +16,6 @@ Ergora 将任务目标、角色、允许的修改、人工决定、并行工作�
 
 - **控制面：** Linux 和原生 Windows 的 CLI／网页入口，提供项目、分层工具绑定、Agent／Workflow 定义、正式任务与证据交接。网页资源随包安装，不需要 Node 构建或运行时 CDN。
 - **专家组合：** 版本化专家、嵌套工作流、继承的 Skill／上下文、逐实例受支持后端，以及沿结构父链收窄的权限。正式开发保留六阶段运行时及其支持的工作／审查 DAG。
-- **已记录的真实运行：** [治理](docs/delivery/2026-11-13-six-stage-native-journey.md)与[重构](docs/delivery/2026-11-13-refactoring-journey.md)旅程使用了真实 Codex 调用、候选复验和原 ID 恢复。精确检查范围以各自报告为准。
 - **执行平台：** 完整开发执行使用 Linux／WSL2 参考栈和可信容器。原生 Windows 支持控制面；详见[平台范围](docs/WINDOWS.md)。
 
 源码检查、新 wheel 安装、真实服务运行、模型行为、训练质量，以及某候选自己的 [GitHub Actions](https://github.com/626619403/Ergora/actions) 各有独立证据。计划、模板、已安装 SDK 或成功的独立 Agent 调用不能同时证明这些范围。
@@ -70,7 +69,7 @@ ergora serve
 
 优化方向涵盖显存／重算／卸载、CUDA Graphs／packing、并行／FSDP／层次 CP、通信／MoE、profiling／显存快照、配方／模型核验、集群恢复、低精度与 kernel。提案叶每次显式选择一叶，操作者提供完整前驱结果。安装 preset 不会执行整张图或提交训练。
 
-专家定义、提示和随包 Skill 属于 Ergora 自有实现，设计参考已列明的[工程调研](docs/research/2026-11-14-local-engineering-skills.md)与[组合研究](docs/research/2026-11-08-agent-composition.md)。Codex 与 Claude Code 是可选择的执行后端。`refactoring` 通过继承资源补充目标仓库规范、真实调用者和测试价值指导，保留既有角色与运行时合同。
+专家定义、提示和随包 Skill 由Ergora维护，见[Agent定义](docs/AGENT_DEFINITIONS.md)。Codex 与 Claude Code 是可选择的执行后端。`refactoring` 通过继承资源补充目标仓库规范、真实调用者和测试价值指导，保留既有角色与运行时合同。
 
 ## 当前工作流
 
@@ -255,9 +254,9 @@ ergora agent runs my-project
 
 ## 仍在补齐的模板与功能
 
-新的版本化训练循环 schema3 路径已有 closed 运行拓扑／生命周期工作，但真实 controller 效果仍关闭，不提供自动多候选优化循环。完整 SDK 容量、真实服务恢复／停止、CPU 两候选和实际 GPU 质量／性能仍需对应当前候选自己的验收。既有逐实验显式选择路径保持其已记录范围。
+显式授权的训练循环在同一个不可续期预算内执行冻结、有序的有限候选，停止、恢复和测量接受分别保留原记录。自适应生成新候选与自动逐轮 profiling 仍为后继工作。真实服务恢复与 GPU 质量／性能须由对应当前候选单独验收，操作见[训练控制器命令](docs/TRAINING.md#起算本地训练预算与恢复原授权)。
 
-强制设计／知识关卡、可信非 Agent 验证节点、一般有界 Repeat 和混合画布仍分片推进。设计决定或静态有效定义不使这些拓扑自动可执行。完整 ForgeKernel 嵌套会话仍需父资源／权限、总预算、取消及 unknown 对账；原生 judge 不替代可信训练门禁。其他研究工具按[采用矩阵](docs/research/2026-11-12-specialist-adoption.md)与实际可用范围接入。
+强制设计／知识关卡、可信非 Agent 验证节点、一般有界 Repeat 和混合画布仍分片推进。设计决定或静态有效定义不使这些拓扑自动可执行。完整 ForgeKernel 嵌套会话仍需父资源／权限、总预算、取消及 unknown 对账；原生 judge 不替代可信训练门禁。其他研究工具按[接入指南](docs/INTEGRATIONS.md)与实际可用范围接入。
 
 团队认证、逐 Agent 执行隔离、远端执行、生产 Temporal 部署和更多后端有各自的实施／准入要求。活动候选及限制以[持续计划](docs/PLAN.md)为准。冻结 HTML 保留其原始范围。
 

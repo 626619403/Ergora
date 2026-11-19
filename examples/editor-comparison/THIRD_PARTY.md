@@ -8,4 +8,4 @@
 
 [Ajv 官方 CSP 说明](https://ajv.js.org/security.html#content-security-policy)指出浏览器动态编译需要 `unsafe-eval`，并给出[构建时 standalone 预编译](https://ajv.js.org/standalone.html)方案。本轮默认编译确实被原安全头拒绝；本例没有放宽它。
 
-[JSON Forms 官方验证配置](https://jsonforms.io/docs/validation/)支持 `NoValidation`。本例在固定的、没有动态规则或组合分支的工作单元 schema 上使用该模式，只生成字段，把完整校验交给现有服务端 API。这会失去客户端错误展示；不能据此声称已接入预编译 Ajv 或支持任意 schema。默认编译失败和调整后的实际旅程在[比较报告](../../docs/research/2026-11-05-editor-comparison.md)分别记账。
+[JSON Forms 官方验证配置](https://jsonforms.io/docs/validation/)支持 `NoValidation`。本例在固定的、没有动态规则或组合分支的工作单元 schema 上使用该模式，只生成字段，把完整校验交给现有服务端 API。这会失去客户端错误展示；不能据此声称已接入预编译 Ajv 或支持任意 schema。本例的限制与构建步骤见[示例说明](README.md)。

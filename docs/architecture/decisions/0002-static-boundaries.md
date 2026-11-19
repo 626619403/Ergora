@@ -1,6 +1,6 @@
 # ADR 0002：静态依赖保护与 R8 出口
 
-日期：2026-11-02。状态：采纳。适用范围为当前自有单包，不重写冻结参考项目。前置决策见 [0001](0001-refactoring-foundations.md)，当前所有者、A1结案及兼容退出条件见 [架构图](../current.md)，实际验收见 [R8记录](../../delivery/2026-11-02-refactoring-exit.md)。
+日期：2026-11-02。本ADR记录静态边界决定；当前owner与检查见[架构](../current.md#模块与依赖)和[组件协议](../component-change-protocols.md)。
 
 ## 问题与选择
 

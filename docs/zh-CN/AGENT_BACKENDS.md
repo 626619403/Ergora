@@ -64,7 +64,7 @@ Codex 的可选值为 `low/medium/high/xhigh/max/ultra`，显式 binding 覆盖 
 
 区分三项事实：binding／冻结配置中的请求等级，向原生CLI投影的参数／配置，以及实际观察到的native／模型行为。Codex把 `reasoning_effort` 投影为 `-c model_reasoning_effort=...`，Claude把 `effort` 投影为 `--effort`；参数只证明向CLI提出请求，不证明模型实际采用等级或provider线上请求已核。没有native证据时，实际强度保持未知，不能从进程成功、结构输出或binding被接受推断生效。
 
-目前只实现显式binding值与原默认设置；统一fixed／preset／planner／automatic选择及配置冻结合同仍是后继工作。现有工作流preset和native CLI profile不实现调参preset或自动选择。换模型／强度回退与扩大预算需要各自明确策略，不得暗中执行。Claude text-only加入 `--safe-mode`，文档说明的原生行为会关闭workflows，因此请求 `ultracode` 不能证明启用了ultracode workflow；native优先级／上限及实际采用分别核对，见[已审后端参数研究](../research/2026-11-16-backend-runtime-options.md)。
+目前只实现显式binding值与原默认设置；统一fixed／preset／planner／automatic选择及配置冻结合同仍是后继工作。现有工作流preset和native CLI profile不实现调参preset或自动选择。换模型／强度回退与扩大预算需要各自明确策略，不得暗中执行。Claude text-only加入 `--safe-mode`，文档说明的原生行为会关闭workflows，因此请求 `ultracode` 不能证明启用了ultracode workflow；native优先级／上限及实际采用分别核对，见[后端指南](../AGENT_BACKENDS.md#为每个-agent-设置思考强度)。
 
 DeepSeek当前的 `context_window`／`max_tokens` 写入SDK模型注册的容量描述，不是已验证的单请求token硬上限；仍按原每次wall-time、报告成本和续接合同处理，不把不同原生控制当作统一预算保证。
 
@@ -167,7 +167,7 @@ ergora agent output my-project RUN_ID
 
 默认调用使用新原生home／session、固定最小profile与生成的patch；无原生shell、文件、工作目录及额外MCP工具。task-mcp只提供原scope的list/read。适配保存原生身份、完整prompt、事件和终值到本次`.protocol`目录，整体时限／停止仍由原进程owner负责。这不提供OS隔离。
 
-必须同时核对完成状态、严格JSON／原结果schema和原MCP连接回执；任一原生工具错误使本次调用失败，不隐式重试或续接会话。上游可能在插件失败或断连后仍返回completed，因此最终文本本身不能代表成功。失败或结果不明先按原run ID查看证据，不创建另一次调用冒充恢复。固定发行包与loopback／停止探针见[H1交付](../delivery/2026-11-12-harness-probes.md)；显式Responses的真实禁工具调用及同模板专家叶task-MCP全文验收见[H2交付](../delivery/2026-11-14-harness-real-model.md)。这两次只读成功不证明正式六阶段、持久会话或其他平台已经准入。
+必须同时核对完成状态、严格JSON／原结果schema和原MCP连接回执；任一原生工具错误使本次调用失败，不隐式重试或续接会话。上游可能在插件失败或断连后仍返回completed，因此最终文本本身不能代表成功。失败或结果不明先按原run ID查看证据，不创建另一次调用冒充恢复。正式六阶段、持久会话和其他平台须分别满足对应后端合同与验收。
 
 #### 查看已保存的原生历史
 
@@ -250,11 +250,9 @@ ergora kernel run my-project CAMPAIGN_ID --timeout 3600
 
 固定版本检查同时覆盖 `src/forgekernel` 和实际使用的 `scripts`：相对 Git HEAD 的修改、删除或未跟踪文件会使 doctor 显示 `version=unsupported`，并在启动 native driver 前拒绝操作。需要自定义包装脚本时放在 checkout 之外；固定源码检查不保证外部 Python 依赖、CLI 二进制、环境或 OS 隔离。
 
-除原生任务快照，campaign 还固定 models.toml、loop.toml、backends.toml 的 SHA；后续配置漂移会明确拒绝，须恢复对应配置。运行中不要修改共享默认配置；备份与换机须同时保留工具源码、这些配置及 campaign。报告与实际 best/kernel.py 或 best/kernel.cu 的身份会保存；`native_finished` 只描述生成器的完成，`native_failed` 保留上游失败。选择候选提交后，继续用训练模板的 manifest、可信 runner、正确性/质量与配对性能证据，并按 evidence SHA 人工放行。ForgeKernel 的内部 judge、target_met 或报告文字不能直接成为 perfctl PASS。实际验证范围及未测的 GPU/模型效果见 [S8 记录](../delivery/2026-10-31-s8-agents.md)。
+除原生任务快照，campaign 还固定 models.toml、loop.toml、backends.toml 的 SHA；后续配置漂移会明确拒绝，须恢复对应配置。运行中不要修改共享默认配置；备份与换机须同时保留工具源码、这些配置及 campaign。报告与实际 best/kernel.py 或 best/kernel.cu 的身份会保存；`native_finished` 只描述生成器的完成，`native_failed` 保留上游失败。选择候选提交后，继续用训练模板的 manifest、可信 runner、正确性/质量与配对性能证据，并按 evidence SHA 人工放行。ForgeKernel 的内部 judge、target_met 或报告文字不能直接成为 perfctl PASS。GPU／模型质量须由独立工作负载验收。
 
-完整选型与未接入工具见 [三模板调研](../research/2026-10-31-template-agents.md)。
-
-新增后端的代码入口是`agent_backends.py`的共有`AgentBackend`合同及本地映射；命令、结果提取、后端专用配置和诊断归各实现，公开配置schema与能力仍只在`components.json`声明。`agents`、正式阶段和doctor复用这些实现，进程监控与取消由`processes`管理。接入步骤和调用关系见[当前架构](../architecture/current.md#agent后端接入)。新增专长定义、模板成员和嵌套资源继承仍按[AC计划](../plans/2026-11-08-agent-composition.md)实施。
+新增后端的代码入口是`agent_backends.py`的共有`AgentBackend`合同及本地映射；命令、结果提取、后端专用配置和诊断归各实现，公开配置schema与能力仍只在`components.json`声明。`agents`、正式阶段和doctor复用这些实现，进程监控与取消由`processes`管理。接入步骤和调用关系见[当前架构](../architecture/current.md#agent后端接入)。新增专长定义、模板成员和嵌套资源继承仍按[工作流指南](../WORKFLOW_DEFINITIONS.md#完整继承与冲突)实施。
 
 ## 维护内置组件描述
 

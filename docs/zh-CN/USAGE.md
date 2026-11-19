@@ -169,7 +169,7 @@ ergora issue show PROJECT 7
 
 HTTP入口为`GET /api/projects/PROJECT/issues/7`，与CLI共用同一用例。原工具绑定页面按schema显示tracker配置；工单专页见[页面读取说明](#在页面读取与保存工单)，observe列表按计划继续。已正式注册的项目只允许读取其登记的kind／namespace；改变来源绑定会产生新项目修订，不修改旧任务或参考注册。正式注册尚未包含API host，后续跨host派工必须另行核准身份，不能直接复用旧claim。
 
-只接受普通GitHub issue／GitLab project issue；GitHub PR、GitLab非issue类型或不兼容响应明确拒绝。每次一个GET、20秒socket I/O超时、1MiB完整响应上限，无自动重试；这不是整个调用的20秒wall-time保证。认证／不可用／重定向／超限／截断等失败不会伪装成空工单。详细接口取舍和未验自托管范围见[工单接入调研](../research/2026-11-11-project-trackers.md)。
+只接受普通GitHub issue／GitLab project issue；GitHub PR、GitLab非issue类型或不兼容响应明确拒绝。每次一个GET、20秒socket I/O超时、1MiB完整响应上限，无自动重试；这不是整个调用的20秒wall-time保证。认证／不可用／重定向／超限／截断等失败不会伪装成空工单。详细接口取舍和未验自托管范围见[接入指南](../INTEGRATIONS.md#项目工单来源)。
 
 ### 保存工单与关联任务上下文
 
@@ -205,7 +205,7 @@ HTTP与CLI共用相同用例；POST沿用本地Origin及`X-Ergora-Request: 1`保
 |关联|`POST /api/projects/PROJECT/issue-links`，`{"snapshot_sha256":"…","task_id":"TASK","creation_sha256":"…","revision":2,"reason":"…"}`|
 |关联列表|`GET /api/projects/PROJECT/issue-links?task_id=TASK&snapshot_sha256=SNAPSHOT_SHA&limit=20`，两过滤条件可选，可带`after`|
 
-快照与关联保存在控制面的SQLite中，由原`state backup / verify-backup / restore`完整离线备份恢复；当前数据库为schema v6，升级先停止旧进程并保留旧库备份，旧客户端不能写新库；见[有效期与升级说明](#记忆有效期与检索)。完整备份仍要求停写、同平台及原home；外置执行目录须另行保存，不会从上下文关联重建任务。来源派工见下一节，候选评论见[回写说明](#为已导出的候选发布工单评论)，来源阅读可使用下节页面；其余工单动作页面按[F7计划](../plans/2026-11-11-project-trackers.md)分片交付。
+快照与关联保存在控制面的SQLite中，由原`state backup / verify-backup / restore`完整离线备份恢复；当前数据库为schema v6，升级先停止旧进程并保留旧库备份，旧客户端不能写新库；见[有效期与升级说明](#记忆有效期与检索)。完整备份仍要求停写、同平台及原home；外置执行目录须另行保存，不会从上下文关联重建任务。来源派工见下一节，候选评论见[回写说明](#为已导出的候选发布工单评论)，来源阅读可使用下节页面；其余工单动作页面按[接入指南](../INTEGRATIONS.md#项目工单来源)分片交付。
 
 ### 在页面读取与保存工单
 
@@ -357,7 +357,7 @@ ergora issue review-link-show PROJECT SAVED_SHA256
 
 一个原候选槽只能保存一个review。同目标／base再次调用返回原`record`、`already_saved=true`、`fresh_observations=false`，忽略新的reason；入口已查到原记录时不重新读取平台。两个首次请求并发时，后保存者可能已读取平台，最终仍返回先保存的原记录；`fresh_observations=false`只描述返回资料，不能证明本次没有发生读取。换number或base明确冲突，不能覆盖。`review-link-show`只需控制面保存记录，离线不要求token、原任务文件、Git或平台仍可见。该记录纳入schema v4备份，load与backup核同一身份合同；外部执行目录仍须单独备份。
 
-HTTP保存入口为`POST /api/projects/PROJECT/candidate-review-links`，正文`revision/task_id/run_id/candidate_sha/base_branch/review_number/reason`，同源及`X-Ergora-Request: 1`保护；离线读取为`GET /api/projects/PROJECT/candidate-review-links/SAVED_SHA256`。首次正常关联向provider发五次有界GET，不持SQLite写锁；每次完整响应上限1MiB、20秒socket I/O、无redirect／retry，完整canonical关联另限1MiB，超限拒绝不截断。总墙钟不承诺20秒。各读不组成共同snapshot／CAS，也不能发现ABA；provider GET可能计算内部派生对象。本地保存不请求平台业务修改，不推送或创建／编辑／合并PR／MR。来源页可读取与保存完整工单；候选动作页面按[F7计划](../plans/2026-11-11-project-trackers.md)继续。
+HTTP保存入口为`POST /api/projects/PROJECT/candidate-review-links`，正文`revision/task_id/run_id/candidate_sha/base_branch/review_number/reason`，同源及`X-Ergora-Request: 1`保护；离线读取为`GET /api/projects/PROJECT/candidate-review-links/SAVED_SHA256`。首次正常关联向provider发五次有界GET，不持SQLite写锁；每次完整响应上限1MiB、20秒socket I/O、无redirect／retry，完整canonical关联另限1MiB，超限拒绝不截断。总墙钟不承诺20秒。各读不组成共同snapshot／CAS，也不能发现ABA；provider GET可能计算内部派生对象。本地保存不请求平台业务修改，不推送或创建／编辑／合并PR／MR。来源页可读取与保存完整工单；候选动作页面按[接入指南](../INTEGRATIONS.md#项目工单来源)继续。
 
 控制台从原v7已导出任务的“检查原导出记录与恢复”进入“关联已有PR／MR”，明确填写base、PR number／MR iid和原因后“确认保存已有PR／MR关联”。首次发送固定字段；回复失败时保留原请求，点击“恢复原关联请求”。这不是只读status：原记录存在时返回它，尚无记录时可能重新读取平台并首次保存本地记录。不会自动重试；要修改首次选择，关闭后重新填写，原候选槽已有不同目标时仍由后端拒绝覆盖。
 
@@ -580,15 +580,13 @@ ergora composition verify-manifest ./review-requirements-manifest
 
 ### 为盘点和规划选择模板 Agent
 
-[完整材料配置](../WORKFLOW_DEFINITIONS.md#盘点与规划的完整材料)使用 task-definition v4／正式 input v8，将 inventory 和 plan 也绑定到精确叶实例、独立后端与全部结构祖先资料。沿原 `task preview/create/start` 运行，owner 批准和可信候选流程保持；CLI与API接受完整定义；当前图形任务向导可用带预算的原生入口（definition6／input10）配置准备阶段，独立definition4／input8仍由CLI／API接入。
+当前使用 [task-definition schema8](../../src/ergora/data/schemas/task-definition-v8.json)／正式input12。[完整材料配置](../WORKFLOW_DEFINITIONS.md#盘点与规划的完整材料)让inventory和plan各选择只读工作流子树及canonical coordinator；成员按原祖先并发上限执行，协调者消费完整原前驱成果。每位planner收到原canonical inventory，只有inventory协调者执行可信baseline检查。
 
-选择需要的 `preparation.repository_paths`，纳入任务所需源码／配置；适用的 `AGENTS.md` 也受 read 上限约束。Skill 有附件时选 task-mcp，前两阶段无 shell／写／任意仓库工具。容量不足、附件读取不完整或原 inventory 产物变动会在对应阶段失败，不截断为成功。可选工单 `source` 沿原快照合同冻结，进入四类模型阶段；所有运行身份与恢复仍由原任务所有者维护。
-
-安装并重启新版 worker／executor 才能消费 v8 队列；与 v7 一样按实际冻结后端和本地执行条件准入，所需服务可显式启动 `temporal worker executor`。v8保留原阶段时限；需要从准备开始的统一预算时，按下一节显式选择v5定义／input9。普通父模板内的单实例选择见下文“将六阶段作为一个子模板调用”。
+图形向导、CLI与HTTP共用此合同；单成员组也使用同一表示。准备、工作和审查完整覆盖全部叶，Skill读取、来源绑定、原owner计划批准与候选证据仍需满足。实际图例见[18叶MoE示例](../../examples/composition/optimization-selected-moe/README.md)，静态准备不启动训练或采集profile。
 
 ### 一次授权的预算准备
 
-Linux／WSL2 使用 task-definition v5 为原六阶段设置一次授权的总预算：在上述 v4 定义中将 `schema_version` 改为 `5`，增加 `budget`，例如 `{"wall_seconds":3600,"cleanup_seconds":60,"model_invocations":16}`。清理预留包含在总额内；调用上限涵盖 inventory、plan、每个 work unit 和每个 reviewer（含建议审查），至少应覆盖这些已知 slot。这里计模型启动槽，不计后端内部 API 请求、token 或费用。
+Linux／WSL2使用同一schema8，在定义中显式选择native实例和preparation DAG，并填写`budget`，例如`{"wall_seconds":3600,"cleanup_seconds":60,"model_invocations":16}`。清理预留包含在总额内；模型启动槽上限须覆盖所选inventory、plan、work和review全部调用，不等于后端内部API请求或费用。
 
 ```bash
 ergora task prepare my-project --definition task-definition.json --revision 1
@@ -597,58 +595,34 @@ ergora task preview my-project --definition task-definition.json --revision 1
 ergora task create my-project --definition task-definition.json --revision 1 --prepare-sha256 PREPARE_SHA --preview-sha256 PREVIEW_SHA
 ```
 
-首次 prepare 在读取安装和材料之前保存唯一预算；重复或丢回执后继续读原 TASK_ID，不刷新起点。只在 prepare 的 `status: prepared` 后预览和创建。preview 读取完整冻结成果，包含两个需确认的 SHA，时间前进不改变其正文。create 到期不再发布；已保存的 intent 继续使用原 `creation/resume-create`，不重编材料。准备绑定项目修订和注册身份，修改后不能把旧授权换成新预算。
+首次prepare在读取安装和材料前保存唯一预算。丢回执后读取原TASK_ID，不重开时钟；仅在`status: prepared`后预览和创建，并确认prepare与preview两个原摘要。创建后沿原`task start/submission/resume-start/status/plan/approve`执行；当前worker／executor消费`.composition-v12`队列和`requests-composition-v12`请求根。材料读取、排队、人工批准、恢复、模型／可信命令及收尾均消耗同一期限；重启不续时。已移除的preparation input8–11须由原安装完成、取消或对账，本安装明确报告unsupported。
 
-`authorized` 表示预算已存但尚未开始 body，`unknown` 表示原 attempt 或清理仍未确认，`failed/exhausted` 不发布可用准备成果；检查 `budget_status` 与原私有输出。失败或未知不自动重跑 body，先对账原身份；新的独立授权需新 task ID。单次观察超过30秒会返回 unknown 并保留原清理进程，不增加业务时长。`prepared`只证明准备完成。创建后沿原`task start/submission/resume-start/status/plan/approve`执行；升级并重启本版worker／executor才能消费`.composition-v9`队列和`requests-composition-v9`请求根，按[服务管理](#显式服务管理)显式启动所需栈。预算从首次prepare起算，材料读取、排队、人工批准、重试、并发名额等待、模型／可信命令、结果收集和进程清理都消耗同一授权，重启不续时。请先准备服务和认证，再授权实际任务。已有v1–v8运行保持原合同。
-
-工作截止为总额减清理预留；到达后停止新增工作，沿原fence收尾。总额用尽但停止尚未确认时保留原unknown／CANCEL_UNCONFIRMED；已确认停止的晚结果只能成为失败终态，不能发布过期SUCCEEDED。一次Agent CLI不等于一次provider API调用；预留slot也不等于实际启动。输入预算与原outcome的`budget`保存原身份、截止和观察事实，不是费用账单或内核强实时保证。
-
-发送前到期的首次start不会创建新运行；已有attempt的`resume-start`只查询原workflow／run及完整input，不再发送，即使新配置已关闭执行。执行中重启Executor会继续计入原jobs账本中的OWNED占用；live或unknown的原job不会因Future或Temporal结束退款。正式回执已链接而账本更新丢失时，daemon只对账原终态，不重跑body。未知占用可能阻塞安装级`max_parallel_jobs`，应保留原请求、attempt、owner、停止／收集witness并调查；不要删除账本或手改终态来释放名额。此上限与单task的祖先并发是不同约束，不代表跨task项目总配额。
-
-这条v5入口仍是原六阶段正式任务；单个父模板引用一个六阶段实例时使用下一节的v6定义。多个native或任意混合外层图调度仍需后续合同。
-
-API 对应 `POST .../tasks/prepare`（`definition/revision`）、`GET .../tasks/TASK_ID/preparation`，以及原 preview/create；v5 create 另传 `prepare_sha256`，写请求保留同源与 `X-Ergora-Request: 1`。备份需同时保留登记执行状态中的 `ergora/task-creations` 和控制目录 `operations/task-preparations`；控制库单独备份不包含全部材料。跨 boot／主机或 UTC 与单调时钟明显不一致时，新工作拒绝恢复；静态合同仍可读取。
+`unknown`表示原attempt或清理尚未确认，失败／耗尽不发表可用准备成果。先核原身份与停止证据，不自动重跑body、重发或删除job账本释放名额。工作截止后不再新增工作；总额耗尽仍未确认停止时保留unknown／CANCEL_UNCONFIRMED，晚结果不能发表过期SUCCEEDED。完整状态、HTTP字段、备份与恢复边界见[同源当前预算指南](../USAGE.md#一次授权的预算准备)。
 
 ### 将六阶段作为一个子模板调用
 
-task-definition v6／正式input v10在上述预算合同中增加 `composition.native`，把普通父模板内的一次调用绑定到原六阶段任务。示例 [native-development](../../examples/composition/native-development/workflow.json) 引用 [prepared-delivery](../../examples/composition/prepared-delivery/workflow.json)；先按[示例依赖顺序](../../examples/composition/README.md)导入准备、工作、审查包，再导入父包并生成完整manifest。
-
-保留v5的输入、预算和模式，将 `schema_version` 改为 `6`，使用父manifest的实际path／digest，并把选择路径移入该实例：
+同一schema8／input12用`composition.native`将普通父模板内的一次调用绑定到原六阶段。先按[示例依赖顺序](../../examples/composition/README.md)导入准备、工作及审查包，再导入[native-development](../../examples/composition/native-development/workflow.json)并生成完整manifest。保留实际父manifest的path／digest、预算与mode，在`composition`中设置：
 
 ```json
 {"native":{"protocol":"six-stage-v1","instance":"root/development"},
  "review_instance":"root/development/review"}
 ```
 
-上面两项写在 `composition` 内，其他必需字段见 [v6 schema](../../src/ergora/data/schemas/task-definition-v6.json)。对应的 `execution.instance` 是 `root/development/work`，各unit分配到其实际Agent叶；`preparation.inventory/plan` 是 `root/development/preparation/inventory`、`root/development/preparation/plan`。`backend_overrides`也使用新的完整路径。仍须显式选择可信writer边界，并遵守执行／审查后端多样性政策。
+其他必需字段见[当前schema8](../../src/ergora/data/schemas/task-definition-v8.json)。`execution.instance`为`root/development/work`，work unit指向其真实Agent叶；`preparation.inventory/plan`用`{instance, coordinator}`选择各子树，协调者路径追加`/coordinator`。后端覆盖使用完整实际路径，权限不能超过祖先。
 
-沿同一 `task prepare → preview → create → start` 操作，create仍确认prepare和preview两个摘要，随后批准原计划。升级并重启worker／executor后使用 `.composition-v10` 队列及 `requests-composition-v10` 请求根；旧版本队列和history保持。原task创建记录的 `composition.native` 保存精确父定义链，原status及终态结果的 `native_invocation` 投影同一调用；task/run/candidate、批准、取消、unknown恢复和证据仍归原所有者。
-
-首形状要求祖先只含这次调用并直接转发task及结果；work和review是所选六阶段实例的直接子模板，盘点／规划可有自己的结构包装。准备时拒绝额外父分支、第二实例、未执行的外部输入或控制依赖。内部工作／审查继续支持原有串并行DAG；这不授予任意外层图的执行权。图形任务向导可按[页面组合步骤](../WORKFLOW_DEFINITIONS.md#在正式任务页面选择组合)选择原生六阶段，显式授权准备后预览与创建definition6／input10；CLI／HTTP仍可提交完整定义。
+沿同一`prepare → preview → create → start`顺序确认原摘要与原计划。祖先只包含该native调用并直接转发task／result；work和review为其直接子模板，inventory／plan可有结构包装。第二native、额外父分支或任意混合外层图未获此合同支持。完整选择与恢复义务见[当前native指南](../USAGE.md#将六阶段作为一个子模板调用)。
 
 ### 为正式任务选择项目记忆与活动 Skill
 
-从复盘候选、分别采用到新任务冻结的组合操作见[完整改进旅程](../IMPROVEMENT_WORKFLOW.md)。
-
-Linux／WSL2 可在上述原生六阶段定义上使用 [task-definition v7](../../src/ergora/data/schemas/task-definition-v7.json)／正式 input v11。先用 `ergora memory catalog PROJECT` 查看当前有效记忆的 `id`／`revision`，用 `ergora skill list PROJECT` 查看活动head的 `name`／`digest`／`revision`。将用户定义的 `schema_version` 改为 `7`，追加以下字段，替换示例身份：
+同一[task-definition schema8](../../src/ergora/data/schemas/task-definition-v8.json)／input12支持可选context。先以`ergora memory catalog PROJECT`读取有效记忆id／revision，用`ergora skill list PROJECT`读取活动Skill名称／digest／revision；保留`schema_version: 8`并附加实际身份：
 
 ```json
-{
-  "context": {
-    "root_version": "1.0.1",
-    "memories": [{"id": "MEMORY_ID", "revision": 2}],
-    "skills": [{"name": "your-skill", "digest": "ACTIVE_SHA256", "revision": 1}]
-  }
-}
+{"context":{"root_version":"1.0.1",
+ "memories":[{"id":"MEMORY_ID","revision":2}],
+ "skills":[{"name":"your-skill","digest":"ACTIVE_SHA256","revision":1}]}}
 ```
 
-两个列表至少一项非空；只接受本项目当前有效的最新记忆修订，以及当前活动Skill的精确head。初次导入的baseline可以选择，但不代表已经测得改善。`root_version` 是所选manifest根定义的新版本，须不同于原根；系统保持同一根id、所有成员路径、原权限和limits，仅追加来源context与完整Skill目录。派生包随该任务冻结，不改变活动Skill或全局定义库。Skill附件需要对应实例的 `task-mcp`／`workspace-task-mcp` 模式；read未覆盖新根资源URI、同名Skill内容冲突或容量不足均明确拒绝。修改权限须先按原父子定义修订流程操作，再选择新的manifest。
-
-沿原 `task prepare → preview → create → start` 使用，create仍明确确认prepare和preview两个摘要。preview的 `files["task.spec.json"].context` 给出所选身份；`composition.manifest`携带完整来源和文件，`task_envelopes.selected_context`可离线核对原正文、来源、期限和Skill附件身份；图中的每叶 `material_bytes` 及各scope的 `usage`／`limits` 显示静态容量。动态仓库、前驱结果和完整prompt仍在实际阶段核对，不能把静态余量当作未来成功保证。
-
-更正、删除、到期或活动head变化后，旧选择不能首次发布。已经保存完整creation intent的中断恢复使用原快照，包括后来失效的资料；`task creation`检查原意图，`task resume-create`按其SHA恢复，不重新选资料或续预算。归档输入是运行证据，删除canonical记忆不会清除已冻结的任务及独立备份。新协议注册 `.composition-v11` 队列与 `requests-composition-v11` 请求根，升级并重启worker／executor后使用。CLI及HTTP共用上述合同。
-
-在“正式任务 → 预览与创建”选择原生六阶段并读取完整manifest后，“本任务资料来源”默认仅继承模板资料。要追加项目资料，选“继承模板并追加项目资料”，填写新的派生根精确版本，点“读取当前资料目录”，再明确勾选记忆和活动Skill。页面显示完整记忆正文／来源／期限、不可选状态及Skill精确head；到期和删除记录不可选。刷新目录会清空勾选，读取失败后须重新读取成功才能使用。目录只是观察快照，原准入会再次核对。随后显式授权准备、检查冻结来源与完整文件，再用两个摘要确认创建。授权输入下载包含完整context选择；已有全部祖先资料仍继承，页面不提供删减祖先资源或扩大权限的操作。轻量只读 `GET /api/projects/PROJECT_ID/skills/heads` 仅返回当前活动head，不调用工具诊断。
+选择与完整原资料在首次准备时冻结；恢复读取原冻结输入，不热换活动head或撤销历史任务。候选生成、可信评价、明确采用／回退和新任务冻结是不同操作，见[完整改进旅程](../IMPROVEMENT_WORKFLOW.md)及[当前context合同](../USAGE.md#为正式任务选择项目记忆与活动-skill)。
 
 ### 使用重构配方
 
@@ -656,7 +630,7 @@ Linux／WSL2 可在上述原生六阶段定义上使用 [task-definition v7](../
 
 ```bash
 ergora composition install-preset refactoring
-ergora composition prepare-manifest ergora-refactoring-template 1.1.1 \
+ergora composition prepare-manifest ergora-refactoring-template 1.3.0 \
   --grant examples/composition/refactoring/grant.json \
   --directory ./refactoring-manifest
 ```
@@ -667,7 +641,7 @@ ergora composition prepare-manifest ergora-refactoring-template 1.1.1 \
 
 父模板直接包含标准[`ergora-codebase-quality`](../../src/ergora/data/presets/workflows/ergora-refactoring-template/skills/ergora-codebase-quality/SKILL.md)，所有后代继承完整Skill，依目标仓库适用规范、配置、真实调用者和测试接缝工作。原任务／预算／候选身份及恢复owner保持；安装和静态preview不批准业务迁移。
 
-重构执行者、结构审查者、正确性与测试价值审查者、兼容验证者的定义和组合均由本仓库维护；工程指导借鉴[已记录的Skill与上游研究](../research/2026-11-14-local-engineering-skills.md)，并保留各来源许可。它们是独立可版本化的专长配置，Codex／Claude Code是实际运行后端。选一个后端不等于导入该工具的全部私有提示、Skill或调度框架；后端能力及资料完整读取按[Agent手册](../AGENT_BACKENDS.md)分别核验。
+重构执行者、结构审查者、正确性与测试价值审查者、兼容验证者的定义和组合均由本仓库维护；工程指导借鉴[Agent定义](../AGENT_DEFINITIONS.md#内置专家)，并保留各来源许可。它们是独立可版本化的专长配置，Codex／Claude Code是实际运行后端。选一个后端不等于导入该工具的全部私有提示、Skill或调度框架；后端能力及资料完整读取按[Agent手册](../AGENT_BACKENDS.md)分别核验。
 
 只想在独立项目调用中使用 Skill 时，可从本仓库 checkout 根执行下列命令，先登记真实 `my-project`：
 
@@ -1128,7 +1102,7 @@ ergora services shutdown my-project --revision 1 --confirm --timeout 30
 
 首次 start 在执行状态目录下创建 `ergora-services/`，记录控制目录归属、独立 socket 及配置，复制原 Supervisor 程序定义并关闭全部 autostart，原 ini 保持不变。原 Supervisor socket 仍存在时拒绝接管：先通过原 `agentflow services stop` 停止并核对原栈，再使用新入口；陈旧 socket/PID 也需先对账。注册投影漂移、控制目录归属冲突或过长 Unix socket 路径会明确报错，后者应选择较短的持久 execution state 目录。软件升级前先 shutdown 托管栈，升级后按原参数显式启动。
 
-`training-cycle-worker`的普通／stop queue各有独立活动槽；它与budget服务使用不同PID，提供四个活动消费者。集成范围、显式启动和70秒停止观察见[训练手册](../TRAINING.md#独立循环服务的集成入口)；正式总Workflow与自动多轮另行交付。
+`training-cycle-worker`的普通／stop queue各有独立活动槽；它与budget服务使用不同PID，提供四个活动消费者。集成范围、显式启动和70秒停止观察见[训练手册](../TRAINING.md#独立循环服务的集成入口)；同一worker承载有限V2／V3候选控制器；使用[显式控制器授权与提交命令](../TRAINING.md#起算本地训练预算与恢复原授权)，启动服务本身不授执行权。
 
 日志默认原生字节窗口为 8192，可设 4–65536（至少容纳一个 UTF-8 字符）；使用返回的 `next_offset` 作为下次 `--offset`。`overflow` 表示中间内容超过窗口，`rotated` 表示当前文件长度小于游标、窗口已重置，需结合原生日志核对。通过 Supervisor 查询实际日志路径后，只对普通文件进行有界读取，不完整加载大文件。`limit` 限制原始读取字节数，文本/JSON响应大小可能因替换字符或转义而增加。合法 UTF-8 边界会保留；不完整后缀的 `pending_bytes` 尚不计入 `next_offset`，后续追加后用原游标继续；非法字节显示替换字符。
 

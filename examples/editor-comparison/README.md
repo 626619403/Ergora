@@ -44,4 +44,4 @@ npm run build
 
 JSON Forms 使用官方 `NoValidation` 模式生成控件。其默认 Ajv 浏览器编译实际被现有 CSP 拒绝；本例保持安全头，把显式校验交给同一个后端，不提供客户端 Schema 错误提示。规则/组合 schema、动态 schema 与其他 renderer 没有在本例验收，不能把这个模式推广成完整 JSON Forms 兼容性承诺。详见[第三方说明](THIRD_PARTY.md)。
 
-本轮浏览器验证在 Linux、Node 24 和固定 Chromium 上进行；容量、其他浏览器和原型的 Windows 运行没有由这些结果覆盖。[比较报告](../../docs/research/2026-11-05-editor-comparison.md)区分实际结果、限制与后续选型。
+本轮浏览器验证在 Linux、Node 24 和固定 Chromium 上进行；容量、其他浏览器和原型的 Windows 运行没有由这些结果覆盖。当前产品页面与交接边界见[工作流指南](../../docs/WORKFLOW_DEFINITIONS.md)。

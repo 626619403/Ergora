@@ -17,7 +17,7 @@ ergora composition install-preset optimization-report
 ergora composition show ergora-evidence-report 2.0.1 --material
 ```
 
-Then use the grant and explicit invocation flow below, replacing the `prepare-manifest` version with `2.0.1` and choosing fresh manifest/input/output directories. Original evidence, static HTML checks and explicit result export retain the same obligations. Resource/loading validation and unrun scope are recorded in the [delivery record](delivery/2026-11-16-optimization-report-skill.md).
+Then use the grant and explicit invocation flow below, replacing the `prepare-manifest` version with `2.0.1` and choosing fresh manifest/input/output directories. Original evidence, static HTML checks and explicit result export retain the same obligations. The report does not validate the workload or establish performance acceptance.
 
 <a id="准备原材料"></a>
 ## Prepare original material
@@ -112,4 +112,4 @@ Export decodes the original model string without overwriting originals or manual
 
 HTML navigation, tables, inline SVG and native disclosure elements are reading aids. The page has no execution, approval, adoption or release status. Record static checks, model recommendations and actual evidence acceptance separately. External publication, training, candidate adoption and human release use their existing authorization and owners.
 
-Method sources: [research](research/2026-11-15-evidence-report-generation.md) and the bundled [Skill](../src/ergora/data/presets/agents/ergora-evidence-report-author/skills/ergora-evidence-report/SKILL.md). Original validation and limits: [delivery record](delivery/2026-11-15-evidence-report-generation.md).
+The bundled [report Skill](../src/ergora/data/presets/agents/ergora-evidence-report-author/skills/ergora-evidence-report/SKILL.md) defines the author's method and output obligations.

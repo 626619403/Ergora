@@ -6,7 +6,7 @@
 
 `composition` 提供静态检查、不可覆盖的版本库、完整预览、可携带的静态组合包与显式单叶调用。预览不调用模型；`run-input` 可将准备好的输入交给所选后端。正式开发按[六阶段流程](USAGE.md#正式任务的操作顺序与恢复)执行，审查阶段可运行嵌套的只读串并行分支并作显式all-join汇合，具体配置见[正式审查组合](USAGE.md#为正式任务冻结审查组合)。只读审查的数据端口见[正式DAG协议](#正式只读审查的数据端口)；专长执行者分配使用下文的[work-units-v2协议](#专长执行者与原工作单元)。
 
-Web控制台的“Agent 与组合库”复用同一版本库、导入和preview用例，无需先注册项目。选择精确工作流版本，检查根声明初始化的静态上限后明确预览，即可查看每个实例的结构父链、先行依赖、具名端口、完整资源来源及装配提示；详见[页面操作](USAGE.md#在页面浏览与预览定义)。静态上限不构成项目授权，后端字段仅为请求。页面下载的定义JSON和预览JSON用于阅读与比较；分享完整资源和精确依赖应使用下文`export`、`prepare-manifest`或[固定当前预览](#固定当前预览到持久控制目录)。标准正文可在页面[明确修订](#在页面修订工作流)；嵌套画布与正式交接见[后续计划](../plans/2026-11-09-composition-console.md)。
+Web控制台的“Agent 与组合库”复用同一版本库、导入和preview用例，无需先注册项目。选择精确工作流版本，检查根声明初始化的静态上限后明确预览，即可查看每个实例的结构父链、先行依赖、具名端口、完整资源来源及装配提示；详见[页面操作](USAGE.md#在页面浏览与预览定义)。静态上限不构成项目授权，后端字段仅为请求。页面下载的定义JSON和预览JSON用于阅读与比较；分享完整资源和精确依赖应使用下文`export`、`prepare-manifest`或[固定当前预览](#固定当前预览到持久控制目录)。标准正文可在页面[明确修订](#在页面修订工作流)；嵌套画布与正式交接见[工作流指南](../WORKFLOW_DEFINITIONS.md#查看已发布嵌套关系图)。
 
 当前可用性：导入、预览和固定 manifest 不会执行或采用图、批准候选，也不证明后端／SDK 已就绪。一般 Repeat 和任意混合节点图执行仍未实现。已登记设计政策目前只保存要求，并明确拒绝不支持的执行；可信人类通道不可用，隔离的来源 journal 首稿尚未发布。所有 schema3 训练效果继续显式关闭。见[当前计划](../PLAN.md)、[设计政策执行门禁](../../src/ergora/task_design.py)和[训练 controller 门禁](../../src/ergora/training_cycles.py)。
 
@@ -26,7 +26,7 @@ ergora composition install-preset evidence-report
 ergora composition install-preset optimization-report
 ergora composition install-preset pretraining-review
 ergora composition install-preset posttraining-review
-ergora composition show ergora-large-change-delivery 1.0.1 --material
+ergora composition show ergora-large-change-delivery 1.5.0 --material
 ergora agent definition show ergora-server-implementer 1.0.1 --material
 ```
 
@@ -40,8 +40,8 @@ ergora agent definition show ergora-server-implementer 1.0.1 --material
 |---|---|---|
 |repository-governance|`ergora-governance-delivery`|知识地图、架构回归两个专家并行，再经可信integrate/verify接三审查；包含独立盘点／规划与原工作／审查阶段|
 |large-change|`ergora-large-change-delivery`|接口合同 → 服务端与客户端并行 → 集成/兼容验证 → 三审查；包含独立盘点／规划与原工作／审查阶段|
-|training-optimization|`ergora-training-proposal@4.0.1`|源码流程 → 并行规划／诊断 → kernel实施方案评估 → 测量审查；全部五叶继承库／环境选择规则，只读建议与手工完整交接|
-|refactoring|`ergora-refactoring-template@1.1.1`|普通父 → 原生六阶段：准备 → rewrite／compatibility串行工作 → 三类独立审查；正式task type沿用large-change，显式definition6／input10|
+|training-optimization|`ergora-training-proposal@4.2.2`|源码流程 → 并行规划／诊断 → kernel实施方案评估 → 测量审查；全部五叶继承库／环境选择规则，只读建议与手工完整交接|
+|refactoring|`ergora-refactoring-template@1.3.0`|普通父 → 原生六阶段：准备 → rewrite／compatibility串行工作 → 三类独立审查；正式task type沿用large-change，显式definition6／input10|
 |optimization-performance-diagnosis|`ergora-opt-performance-diagnosis-proposal`|同症状复现与兼容报告 reader；只读 design／profile→measurement 提案叶，原 runner 保留实验执行|
 |training-flow-map|`ergora-training-flow-map`|只读 `root/map` 分别产出算法／执行依赖图、状态生命周期和可证伪冗余假设；不自动运行后续专家或训练|
 |evidence-report|`ergora-evidence-report`|只读 `root/author` 生成来源绑定的 Markdown／静态 HTML 报告；原证据、运行记录与独立审查／release 保持|
@@ -248,45 +248,31 @@ v6的`work_inputs.results`用实例路径保存端口来源和直接工作依赖
 
 ## 盘点与规划的完整材料
 
-要让前两阶段也使用精确的 Agent 定义与完整结构资料，选择 [task-definition v4](../../src/ergora/data/schemas/task-definition-v4.json)。它生成正式输入 v8：`preparation-v1` 选择各一个 inspector／planner，后接既有 `work-units-v2` 与 `dag-v1`。原 Temporal 六阶段继续安排顺序、等待 owner 计划批准、运行可信检查和提交；这不是通用图运行或可执行的原生嵌套节点。
+当前使用 [task-definition schema8](../../src/ergora/data/schemas/task-definition-v8.json)，生成正式input12。inventory与plan各选择只读工作流子树及canonical coordinator；原六阶段owner按冻结祖先并发上限执行就绪专家，将完整原前驱交协调者，等待owner批准同一canonical plan，并保留可信检查、候选身份与清理合同。
 
-在完成上一节 specialist-delivery 的依赖导入后，导入准备专家及新的示例根：
+先导入专长工作及并行审查依赖，再导入当前准备组和native父包：
 
 ```bash
 ergora agent definition import examples/composition/agents/development-preparer
+ergora composition import examples/composition/preparation-inventory
+ergora composition import examples/composition/preparation-plan
 ergora composition import examples/composition/preparation-guide
 ergora composition import examples/composition/prepared-delivery
-ergora composition prepare-manifest prepared-delivery 1.0.0 --grant examples/composition/preview-grant.json --directory ./prepared-delivery-manifest
-ergora composition verify-manifest ./prepared-delivery-manifest
+ergora composition import examples/composition/native-development
+ergora composition prepare-manifest native-development 1.1.0 --grant examples/composition/preview-grant.json --directory ./native-development-manifest
 ```
 
-在上一节的完整任务定义中，把 `schema_version` 改为 `4`，将 `composition.manifest / manifest_digest` 换为此次实际结果，保留 `execution.protocol: "work-units-v2"`，并加入：
+完整schema8还包含budget、原work／review选择及单个native调用，准备部分为：
 
 ```json
-{
-  "preparation": {
-    "protocol": "preparation-v1",
-    "inventory": "root/preparation/inventory",
-    "plan": "root/preparation/plan",
-    "mode": "task-mcp",
-    "repository_paths": ["src"]
-  }
-}
+{"native":{"protocol":"six-stage-v1","instance":"root/development"},
+ "preparation":{"protocol":"preparation-dag-v1",
+   "inventory":{"instance":"root/development/preparation/inventory","coordinator":"root/development/preparation/inventory/coordinator"},
+   "plan":{"instance":"root/development/preparation/plan","coordinator":"root/development/preparation/plan/coordinator"},
+   "mode":"task-mcp","repository_paths":["src"]}}
 ```
 
-`preparation` 是 `composition` 内的字段，不是完整任务定义。两个实例可引用同一份多职能 Agent，也可使用不同精确定义；实际调用的角色分别为 inspector 和 planner。逐实例 `backend_overrides` 也覆盖它们，例如 `root/preparation/plan` 可单独选择支持受限调用的其他后端，记录 `binding` 与原因。执行／审查优先选择不同后端；不能用改变职责或覆盖后端绕过父权限。
-
-`repository_paths` 是从原 starting commit 读取的相对路径前缀，必须覆盖原 work unit 路径。`["."]` 表示整个起始仓库；也可额外选择根配置和说明，例如 `["src", "pyproject.toml", "README.md"]`。可信读取器附上这些路径适用的祖先 `AGENTS.md`，每个实际文件仍须在该准备叶的 read 上限内。必要说明超出权限时，父子共同修订后再发布；文件为二进制、特殊 Git 类型或完整输入超限时整份拒绝，不静默排除。应按任务需要明确纳入构建／模型配置等其他资料。
-
-两个准备叶只能直接映射结构根 task，叶及其祖先不能依赖尚未执行的外部节点。inventory→plan 的结果由原六阶段合同传递；示例 `preparation-guide` 的两个静态叶没有另建调度关系。准备、work 与 review 必须恰好覆盖全部 Agent 叶，不可遗漏、重复或把 inspector 假装成 implementer。其他阶段的兄弟结果不会成为继承权限。
-
-inventory 和 plan 实际走只读叶调用、新空工作目录和原进程监控。完整 root→leaf 指令、上下文、SKILL.md、固定开发模板、原任务及精确 Git 文本进入完整 prompt。plan 另核原 inventory 请求、成功 receipt、session、后端及产物身份，取得全部声明产物与可信 baseline；超过旧 60k 截断位置的内容仍完整交付。模型不获得任意仓库读取或 shell 工具。原 writer 继续使用明确可信 current-container；read/write/egress 中标为 advisory 的能力没有变为 OS 隔离。
-
-v8 中，只要选中结构链有未内联 Skill 附件，text-only 就在创建前拒绝；使用 task-mcp。模型必须完整读取必要附件，实际成功服务响应记录 URI、SHA、大小、offset 和返回字节数。原 Executor 在接受阶段结果前核连续覆盖，握手／list 成功或模型自称已读不能替代。完整正文已在 prompt 内，无须为了满足附件门禁再次读取同一正文。此证据证明字节交付，不证明模型理解。
-
-继续使用原 `task preview/create/start`，原计划批准及候选证据入口不变。v4 也可加入与 v3 相同的可选 `source: {"snapshot_sha256": "实际快照摘要"}`，完整来源进入全部选中阶段，并保存在原 input／evidence／handoff。升级并重启 worker／executor 后才能接收 `.composition-v8` 队列；按冻结选择只检查实际依赖。图形任务向导的原生六阶段入口支持完整准备与预算（definition6／input10）；单独definition4／input8仍通过CLI／共用API提交。
-
-此v8合同保留原阶段时限。需要材料准备、队列、人工等待、执行和收尾共用总预算时，显式使用[task-definition v5／input9](USAGE.md#一次授权的预算准备)：先prepare、确认两个摘要创建，再沿原start／批准／取消／恢复入口运行。v9拥有独立队列及专用job owner，静态图本身不授予执行权。将六阶段置于普通父模板时使用[definition6／input10的单实例选择](USAGE.md#将六阶段作为一个子模板调用)，沿相同原task生命周期保存精确祖先链。旧定义／input、已冻结manifest和history不自动迁移。
+这只是`composition`内的字段。成员按inspector／planner角色运行；每位planner获得原canonical inventory，协调者汇合完整成果。选择、所需Skill读取、实际后端能力、原预算及正式调用身份继续由原owner验证；静态预览不证明实际执行。完整字段与当前示例见[同源材料指南](../WORKFLOW_DEFINITIONS.md#盘点与规划的完整材料)。
 
 ## 完整继承与冲突
 
@@ -415,7 +401,7 @@ ergora composition file kernel-delivery 1.0.0 instructions.md --base-digest BASE
 
 按“应用字段文本”或应用 JSON/YAML → “检查定义候选” → “发布新定义版本”操作。三个编辑缓冲、原文同步确认、有限历史、恢复与下载规则与[Agent 编辑器](AGENT_DEFINITIONS.md#在页面编辑专长-agent)相同。页面不提供跨库事务：先发布 Agent/子工作流，再更新并发布父级，最后发布新根。失败的父级不会撤销已发布子版本，也不会修改旧根或在途任务。
 
-库级页面不持有项目 grant；保存根权限不是批准。发布后仍须用明确 grant 预览和冻结任务。正式任务交接的实现范围见[计划](../plans/2026-11-09-composition-console.md)。
+库级页面不持有项目 grant；保存根权限不是批准。发布后仍须用明确 grant 预览和冻结任务。正式任务交接的实现范围见[工作流指南](../WORKFLOW_DEFINITIONS.md#查看已发布嵌套关系图)。
 
 ### 查看已发布嵌套关系图
 
@@ -437,7 +423,7 @@ ergora composition file kernel-delivery 1.0.0 instructions.md --base-digest BASE
 4. 在“两个已发布组合的精确比较”查看新增、删除、变化、相同的实例数量和逐路径结果。点击完整路径可逐字段对照权限、职责、后端、预算、依赖、具名端口等事实，并展开两个版本的完整原实例，查看所有资源、来源和装配提示；键盘也可操作表格按钮。
 5. 分别下载比较前/后preview JSON保存完整原件。比较不会发布定义、应用草稿或改变编辑基准；切换根版本或控制目录会清除当前比较。更换目标或修改grant后须重新显式比较，迟到回复不会恢复旧结果。
 
-对象的键顺序不会制造差异；数组保持原顺序，不把重新排列的权限/依赖声明推断为等价。比较按完整实例路径配对，同一精确Agent/工作流的重复实例各自保留；改名表现为旧路径删除、新路径新增，不猜测重命名。资源内容身份及顺序、资源来源与声明、装配提示身份分别展示：仅来源定义版本变化也可能改变提示摘要及字节用量，不能据此声称Skill正文变化。摘要只反映原preview包含的编译事实；Agent描述、专长等非preview字段须打开精确定义核对。正式执行交接见[任务页面选择](#在正式任务页面选择组合)，验收进度见[C5计划](../plans/2026-11-10-composition-handoff.md)。
+对象的键顺序不会制造差异；数组保持原顺序，不把重新排列的权限/依赖声明推断为等价。比较按完整实例路径配对，同一精确Agent/工作流的重复实例各自保留；改名表现为旧路径删除、新路径新增，不猜测重命名。资源内容身份及顺序、资源来源与声明、装配提示身份分别展示：仅来源定义版本变化也可能改变提示摘要及字节用量，不能据此声称Skill正文变化。摘要只反映原preview包含的编译事实；Agent描述、专长等非preview字段须打开精确定义核对。正式执行交接见[任务页面选择](#在正式任务页面选择组合)，验收进度见[工作流指南](../WORKFLOW_DEFINITIONS.md#在正式任务页面选择组合)。
 
 ## 准备完整的单叶输入
 

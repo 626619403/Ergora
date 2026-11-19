@@ -304,7 +304,7 @@ ergora training cycle-read "$HOME/ergora-inputs/cycle-01" --sha256 EXACT_CYCLE_S
 
 `cycle-create`只读原注册和`check-start`，保存完整项目／注册快照、全部候选观察与策略，返回整份`cycle.json`的SHA；不会覆盖已有目录。候选顺序固定，试次上限取列表长度；同一实验不能重复或已有prepared／unknown／submitted／rejected意图。所有候选须共享初始baseline、workload、数据／初态／环境／验证合同、质量要求及比较政策；各自candidate、track与allowed_changes完整保留。合同不一致时修正真实选择，不能悄悄放宽门槛。
 
-三个预算值是严格整数，清理时间包含在总墙钟内，`1≤cleanup_seconds<wall_seconds`。`control_timeout_seconds`为1–60秒的原用例timeout上限，预算提交在原剩余阶段内检查或终止调用；它不是整个用例的硬时限。`cycle-create`本身不会起算预算；完整有界自动执行、停止机制、费用或GPU小时计量仍未提供。
+三个预算值是严格整数，清理时间包含在总墙钟内，`1≤cleanup_seconds<wall_seconds`。`control_timeout_seconds`为1–60秒的原用例timeout上限，预算提交在原剩余阶段内检查或终止调用；它不是整个用例的硬时限。`cycle-create`本身不会起算预算或启动控制器；后续须按原输入显式授权与提交。费用和GPU小时计量不由此预算提供。
 
 离线`cycle-read`不需要项目、SDK、服务或密钥，验证所选完整SHA、版本及内部绑定，保留原观察全文。`coverage`明确为已保存本地观察，运行未查询、来源未认证、执行未授权、预算未起算；其中旧ready字段不代表当前准入。文件最多10,000,000 UTF-8字节和64层／100000值，超限拒绝，不截断。该输入保留原home／注册／执行路径，跨机可离线阅读；执行须在原支持环境重新核身份，不能将它直接当作活动运行迁移或新的启动授权。
 
@@ -324,6 +324,17 @@ ergora training cycle-status my-project cycle-01 --authorization-sha256 EXACT_AU
 中断或丢回复后，可重复**同一条授权命令**；同ID先读取本地保存的完整输入、原授权和ready，不依赖外部输入目录仍存在，不重新计时。缺ready时只在原剩余时间内重新核完整候选；同ID绑定不同输入SHA会拒绝。不要删除授权或换ID绕过原额度。`cycle-status`核原来源、完整记录、当前项目和时钟，不运行live admission、查询Temporal或读取密钥。已有ready在原锁释放后还须flush原目录再核剩余期限，用于完成丢回复／目录fsync失败留下的同一个可见记录；不改原件字节，flush失败显示unknown。原锁忙时保持pending／exhausted，不能把尚在写盘的ready当完成；不需要`temporal` extra。
 
 `pending`表示原授权已保存而完整准入尚未完成；`exhausted`表示计算截止已过；`project-changed`表示当前完整项目已与原revision不同；`unknown`显示跨boot／host、时钟断续或缺少时钟来源的具体原因。后三者不能推进；原件保留。原登记、输入或ready缺失／损坏、链接／特殊文件、重复key／非finite JSON均明确失败，不补造记录或重授。原输入沿原10MB／树合同，授权及ready各最多1MiB。跨机可用`cycle-read`阅读离线输入，当前不支持迁移一个正在计时的授权。
+
+需要执行完整有限候选时，在一个新的cycle ID出生时显式选择控制器模式，并确认整个原选择；不能把已有手动授权升级或重开预算：
+
+```bash
+ergora training cycle-authorize-controller my-project controlled-cycle-01 --directory "$HOME/ergora-inputs/cycle-01" --sha256 EXACT_CYCLE_SHA256 --revision REVISION --confirm --execute-selected --program-version 2
+ergora training cycle-controller-prepare my-project controlled-cycle-01 --authorization-sha256 EXACT_AUTHORIZATION_SHA256 --revision REVISION
+ergora training cycle-controller-submit my-project controlled-cycle-01 --authorization-sha256 EXACT_AUTHORIZATION_SHA256
+ergora training cycle-controller-status my-project controlled-cycle-01 --authorization-sha256 EXACT_AUTHORIZATION_SHA256
+```
+
+`--program-version`冻结所选控制器版本，CLI默认2，支持1／2／3；有限V2／V3工作流在原预算内按冻结顺序执行候选并读取原测量结果。预算从首次授权起算，准备、排队、执行、恢复和收尾共用同一期限；停止、测量接受及可信evidence批准仍是不同事实。`status`仅读原本地记录；提交失联后使用同一身份的`cycle-controller-reconcile`观察原workflow，不再次发送。`cycle-controller-stop --reason REASON`发表停止否决，单独这份记录不能证明executor子树已回收。这里不动态生成新候选、扩展冻结列表或自动采纳结果，也不提供自动逐轮profile。
 
 ### 按原预算投递与持续截止监管
 
@@ -374,7 +385,7 @@ ergora services logs my-project training-cycle-worker --bytes 4096
 |`ergora.training_cycle.reconcile.v1`|读取已有原候选，不重新授予start。|
 |`ergora.training_cycle.stop.v1`|独立发布stop、排空父许可、通知各原owner并观察执行链，完整保留全部分支。|
 
-业务输入`workflow_input`仅含`protocol`、`control_home`、`project`、`cycle_id`、`input_sha256`、`authorization_sha256`；候选动作另带ordinal，stop另带reason。真实Workflow／run／namespace／attempt由SDK提供，并经原受监督helper认证，业务输入无法自述这些权限。集成者须沿原schema2授权及intent→attempt→固定run receipt协议；普通`cycle-authorize`仍是手动预算入口。当前服务提供活动适配，正式总Workflow、自动执行／测量接受与后继候选另行交付，启动服务本身不创建实验或运行runner。
+业务输入`workflow_input`仅含`protocol`、`control_home`、`project`、`cycle_id`、`input_sha256`、`authorization_sha256`；候选动作另带ordinal，stop另带reason。真实Workflow／run／namespace／attempt由SDK提供，并经原受监督helper认证，业务输入无法自述这些权限。集成者须沿原schema2授权及intent→attempt→固定run receipt协议；普通`cycle-authorize`仍是手动预算入口。这些schema2活动保留其原集成合同；同一worker还承载有限V2／V3控制器，按[显式授权与提交](#起算本地训练预算与恢复原授权)执行原冻结候选。测量接受与停止事实分别记录，启动服务本身不创建实验或运行runner。
 
 活动结果保留原操作身份及已验证stdout的字节数／SHA引用，无法取得完整原件时保存完整inline unknown；32KiB包含SDK metadata，超限明确失败。停止通知、stop持久、父许可排空、执行子树停止分别报告。服务关闭先停止普通领取并等待真实资源清理，再关闭stop；已完整交接的预算根继续承担原期限责任。要停止整个cycle应使用原完整停止协议。
 
@@ -650,12 +661,12 @@ HTTP复用同一用例：`GET .../training/{experiment}/approval`；`POST .../ap
 
 [OpenBMB/ForgeKernel](https://github.com/OpenBMB/ForgeKernel) 提供可选固定版本的原生 campaign 适配。先安装独立工具环境、配置本地任务与设备，再通过 `ergora kernel plan/prepare/status/run` 或训练页面操作。固定版本仅支持 Claude backend；计划检查与创建 campaign 不调用模型/GPU。完整配置、继续执行和结果不明时的对账步骤见 [Agent 手册](AGENT_BACKENDS.md#forgekernel-原生候选)。
 
-生成器原生报告只作为候选材料，仍需提交候选代码、冻结实验 manifest，并运行上述可信证据门禁。KDA、ForgeKernel、mini-swe-agent 等的比较和许可证见 [三模板选型](research/2026-10-31-template-agents.md)；CPU 接口验证不能证明 GPU 性能提升。
+生成器原生报告只作为候选材料，仍需提交候选代码、冻结实验 manifest，并运行上述可信证据门禁。KDA、ForgeKernel、mini-swe-agent 等的比较和许可证见 [后端指南](AGENT_BACKENDS.md)；CPU 接口验证不能证明 GPU 性能提升。
 
 
 ## 可选的实验专家提案
 
-`ergora composition install-preset training-optimization`导入当前共同根`ergora-training-proposal@4.1.3`：源码图谱、跨域实验设计、纯性能诊断、kernel实施方案评估与独立测量审查。全部五叶继承库／环境选择和原证据合同；model固定gpt-6.1-sol，设计／kernel规划max、诊断／测量审查high。选定方向的专项专家作为这个共同根的真实结构后代进入完整优化；它们供操作者填写原workload／baseline／experiment，不执行搜索或授予采用，真实CPU/GPU仍归原runner与证据门禁。
+`ergora composition install-preset training-optimization`导入当前共同根`ergora-training-proposal@4.2.2`：源码图谱、跨域实验设计、纯性能诊断、kernel实施方案评估与独立测量审查。全部五叶继承库／环境选择和原证据合同；model固定gpt-6.1-sol，设计／kernel规划max、诊断／测量审查high。选定方向的专项专家作为这个共同根的真实结构后代进入完整优化；它们供操作者填写原workload／baseline／experiment，不执行搜索或授予采用，真实CPU/GPU仍归原runner与证据门禁。
 
 |叶路径|主要职责与所需资料|结果边界|
 |---|---|---|
@@ -672,10 +683,10 @@ HTTP复用同一用例：`GET .../training/{experiment}/approval`；`POST .../ap
 
 ```bash
 ergora composition install-preset training-flow-map
-ergora composition show ergora-training-flow-map 1.0.1 --material
+ergora composition show ergora-training-flow-map 1.1.0 --material
 ```
 
-该根提供独立只读叶 `root/map`，Agent 为 `ergora-training-flow-analyst@1.0.1`。按[完整 manifest 与单叶输入](WORKFLOW_DEFINITIONS.md#准备完整的单叶输入)为根 `ergora-training-flow-map@1.0.1` 生成 grant／manifest，再提供完整训练入口、调用者、实际配置、需求及已有原报告；也可用[精确本地包](LOCAL_REVIEW.md)的完整 `review read` 结果作为 task。Skill 自包含，无外部附件，可用已认证后端的 `text-only` 模式。
+该根提供独立只读叶 `root/map`，Agent 为 `ergora-training-flow-analyst@1.1.0`。按[完整 manifest 与单叶输入](WORKFLOW_DEFINITIONS.md#准备完整的单叶输入)为根 `ergora-training-flow-map@1.1.0` 生成 grant／manifest，再提供完整训练入口、调用者、实际配置、需求及已有原报告；也可用[精确本地包](LOCAL_REVIEW.md)的完整 `review read` 结果作为 task。Skill 自包含，无外部附件，可用已认证后端的 `text-only` 模式。
 
 ```bash
 ergora composition prepare-from-manifest ./flow-map-manifest root/map \
@@ -692,10 +703,10 @@ ergora composition run-input my-project ./flow-map-input --backend codex \
 
 ```bash
 ergora composition install-preset training-optimization
-ergora composition show ergora-training-proposal 4.1.3 --material
+ergora composition show ergora-training-proposal 4.2.2 --material
 ```
 
-当前共同根 `ergora-training-proposal@4.1.3` 组合图谱和四位跨域专家。根Skill负责证据、方向及库／环境选择，子Skill保留各自方法。需要完整专题优化时，修订这个共同根，将选中的1.1.0方向模板置于其真实后代后再冻结完整manifest；[选定MoE组合示例](../examples/composition/optimization-selected-moe/README.md)给出11叶及完整交接。实际存储中的该示例为`ergora-training-proposal@4.1.4`，应使用存储返回的完整root引用／manifest，不把通用4.1.3与选定组合混用。共同骨架的顺序如下，design／profile读取相同资料：
+当前共同根 `ergora-training-proposal@4.2.2` 组合图谱和四位跨域专家。根Skill负责证据、方向及库／环境选择，子Skill保留各自方法。需要完整专题优化时，修订这个共同根，将选中的1.1.0方向模板置于其真实后代后再冻结完整manifest；[选定MoE组合示例](../examples/composition/optimization-selected-moe/README.md)给出当前18叶native开发图及完整交接，其正式root身份由示例的[publication.json](../examples/composition/optimization-selected-moe/publication.json)提供；使用实际返回的完整root引用和manifest。下图是共同提案骨架，design／profile读取相同资料：
 
 ```mermaid
 flowchart LR
@@ -729,13 +740,13 @@ kernel 评估不会被方向选择跳过。实际干预可为去冗余／解依�
 
 ## 通用性能诊断
 
-性能分析、实验设计、kernel设计和测量审查的定义与组合由Ergora维护，参考[专项采用调研](research/2026-11-12-specialist-adoption.md)和[工程／性能Skill盘点](research/2026-11-14-local-engineering-skills.md)。19个方向按专项分工；profiling与performance-diagnosis复用`ergora-performance-analyst@2.1.0`，kernel专题复用kernel-designer，共同实验设计和测量审查独立保留。引用论文与Skill不表示已导入完整原生Agent流程；Forge等工具仍单独适配和准入。
+性能分析、实验设计、kernel设计和测量审查的定义与组合由Ergora维护，参考[接入指南](INTEGRATIONS.md)和[Agent定义](AGENT_DEFINITIONS.md#内置专家)。19个方向按专项分工；profiling与performance-diagnosis复用`ergora-performance-analyst@2.3.0`，kernel专题复用kernel-designer，共同实验设计和测量审查独立保留。引用论文与Skill不表示已导入完整原生Agent流程；Forge等工具仍单独适配和准入。
 
 ```bash
 ergora composition install-preset optimization-performance-diagnosis
 ```
 
-使用安装结果返回的完整 `root` 引用准备 manifest；根为`ergora-opt-performance-diagnosis-proposal@1.1.0`，`root/specialist`绑定`ergora-performance-analyst@2.1.0`，另有`root/design`和`root/measurement/review`。诊断专家提供标准 [`ergora-performance-diagnosis`](../src/ergora/data/presets/agents/ergora-performance-analyst/skills/ergora-performance-diagnosis/SKILL.md)：先固定同症状反馈命令，再按实际格式、版本、phase和硬件选择已有报告reader。没有可比证据时保留unknown，向原runner提出有限补测请求。
+使用安装结果返回的完整 `root` 引用准备 manifest；根为`ergora-opt-performance-diagnosis-proposal@1.2.1`，`root/specialist`绑定`ergora-performance-analyst@2.3.0`，另有`root/design`和`root/measurement/review`。诊断专家提供标准 [`ergora-performance-diagnosis`](../src/ergora/data/presets/agents/ergora-performance-analyst/skills/ergora-performance-diagnosis/SKILL.md)：先固定同症状反馈命令，再按实际格式、版本、phase和硬件选择已有报告reader。没有可比证据时保留unknown，向原runner提出有限补测请求。
 
 沿[单叶输入与调用](WORKFLOW_DEFINITIONS.md#准备完整的单叶输入)为该精确根准备grant／manifest，分别调用`root/specialist`与`root/design`，把两份完整原结果交给`root/measurement/review`。独立方向根只作有限专题分析；完整优化沿共同根继承政策和环境记录。权限仍为只读、无shell／网络；工具的安装、可用性与授权分别核实，真实收益按原runner／evidence gate验收。
 
@@ -777,8 +788,8 @@ ergora skill import my-project \
 
 ```bash
 ergora composition install-preset optimization-memory-tuning
-ergora composition show ergora-opt-memory-tuning-proposal 1.1.0
-ergora composition prepare-manifest ergora-opt-memory-tuning-proposal 1.1.0 --grant ./grant.json --directory ./memory-manifest
+ergora composition show ergora-opt-memory-tuning-proposal 1.2.0
+ergora composition prepare-manifest ergora-opt-memory-tuning-proposal 1.2.0 --grant ./grant.json --directory ./memory-manifest
 ergora composition prepare-from-manifest ./memory-manifest root/specialist --task ./memory-task.txt --directory ./memory-specialist --max-prompt-bytes 100000
 ergora composition check-input PROJECT_ID ./memory-specialist --mode task-mcp --backend codex --backend-reason "Explicit specialist backend"
 ergora composition run-input PROJECT_ID ./memory-specialist --mode task-mcp --backend codex --backend-reason "Explicit specialist backend" --timeout 600

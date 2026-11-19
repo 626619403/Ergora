@@ -2,7 +2,7 @@
 
 `pretraining-review` 和 `posttraining-review` 在原结构、正确性、测试价值三位 reviewer 旁各增加一位领域专家。两个根均为只读、四叶 required、显式 all-join，领域专家也有独立子模板。它们复用原定义、权限继承、后端和正式 ReviewDAG，没有安装另一套训练器或审查服务。
 
-这是 Ergora 根据固定 Bridge／slime 方法编写的 reviewer 配方。来源与具体借鉴点随完整 Skill 提供；上游实现身份见 [领域研究](research/2026-11-15-pr-mr-review-tools.md)。它们不代表 NVIDIA／slime 官方 Agent，也不表示通过 GPU、数值、分布式或收敛验收。实际实现与验证进度见 [本片交付](delivery/2026-11-15-training-domain-reviews.md)。
+这是 Ergora 根据固定 Bridge／slime 方法编写的 reviewer 配方。来源与具体借鉴点随完整 Skill 提供；上游实现身份见 [当前指南](../src/ergora/data/presets/agents/ergora-pretraining-reviewer/skills/ergora-pretraining-review/SKILL.md)。它们不代表 NVIDIA／slime 官方 Agent，也不表示通过 GPU、数值、分布式或收敛验收。结论的实际范围按下文[结果解释](#理解结论)检查。
 
 ## 选择专家和后端
 
@@ -17,7 +17,7 @@
 
 默认使用 Codex gpt-6.1-sol high，逐实例覆盖须满足[定义下限](AGENT_DEFINITIONS.md)。执行者／审查者优先使用不同后端；同后端回退记录原因、独立会话与覆盖，不能以多个模型同意替代可信检查。
 
-使用各自安装结果返回的完整 `root` 引用准备 manifest。根的共享 [审查后端 Skill](../src/ergora/data/presets/workflows/ergora-pretraining-review/skills/ergora-review-backends/SKILL.md)由四叶继承，区分 Ergora 结构化调用、Codex／Claude Code 原生命令、公开插件／自建 CI 和厂商托管审查；[官方来源核对](research/2026-11-15-review-backend-guidance.md)记录截至 2026-11-15 的安装／认证、GitHub／GitLab 可用范围与结果副作用。选择后端或安装 preset 不会自动安装 CLI、启用订阅服务或发表 PR／MR 意见。
+使用各自安装结果返回的完整 `root` 引用准备 manifest。根的共享 [审查后端 Skill](../src/ergora/data/presets/workflows/ergora-pretraining-review/skills/ergora-review-backends/SKILL.md)由四叶继承，区分 Ergora 结构化调用、Codex／Claude Code 原生命令、公开插件／自建 CI 和厂商托管审查。选择后端或安装 preset 不会自动安装 CLI、启用订阅服务或发表 PR／MR 意见。
 
 ## 准备完整本地输入
 

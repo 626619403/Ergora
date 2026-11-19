@@ -1,6 +1,6 @@
 # reference 访问与迁出边界
 
-当前实现：R6边界及F1注册/导入增量，2026-11-03。[R6交付](../delivery/2026-11-02-reference-boundary.md) · [F1阶段记录](../delivery/2026-11-03-f1-completion.md) · [运行契约](2026-11-02-runtime-contracts.md) · [ADR 0001](decisions/0001-refactoring-foundations.md)。
+参考实现通过本页的语义owner访问；持久身份见[身份合同](contracts-and-identities.md)，注册见[项目指南](../PROJECTS.md#统一注册)，原基础决定见[ADR0001](decisions/0001-refactoring-foundations.md)。
 
 ## 入口与所有者
 
