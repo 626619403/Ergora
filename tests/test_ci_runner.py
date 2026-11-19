@@ -2,6 +2,7 @@
 
 import importlib.util
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -34,9 +35,19 @@ def wait(name):
 '''
 
 
-def wait_for(predicate):
+def child_command(script, directory):
+    path = directory.parent / 'controlled child.py'
+    path.write_text(CHILD + script, encoding='utf-8')
+    return [sys.executable, '-B', '-I', str(path), str(directory)]
+
+
+def wait_for(predicate, outcome=None):
     deadline = time.monotonic() + 5
-    while not predicate():
+    while True:
+        if outcome is not None and 'error' in outcome:
+            raise outcome['error']
+        if predicate():
+            return
         if time.monotonic() >= deadline:
             pytest.fail('Fake child or parent observation did not reach the controlled state')
         time.sleep(0.005)
@@ -68,8 +79,7 @@ def ci_runner(tmp_path, monkeypatch):
 
         def popen(command, **options):
             outcome['command'], outcome['options'] = command, options
-            child = original_popen([sys.executable, '-B', '-I', '-c', CHILD + script, str(directory)],
-                                   **options)
+            child = original_popen(child_command(script, directory), **options)
             children.append(child)
             return child
 
@@ -135,7 +145,7 @@ print('stderr output', file=sys.stderr, flush=True)
 emit('finish', exitstatus=7)
 raise SystemExit(7)
 ''')
-    wait_for(lambda: any(notice_row(row)['last_observed_complete_row'] is not None for row in notices))
+    wait_for(lambda: any(notice_row(row)['last_observed_complete_row'] is not None for row in notices), outcome)
     assert children[0].poll() is None and worker.is_alive()
     assert (directory / 'stdout.txt').read_text() == ''
     first = notice_row(notices[-1])
@@ -146,7 +156,7 @@ raise SystemExit(7)
     assert first['parent_elapsed_seconds'] >= 0 and first['owned_child_returncode'] is None
     (directory / 'advance').touch()
     wait_for(lambda: any((notice_row(row)['last_observed_complete_row'] or {}).get('event') == 'phase'
-                        for row in notices))
+                        for row in notices), outcome)
     completed = notice_row(notices[-1])['last_observed_complete_row']
     assert completed['outcome'] == 'passed' and completed['seconds'] == 0.75
     assert completed['elapsed'] == 1.25
@@ -179,7 +189,7 @@ def test_complete_collection_and_finish_rows_remain_observations(ci_runner, even
     runner, directory, start, children, monitors, notices = ci_runner
     outcome, worker = start(f"emit({event!r}, **{fields!r})\nwait('release')\n")
     wait_for(lambda: any((notice_row(row)['last_observed_complete_row'] or {}).get('event') == event
-                        for row in notices))
+                        for row in notices), outcome)
     recorded = notice_row(notices[-1])['last_observed_complete_row']
     assert recorded == {'event': event, 'elapsed': 1.25,
                         **{key: value for key, value in fields.items() if key != 'detail'}}
@@ -197,7 +207,7 @@ def test_complete_collection_and_finish_rows_remain_observations(ci_runner, even
 def test_missing_partial_and_oversize_rows_do_not_fabricate_a_phase(ci_runner, tail):
     runner, directory, start, children, monitors, notices = ci_runner
     outcome, worker = start(f"(directory / 'phases.jsonl').write_text({tail!r})\nwait('release')\n")
-    wait_for(lambda: bool(notices))
+    wait_for(lambda: bool(notices), outcome)
     assert notice_row(notices[-1])['last_observed_complete_row'] is None
     assert 'uncommitted-node' not in notices[-1] and 'oversize-' not in notices[-1]
     (directory / 'release').touch()
@@ -214,7 +224,7 @@ with (directory / 'phases.jsonl').open('a') as stream:
     stream.write('{"elapsed": 3, "event": "phase-start", "nodeid": "partial-node"}')
 wait('release')
 ''')
-    wait_for(lambda: any(notice_row(row)['last_observed_complete_row'] is not None for row in notices))
+    wait_for(lambda: any(notice_row(row)['last_observed_complete_row'] is not None for row in notices), outcome)
     assert notice_row(notices[-1])['last_observed_complete_row']['nodeid'] == 'completed-node'
     assert 'partial-node' not in notices[-1]
     (directory / 'release').touch()
@@ -229,7 +239,7 @@ emit('phase', nodeid='percent%\\r\\n::error title=injected::no' + 'x' * 10000,
      when='call', outcome='passed', seconds=0.5)
 wait('release')
 ''')
-    wait_for(lambda: len(notices) == 8)
+    wait_for(lambda: len(notices) == 8, outcome)
     time.sleep(0.05)
     assert len(notices) == 8 and children[0].poll() is None
     (directory / 'release').touch()
@@ -264,10 +274,10 @@ child = subprocess.Popen([sys.executable, '-B', '-I', '-c', descendant, str(dire
 (directory / 'descendant-pid.json').write_text(json.dumps({'pid': child.pid, 'argv': child.args}))
 emit('finish', exitstatus=0)
 """)
-    wait_for(lambda: bool(notices) and notice_row(notices[-1])['observation'] == 'final')
+    wait_for(lambda: bool(notices) and notice_row(notices[-1])['observation'] == 'final', outcome)
     assert notice_row(notices[-1])['owned_child_returncode'] == 0
     assert worker.is_alive() and children[0].poll() == 0
-    wait_for(lambda: bool(monitors) and not monitors[0].is_alive())
+    wait_for(lambda: bool(monitors) and not monitors[0].is_alive(), outcome)
     assert not (directory / 'result.json').exists()
     descendant = json.loads((directory / 'descendant-pid.json').read_text())
     observation = {'pid': descendant['pid'], 'stdout_closed_after_release': False}
@@ -292,7 +302,7 @@ emit('finish', exitstatus=0)
             assert fields[19] == observation['start_ticks']
             return fields[0] == 'Z'
 
-        wait_for(exited)
+        wait_for(exited, outcome)
         if observation['state'] == 'Z':
             assert observation['wait_status'] == 0
     (directory / 'descendant-observation.json').write_text(json.dumps(observation, indent=2) + '\n')
@@ -302,8 +312,8 @@ def test_parent_exception_stops_monitor_before_the_original_child_wait(ci_runner
     runner, directory, start, children, monitors, notices = ci_runner
     outcome, worker = start("print('trigger parent failure', flush=True)\nwait('release')\n",
                             fail_on_output=True)
-    wait_for(lambda: bool(notices) and notice_row(notices[-1])['observation'] == 'final')
-    wait_for(lambda: bool(monitors) and not monitors[0].is_alive())
+    wait_for(lambda: bool(notices) and notice_row(notices[-1])['observation'] == 'final', outcome)
+    wait_for(lambda: bool(monitors) and not monitors[0].is_alive(), outcome)
     assert children[0].poll() is None and worker.is_alive()
     (directory / 'release').touch()
     worker.join(timeout=5)
@@ -372,8 +382,7 @@ def raw_ci_runner(tmp_path, monkeypatch):
         stream.block_notice = block_notice
 
         def popen(command, **options):
-            child = original_popen([sys.executable, '-B', '-I', '-c', CHILD + script, str(directory)],
-                                   **options)
+            child = original_popen(child_command(script, directory), **options)
             children.append(child)
             return child
 
@@ -438,15 +447,15 @@ print('FAILED raced', flush=True)
 wait('release')
 raise SystemExit(7)
 ''', block_notice=True)
-    assert notice_held.wait(5)
+    wait_for(notice_held.is_set, outcome)
     (directory / 'write').touch()
-    wait_for(lambda: (directory / 'stdout.txt').read_text() == 'FAILED raced\n')
-    assert contender.wait(5)
+    wait_for(lambda: (directory / 'stdout.txt').read_text() == 'FAILED raced\n', outcome)
+    wait_for(contender.is_set, outcome)
     release_notice.set()
     (directory / 'release').touch()
     worker.join(timeout=5)
     assert not worker.is_alive() and 'error' not in outcome and outcome['returncode'] == 7
-    assert (directory / 'stdout.txt').read_bytes() == b'FAILED raced\n'
+    assert (directory / 'stdout.txt').read_bytes() == ('FAILED raced' + os.linesep).encode('utf-8')
     assert_complete_commands(''.join(fragments), [
         '::error title=Failed test::FAILED raced',
         '::error title=Native regression::FAILED raced%0A',
@@ -466,9 +475,9 @@ sys.stdout = sys.stderr = None
 wait('release')
 raise SystemExit(7)
 ''')
-    assert partial_seen.wait(5)
+    wait_for(partial_seen.is_set, outcome)
     observed = ''.join(fragments).count(NOTICE)
-    wait_for(lambda: ''.join(fragments).count(NOTICE) > observed and ''.join(fragments).endswith('\n'))
+    wait_for(lambda: ''.join(fragments).count(NOTICE) > observed and ''.join(fragments).endswith('\n'), outcome)
     (directory / 'release').touch()
     worker.join(timeout=5)
     assert not worker.is_alive() and 'error' not in outcome and outcome['returncode'] == 7

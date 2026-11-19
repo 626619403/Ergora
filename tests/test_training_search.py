@@ -8,6 +8,7 @@ import io
 import json
 import os
 from pathlib import Path
+import signal
 import stat
 import subprocess
 import sys
@@ -1501,6 +1502,78 @@ def test_source_callbacks_do_not_declare_reference_support(search_input, configu
     assert not (runtime / 'training/search-preparations').exists()
 
 
+def _reference_fault_native_state(item, result, fault, first_work):
+    job, observed = result['job'], result['execution']
+    try:
+        return json.loads((job / 'result.json').read_bytes())['state'], False
+    except FileNotFoundError as missing:
+        records = observed.get('records') or {}
+        try:
+            assert fault == 'reference-read-last-sync-fence', 'Only the actual fence fault permits an unknown native outcome'
+            assert set(records) == {'request', 'launch', 'attempt', 'ack', 'stopped'} and all(records.values())
+            for name, record in records.items():
+                assert json.loads((job / 'managed-execution' / (name + '.json')).read_bytes()) == record
+            assert observed['record_sha256'] == {name: _canonical_sha(record) for name, record in records.items()}
+            request, launch, attempt, ack, stopped = (records[name] for name in
+                ('request', 'launch', 'attempt', 'ack', 'stopped'))
+            ident = result['experiment_id']
+            assert request['experiment_id'] == ident
+            native_raw = (job / 'request.json').read_bytes()
+            native = json.loads(native_raw)
+            assert request['native_request_sha256'] == result['native_sha256'] == _sha(native_raw)
+            assert request['native_request_semantic_sha256'] == _canonical_sha(native)
+            submissions = item['runtime'] / 'ergora/training-submissions'
+            for suffix, field in (('intent', 'start_intent_sha256'), ('attempt', 'start_attempt_sha256'),
+                                  ('result', 'start_receipt_sha256')):
+                assert request[field] == _canonical_sha(json.loads((submissions / (ident + '.' + suffix + '.json')).read_bytes()))
+            assert request['start_intent_sha256'] == result['submission']['intent_sha256'] == observed['owner']['intent_sha256']
+            assert request['run_id'] == result['submission']['run_id'] == attempt['run_id']
+            authorization = json.loads((item['state'].root / 'training-cycles/demo' / item['cycle_id'] / 'authorization.json').read_bytes())
+            assert authorization['sha256'] == _canonical_sha({key: value for key, value in authorization.items() if key != 'sha256'})
+            assert request['authorization_sha256'] == observed['owner']['authorization_sha256'] == authorization['sha256']
+            assert launch['clock_sha256'] == _canonical_sha(authorization['clock'])
+            assert json.loads((submissions / (ident + '.budget/owner.json')).read_bytes()) == observed['owner']
+            assert stopped['supervisor'] == attempt['supervisor'] and ack['executor'] == attempt['executor']
+            assert stopped['process']['status'] == 'cancelled'
+            assert stopped['process']['returncode'] in (-signal.SIGTERM, -signal.SIGKILL)
+            assert observed['executor_stop_confirmed'] is observed['durable_stop_confirmed'] is True
+            assert observed['execution_success'] is None and observed['execution_authorized'] is False
+            for identity in (attempt['supervisor'], attempt['executor'],
+                             {key: observed['owner'][key] for key in ('pid', 'start_ticks', 'boot_id')}):
+                assert set(identity) == {'pid', 'start_ticks', 'boot_id'}
+                assert_budget_process_stopped(identity)
+            final = json.loads((submissions / (ident + '.budget/final.json')).read_bytes())
+            assert final['status'] == 'fenced'
+            assert final['intent_sha256'] == request['start_intent_sha256']
+            assert final['authorization_sha256'] == authorization['sha256']
+            assert any(phase['mode'] == 'monitor' and phase['status'] == 'stop'
+                       and phase['reason'] == 'Original native fence observed' for phase in final['phases'])
+            fence = item['runtime'] / ('training/fences/' + ident + '.json')
+            assert json.loads(fence.read_bytes()) == {'binding': native['experiment']['binding']}
+            assert (item['markers'] / (fault + '.jsonl')).is_file()
+            assert (item['markers'] / 'first-work.jsonl').read_bytes() == first_work
+            assert not (job / 'gate-report.json').exists()
+            assert (item['prefix'] / 'baseline.json').read_bytes() == item['baseline_record']
+        except (AssertionError, KeyError, OSError, TypeError, ValueError) as rejected:
+            stopped = records.get('stopped') if isinstance(records, dict) else None
+            process = stopped.get('process', {}) if isinstance(stopped, dict) else {}
+            missing.add_note('Fenced/reaped unknown-outcome witness rejected: ' + repr(rejected))
+            missing.add_note('Original native process: ' + json.dumps(process, default=str))
+            logs = [job / 'run-output/execution.log']
+            if isinstance(process.get('output'), str):
+                logs += [Path(process['output']) / name for name in ('stdout.txt', 'stderr.txt')]
+            for path in logs:
+                try:
+                    if path.is_file():
+                        missing.add_note(str(path) + ':\n' + path.read_text(errors='replace')[-8000:])
+                except OSError as unreadable:
+                    missing.add_note(str(path) + ': ' + str(unreadable))
+            raise missing from rejected
+        # Reaping proves no further work; it cannot synthesize a native result
+        # or a promotable gate. The actual native outcome remains unknown.
+        return 'UNKNOWN', True
+
+
 @pytest.mark.parametrize('installation', ['managed'], indirect=True)
 @pytest.mark.parametrize('search_execution', [{'baseline_reference_support': True}], indirect=True)
 def test_reference_receipt_raw_durability_and_cached_windows_fail_in_managed_consumer(search_execution):
@@ -1531,7 +1604,11 @@ def test_reference_receipt_raw_durability_and_cached_windows_fail_in_managed_con
             result = _execute_search(selected)[0]
         job, observed = result['job'], result['execution']
         expected_state = 'CANCELLED' if fault == 'reference-read-last-sync-fence' else 'FAILED'
-        assert json.loads((job / 'result.json').read_bytes())['state'] == expected_state
+        native_state, native_unknown = _reference_fault_native_state(selected, result, fault, first_work)
+        if native_unknown:
+            assert fault == 'reference-read-last-sync-fence' and native_state == 'UNKNOWN'
+        else:
+            assert native_state == expected_state
         assert not (job / 'gate-report.json').exists()
         assert (item['markers'] / (fault.replace('reference-cached-window', 'cached-window') + '.jsonl')).is_file()
         if fault in ('reference-read-sync', 'reference-read-last-sync-fence', 'reference-read-last-sync-deadline',
