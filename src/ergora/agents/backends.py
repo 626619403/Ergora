@@ -1,6 +1,7 @@
 """Native Agent adapters; the local mapping selects execution, not public schemas."""
 
 from abc import ABC, abstractmethod
+from copy import deepcopy
 from dataclasses import dataclass
 import hashlib
 import json
@@ -10,6 +11,7 @@ import subprocess
 import sys
 import tomllib
 import uuid
+from urllib.parse import unquote
 
 from ergora.configuration import catalog as components
 from ergora.configuration import validation as contracts
@@ -216,6 +218,94 @@ class CodexBackend(AgentBackend):
         add(config)
         return options
 
+    @staticmethod
+    def _output_schema(schema: dict) -> dict:
+        """Conjoin the demonstrated array-ref bound without changing the canonical contract."""
+        scope_keys = {'$id', '$anchor', '$dynamicAnchor', '$dynamicRef', '$schema', '$vocabulary'}
+
+        def walk(node, pointer='', scoped=False):
+            if not isinstance(node, dict):
+                return
+            scoped = scoped or bool(scope_keys & node.keys())
+            yield node, pointer, scoped
+            for key in ('$defs', 'properties', 'patternProperties', 'dependentSchemas'):
+                if isinstance(node.get(key), dict):
+                    for name, child in node[key].items():
+                        escaped = name.replace('~', '~0').replace('/', '~1')
+                        yield from walk(child, pointer + '/' + key + '/' + escaped, scoped)
+            for key in ('allOf', 'anyOf', 'oneOf', 'prefixItems'):
+                if isinstance(node.get(key), list):
+                    for index, child in enumerate(node[key]):
+                        yield from walk(child, pointer + '/' + key + '/' + str(index), scoped)
+            for key in ('items', 'contains', 'additionalProperties', 'unevaluatedProperties',
+                        'unevaluatedItems', 'propertyNames', 'not', 'if', 'then', 'else', 'contentSchema'):
+                yield from walk(node.get(key), pointer + '/' + key, scoped)
+
+        if not any('$ref' in node and 'minItems' in node for node, _, _ in walk(schema)):
+            return schema
+        converted = deepcopy(schema)
+        definitions = schema.get('$defs', {})
+        for node, pointer, scoped in list(walk(converted)):
+            if '$ref' not in node or 'minItems' not in node:
+                continue
+
+            def unsupported(reason):
+                raise ValueError(f"Codex schema conversion unsupported at {pointer or '/'}: "
+                                 f"$ref={node['$ref']!r}, keywords={sorted(node)}; {reason}")
+
+            def resolve(reference):
+                if not isinstance(reference, str) or not reference.startswith('#'):
+                    unsupported('only local root $defs references can be expanded')
+                try:
+                    parts = unquote(reference[1:], errors='strict').split('/')
+                except UnicodeDecodeError:
+                    unsupported('the local reference has invalid UTF-8 fragment encoding')
+                if (len(parts) != 3 or parts[:2] != ['', '$defs']
+                        or '~' in parts[2].replace('~0', '').replace('~1', '')):
+                    unsupported('only local root $defs references can be expanded')
+                name = parts[2].replace('~1', '/').replace('~0', '~')
+                if not isinstance(definitions, dict) or not isinstance(definitions.get(name), dict):
+                    unsupported('the referenced definition is missing or is not a concrete schema')
+                return name, definitions[name]
+
+            if scoped or set(node) != {'$ref', 'minItems'}:
+                unsupported('conversion requires a scope-free reference with only a minItems sibling')
+            name, target = resolve(node['$ref'])
+            if target.get('type') != 'array' or '$ref' in target:
+                unsupported('the referenced definition is not a concrete bounded array')
+            if any(type(value) is not int or value < 0 for value in (
+                    node['minItems'], target.get('minItems', 0), target.get('maxItems'))):
+                unsupported('conversion requires nonnegative integer bounds and an explicit maxItems')
+
+            # Copying a reference closure requires unchanged reference scope and
+            # no recursive or nested expansion. Pure refs outside it stay native.
+            pending, active, checked = [(name, False)], set(), set()
+            while pending:
+                current, finished = pending.pop()
+                if finished:
+                    active.remove(current)
+                    checked.add(current)
+                    continue
+                if current in active:
+                    unsupported('the replacement reference closure is recursive')
+                if current in checked:
+                    continue
+                active.add(current)
+                pending.append((current, True))
+                for child, _, child_scoped in walk(definitions[current], scoped=bool(scope_keys & schema.keys())):
+                    if child_scoped:
+                        unsupported('the replacement reference closure changes schema scope or dialect')
+                    if '$ref' in child:
+                        if 'minItems' in child:
+                            unsupported('the replacement closure itself requires array-reference conversion')
+                        child_name, _ = resolve(child['$ref'])
+                        pending.append((child_name, False))
+            minimum = max(target.get('minItems', 0), node['minItems'])
+            node.clear()
+            node.update(deepcopy(target))
+            node['minItems'] = minimum
+        return converted
+
     def command(self, request: Invocation) -> tuple[list[str], str]:
         if request.mode == "workspace-task-mcp":
             self.composition_policy(request.mode)
@@ -231,7 +321,12 @@ class CodexBackend(AgentBackend):
         if "model" in self.binding:
             argv += ["--model", self.binding["model"]]
         if request.schema:
-            argv += ["--output-schema", str(request.protocol / "schema.json"),
+            schema_path = request.protocol / "schema.json"
+            native_schema = self._output_schema(request.schema)
+            if native_schema is not request.schema:
+                schema_path = request.protocol / "codex-schema.json"
+                schema_path.write_text(json.dumps(native_schema), encoding="utf-8", newline="\n")
+            argv += ["--output-schema", str(schema_path),
                      "--output-last-message", str(request.protocol / "result.json")]
         elif request.session is not None:
             argv += ["--output-last-message", str(request.protocol / "result.txt")]
