@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "id": "ergora-architecture-test-author",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Inspect validation seams, plan meaningful boundary checks or implement the assigned regression.",
   "roles": [
     "inspector",
@@ -29,7 +29,7 @@
       "id": "ergora-architecture-test-author-skill",
       "kind": "skill",
       "path": "skills/ergora-architecture-test-author",
-      "digest": "a29c71d22ffd747c47fee9ceb372214cacb7e0872f0c58bf73718cbef7a6b061"
+      "digest": "a2d81b36febcd4d955bce50682effed27fcb055ecd7c933ea462036f87902f96"
     }
   ],
   "invocation_minimum": {

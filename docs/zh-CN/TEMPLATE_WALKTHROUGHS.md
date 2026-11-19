@@ -6,38 +6,38 @@
 
 先按[源码分支选择](../USAGE.md#从空环境安装)安装本文对应的开发分支或固定提交；包版本号相同不保证具有下文的preset／组合命令。
 
-|模板／preset|根ID，除标注外1.0.1|专家关系与入口|
+|模板／preset|当前随包根身份|专家关系与入口|
 |---|---|---|
-|repository-governance|`ergora-governance-delivery`|knowledge-map与boundary-test并行，接可信集成／验证及结构、正确性、测试价值审查|
-|large-change|`ergora-large-change-delivery`|contract→server／client并行→integration-tests，再接可信集成／验证和三审查|
-|training-optimization|`ergora-training-proposal@4.0.1`|源码流程→跨域规划／诊断→kernel实施方案→测量审查；全部五叶继承库／环境选择，独立只读建议，原runner执行实验|
-|optimization-memory-tuning|`ergora-opt-memory-tuning-proposal`|容量／allocator方向资料＋共享设计／诊断专家，接独立测量证据审查|
-|optimization-activation-recompute|`ergora-opt-activation-recompute-proposal`|重计算边界、数值与图／卸载约束；复用v2专家的只读子模板|
-|optimization-cpu-offloading|`ergora-opt-cpu-offloading-proposal`|分开三种卸载接口及host／传输／计算成本；复用v2专家的只读子模板|
-|optimization-tp-dp-overlap|`ergora-opt-tp-dp-overlap-proposal`|实际TP／DP／PP overlap路径、关键路径和独立测量；只读提案|
-|optimization-moe-dispatcher|`ergora-opt-moe-dispatcher-proposal`|固定backend／ABI／拓扑、路由与全rank证据；只读提案|
-|optimization-moe-overlap|`ergora-opt-moe-overlap-proposal`|普通EP overlap／delayed wgrad分别归因，复用同一组v2专家|
-|optimization-profiling|`ergora-opt-profiling-proposal`|稳态trace／rank／区间并集及真实依赖证据，共享设计／诊断接独立测量审查|
-|optimization-memory-snapshot|`ergora-opt-memory-snapshot-proposal`|受信摘要的allocator／历史／step差异分析，解析／采集继续交原所有者|
-|optimization-recipe-model|`ergora-opt-recipe-model-proposal`|任务／模型／配方匹配、语义不变量与真实框架适配缺项；共享v2专家只读提案|
-|optimization-model-verification|`ergora-opt-model-verification-proposal`|逐项核转换／forward／训练／恢复／质量声明，消费原指标而非只看exit0；执行交原所有者|
-|optimization-cluster-resiliency|`ergora-opt-cluster-resiliency-proposal`|启动／原job身份、日志与checkpoint／恢复证据，复用三位v2只读专家；集群动作仍交原执行器|
-|optimization-low-precision|`ergora-opt-low-precision-proposal`|design／profile→kernel→measurement的只读低精度方案；原实验与质量／性能门禁保持|
-|optimization-kernel|`ergora-opt-kernel-proposal`|design／profile→kernel→measurement的算子／wrapper及独立验证方案；原生流程与真实测量另验|
-|refactoring|`ergora-refactoring-template@1.1.1`|准备→rewrite→compatibility→原可信集成／验证→三审查；普通父引用一个原生large-change六阶段实例|
-|optimization-performance-diagnosis|`ergora-opt-performance-diagnosis-proposal`|同症状反馈命令与按实际报告选择工具；design／profile→measurement只读提案|
+|repository-governance|`ergora-governance-template@1.1.1`|knowledge-map与boundary-test并行，接可信集成／验证及结构、正确性、测试价值审查|
+|large-change|`ergora-large-change-template@1.1.1`|contract→server／client并行→integration-tests，再接可信集成／验证和三审查|
+|training-optimization|`ergora-training-proposal@4.2.2`|源码流程→跨域规划／诊断→kernel实施方案→测量审查；全部五叶继承库／环境选择，独立只读建议，原runner执行实验|
+|optimization-memory-tuning|`ergora-opt-memory-tuning-proposal@1.2.0`|容量／allocator方向资料＋共享设计／诊断专家，接独立测量证据审查|
+|optimization-activation-recompute|`ergora-opt-activation-recompute-proposal@1.2.0`|重计算边界、数值与图／卸载约束；复用v2专家的只读子模板|
+|optimization-cpu-offloading|`ergora-opt-cpu-offloading-proposal@1.2.0`|分开三种卸载接口及host／传输／计算成本；复用v2专家的只读子模板|
+|optimization-tp-dp-overlap|`ergora-opt-tp-dp-overlap-proposal@1.2.0`|实际TP／DP／PP overlap路径、关键路径和独立测量；只读提案|
+|optimization-moe-dispatcher|`ergora-opt-moe-dispatcher-proposal@1.2.0`|固定backend／ABI／拓扑、路由与全rank证据；只读提案|
+|optimization-moe-overlap|`ergora-opt-moe-overlap-proposal@1.2.0`|普通EP overlap／delayed wgrad分别归因，复用同一组v2专家|
+|optimization-profiling|`ergora-opt-profiling-proposal@1.2.1`|稳态trace／rank／区间并集及真实依赖证据，共享设计／诊断接独立测量审查|
+|optimization-memory-snapshot|`ergora-opt-memory-snapshot-proposal@1.2.0`|受信摘要的allocator／历史／step差异分析，解析／采集继续交原所有者|
+|optimization-recipe-model|`ergora-opt-recipe-model-proposal@1.2.0`|任务／模型／配方匹配、语义不变量与真实框架适配缺项；共享v2专家只读提案|
+|optimization-model-verification|`ergora-opt-model-verification-proposal@1.2.0`|逐项核转换／forward／训练／恢复／质量声明，消费原指标而非只看exit0；执行交原所有者|
+|optimization-cluster-resiliency|`ergora-opt-cluster-resiliency-proposal@1.2.0`|启动／原job身份、日志与checkpoint／恢复证据，复用三位v2只读专家；集群动作仍交原执行器|
+|optimization-low-precision|`ergora-opt-low-precision-proposal@1.2.0`|design／profile→kernel→measurement的只读低精度方案；原实验与质量／性能门禁保持|
+|optimization-kernel|`ergora-opt-kernel-proposal@1.2.0`|design／profile→kernel→measurement的算子／wrapper及独立验证方案；原生流程与真实测量另验|
+|refactoring|`ergora-refactoring-template@1.3.1`|准备→rewrite→compatibility→原可信集成／验证→三审查；普通父引用一个原生large-change六阶段实例|
+|optimization-performance-diagnosis|`ergora-opt-performance-diagnosis-proposal@1.2.1`|同症状反馈命令与按实际报告选择工具；design／profile→measurement只读提案|
 
 每个Agent是独立版本包，可有自己的专长、初始指令、Skill和后端。结构父链完整累加资料并限制子权限；依赖边安排执行先后，具名端口传递结果。这三种关系可在“Agent 与组合库”展开查看。[定义格式与继承规则](../WORKFLOW_DEFINITIONS.md)。
 
 重构配方使用[原生六阶段操作说明](../USAGE.md#使用重构配方)和[完整示例](../../examples/composition/refactoring/README.md)。下面的两域页面步骤包含独立盘点／规划和原工作／审查合同；重构可在同一表单选择“完整manifest · 原生六阶段”，配置准备叶／原生实例／工作与审查子图及预算，先明确授权准备，再预览与创建。选择该配方前先固定实际caller、需要保持的行为、迁移顺序和回退检查；它沿原task／run／candidate及批准流程执行。若追加项目记忆或活动Skill，再沿[资料选择](../USAGE.md#为正式任务选择项目记忆与活动-skill)冻结当前精确来源。
 
-这些工程角色、初始提示与组合由Ergora维护，参考[工程Skill与开源实现研究](../research/2026-11-14-local-engineering-skills.md)；它们与具体Codex／Claude Code后端分别版本化和选择。优化方向的完整表见[训练手册](../TRAINING.md#独立的优化方向子模板)，不是每个模板都直接导入一个上游原生Agent。
+这些工程角色、初始提示与组合由Ergora维护，参考[Agent定义](../AGENT_DEFINITIONS.md#内置专家)；它们与具体Codex／Claude Code后端分别版本化和选择。优化方向的完整表见[训练手册](../TRAINING.md#独立的优化方向子模板)，不是每个模板都直接导入一个上游原生Agent。
 
 ## 当前执行边界
 
 Preset和静态图不实现一般Repeat、混合图调度器或统一fixed／preset／planner／automatic思考强度选择。当前显式后端字段只能请求模型支持的选项，不证明实际生效强度；完整祖先资料及逐级收窄权限仍按受支持任务／单叶输入冻结，见[当前后端边界](../AGENT_BACKENDS.md#current-configuration-evidence-and-pending-capabilities)。
 
-schema2设计policy登记仍仅存储且拒执行。S2 inspection-only [source-journal存取](../USAGE.md#保存完整设计来源与原答复)已随 `9f3e693498834f071cf20d0f25c18555554765f1` 发布，自己的Portability run `43867345323`为8/8 success；仍仅Linux／WSL2、要求真实原design-packet，没有新增默认seed producer。可信新自然人保证与F/J/G仍不可用，schema3训练效果继续关闭。导入定义、保存manifest或合同创建成功不会开放这些关卡；原schema1及受支持六阶段合同保持原范围。
+schema2设计policy登记仍仅存储且拒执行。只读[source-journal存取](../USAGE.md#保存完整设计来源与原答复)仅Linux／WSL2，要求真实原design-packet。可信新自然人保证与F/J/G仍不可用。有限训练控制器使用独立的[明确授权与提交流程](../TRAINING.md#起算本地训练预算与恢复原授权)；导入定义或保存manifest不授执行权。
 
 ## 1. 准备模板与完整组合
 
@@ -62,7 +62,7 @@ ergora templates copy training-optimization "$WALKTHROUGH_HOME/training-template
 以治理组合为例，先读取原根声明，将明确审阅的权限和预算写成grant：
 
 ```bash
-ergora composition show ergora-governance-delivery 1.0.1 --material > "$WALKTHROUGH_HOME/root.json"
+ergora composition show ergora-governance-template 1.1.1 --material > "$WALKTHROUGH_HOME/root.json"
 python3 - "$WALKTHROUGH_HOME" <<'PY'
 import json, pathlib, sys
 directory = pathlib.Path(sys.argv[1])
@@ -70,13 +70,13 @@ definition = json.loads((directory / "root.json").read_text())["definition"]
 grant = {"schema_version": 1, "permissions": definition["permissions"], "limits": definition["limits"]}
 (directory / "grant.json").write_text(json.dumps(grant, indent=2) + "\n")
 PY
-ergora composition preview ergora-governance-delivery 1.0.1 --grant "$WALKTHROUGH_HOME/grant.json"
+ergora composition preview ergora-governance-template 1.1.1 --grant "$WALKTHROUGH_HOME/grant.json"
 ```
 
 审阅完整预览，确认实例、祖先资料和授权上限。把实际返回的`preview_sha256`填入下面的`PREVIEW_SHA256`：
 
 ```bash
-ergora composition freeze-manifest ergora-governance-delivery 1.0.1 --grant "$WALKTHROUGH_HOME/grant.json" --preview-sha256 PREVIEW_SHA256
+ergora composition freeze-manifest ergora-governance-template 1.1.1 --grant "$WALKTHROUGH_HOME/grant.json" --preview-sha256 PREVIEW_SHA256
 ```
 
 保存返回的完整包`path`、包`digest`和`manifest.preview_sha256`，随后运行`ergora composition verify-manifest FULL_MANIFEST_DIRECTORY`。更换领域时使用上表对应根ID，重新取得并审阅该根的grant；训练根不请求shell或写权限。页面也可预览后选择“保存当前预览为完整 manifest”。下载的preview JSON用于阅读，分享或备份时带上完整目录。[完整包说明](../WORKFLOW_DEFINITIONS.md#保存和分享完整组合)。

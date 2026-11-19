@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "id": "ergora-refactoring-engineer",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Inspect module ownership, plan a current interface migration or implement the approved refactor.",
   "roles": [
     "inspector",
@@ -29,7 +29,7 @@
       "id": "ergora-refactoring-engineer-skill",
       "kind": "skill",
       "path": "skills/ergora-refactoring-engineer",
-      "digest": "107f0b0b74fc2b2009b468257a6e3c377ec4a40c36d50d610a134fc0256e5604"
+      "digest": "de9cc336ee885eb3efce38c52057c7e42accadb1c6ca3fc8e3221db54dbf322d"
     }
   ],
   "invocation_minimum": {

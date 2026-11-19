@@ -5,40 +5,40 @@ English · [简体中文](zh-CN/TEMPLATE_WALKTHROUGHS.md)
 
 This guide connects installation, specialist compositions, formal development and training experiments. Start with [installation and daily use](USAGE.md), or the [Windows guide](WINDOWS.md). The basic control plane includes CLI, SQLite and local pages. Complete six-stage execution additionally needs a Linux/WSL2 reference environment, selected services and authenticated Agents. A development/research installation profile adds SDKs; prepare services, models, project checks and GPUs separately as needed.
 
-Follow [source-branch selection](USAGE.md#从空环境安装) to install the corresponding development branch or pinned commit. An identical package version does not guarantee the preset/composition commands below.
+Follow [source-branch selection](USAGE.md#从空环境安装) to install the current main branch or pinned commit. An identical package version does not guarantee the preset/composition commands below.
 
-|Template/preset|Root ID, version 1.0.1 unless marked|Specialist relationships and entry points|
+|Template/preset|Current bundled root identity|Specialist relationships and entry points|
 |---|---|---|
-|repository-governance|`ergora-governance-delivery`|Parallel knowledge-map/boundary-test, then trusted integration/verification and structure, correctness and test-value reviews|
-|large-change|`ergora-large-change-delivery`|contract→parallel server/client→integration-tests, then trusted integration/verification and three reviews|
-|training-optimization|`ergora-training-proposal@4.0.1`|Source flow→planning/diagnosis→kernel implementation planning→measurement review; all five leaves inherit library/environment guidance, with actual experiments owned by trusted runners.|
-|optimization-memory-tuning|`ergora-opt-memory-tuning-proposal`|Capacity/allocator materials plus shared design/diagnosis specialists, followed by independent measurement-evidence review|
-|optimization-activation-recompute|`ergora-opt-activation-recompute-proposal`|Recompute boundaries, numerical and graph/offload constraints; read-only subtemplate reusing v2 specialists|
-|optimization-cpu-offloading|`ergora-opt-cpu-offloading-proposal`|Separates three offload interfaces and host/transfer/compute costs; reuses v2 specialists|
-|optimization-tp-dp-overlap|`ergora-opt-tp-dp-overlap-proposal`|Actual TP/DP/PP overlap paths, critical paths and independent measurement; read-only proposals|
-|optimization-moe-dispatcher|`ergora-opt-moe-dispatcher-proposal`|Pinned backend/ABI/topology, routing and all-rank evidence; read-only proposals|
-|optimization-moe-overlap|`ergora-opt-moe-overlap-proposal`|Separately attributes ordinary EP overlap/delayed wgrad, reusing the same v2 specialists|
-|optimization-profiling|`ergora-opt-profiling-proposal`|Steady-state traces/ranks/interval unions and actual dependency evidence; shared design/diagnosis followed by independent measurement review|
-|optimization-memory-snapshot|`ergora-opt-memory-snapshot-proposal`|Allocator/history/step differences from trusted summaries; parsing/collection remain with original owners|
-|optimization-recipe-model|`ergora-opt-recipe-model-proposal`|Task/model/recipe matching, semantic invariants and missing framework adaptation; shared v2 specialists' read-only proposals|
-|optimization-model-verification|`ergora-opt-model-verification-proposal`|Checks conversion/forward/training/recovery/quality claims individually using original metrics beyond exit0; execution stays with original owners|
-|optimization-cluster-resiliency|`ergora-opt-cluster-resiliency-proposal`|Launch/original-job identity, logs and checkpoint/recovery evidence; three reused v2 read-only specialists, with cluster actions owned by the original executor|
-|optimization-low-precision|`ergora-opt-low-precision-proposal`|Read-only low-precision design/profile→kernel→measurement proposals; original experiment and quality/performance gates retained|
-|optimization-kernel|`ergora-opt-kernel-proposal`|Operator/wrapper and independent-validation design/profile→kernel→measurement proposals; native execution and actual measurements remain separate|
-|refactoring|`ergora-refactoring-template@1.3.0`|Preparation→rewrite→compatibility→original trusted integration/verification→three reviews; ordinary parent references one native large-change six-stage instance|
-|optimization-performance-diagnosis|`ergora-opt-performance-diagnosis-proposal`|Same-symptom feedback commands and report-specific tool selection; read-only design/profile→measurement proposals|
+|repository-governance|`ergora-governance-template@1.1.1`|Parallel knowledge-map/boundary-test, then trusted integration/verification and structure, correctness and test-value reviews|
+|large-change|`ergora-large-change-template@1.1.1`|contract→parallel server/client→integration-tests, then trusted integration/verification and three reviews|
+|training-optimization|`ergora-training-proposal@4.2.2`|Source flow→planning/diagnosis→kernel implementation planning→measurement review; all five leaves inherit library/environment guidance, with actual experiments owned by trusted runners.|
+|optimization-memory-tuning|`ergora-opt-memory-tuning-proposal@1.2.0`|Capacity/allocator materials plus shared design/diagnosis specialists, followed by independent measurement-evidence review|
+|optimization-activation-recompute|`ergora-opt-activation-recompute-proposal@1.2.0`|Recompute boundaries, numerical and graph/offload constraints; read-only subtemplate reusing v2 specialists|
+|optimization-cpu-offloading|`ergora-opt-cpu-offloading-proposal@1.2.0`|Separates three offload interfaces and host/transfer/compute costs; reuses v2 specialists|
+|optimization-tp-dp-overlap|`ergora-opt-tp-dp-overlap-proposal@1.2.0`|Actual TP/DP/PP overlap paths, critical paths and independent measurement; read-only proposals|
+|optimization-moe-dispatcher|`ergora-opt-moe-dispatcher-proposal@1.2.0`|Pinned backend/ABI/topology, routing and all-rank evidence; read-only proposals|
+|optimization-moe-overlap|`ergora-opt-moe-overlap-proposal@1.2.0`|Separately attributes ordinary EP overlap/delayed wgrad, reusing the same v2 specialists|
+|optimization-profiling|`ergora-opt-profiling-proposal@1.2.1`|Steady-state traces/ranks/interval unions and actual dependency evidence; shared design/diagnosis followed by independent measurement review|
+|optimization-memory-snapshot|`ergora-opt-memory-snapshot-proposal@1.2.0`|Allocator/history/step differences from trusted summaries; parsing/collection remain with original owners|
+|optimization-recipe-model|`ergora-opt-recipe-model-proposal@1.2.0`|Task/model/recipe matching, semantic invariants and missing framework adaptation; shared v2 specialists' read-only proposals|
+|optimization-model-verification|`ergora-opt-model-verification-proposal@1.2.0`|Checks conversion/forward/training/recovery/quality claims individually using original metrics beyond exit0; execution stays with original owners|
+|optimization-cluster-resiliency|`ergora-opt-cluster-resiliency-proposal@1.2.0`|Launch/original-job identity, logs and checkpoint/recovery evidence; three reused v2 read-only specialists, with cluster actions owned by the original executor|
+|optimization-low-precision|`ergora-opt-low-precision-proposal@1.2.0`|Read-only low-precision design/profile→kernel→measurement proposals; original experiment and quality/performance gates retained|
+|optimization-kernel|`ergora-opt-kernel-proposal@1.2.0`|Operator/wrapper and independent-validation design/profile→kernel→measurement proposals; native execution and actual measurements remain separate|
+|refactoring|`ergora-refactoring-template@1.3.1`|Preparation→rewrite→compatibility→original trusted integration/verification→three reviews; ordinary parent references one native large-change six-stage instance|
+|optimization-performance-diagnosis|`ergora-opt-performance-diagnosis-proposal@1.2.1`|Same-symptom feedback commands and report-specific tool selection; read-only design/profile→measurement proposals|
 
 Each Agent is an independently versioned package with its own specialties, initial instructions, Skills and backend. The structural parent chain accumulates complete materials and constrains child permissions. Dependency edges order execution; named ports carry results. Expand these three relationships in “Agent and composition library”. See [definition format and inheritance](WORKFLOW_DEFINITIONS.md).
 
 Refactoring uses the [native six-stage instructions](USAGE.md#使用重构配方) and [complete example](../examples/composition/refactoring/README.md). The two-domain page steps below include independent inventory/planning and the original work/review contract. For refactoring, select “Complete manifest · Native six stages” in the same form, configure preparation leaves/native instance/work and review subgraphs/budget, explicitly authorize preparation, then preview/create. Before choosing the recipe, pin actual callers, behavior to preserve, migration order and rollback checks. It uses original task/run/candidate identities and approval. To include project memory or active Skills, freeze exact current sources through [material selection](USAGE.md#为正式任务选择项目记忆与活动-skill).
 
-Ergora maintains these engineering roles, initial instructions and compositions; see [engineering Skills and open-source research](research/2026-11-14-local-engineering-skills.md). They are versioned/selected separately from concrete Codex/Claude Code backends. See the [training guide](TRAINING.md#独立的优化方向子模板) for the complete optimization-direction table; templates do not each import an upstream native Agent directly.
+Ergora maintains these engineering roles, initial instructions and compositions; see [Agent definitions](AGENT_DEFINITIONS.md#内置专家). They are versioned/selected separately from concrete Codex/Claude Code backends. See the [training guide](TRAINING.md#独立的优化方向子模板) for the complete optimization-direction table; templates do not each import an upstream native Agent directly.
 
 ## Current execution boundaries
 
 Presets and static graphs do not implement generalized Repeat, a mixed-graph scheduler or unified fixed/preset/planner/automatic reasoning selection. Current explicit backend fields request supported model options, without proving actual applied effort. Complete ancestor materials and narrowing permissions remain frozen into supported task/leaf inputs. [Current backend limits](AGENT_BACKENDS.md#current-configuration-evidence-and-pending-capabilities) describe these boundaries.
 
-Schema2 design-policy registration remains storage-only with execution unsupported. S2 inspection-only [source-journal storage](USAGE.md#保存完整设计来源与原答复) is published in `9f3e693498834f071cf20d0f25c18555554765f1` with its own Portability run `43867345323` at8/8 success; it remains Linux/WSL2-only and requires a legitimate original design-packet, with no new default seed producer. New trusted human assurance and F/J/G remain unavailable, and schema3 training effects stay disabled. Imported definitions, a saved manifest or successful contract creation do not open those gates. Existing schema1 and supported six-stage contracts retain their original scope.
+Schema2 design-policy registration remains storage-only with execution unsupported. Inspection-only [source-journal storage](USAGE.md#保存完整设计来源与原答复) is Linux/WSL2-only and requires a legitimate original design-packet. Trusted human assurance and F/J/G remain unavailable. Finite training controllers use a separate [explicit authorization and submission flow](TRAINING.md#起算本地训练预算与恢复原授权). Importing definitions or saving a manifest does not authorize these effects.
 
 <a id="1-准备模板与完整组合"></a>
 ## 1. Prepare templates and complete compositions
@@ -64,7 +64,7 @@ Copy destinations must be new. Reimporting a preset with identical identity reta
 For governance, read the original root declaration first and save explicitly reviewed permissions/budget as a grant:
 
 ```bash
-ergora composition show ergora-governance-delivery 1.2.0 --material > "$WALKTHROUGH_HOME/root.json"
+ergora composition show ergora-governance-template 1.1.1 --material > "$WALKTHROUGH_HOME/root.json"
 python3 - "$WALKTHROUGH_HOME" <<'PY'
 import json, pathlib, sys
 directory = pathlib.Path(sys.argv[1])
@@ -72,13 +72,13 @@ definition = json.loads((directory / "root.json").read_text())["definition"]
 grant = {"schema_version": 1, "permissions": definition["permissions"], "limits": definition["limits"]}
 (directory / "grant.json").write_text(json.dumps(grant, indent=2) + "\n")
 PY
-ergora composition preview ergora-governance-delivery 1.2.0 --grant "$WALKTHROUGH_HOME/grant.json"
+ergora composition preview ergora-governance-template 1.1.1 --grant "$WALKTHROUGH_HOME/grant.json"
 ```
 
 Review the complete preview's instances, ancestor materials and authorization limits. Use the actual returned `preview_sha256` for `PREVIEW_SHA256` below:
 
 ```bash
-ergora composition freeze-manifest ergora-governance-delivery 1.2.0 --grant "$WALKTHROUGH_HOME/grant.json" --preview-sha256 PREVIEW_SHA256
+ergora composition freeze-manifest ergora-governance-template 1.1.1 --grant "$WALKTHROUGH_HOME/grant.json" --preview-sha256 PREVIEW_SHA256
 ```
 
 Retain returned complete-package `path`, package `digest` and `manifest.preview_sha256`, then run `ergora composition verify-manifest FULL_MANIFEST_DIRECTORY`. When changing domain, use its root ID above and obtain/review that root's grant again; training roots request neither shell nor write permission. The page can also preview and “Save current preview as complete manifest”. Downloaded preview JSON is for reading; sharing/backups need the complete directory. See [complete bundles](WORKFLOW_DEFINITIONS.md#保存和分享完整组合).

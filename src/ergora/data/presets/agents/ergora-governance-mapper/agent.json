@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "id": "ergora-governance-mapper",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Inspect repository navigation and ownership or document the approved knowledge-map unit.",
   "roles": [
     "inspector",
@@ -28,7 +28,7 @@
       "id": "ergora-governance-mapper-skill",
       "kind": "skill",
       "path": "skills/ergora-governance-mapper",
-      "digest": "639e1a13f8bc8df0a7aed7cb395b68c9d90713f41f759cc59376930b87ec0f07"
+      "digest": "78edba8db689a56dd79186873698a21b893c9bc6d1079343dc4525d2e62eeecf"
     }
   ],
   "invocation_minimum": {
