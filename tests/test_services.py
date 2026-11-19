@@ -112,7 +112,7 @@ def test_selected_start_is_idempotent_and_does_not_autostart_other_programs(stac
     assert all(p["statename"] == "STOPPED" for name, p in states.items() if name != "temporal")
     managed = configparser.ConfigParser(interpolation=None)
     managed.read(runtime / "ergora-services/supervisord.ini")
-    assert "reference_training_worker" in managed["program:training-budget-worker"]["command"]
+    assert "from ergora.training.runtime.worker import main;main(" in managed["program:training-budget-worker"]["command"]
     assert "agent_platform.service training-worker" in managed["program:training-worker"]["command"]
     assert managed["program:training-budget-worker"]["stdout_logfile"] != managed["program:training-worker"]["stdout_logfile"]
     again = services.control(state, "demo", "start", ["temporal"], 1, timeout=5)

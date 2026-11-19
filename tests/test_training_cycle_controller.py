@@ -388,6 +388,7 @@ def test_controller_lock_publication_recovers_only_the_original_consent(
                 confirm=True, execute_selected=True, program_version=program_version)
         assert all(p.read_bytes() == raw for p, raw in original.items())
         return
+    measurement_reader = training_cycles._measurement_sources
     monkeypatch.setattr(training_cycles, '_measurement_sources',
         lambda: pytest.fail('Recovery must not recapture the measurement source map'))
     monkeypatch.setattr(training_cycles.budget_clock, 'authorize',
@@ -395,9 +396,22 @@ def test_controller_lock_publication_recovers_only_the_original_consent(
     observed = training_cycles.status(state, 'demo', 'interrupted-controller')
     assert observed['status'] == ('unknown' if boundary == 'ready-directory' else 'pending')
     monkeypatch.setattr(os, 'fsync', fsync)
+    current_reads = []
+
+    def read_current_sources():
+        sources = measurement_reader()
+        current_reads.append(sources)
+        return sources
+
+    pending_measurement_validation = program_version in (2, 3) and boundary in ('lock-file', 'lock-directory')
+    if pending_measurement_validation:
+        monkeypatch.setattr(training_cycles, '_measurement_sources', read_current_sources)
     recovered = training_cycles.authorize_controller(state, 'demo', 'interrupted-controller', source, selected['sha256'], 1,
         confirm=True, execute_selected=True, program_version=program_version)
     assert recovered['status'] == 'ready' and recovered['authorization'] == observed['authorization']
+    assert bool(current_reads) is pending_measurement_validation
+    assert all(sources == observed['authorization']['measurement_sources'] for sources in current_reads)
+    assert recovered['ready']['authorization_sha256'] == observed['authorization']['sha256']
     assert (saved / 'controller/admission.lock').read_bytes() == b''
     assert all(p.read_bytes() == raw for p, raw in original.items())
 
