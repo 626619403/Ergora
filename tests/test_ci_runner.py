@@ -14,6 +14,7 @@ import pytest
 
 
 NOTICE = '::notice title=CI phase observation::'
+DIAGNOSTIC = '::error title=Python diagnostic excerpt::'
 CHILD = '''
 import json
 from pathlib import Path
@@ -321,6 +322,208 @@ def test_parent_exception_stops_monitor_before_the_original_child_wait(ci_runner
     assert str(outcome['error']) == 'controlled parent output failure'
     assert children[0].returncode == 0
     assert not (directory / 'result.json').exists()
+
+
+@pytest.mark.parametrize('header', [
+    'Windows fatal exception: access violation',
+    'Fatal Python error: Segmentation fault',
+    'Timeout (0:01:30)!',
+])
+@pytest.mark.parametrize('returncode', [0, 7])
+def test_long_python_diagnostics_keep_start_and_current_thread_without_changing_outcome(
+        ci_runner, capsys, header, returncode):
+    runner, directory, start, children, monitors, notices = ci_runner
+    first_frame = '  File "native%owner.py", line 41 in first_observed_frame'
+    current_frame = '  File "current%owner.py", line 52 in current_observed_frame'
+    frames = ''.join(f'  File "framework.py", line {index} in framework_{index}\n'
+                     for index in range(120))
+    report = (header + '\nThread 0x1234 (most recent call first):\n' + first_frame + '\n'
+              + frames + 'Current thread 0x5678 (most recent call first):\n'
+              + current_frame + '\n' + frames)
+    prologue = ('tests/test_example.py::test_header[Windows fatal exception: access violation] PASSED\n'
+                'tests/test_example.py::test_header[Timeout (0:01:30)!] PASSED\n')
+    original = prologue + 'tests/test_example.py::test_pending ' + report
+    outcome, worker = start(f'''
+sys.stdout.write({prologue!r})
+sys.stdout.write('tests/test_example.py::test_pending ')
+sys.stdout.flush()
+sys.stderr.write({report[:12]!r})
+sys.stderr.flush()
+sys.stderr.write({report[12:]!r})
+sys.stderr.flush()
+raise SystemExit({returncode})
+''')
+    worker.join(timeout=5)
+    assert not worker.is_alive() and 'error' not in outcome
+    assert outcome['returncode'] == children[0].returncode == returncode
+    assert all(not monitor.is_alive() for monitor in monitors)
+    assert (directory / 'stdout.txt').read_text() == original
+    assert json.loads((directory / 'result.json').read_text())['returncode'] == returncode
+    assert notice_row(notices[-1])['owned_child_returncode'] == returncode
+    assert notice_row(notices[-1])['last_observed_complete_row'] is None
+    console = capsys.readouterr().out
+    annotations = [line.removeprefix(DIAGNOSTIC) for line in console.splitlines()
+                   if line.startswith(DIAGNOSTIC)]
+    if not returncode:
+        assert annotations == []
+        assert '::error ' not in console
+        return
+    assert len(annotations) == 1
+    assert len(annotations[0]) <= 3500
+    excerpt = annotations[0].replace('%0D', '\r').replace('%0A', '\n').replace('%25', '%')
+    assert excerpt.startswith(header + '\n')
+    assert first_frame in excerpt and current_frame in excerpt
+    assert 'Current thread 0x5678 (most recent call first):' in excerpt
+    assert 'tests/test_example.py::test_pending' not in excerpt
+    assert '::error title=Native regression::' in console
+
+
+def test_real_isolated_faulthandler_timeout_survives_long_traceback(ci_runner, capsys):
+    runner, directory, start, children, monitors, notices = ci_runner
+    outcome, worker = start('''
+import faulthandler
+sys.stdout.write('tests/test_example.py::test_pending[Windows fatal exception: quoted parameter] ')
+sys.stdout.flush()
+faulthandler.dump_traceback_later(0.025)
+def original_timeout_owner(depth):
+    if depth:
+        return original_timeout_owner(depth - 1)
+    wait('release')
+original_timeout_owner(80)
+faulthandler.cancel_dump_traceback_later()
+raise SystemExit(7)
+''')
+    wait_for(lambda: (directory / 'stdout.txt').exists()
+             and 'original_timeout_owner' in (directory / 'stdout.txt').read_text(), outcome)
+    (directory / 'release').touch()
+    worker.join(timeout=5)
+    assert not worker.is_alive() and 'error' not in outcome
+    assert outcome['returncode'] == children[0].returncode == 7
+    log = (directory / 'stdout.txt').read_text()
+    assert len(log) > 3500 and 'Timeout (0:00:00.025000)!' in log
+    console = capsys.readouterr().out
+    annotations = [line.removeprefix(DIAGNOSTIC) for line in console.splitlines()
+                   if line.startswith(DIAGNOSTIC)]
+    assert len(annotations) == 1 and len(annotations[0]) <= 3500
+    assert annotations[0].startswith('Timeout (0:00:00.025000)!%0AThread ')
+    assert 'original_timeout_owner' in annotations[0]
+
+
+@pytest.mark.parametrize('parameter_header,actual_header,next_header', [
+    ('Timeout (0:01:30)!', 'Windows fatal exception: access violation', 'Timeout (0:01:30)!'),
+    ('Windows fatal exception: quoted parameter', 'Timeout (0:01:30)!',
+     'Windows fatal exception: access violation'),
+])
+def test_parameter_marker_before_actual_header_keeps_both_distinct_reports(
+        ci_runner, capsys, parameter_header, actual_header, next_header):
+    runner, directory, start, children, monitors, notices = ci_runner
+    frames = ''.join(f'  File "framework.py", line {index} in background_{index}\n'
+                     for index in range(120))
+    original = (f'tests/test_example.py::test_pending[{parameter_header}] {actual_header}\n'
+                + 'Current thread 0x1234 (most recent call first):\n'
+                + '  File "actual-first.py", line 1 in actual_first_owner\n' + frames
+                + next_header + '\nThread 0x5678 (most recent call first):\n'
+                + '  File "next-first.py", line 2 in next_first_owner\n' + frames)
+    outcome, worker = start(f'sys.stderr.write({original!r})\nsys.stderr.flush()\nraise SystemExit(7)\n')
+    worker.join(timeout=5)
+    assert not worker.is_alive() and 'error' not in outcome
+    assert outcome['returncode'] == children[0].returncode == 7
+    assert (directory / 'stdout.txt').read_text() == original
+    assert json.loads((directory / 'result.json').read_text())['returncode'] == 7
+    annotations = [line.removeprefix(DIAGNOSTIC) for line in capsys.readouterr().out.splitlines()
+                   if line.startswith(DIAGNOSTIC)]
+    assert len(annotations) == 2
+    assert annotations[0].startswith(actual_header + '%0A')
+    assert 'actual_first_owner' in annotations[0]
+    assert annotations[1].startswith(next_header + '%0A')
+    assert 'next_first_owner' in annotations[1]
+    assert all(len(excerpt) <= 3500 for excerpt in annotations)
+
+
+def test_quoted_header_in_background_frame_keeps_later_current_thread(ci_runner, capsys):
+    runner, directory, start, children, monitors, notices = ci_runner
+    frames = ''.join(f'  File "framework.py", line {index} in background_{index}\n'
+                     for index in range(120))
+    original = ('Windows fatal exception: access violation\n'
+                + 'Thread 0x1234 (most recent call first):\n' + frames
+                + '  File "Windows fatal exception: harmless.py", line 1 in ordinary_frame\n'
+                + 'Current thread 0x5678 (most recent call first):\n'
+                + '  File "actual-current.py", line 2 in actual_current_owner\n' + frames)
+    outcome, worker = start(f'sys.stderr.write({original!r})\nsys.stderr.flush()\nraise SystemExit(7)\n')
+    worker.join(timeout=5)
+    assert not worker.is_alive() and 'error' not in outcome
+    assert outcome['returncode'] == children[0].returncode == 7
+    assert (directory / 'stdout.txt').read_text() == original
+    annotations = [line.removeprefix(DIAGNOSTIC) for line in capsys.readouterr().out.splitlines()
+                   if line.startswith(DIAGNOSTIC)]
+    assert len(annotations) == 1 and len(annotations[0]) <= 3500
+    assert annotations[0].startswith('Windows fatal exception: access violation%0A')
+    assert 'Current thread 0x5678 (most recent call first):' in annotations[0]
+    assert 'actual_current_owner' in annotations[0]
+
+
+def test_fatal_message_with_bracketed_state_keeps_its_original_header_and_first_frame(ci_runner, capsys):
+    runner, directory, start, children, monitors, notices = ci_runner
+    header = 'Fatal Python error: native_owner: invalid state [state=7]'
+    first_frame = '  File "native-owner.py", line 41 in first_fatal_owner'
+    frames = ''.join(f'  File "framework.py", line {index} in later_frame_{index}\n'
+                     for index in range(120))
+    original = (header + '\nPython runtime state: initialized\n\n'
+                + 'Current thread 0x1234 (most recent call first):\n'
+                + first_frame + '\n' + frames)
+    outcome, worker = start(f'sys.stderr.write({original!r})\nsys.stderr.flush()\nraise SystemExit(7)\n')
+    worker.join(timeout=5)
+    assert not worker.is_alive() and 'error' not in outcome
+    assert outcome['returncode'] == children[0].returncode == 7
+    assert (directory / 'stdout.txt').read_text() == original
+    assert json.loads((directory / 'result.json').read_text())['returncode'] == 7
+    annotations = [line.removeprefix(DIAGNOSTIC) for line in capsys.readouterr().out.splitlines()
+                   if line.startswith(DIAGNOSTIC)]
+    assert len(annotations) == 1 and len(annotations[0]) <= 3500
+    assert annotations[0].startswith(header + '%0A')
+    assert first_frame in annotations[0]
+
+
+def test_ordinary_failure_has_no_python_diagnostic_excerpt(ci_runner, capsys):
+    runner, directory, start, children, monitors, notices = ci_runner
+    outcome, worker = start('''
+print('ordinary failure mentioning a timeout and access violation')
+print('tests/test_example.py::test_header[Windows fatal exception: access violation] PASSED')
+print('tests/test_example.py::test_header[Timeout (0:01:30)!] PASSED')
+print('Fatal Python error: this is quoted ordinary output without a stack')
+raise SystemExit(7)
+''')
+    worker.join(timeout=5)
+    assert not worker.is_alive() and 'error' not in outcome and outcome['returncode'] == 7
+    console = capsys.readouterr().out
+    assert DIAGNOSTIC not in console
+    assert '::error title=Native regression::ordinary failure' in console
+
+
+def test_first_timeout_and_fatal_excerpts_are_separate_and_escaped_within_bounds(ci_runner, capsys):
+    runner, directory, start, children, monitors, notices = ci_runner
+    reports = []
+    for header in ('Timeout (0:01:30)!', 'Windows fatal exception: access violation'):
+        reports.append(header + '\nThread 0x1234 (most recent call first):\n'
+                       + '  File "first-frame-' + '%' * 4000 + '", line 1 in first_owner\n'
+                       + 'Current thread 0x5678 (most recent call first):\n'
+                       + '  File "current-first-' + '%' * 4000 + '", line 2 in current_owner\n\n')
+        reports.append(header + '\nThread 0x1234 (most recent call first):\n'
+                       + '  File "later-report.py", line 3 in later_owner\n\n')
+    original = ''.join(reports)
+    outcome, worker = start(f'sys.stderr.write({original!r})\nsys.stderr.flush()\nraise SystemExit(7)\n')
+    worker.join(timeout=5)
+    assert not worker.is_alive() and 'error' not in outcome and outcome['returncode'] == 7
+    assert (directory / 'stdout.txt').read_text() == original
+    annotations = [line.removeprefix(DIAGNOSTIC) for line in capsys.readouterr().out.splitlines()
+                   if line.startswith(DIAGNOSTIC)]
+    assert len(annotations) == 2
+    assert annotations[0].startswith('Timeout (0:01:30)!%0A')
+    assert annotations[1].startswith('Windows fatal exception: access violation%0A')
+    for excerpt in annotations:
+        assert len(excerpt) <= 3500 and '\r' not in excerpt and '\n' not in excerpt
+        assert 'first-frame-%25%25' in excerpt and 'current-first-%25%25' in excerpt
+        assert 'later-report.py' not in excerpt
 
 
 @pytest.fixture
