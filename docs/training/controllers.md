@@ -6,11 +6,12 @@ Start from [prepared original experiments](prepare-experiments.md). This page au
 
 ## Freeze finite candidates and budget policy
 
-On Linux/WSL2, save 1–32 prepared, not-yet-submitted original experiments as one complete input. First obtain each experiment's complete manifest SHA with `training show`. Replace the two placeholders below with their respective 64-character lowercase SHAs and save as `cycle-request.json`. Experiment IDs must also match prepared originals:
+On Linux/WSL2, save 1–32 prepared, not-yet-submitted original experiments as one complete [schema2 input](../../src/ergora/data/schemas/training-cycle-v2.json). The example selects full execution; bounded screen search additionally freezes its prepared search, diagnostics, analyst and supported CPU-resource selections. First obtain each experiment's complete manifest SHA with `training show`. Replace the two placeholders below with their respective 64-character lowercase SHAs and save as `cycle-request.json`. Experiment IDs must also match prepared originals:
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
+  "execution_scope": "ordered-selected-native-once",
   "budget": {"wall_seconds": 900, "cleanup_seconds": 170, "control_timeout_seconds": 7},
   "candidates": [
     {"experiment_id": "trial-a", "manifest_sha256": "REPLACE_WITH_TRIAL_A_SHA256", "change": "解除已定位的重复计算", "next_bottleneck": "测量后重新确认"},
@@ -50,13 +51,28 @@ After interruption or lost replies, repeat **the same authorization command**. T
 To execute the complete finite selection, explicitly choose controller mode at a new cycle ID's creation and confirm the entire original selection. Existing manual authorization cannot be upgraded or its budget restarted:
 
 ```bash
-ergora training cycle-authorize-controller my-project controlled-cycle-01 --directory "$HOME/ergora-inputs/cycle-01" --sha256 EXACT_CYCLE_SHA256 --revision REVISION --confirm --execute-selected --program-version 2
+ergora training cycle-authorize-controller my-project controlled-cycle-01 --directory "$HOME/ergora-inputs/cycle-01" --sha256 EXACT_CYCLE_SHA256 --revision REVISION --confirm --execute-selected
 ergora training cycle-controller-prepare my-project controlled-cycle-01 --authorization-sha256 EXACT_AUTHORIZATION_SHA256 --revision REVISION
 ergora training cycle-controller-submit my-project controlled-cycle-01 --authorization-sha256 EXACT_AUTHORIZATION_SHA256
 ergora training cycle-controller-status my-project controlled-cycle-01 --authorization-sha256 EXACT_AUTHORIZATION_SHA256
 ```
 
-`--program-version` freezes the selected controller version; CLI defaults to 2 and supports 1/2/3. Finite V2/V3 workflows execute candidates in frozen order within the original budget and read original measurements. The budget begins at first authorization; preparation, queueing, execution, recovery and cleanup share the same deadline. Stop, measurement acceptance and trusted evidence approval remain distinct facts. `status` only reads original local records. After a lost submission response, `cycle-controller-reconcile` observes the original workflow with the same identity without resending. `cycle-controller-stop --reason REASON` publishes a stop veto; that record alone cannot prove executor-subtree reaping. This does not dynamically generate candidates, extend the frozen list, automatically adopt results or provide automatic per-round profiling.
+Current controller consent is schema5; the input explicitly freezes either the strong full-accepted chain or `bounded-screen-profile-skip`. There is one current workflow/worker interface and no `--program-version` selector. Manual schema1 remains a separate explicit mode. Old schema2/3/4 records retain read-only evidence scope; they are not upgraded, replayed or given a renewed clock. Preparation, queues, execution, reconciliation and cleanup share the original deadline. Status is read-only, lost replies inspect the same original identities, and a stop veto alone does not certify executor cleanup.
+
+## Bounded CPU search and per-round diagnostics
+
+This source implements the D1 contract; full D1 runtime, service/model, matching and real-gain acceptance remain separate gates. Current search and cycle inputs use schema2. Search preparation derives distinct screen and full IDs per logical candidate and freezes both real preparations, source/config/reference/policy relationships and the complete source materials. Prepared full roles do not grant D1 full execution. Logical candidates remain bounded by the original family projection and capacities.
+
+D1 birth explicitly grants only selected screen, profile and no-effect known-failure skip operations. Only complete authenticated `SCREEN_COMPLETED` or `SCREEN_REJECTED` trials with their required diagnostics and cleanup can advance. Ordinary failure/OOM/cancellation, partial results, wrong provenance or unknown cleanup stop new births and retain the original IDs for reconciliation. A skip is atomic with the earliest start/native opportunity and reuses original qualified negative evidence; it creates no work, checks, capture or analyst call.
+
+CPU contract C is an operator-admitted source/input conformance contract. A is the original exact-preview preparation acceptance, not an effect grant; preview-body and confirmation-bearing intent hashes differ. Existing missing C/A/FD facts are not backfilled. Ordinary valid C/A and local data scope may remain allocation-unsupported; matching requires independent genuine subject/namespace/root/ancestor/window proof on both sides. Unsupported matching is visible, and automatic GPU modes without real lease/guard wiring remain unavailable.
+
+Recovery reuses the original captured CPU-context references and complete source identity; missing or changed originals cannot be replaced by new observations or clocks. The [training execution contract](../architecture/execution/training.md#original-training-budget-submission-and-deadline-owner) describes the owner, durable reference and saved-data boundaries.
+
+Profiling uses a distinct source-owned diagnostic window and fixed strict reader; profiled values do not enter unprofiled timing or independent full pairs. Capture, derivation and synchronization share the original runner/work cap. Required missing/unknown/readback failure blocks continuation. Optional unavailable/not-run needs its actual reason; first-failure cases cannot obtain another free capture. One fixed read-only analyst opportunity belongs to the baseline and each executed screen; skips use historical diagnostics only. Durable attempt precedes a model opportunity, and lost replies inspect that same run with original process/MCP cleanup.
+
+Status separates sequence, skipped, screen-executed, promising and full-accepted counts. Known complete-prefix budget/stop cutoffs may be partial; unresolved effects take precedence as needs-reconciliation. D1 keeps verified-gain/full-accepted counts at zero and does not promote a baseline, reorder/extend the frozen space or claim target GPU/model quality. Source, package, controlled ports, real services and actual experiment results retain separate evidence scopes.
+
 
 ## Submit within the original budget and supervise deadlines continuously
 
@@ -92,7 +108,7 @@ This provides budgeted submission and continuous control responsibility for one 
 
 ## Integration entry point for the independent cycle service
 
-`training-cycle-worker` provides four real Temporal activity consumers for controller integration, using the application environment's `ergora[temporal]` and registered native project installation. It and `training-budget-worker` have separate processes and event loops. Ordinary queue `ergora-training-cycle-v1` and stop queue `ergora-training-cycle-stop-v1` each have one activity slot. Check current project revision before explicitly starting required services:
+`training-cycle-worker` serves the one current controller interface from the application environment and the selected native installation. It remains separate from the budget worker. The existing normal queue is `ergora-training-cycle-v3` and the stop queue is `ergora-training-cycle-stop-v3`; these are opaque current identities, not version-selection options.
 
 ```bash
 ergora services start my-project temporal training-budget-worker training-cycle-worker --revision REVISION --timeout 60
@@ -100,14 +116,19 @@ ergora services status my-project
 ergora services logs my-project training-cycle-worker --bytes 4096
 ```
 
-|Activity|Purpose|
-|---|---|
-|`ergora.training_cycle.inspect.v1`|Authenticate the same original controller run and observe original authorization/facts.|
-|`ergora.training_cycle.start.v1`|Consume ordinal 0's one opportunity from original schema2 creation consent; existing intents/retries only reconcile.|
-|`ergora.training_cycle.reconcile.v1`|Read existing original candidates without regranting start.|
-|`ergora.training_cycle.stop.v1`|Independently publish stop, drain parent permission, notify each original owner and observe execution chains, retaining every branch in full.|
+| Current activity name | Role |
+| --- | --- |
+| `ergora.training_cycle.start.v4` | Consume only the frozen current candidate opportunity. |
+| `ergora.training_cycle.reconcile.v4` | Observe that original opportunity after a lost reply. |
+| `ergora.training_cycle.request-execution-or-observe.v4` | Request or observe the original managed execution. |
+| `ergora.training_cycle.observe-candidate.v4` | Read the original candidate facts. |
+| `ergora.training_cycle.collect-round.v4` | Collect the original full/trial evidence and fixed diagnostics. |
+| `ergora.training_cycle.reconcile-round.v4` | Reconcile that same collection operation. |
+| `ergora.training_cycle.stop.v4` | Publish the original stop veto, drain permits and observe cleanup. |
 
-Business input `workflow_input` contains only `protocol`, `control_home`, `project`, `cycle_id`, `input_sha256`, `authorization_sha256`; candidate actions add ordinal and stop adds reason. The SDK supplies actual Workflow/run/namespace/attempt, authenticated through the original supervised helper; business input cannot self-declare those privileges. Integrators must follow original schema2 authorization and intent→attempt→pinned run receipt protocol. Ordinary `cycle-authorize` remains the manual budget entry point. These schema2 activities preserve their original integration contract. The same worker also hosts finite V2/V3 controllers executing frozen original candidates through [explicit authorization and submission](#start-a-local-training-budget-and-recover-original-authorization). Measurement acceptance and stop facts are separate. Starting services itself creates no experiment or runner execution.
+Business input cannot self-assert workflow/run/namespace/attempt authority; SDK-owned context and original complete bindings remain required. Controller birth is schema5, while `cycle-authorize` remains the manual schema1 entry. Starting a service creates no experiment or runner. Historical records do not dispatch an old runtime through this worker.
+
+Controller operations reference the complete original `cycle.json` and `authorization.json` by raw byte count and SHA, retaining the original clock/policy and selected count for supervision. The authorization content SHA remains distinct from its raw file SHA. Full roles, source pins and ordered candidate identities stay in those original files; changed or missing originals cannot grant new work. Known input bulk that cannot fit a required control or root envelope is rejected before the first budget clock. Future SDK metadata, owner/predecessor facts and operator stop text still pass their actual complete 32KiB checks; selecting 32 candidates does not waive those limits.
 
 Activity results retain original operation identity and byte-count/SHA references to verified stdout. If complete originals cannot be obtained, a complete inline unknown is saved. The 32KiB limit includes SDK metadata; overflow fails explicitly. Stop notification, durable stop, drained parent permission and execution-subtree stop are reported separately. Service shutdown first stops ordinary claiming and waits for real resource cleanup, then closes stop. Fully handed-off budget roots continue their original deadline responsibility. Stop an entire cycle through its complete original stop protocol.
 

@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "id": "ergora-document-correction-author",
+  "version": "1.0.0",
+  "description": "Read-only author of source-bound corrections to one existing project Markdown document.",
+  "roles": [
+    "implementer"
+  ],
+  "specialties": [
+    "document-correction",
+    "behavioral-feedback"
+  ],
+  "backend": {
+    "tool": "codex",
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
+  },
+  "resources": [
+    {
+      "id": "ergora-document-correction-author-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "05ca6cc950cea6f95630fd90af761d2d41c57aa035bf7523ff54e85acb53eaf6"
+    }
+  ],
+  "invocation_minimum": {
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
+  }
+}

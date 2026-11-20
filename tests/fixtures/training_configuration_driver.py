@@ -164,7 +164,6 @@ def describe(context):
             'last-material-fence', 'last-material-deadline'):
         import sys
         import ergora.training.execution_protocol as protocol
-        from ergora._paths import PACKAGE_ROOT
 
         wrapper = sys.modules['__main__']
         source_bytes, chain = wrapper._source_bytes, wrapper._chain
@@ -222,7 +221,7 @@ def describe(context):
 
         wrapper._chain = record_rejection
         if context['configurations']['candidate']['fault'].startswith('last-material'):
-            from ergora.training import materials as training_materials
+            import ergora.training.materials as training_materials
 
             original_read = training_materials.read_raw
             def final_material(path, *args, **kwargs):
@@ -234,6 +233,7 @@ def describe(context):
         else:
             wrapper._source_bytes = final_source
     return result
+
 
 
 def calculate(config, inputs):
@@ -640,7 +640,6 @@ def baseline_reference_read(context, request, reference):
                 else:
                     from datetime import timedelta
                     import ergora.training.execution_protocol as protocol
-                    from ergora._paths import PACKAGE_ROOT
                     clock, policy = request['context']['authorization']['clock'], request['context']['policy']
                     original_clock, original_datetime = protocol.budget_clock._clock, protocol.budget_clock.datetime
                     _, ticks = original_clock()
@@ -660,8 +659,7 @@ def baseline_reference_read(context, request, reference):
         os.fsync = stop_after_read_sync
     if current['fault'] == 'reference-current-coverage-extension':
         import ergora.training.execution_protocol as protocol
-        from ergora._paths import PACKAGE_ROOT
-        name = 'training/search.py'
+        name = 'interfaces/web.py'
         assert name not in protocol.GATE_SOURCES and (PACKAGE_ROOT / name).is_file()
         before = list(protocol.GATE_SOURCES)
         protocol.GATE_SOURCES = (*protocol.GATE_SOURCES, name)
@@ -678,3 +676,33 @@ def baseline_reference_read(context, request, reference):
                 'reasons': [] if supported else [{'code': 'oracle_relation_unsupported', 'field': 'oracle_applicability',
                     'expected': INTEGER_ORACLE_SCHEME, 'observed': oracle_record['scheme'] if oracle_record else None,
                     'source_ref': oracle_record['report_ref'] if oracle_record else None}]}}
+
+
+def profile(context, request, output, *, selection):
+    """Actual independent CPU window; never reuse the unprofiled screen samples."""
+    arm = 'baseline' if selection['phase'] == 'baseline' else 'candidate'
+    config = context['configurations'][arm]
+    fault = config.get('fault')
+    if fault == 'profile-exception':
+        raise ValueError('Controlled actual profile callback failure')
+    if fault == 'profile-timeout':
+        time.sleep(request['execution']['profile']['maximum_seconds'] + 1)
+    window = selection['window']
+    if window['unit'] != 'source_samples':
+        raise ValueError('CPU integer diagnostic source supports source_samples only')
+    inputs = [2500 + index % 100 for index in range(window['work'])]
+    warmup = [2400 + index % 100 for index in range(window['warmup_work'])]
+    calculate(config, warmup)
+    values, grouping = calculate(config, inputs)
+    if values != oracle(inputs):
+        raise ValueError('Independent CPU diagnostic output differs from its oracle')
+    marker('profile', {'pid': os.getpid(), 'identity': context['identity'], 'phase': selection['phase'],
+        'window_id': selection['window_id'], 'run_id': selection['run_id'],
+        'rank': selection['rank'], 'source_samples': len(inputs)})
+    result = {key: deepcopy(selection[key]) for key in ('phase', 'rank', 'window_id', 'run_id', 'window')}
+    result.update(input_identity={'scheme': 'fixture-independent-profile-integers-v1',
+        'inputs': inputs, 'inputs_sha256': canonical_sha(inputs), 'output_sha256': canonical_sha(values),
+        'initialization': {'kind': 'stateless'}, 'grouping': grouping},
+        hardware={'device': 'CPU', 'ranks': [0], 'layout': 'single-process'},
+        work_completed=len(inputs), warmup_work_completed=len(warmup), measurement_mode='profiled')
+    return result

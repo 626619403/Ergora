@@ -4,6 +4,7 @@
       "tests/test_agents.py",
       "tests/test_composition_runtime.py",
       "tests/test_definition_console.py",
+      "tests/test_document_corrections.py",
       "tests/test_memory.py",
       "tests/test_native_six_stage.py",
       "tests/test_projects_tools.py",

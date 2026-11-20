@@ -2,6 +2,7 @@
 
 from contextlib import redirect_stdout
 from copy import deepcopy
+from fractions import Fraction
 import hashlib
 import importlib.util
 import io
@@ -12,19 +13,21 @@ import signal
 import stat
 import subprocess
 import sys
+import zipfile
 
 import pytest
 
-import ergora.native.resources as native_resources
-import ergora.training.native as training_native
+from ergora._paths import IMPORT_ROOT, PACKAGE_ROOT
 import ergora
-import ergora.runtime.processes as processes
 import importlib
-import subprocess
-import ergora.training.application as training
-import ergora.training.search as training_search
+import ergora.native.resources as native_resources
+import ergora.runtime.processes as processes
+import ergora.training.native as training_native
+import ergora.development.handoff as handoff
 import ergora.configuration.projects as projects
 import ergora.development.application as tasks
+import ergora.training.application as training
+import ergora.training.search as training_search
 from ergora.storage.state import State
 from test_task_creation import creation_project
 from test_task_export import export as export_candidate, export_client, export_task as _original_export_task
@@ -35,7 +38,6 @@ from test_training_preparation import stop_after
 from test_training_runner import configuration_source
 from test_training_submission import (assert_budget_process_stopped, native_budget_create, prepared, service,
                                       stop_controller_test_owner)
-from ergora._paths import PACKAGE_ROOT
 
 
 @pytest.fixture
@@ -71,6 +73,73 @@ def _files(*roots):
     return {path: path.read_bytes() for root in roots for path in root.rglob('*') if path.is_file()}
 
 
+def _profile_policy():
+    return {'protocol': 'training-profile-v1', 'tool': 'cprofile-json', 'reader': 'cprofile-json-v1',
+        'source_operation': 'cpu-diagnostic-v1', 'phases': ['baseline', 'screen'], 'ranks': [0],
+        'window': {'unit': 'source_samples', 'work': 24, 'warmup_work': 0}, 'captures': 1,
+        'maximum_seconds': 5, 'max_raw_bytes': 1_048_576, 'max_derived_bytes': 65_536, 'required': True}
+
+
+def _bind_preparation(request, tmp_path, monkeypatch):
+    """Real portable bytes with a substituted original task evidence service."""
+    from ergora.development.envelopes import outcome_reference_state
+
+    template = request['experiment_template']
+    original_request = {'task_id': 'analysis-task', 'repository': {
+        'base_sha': template['baseline_commit'], 'starting_sha': template['baseline_commit']},
+        'input': {'goal': 'Review the fixed CPU integer algorithm, dependencies, data and redundant work',
+                  'allowed_changes': list(template['allowed_changes'])}}
+    profile = {'artifacts_by_stage': {'inventory': ['flow-map', 'inventory'], 'plan': ['execution-plan']}}
+    spec = {'request': original_request, 'profile': profile,
+            'request_sha256': _canonical_sha(original_request), 'profile_sha256': _canonical_sha(profile)}
+    blobs, jobs = {}, []
+    for number, (stage, names) in enumerate(profile['artifacts_by_stage'].items()):
+        ident = 'analysis-' + stage
+        receipt = {'schema_version': 1, 'job_id': ident, 'job_sha256': str(number + 1) * 64,
+            'state': 'SUCCEEDED', 'actor': {'id': 'fixture-reviewer', 'session_id': 'analysis',
+                'role': stage, 'kind': 'ci'}, 'candidate_sha': template['baseline_commit'], 'artifacts': []}
+        for name in names:
+            raw = (name + ': complete CPU preparation source and scope; no training or quality claim.\n').encode()
+            digest = _sha(raw)
+            blobs[digest] = raw
+            receipt['artifacts'].append({'name': name, 'path': 'analysis-task/' + name + '.md', 'sha256': digest})
+        jobs.append({'job_id': ident, 'job_sha256': receipt['job_sha256'], 'stage': stage,
+            'request_state': 'matches', 'receipt_state': 'SUCCEEDED', 'receipt_sha256': _canonical_sha(receipt),
+            'receipt': receipt, 'history_event_ids': [number + 2], 'outcome_reference_state': 'not_recorded'})
+    outcome = {'task_id': 'analysis-task', 'request_sha256': spec['request_sha256'],
+               'base_sha': template['baseline_commit'], 'candidate_sha': template['candidate_commit']}
+    for job in jobs:
+        job['outcome_reference_state'] = outcome_reference_state(outcome, job)
+    index = {'schema_version': 1, 'project': 'demo', 'task_id': 'analysis-task',
+        'workflow_id': 'dev-task/analysis-task', 'run_id': 'analysis-run', 'read_only': True,
+        'terminal': True, 'temporal_status': 'COMPLETED', 'lease_released_by_operation': False,
+        'execution_success': None, 'published_evidence': 'verified', 'unresolved_jobs': [], 'unexpected_jobs': [],
+        'request_sha256': spec['request_sha256'], 'profile_sha256': spec['profile_sha256'],
+        'history_jobs_sha256': _canonical_sha([{'job_id': job['job_id'], 'job_sha256': job['job_sha256']}
+            for job in sorted(jobs, key=lambda item: item['job_id'])]),
+        'contract': {'spec': spec, 'spec_sha256': _canonical_sha(spec), 'creation_sha256': 'c' * 64,
+            'submission_sha256': 'd' * 64, 'agent_bindings': {}, 'agent_bindings_sha256': _canonical_sha({}),
+            'original_input': spec, 'original_input_sha256': _canonical_sha(spec)},
+        'jobs': jobs, 'original_outcome': outcome, 'original_outcome_sha256': _canonical_sha(outcome)}
+    path = tmp_path / 'original-preparation.zip'
+    saved = handoff.create(index, lambda artifact: blobs[artifact['sha256']], path)
+    request['preparation_materials'] = {'packet': {'path': str(path), 'sha256': saved['sha256']},
+        'task_id': index['task_id'], 'run_id': index['run_id'], 'artifacts': {
+            'flow_map': {'job_id': 'analysis-inventory', 'name': 'flow-map'},
+            'inventory': {'job_id': 'analysis-inventory', 'name': 'inventory'},
+            'plan': {'job_id': 'analysis-plan', 'name': 'execution-plan'}}}
+    monkeypatch.setattr(tasks, 'evidence', lambda *args, **kwargs: deepcopy(index))
+    return index
+
+
+def _stages(packet):
+    return [choice['stages'][name] for choice in packet['choices'] for name in ('screen', 'full')]
+
+
+def _full_preparations(prepared):
+    return [item for item in prepared['experiments'] if item.get('stage', 'full') == 'full']
+
+
 @pytest.fixture
 def search_request():
     original = json.loads((native_resources.ROOT / 'platform/templates/training-optimization/experiment.json').read_bytes())
@@ -78,13 +147,15 @@ def search_request():
                 if key not in ('experiment_id', 'candidate_config_sha256', 'performance_policy')}
     # Preserve noncanonical baseline bytes, including its BOM, separately from candidate serialization.
     baseline = '\ufeff{ "training": {"global_batch_size": 128, "micro_batch_size": 4},\n "model": {"width": 64}, "precision": "float32" }\r\n'
-    template.update(execution={'operation': 'full-verify'},
+    template.pop('execution', None)
+    template.update(baseline_reference={'experiment_id': 'original-reference', 'evidence_sha256': 'a' * 64,
+                    'reference_sha256': 'b' * 64},
                     baseline_id='baseline-one', baseline_commit='a' * 40, candidate_commit='a' * 40,
                     base_config_sha256=_sha(baseline.encode('utf-8')), contract_approved=True,
                     owner='fixture-owner', author='fixture-implementer',
                     allowed_changes=['Vary global batch size', 'Vary microbatch organization'])
     configuration = json.loads(baseline.lstrip('\ufeff'))
-    return {'schema_version': 1, 'kind': 'training-search-request', 'search_id': 'batch-search',
+    return {'schema_version': 2, 'kind': 'training-search-request', 'search_id': 'batch-search',
         'experiment_template': template, 'runner': {'runner_template_id': 'trusted', 'max_run_seconds': 300},
         'baseline_configuration': {'format': 'json-v1', 'utf8': baseline, 'sha256': template['base_config_sha256']},
         'configuration': {'format': 'json-v1', 'template': configuration,
@@ -106,17 +177,41 @@ def search_request():
             'statistics': {'min_pairs': 6, 'bootstrap_resamples': 20000, 'seed': 17},
             'thresholds': {'min_saved_seconds_at_normalization': 0.02, 'min_speedup_percent': 1.5, 'mode': 'all'}},
         'budget': {'wall_seconds': 600, 'cleanup_seconds': 30, 'control_timeout_seconds': 7},
-        'analysis': {'source_flow_sha256': 'd' * 64, 'redundancy_sha256': 'e' * 64,
-                     'coverage': 'CPU preparation contract only; no training, effective config, quality, or GPU evidence.'},
+        'screen_policy': {'scheme': 'fixture-cpu-screen-v1', 'requested_tier': 'screened',
+            'input_plan': {'scheme': 'fixed-positive-integers-v1', 'sha256': 'a' * 64},
+            'window': {'unit': 'source_samples', 'minimum_work': 1, 'maximum_work': 48,
+                'warmup_maximum_work': 0, 'maximum_windows': 1, 'maximum_seconds': 10.5},
+            'checks': [{'id': kind, 'kind': kind, 'contract_sha256': 'a' * 64, 'source_entrypoint': 'driver.py'}
+                for kind in ('finite', 'behavior')], 'resources': [], 'screening': {
+                'target': 'throughput', 'minimum_improvement_fraction': 0, 'noise_fraction': 0,
+                'comparison_scheme': 'fixture-integer-reference-projection-v1'}},
+        'profile_policy': _profile_policy(),
+        'preparation_materials': {'packet': {'path': '/original/preparation.zip', 'sha256': 'a' * 64},
+            'task_id': 'analysis-task', 'run_id': 'analysis-run', 'artifacts': {
+                role: {'job_id': 'analysis-' + role, 'name': role} for role in ('flow_map', 'inventory', 'plan')}},
         'candidate_source': {'kind': 'unchanged_baseline_v1'}}
 
 
+def _execution_fixture_options(request):
+    params = getattr(getattr(request.node, 'callspec', None), 'params', {})
+    raw = params.get('search_execution', {})
+    value = dict(raw.get('execution_fixture', {})) if isinstance(raw, dict) else {}
+    if not set(value) <= {'runner_seconds', 'screen_seconds', 'profile_seconds', 'cpu_contract_declaration', 'search_id', 'budget'}:
+        raise ValueError('Unknown explicit execution fixture input')
+    return value
+
+
 @pytest.fixture
-def search_input(request, search_request, configuration_source):
+def search_input(request, search_request, configuration_source, tmp_path, monkeypatch):
     if sys.platform != 'linux':
         pytest.skip('Native experiment preparation requires Linux/WSL2')
     pytest.importorskip('temporalio')
     state, definition, runtime, prefix, write = request.getfixturevalue('experiments')
+    fixture = _execution_fixture_options(request)
+    if 'search_id' in fixture:
+        search_request['search_id'] = fixture['search_id']
+    if 'cpu_contract_declaration' in fixture:
+        search_request['cpu_execution_contract'] = deepcopy(fixture['cpu_contract_declaration'])
     baseline = json.loads((prefix / 'baseline.json').read_bytes())
     baseline['config_sha256'] = search_request['baseline_configuration']['sha256']
     write(prefix / 'baseline.json', baseline)
@@ -124,13 +219,21 @@ def search_input(request, search_request, configuration_source):
                                                 workload_fingerprint=baseline['workload_fingerprint'])
     runner = {'schema_version': 2, 'runner_template_id': 'trusted', 'project': 'demo', 'repo': definition['repo'],
               'command': [str(Path(definition['execution']['installation']) / '.venv/bin/python'),
-                          '{configuration_driver}', '{configuration_request}'], 'timeout_seconds': 20,
+                          '{configuration_driver}', '{configuration_request}'], 'timeout_seconds': fixture.get('runner_seconds', 20),
               'configuration_readback': {'protocol': 'training-configuration-driver-v1',
                   'source': configuration_source['reference'], 'prepared_json_format': 'json-v1',
-                  'baseline_reference_protocol': None, 'screen': None,
+                  'baseline_reference_protocol': 'baseline-reference-v1',
+                  'screen': {'protocol': 'training-screen-v1', 'scheme': 'fixture-cpu-screen-v1'},
+                  'profile': {'protocol': 'training-profile-v1', 'operations': ['cpu-diagnostic-v1']},
                   'manifest_configuration_role': 'source-bytes',
                   'observation_scheme': 'fixture-cpu-configuration-v1'}}
     write(Path(definition['execution']['config_directory']) / 'training-runners/trusted.json', runner)
+    configuration_source['screen_plan'] = deepcopy(configuration_source['screen_plan'])
+    if 'screen_seconds' in fixture:
+        configuration_source['screen_plan']['window']['maximum_seconds'] = fixture['screen_seconds']
+    search_request['screen_policy'] = {key: value for key, value in configuration_source['screen_plan'].items()
+                                       if key != 'verification_experiment_id'}
+    _bind_preparation(search_request, tmp_path, monkeypatch)
     return state, definition, runtime, prefix, search_request
 
 
@@ -192,7 +295,7 @@ def test_trailing_newlines_are_rejected_before_reading_a_project_or_native_state
         training_search.preview(state, 'demo', search_request)
     reads.clear()
     for path in (('family_policy', 'family_error_budget'), ('dimensions', 0, 'name'),
-                 ('analysis', 'source_flow_sha256')):
+                 ('preparation_materials', 'packet', 'sha256')):
         malformed = deepcopy(search_request)
         node = malformed
         for key in path[:-1]:
@@ -295,11 +398,11 @@ def test_preview_rejects_complete_packet_limits_even_when_the_request_is_valid(
     encoded = json.dumps(request, ensure_ascii=False, separators=(',', ':')).encode('utf-8')
     assert len(encoded) < 1_048_576
     source.write_bytes(encoded)
-    # The request is within both data-tree limits; wrapping it with plans adds depth and values.
+    # The request fits; the complete dual-stage packet adds data-tree depth, values and original native text.
     assert training_search.read_request(source) == request
     before = _files(runtime, Path(definition['execution']['config_directory']))
     try:
-        with pytest.raises(ValueError, match='64 levels / 100000 values'):
+        with pytest.raises(ValueError, match='complete bounds|64 levels / 100000 values|10 MB'):
             training_search.preview(state, 'demo', request)
     finally:
         assert _files(runtime, Path(definition['execution']['config_directory'])) == before
@@ -362,22 +465,22 @@ def test_two_batch_configurations_prepare_real_native_bindings_and_read_offline(
     assert plan['performance_policy'] == policy and plan['performance_policy_sha256'] == _canonical_sha(policy)
     directory = tmp_path / 'frozen search'
     result = _prepare(state, request, preview, directory)
-    assert result['status'] == 'prepared' and len(result['experiments']) == 2
+    assert result['status'] == 'prepared' and len(result['experiments']) == 4
     assert (directory / 'baseline-config.json').read_bytes() == request['baseline_configuration']['utf8'].encode('utf-8')
     assert len({item['configuration']['sha256'] for item in plan['choices']}) == 2
     assert {p.relative_to(directory).as_posix() for p in directory.rglob('*') if p.is_file()} == {
-        'search.json', 'baseline-config.json', *(item['configuration']['path'] for item in plan['choices'])}
-    for item, prepared, batch in zip(plan['choices'], result['experiments'], (512, 256)):
+        'search.json', 'baseline-config.json', 'materials/preparation.zip', *(item['configuration']['path'] for item in plan['choices'])}
+    for item, prepared, batch in zip(plan['choices'], result['experiments'][::2], (512, 256)):
         raw = (directory / item['configuration']['path']).read_bytes()
         assert _sha(raw) == item['configuration']['sha256']
         candidate = json.loads(raw)
         assert raw == (json.dumps(candidate, ensure_ascii=False, sort_keys=True, indent=2, allow_nan=False) + '\n').encode('utf-8')
         assert candidate == {'training': {'global_batch_size': batch, 'micro_batch_size': 4},
                              'model': {'width': 64}, 'precision': 'float32'}
-        ident = item['experiment_id']
+        ident = item['stages']['screen']['experiment_id']
         assert prepared['experiment_id'] == ident and prepared['status'] == 'prepared'
-        assert prepared['intent_sha256'] == item['native_preview_sha256']
-        for path, text in item['native_plan']['files'].items():
+        assert prepared['confirmed_preview_sha256'] == item['stages']['screen']['native_preview_sha256']
+        for path, text in item['stages']['screen']['native_plan']['files'].items():
             assert (runtime / path).read_bytes() == text.encode('utf-8')
         manifest_raw = (runtime / f'training/manifests/{ident}.json').read_bytes()
         manifest = json.loads(manifest_raw)
@@ -391,9 +494,25 @@ def test_two_batch_configurations_prepare_real_native_bindings_and_read_offline(
         assert spec['manifest_uri'] == (runtime / f'training/manifests/{ident}.json').as_uri()
         assert not (runtime / f'training/jobs/{ident}').exists()
         assert not (runtime / f'training/fences/{ident}.json').exists()
+        full = item['stages']['full']
+        assert manifest['execution']['plan']['verification_experiment_id'] == full['experiment_id']
+        assert training.preparation(state, 'demo', full['experiment_id'])['status'] == 'prepared'
+        full_manifest = json.loads((runtime / ('training/manifests/' + full['experiment_id'] + '.json')).read_bytes())
+        assert full_manifest['execution'] == {'operation': 'full-verify'}
+        assert full_manifest['performance_policy'] == manifest['performance_policy']
+        assert full_manifest['baseline_reference'] == manifest['baseline_reference']
+        assert full_manifest['candidate_config_sha256'] == manifest['candidate_config_sha256']
+        for path, text in full['native_plan']['files'].items():
+            assert (runtime / path).read_bytes() == text.encode('utf-8')
+        assert not (runtime / ('training/jobs/' + full['experiment_id'])).exists()
     assert all(path.read_bytes() == raw for path, raw in originals.items())
     assert state.project('demo') == project_before
     saved = _files(runtime, directory)
+    original_material = Path(request['preparation_materials']['packet']['path'])
+    original_material.rename(original_material.with_name('original-preparation-unavailable.zip'))
+    # Recovery consumes the already frozen archive, even after its original host path disappears.
+    assert _prepare(state, request, preview, directory)['status'] == 'prepared'
+    assert _files(runtime, directory) == saved
     original_spec = importlib.util.find_spec
     monkeypatch.setattr(importlib.util, 'find_spec', lambda name: None if name == 'temporalio' else original_spec(name))
     def no_native(*args, **kwargs):
@@ -417,12 +536,10 @@ def test_two_batch_configurations_prepare_real_native_bindings_and_read_offline(
     program = '''import importlib.abc,json,sys
 class NoSDK(importlib.abc.MetaPathFinder):
     def find_spec(self, fullname, path=None, target=None):
-        if fullname == 'temporalio' or fullname.startswith('temporalio.'):
+        if fullname == 'ergora.storage.state' or fullname == 'temporalio' or fullname.startswith('temporalio.'):
             raise ModuleNotFoundError('SDK unavailable in the offline reader')
 sys.meta_path.insert(0, NoSDK())
 from ergora.training.search import read
-from ergora.storage.state import State
-State.__init__ = lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError('Offline reader constructed State'))
 print(json.dumps(read(sys.argv[1],sha256=sys.argv[2]),ensure_ascii=False))
 '''
     offline = subprocess.run([sys.executable, '-c', program, str(directory), result['sha256']],
@@ -457,7 +574,9 @@ def test_completed_original_six_stage_export_binds_source_without_another_export
         'command': [sys.executable, '{configuration_driver}', '{configuration_request}'], 'timeout_seconds': 30,
         'configuration_readback': {'protocol': 'training-configuration-driver-v1',
             'source': configuration_source['reference'], 'prepared_json_format': 'json-v1',
-                  'baseline_reference_protocol': None, 'screen': None,
+                  'baseline_reference_protocol': 'baseline-reference-v1',
+                  'screen': {'protocol': 'training-screen-v1', 'scheme': 'fixture-cpu-screen-v1'},
+                  'profile': {'protocol': 'training-profile-v1', 'operations': ['cpu-diagnostic-v1']},
             'manifest_configuration_role': 'source-bytes',
             'observation_scheme': 'fixture-cpu-configuration-v1'}})
     search_request['experiment_template'].update(baseline_commit=commit, candidate_commit=exported['candidate_sha'])
@@ -465,6 +584,11 @@ def test_completed_original_six_stage_export_binds_source_without_another_export
         'kind': 'exported_six_stage_v1', 'task_id': 'new-task', 'run_id': exported['run_id'],
         'creation_sha256': created['intent_sha256'], 'request_sha256': original['request_sha256'],
         'profile_sha256': original['profile_sha256'], 'export_intent_sha256': exported['intent_sha256']}
+    search_request['screen_policy'] = {key: value for key, value in configuration_source['screen_plan'].items()
+                                       if key != 'verification_experiment_id'}
+    # The task source/export reader is real; the independent closed analysis source is a service substitute.
+    _bind_preparation(search_request, tmp_path, monkeypatch)
+    search_request['candidate_source'].update(task_id='new-task')
     before = _files(runtime, config)
     def no_new_source_effect(*args, **kwargs):
         pytest.fail('Search preparation attempted another source export or service inspection')
@@ -491,29 +615,32 @@ def test_completed_original_six_stage_export_binds_source_without_another_export
     assert _files(runtime, config) == saved
 
 
+@pytest.mark.parametrize('stage', ('screen', 'full'))
 @pytest.mark.parametrize('boundary,matching', ((4, 1), (5, 2), (1, 3), (2, 4), (3, 5)))
 def test_partial_native_publication_resumes_frozen_choices_without_reenumeration(
-        search_input, tmp_path, monkeypatch, interrupt_publication, boundary, matching):
+        search_input, tmp_path, monkeypatch, interrupt_publication, boundary, matching, stage):
     state, _, runtime, _, request = search_input
     preview = training_search.preview(state, 'demo', request)
     directory = tmp_path / 'search'
     choices = preview['plan']['choices']
     seen = []
     def packet_precedes_intent(payload):
+        if payload['experiment_id'] != choices[0]['stages'][stage]['experiment_id']:
+            return
         observed = training_search.read(directory)
         assert observed['plan'] == preview['plan']
-        assert not (runtime / f"ergora/training-preparations/{choices[0]['experiment_id']}.intent.json").exists()
+        assert not (runtime / f"ergora/training-preparations/{choices[0]['stages'][stage]['experiment_id']}.intent.json").exists()
         seen.append(payload['experiment_id'])
-    interrupt_publication(choices[0]['experiment_id'], boundary, packet_precedes_intent)
+    interrupt_publication(choices[0]['stages'][stage]['experiment_id'], boundary, packet_precedes_intent)
     with pytest.raises(ValueError, match='status 73'):
         _prepare(state, request, preview, directory)
-    assert seen == [choices[0]['experiment_id']]
-    first = training.preparation(state, 'demo', choices[0]['experiment_id'])
+    assert seen == [choices[0]['stages'][stage]['experiment_id']]
+    first = training.preparation(state, 'demo', choices[0]['stages'][stage]['experiment_id'])
     assert first['status'] == ('prepared' if matching == 5 else 'partially_prepared')
     assert sum(item['state'] == 'matching' for item in first['files']) == matching
     frozen = _files(directory)
     published = {runtime / relative: (runtime / relative).read_bytes()
-                 for relative in choices[0]['native_plan']['files'] if (runtime / relative).exists()}
+                 for relative in choices[0]['stages'][stage]['native_plan']['files'] if (runtime / relative).exists()}
     interrupt_publication()
     if boundary == 4:
         path, original_raw = next(iter(published.items()))
@@ -529,13 +656,14 @@ def test_partial_native_publication_resumes_frozen_choices_without_reenumeration
     monkeypatch.setattr(training, 'preview_experiment', no_new_preview)
     recovered = _prepare(State(state.root), request, preview, directory)
     assert recovered['status'] == 'prepared'
-    assert [item['experiment_id'] for item in recovered['experiments']] == [item['experiment_id'] for item in choices]
-    assert [item['intent_sha256'] for item in recovered['experiments']] == [item['native_preview_sha256'] for item in choices]
+    assert [item['experiment_id'] for item in recovered['experiments']] == [item['experiment_id'] for item in _stages({'choices': choices})]
+    assert [item['confirmed_preview_sha256'] for item in recovered['experiments']] == [item['native_preview_sha256'] for item in _stages({'choices': choices})]
     assert _files(directory) == frozen
     assert all(path.read_bytes() == raw for path, raw in published.items())
 
 
-def test_actual_lost_native_reply_and_prepared_repeat_keep_one_original_intent(search_input, tmp_path, monkeypatch):
+@pytest.mark.parametrize('stage', ('screen', 'full'))
+def test_actual_lost_native_reply_and_prepared_repeat_keep_one_original_intent(search_input, tmp_path, monkeypatch, stage):
     state, _, runtime, _, request = search_input
     preview = training_search.preview(state, 'demo', request)
     directory = tmp_path / 'search'
@@ -545,7 +673,7 @@ def test_actual_lost_native_reply_and_prepared_repeat_keep_one_original_intent(s
         result = original(argv, *args, **kwargs)
         if argv[-1] == 'from ergora.training.runtime.preparation import main;main()':
             payload = json.loads(kwargs['stdin'])
-            if payload['operation'] == 'prepare' and not lost:
+            if payload['operation'] == 'prepare' and payload['experiment_id'].endswith('-' + stage) and not lost:
                 assert result['status'] == 'succeeded'
                 lost.append(payload['experiment_id'])
                 raise ValueError('Lost actual native preparation success reply')
@@ -553,7 +681,7 @@ def test_actual_lost_native_reply_and_prepared_repeat_keep_one_original_intent(s
     monkeypatch.setattr(processes, 'run', lose_success)
     with pytest.raises(ValueError, match='Lost actual native'):
         _prepare(state, request, preview, directory)
-    assert lost == [preview['plan']['choices'][0]['experiment_id']]
+    assert lost == [preview['plan']['choices'][0]['stages'][stage]['experiment_id']]
     assert training.preparation(state, 'demo', lost[0])['status'] == 'prepared'
     monkeypatch.setattr(processes, 'run', original)
     first_intent = runtime / f'ergora/training-preparations/{lost[0]}.intent.json'
@@ -603,8 +731,9 @@ def test_visible_packet_sync_failure_has_no_native_intent_and_recovers_without_p
     monkeypatch.setattr(training, 'preview_experiment', no_new_preview)
     recovered = _prepare(State(state.root), request, preview, directory)
     assert recovered['status'] == 'prepared' and _files(directory) == frozen
-    assert [item['intent_sha256'] for item in recovered['experiments']] == [
-        item['native_preview_sha256'] for item in preview['plan']['choices']]
+    assert [item['confirmed_preview_sha256'] for item in recovered['experiments']] == [
+        item['native_preview_sha256'] for item in _stages(preview['plan'])]
+    assert all(item['intent_sha256'] != item['confirmed_preview_sha256'] for item in recovered['experiments'])
 
 
 def test_revision_source_drift_and_packet_corruption_preserve_partial_originals(
@@ -621,14 +750,14 @@ def test_revision_source_drift_and_packet_corruption_preserve_partial_originals(
         _prepare(state, request, preview, directory)
     assert list(directory.iterdir()) == []
     directory.rmdir()
-    foreign = runtime / f"training/manifests/{preview['plan']['choices'][1]['experiment_id']}.json"
+    foreign = runtime / f"training/manifests/{preview['plan']['choices'][1]['stages']['screen']['experiment_id']}.json"
     foreign.write_bytes(b'{"foreign":"preserve unrelated second experiment"}\n')
     with pytest.raises(ValueError):
         _prepare(state, request, preview, directory)
     assert foreign.read_bytes() == b'{"foreign":"preserve unrelated second experiment"}\n'
     assert not directory.exists() and not (runtime / 'ergora/training-preparations').exists()
     foreign.unlink()
-    interrupt_publication(choice['experiment_id'], 1)
+    interrupt_publication(choice['stages']['screen']['experiment_id'], 1)
     with pytest.raises(ValueError, match='status 73'):
         _prepare(state, request, preview, directory)
     interrupt_publication()
@@ -637,7 +766,8 @@ def test_revision_source_drift_and_packet_corruption_preserve_partial_originals(
     outside = tmp_path / 'unrelated-config.json'
     outside.write_bytes(b'{"unrelated":"preserved"}\n')
     for mutate in ('policy', 'policy-number-kind', 'native-request-number-kind', 'native-plan',
-                   'cardinality', 'coverage', 'frozen-source', 'config', 'extra-file', 'config-symlink'):
+                   'cardinality', 'coverage', 'frozen-source', 'verification-id', 'full-id', 'full-policy',
+                   'full-reference', 'full-config', 'config', 'extra-file', 'config-symlink'):
         packet = json.loads(original_packet)
         if mutate == 'policy':
             packet['performance_policy']['statistics']['confidence'] = 0.97
@@ -645,18 +775,28 @@ def test_revision_source_drift_and_packet_corruption_preserve_partial_originals(
             statistics = packet['performance_policy']['statistics']
             statistics['min_pairs'] = float(statistics['min_pairs'])
         elif mutate == 'native-request-number-kind':
-            statistics = packet['choices'][0]['native_request']['experiment']['performance_policy']['statistics']
+            statistics = packet['choices'][0]['stages']['screen']['native_request']['experiment']['performance_policy']['statistics']
             statistics['min_pairs'] = float(statistics['min_pairs'])
         elif mutate == 'native-plan':
-            packet['choices'][0]['native_plan']['request']['experiment']['notes'] = 'changed native request'
+            packet['choices'][0]['stages']['screen']['native_plan']['request']['experiment']['notes'] = 'changed native request'
         elif mutate == 'cardinality':
             packet['cardinality'] = 2.0
         elif mutate == 'coverage':
             packet['coverage']['execution_authorized'] = 0
         elif mutate == 'frozen-source':
             for native in packet['choices']:
-                native['native_plan']['sources']['runner']['document']['configuration_readback']['source']['commit'] = 'x' * 40
-                native['native_preview_sha256'] = _canonical_sha(native['native_plan'])
+                native['stages']['screen']['native_plan']['sources']['runner']['document']['configuration_readback']['source']['commit'] = 'x' * 40
+                native['stages']['screen']['native_preview_sha256'] = _canonical_sha(native['stages']['screen']['native_plan'])
+        elif mutate == 'verification-id':
+            packet['choices'][0]['stages']['screen']['native_request']['experiment']['execution']['plan']['verification_experiment_id'] = 'wrong-full'
+        elif mutate == 'full-id':
+            packet['choices'][0]['stages']['full']['experiment_id'] = packet['choices'][0]['stages']['screen']['experiment_id']
+        elif mutate == 'full-policy':
+            packet['choices'][0]['stages']['full']['native_request']['experiment']['performance_policy']['statistics']['confidence'] = .9
+        elif mutate == 'full-reference':
+            packet['choices'][0]['stages']['full']['native_request']['experiment']['baseline_reference']['reference_sha256'] = 'f' * 64
+        elif mutate == 'full-config':
+            packet['choices'][0]['stages']['full']['native_request']['experiment']['candidate_config_sha256'] = 'f' * 64
         elif mutate == 'config':
             (directory / choice['configuration']['path']).write_text('{"changed":true}\n')
         elif mutate == 'extra-file':
@@ -664,7 +804,8 @@ def test_revision_source_drift_and_packet_corruption_preserve_partial_originals(
         else:
             (directory / choice['configuration']['path']).unlink()
             (directory / choice['configuration']['path']).symlink_to(outside)
-        if mutate in ('policy', 'policy-number-kind', 'native-request-number-kind', 'native-plan', 'cardinality', 'coverage', 'frozen-source'):
+        if mutate in ('policy', 'policy-number-kind', 'native-request-number-kind', 'native-plan', 'cardinality',
+                      'coverage', 'frozen-source', 'verification-id', 'full-id', 'full-policy', 'full-reference', 'full-config'):
             (directory / 'search.json').write_text(json.dumps(packet), encoding='utf-8')
         with pytest.raises(ValueError):
             training_search.read(directory)
@@ -692,7 +833,7 @@ def test_revision_source_drift_and_packet_corruption_preserve_partial_originals(
     with pytest.raises(ValueError):
         _prepare(state, request, preview, directory)
     assert _files(directory) == {path: raw for path, raw in saved.items() if directory in path.parents}
-    assert not (runtime / f"training/specs/{choice['experiment_id']}.json").exists()
+    assert not (runtime / f"training/specs/{choice['stages']['screen']['experiment_id']}.json").exists()
 
 
 @pytest.fixture
@@ -700,7 +841,22 @@ def search_execution(search_input, service, configuration_source, tmp_path, requ
     """External JSON, one unchanged source commit, and the original managed CPU path."""
     state, definition, runtime, prefix, search_request = search_input
     options = dict(getattr(request, 'param', {}))
+    fixture = options.pop('execution_fixture', {})
     screen_support = options.pop('screen_support', False)
+    profile_selection = deepcopy(options.pop('profile_policy', None))
+    if 'profile_seconds' in fixture:
+        if profile_selection is None:
+            raise ValueError('An explicit profiler fixture cap requires an explicit frozen profile policy')
+        profile_selection['maximum_seconds'] = fixture['profile_seconds']
+    profile_support = options.pop('profile_support', False)
+    if profile_selection is not None:
+        search_request['profile_policy'] = profile_selection
+    if profile_support:
+        runner_path = Path(definition['execution']['config_directory']) / 'training-runners/trusted.json'
+        runner = json.loads(runner_path.read_bytes())
+        runner['configuration_readback']['profile'] = {'protocol': 'training-profile-v1',
+                                                       'operations': ['cpu-diagnostic-v1']}
+        runner_path.write_text(json.dumps(runner) + '\n')
     if options.pop('baseline_reference_support', False):
         runner_path = Path(definition['execution']['config_directory']) / 'training-runners/trusted.json'
         runner = json.loads(runner_path.read_bytes())
@@ -736,7 +892,7 @@ def search_execution(search_input, service, configuration_source, tmp_path, requ
         'statistics': {'min_pairs': 4, 'bootstrap_resamples': 1000, 'seed': 73},
         'thresholds': {'min_saved_seconds_at_normalization': .001,
                        'min_speedup_percent': None, 'mode': 'all'}}
-    search_request['budget'] = {'wall_seconds': 90, 'cleanup_seconds': 15, 'control_timeout_seconds': 10}
+    search_request['budget'] = deepcopy(fixture.get('budget', {'wall_seconds': 90, 'cleanup_seconds': 15, 'control_timeout_seconds': 10}))
     search_request['experiment_template'].update(
         base_config_sha256=_sha(baseline.encode('utf-8')), track='E', quality_required=False,
         checks_required=['cpu_exact_configuration'])
@@ -748,26 +904,50 @@ def search_execution(search_input, service, configuration_source, tmp_path, requ
     assert configuration_source['git'](Path(definition['repo']), 'ls-tree', '-r', '--name-only', source_commit) == ''
     assert search_request['experiment_template']['baseline_commit'] == source_commit
     assert search_request['experiment_template']['candidate_commit'] == source_commit
-    preview = training_search.preview(state, 'demo', search_request)
-    directory = tmp_path / 'external-json-search'
-    published = _prepare(state, search_request, preview, directory)
+    # Manual full bootstrap is a separate business mode; no search may invent a reference.
+    directory = tmp_path / 'manual-full-materials'
+    (directory / 'configs').mkdir(parents=True)
+    (directory / 'baseline-config.json').write_bytes(baseline.encode('utf-8'))
+    choices, prepared = [], []
+    for ordinal, (grid, combination) in enumerate(training_search._selected_v1(search_request)):
+        choice, raw = training_search._choice(search_request, training_search._binding(training._project(state, 'demo')),
+                                               ordinal, grid, combination)
+        native = deepcopy(choice['stages']['full']['native_request'])
+        native['experiment'].pop('baseline_reference')
+        if profile_selection is not None:
+            native['experiment']['execution']['profile'] = profile_selection
+        checked = training.preview_experiment(state, 'demo', **native)
+        native = checked['plan']['request']
+        choice['stages']['full']['native_request'] = native
+        observed = training.prepare_experiment(state, 'demo', **native,
+            expected_revision=state.project('demo')['revision'], preview_sha256=checked['preview_sha256'])
+        ident = native['experiment']['experiment_id']
+        manifest = checked['plan']['files']['training/manifests/' + ident + '.json'].encode()
+        prepared.append({'experiment_id': ident, 'manifest_sha256': _sha(manifest), 'status': observed['status']})
+        choices.append(choice)
+        (directory / choice['configuration']['path']).write_bytes(raw)
+    preview = {'plan': {'choices': choices}}
+    published = {'experiments': prepared}
     assert not configuration_source['markers'].exists()
     assert not (state.root / 'training-cycles').exists()
     return {'state': state, 'definition': definition, 'runtime': runtime, 'prefix': prefix,
             'request': search_request, 'preview': preview, 'prepared': published, 'directory': directory,
             'markers': configuration_source['markers'], 'service': service, 'tmp_path': tmp_path,
-            'baseline_record': baseline_path.read_bytes(), 'screen_plan': configuration_source['screen_plan']}
+            'baseline_record': baseline_path.read_bytes(), 'screen_plan': configuration_source['screen_plan'],
+            'profile_policy': profile_selection,
+            'declared_runner_seconds': json.loads((Path(definition['execution']['config_directory']) / 'training-runners/trusted.json').read_bytes())['timeout_seconds']}
 
 
 def _execute_search(item, *, limit=None, lose_reply=False, wait_completion=False):
     import ergora.training.cycles as training_cycles
 
     state, definition, runtime = item['state'], item['definition'], item['runtime']
-    request = {'schema_version': 1, 'budget': item['request']['budget'],
+    request = {'schema_version': 2, 'execution_scope': 'ordered-selected-native-once',
+               'budget': item['request']['budget'],
                'candidates': [{'experiment_id': result['experiment_id'], 'manifest_sha256': result['manifest_sha256'],
                                'change': 'External JSON batch/chunk grouping',
                                'next_bottleneck': 'CPU fixture only; no GPU or model-quality claim'}
-                              for result in item['prepared']['experiments']]}
+                              for result in _full_preparations(item['prepared'])]}
     cycle_id = item.get('cycle_id', 'search')
     source = item['tmp_path'] / (cycle_id + '-cycle-input')
     selected = training_cycles.create(state, 'demo', request, source)
@@ -777,7 +957,7 @@ def _execute_search(item, *, limit=None, lose_reply=False, wait_completion=False
     authorization_path = state.root / ('training-cycles/demo/' + cycle_id + '/authorization.json')
     original_clock = authorization_path.read_bytes()
     results = []
-    for result in item['prepared']['experiments'][:limit]:
+    for result in _full_preparations(item['prepared'])[:limit]:
         ident = result['experiment_id']
         record = item['tmp_path'] / (ident + '-service.json')
         item['service'][0]('accepted', budget_scenario='configuration-full', record_path=record)
@@ -805,7 +985,11 @@ def _execute_search(item, *, limit=None, lose_reply=False, wait_completion=False
             else:
                 execute()
             import time
-            until = time.monotonic() + 30
+            from ergora.runtime.budget_clock import remaining
+            original_authorization = json.loads(original_clock)
+            # The observation includes the original cleanup reserve and never creates/renews a budget.
+            until = time.monotonic() + max(0, remaining(original_authorization['clock'],
+                original_authorization['policy']['wall_seconds'], 0))
             while not (job / 'managed-execution/stopped.json').exists() and time.monotonic() < until:
                 time.sleep(.03)
             assert (job / 'managed-execution/stopped.json').is_file(), 'The original supervisor must reap its executor'
@@ -813,7 +997,8 @@ def _execute_search(item, *, limit=None, lose_reply=False, wait_completion=False
             final = None
             if wait_completion:
                 final_path = runtime / f'ergora/training-submissions/{ident}.budget/final.json'
-                until = time.monotonic() + 20
+                until = time.monotonic() + max(0, remaining(original_authorization['clock'],
+                    original_authorization['policy']['wall_seconds'], 0))
                 while not final_path.exists() and time.monotonic() < until:
                     time.sleep(.03)
                 assert final_path.is_file(), 'Original budget monitor must collect the typed terminal result'
@@ -851,6 +1036,10 @@ def _prepare_cpu_screens(item, cases):
         plan['resources'][0]['required'] = case.get('fault') == 'screen-required-resource'
         draft = {**source_manifest, 'experiment_id': ident, 'candidate_config_sha256': _sha(candidate_raw),
                  'baseline_reference': selector, 'execution': {'operation': 'training-screen-v1', 'plan': plan}}
+        if item['request'].get('cpu_execution_contract') is not None:
+            draft['execution']['cpu_contract'] = item['request']['cpu_execution_contract']
+        if item.get('profile_policy') is not None:
+            draft['execution']['profile'] = item['profile_policy']
         materials = {'format': 'json-v1',
             'baseline': {'utf8': item['request']['baseline_configuration']['utf8'],
                          'sha256': item['request']['baseline_configuration']['sha256']},
@@ -877,10 +1066,11 @@ def _assert_screen_is_not_full(item, result):
     installation = Path(item['definition']['execution']['installation'])
     environment = {**os.environ, 'AGENTFLOW_CONFIG_DIR': item['definition']['execution']['config_directory'],
         'AGENTFLOW_STATE_DIR': item['definition']['execution']['state_directory'],
-        'PYTHONPATH': os.pathsep.join(map(str, (Path(ergora.__file__).parent.parent,
+        'PYTHONPATH': os.pathsep.join(map(str, (IMPORT_ROOT,
             installation / 'local', installation / 'upstream/platform', installation / 'upstream/temporal', installation / 'upstream')))}
     program = '''import asyncio,hashlib,json,sys
 from copy import deepcopy
+from fractions import Fraction
 from pathlib import Path
 from agent_platform import training
 from agent_platform.core import Blocked
@@ -961,13 +1151,14 @@ def test_typed_screen_runs_only_two_candidate_windows_against_the_original_cpu_r
     item = _prepare_cpu_screens(search_execution, [{'global_batch': 24}, {'global_batch': 48}])
     import ergora.training.cycles as training_cycles
 
-    selection = {'schema_version': 1, 'budget': item['request']['budget'], 'candidates': [
+    selection = {'schema_version': 2, 'execution_scope': 'ordered-selected-native-once',
+                 'budget': item['request']['budget'], 'candidates': [
         {'experiment_id': prepared['experiment_id'], 'manifest_sha256': prepared['manifest_sha256'],
          'change': 'CPU screen only', 'next_bottleneck': 'No full verification or release authorized'}
         for prepared in item['prepared']['experiments']]}
     controller_input = item['tmp_path'] / 'blocked-controller-input'
     packet = training_cycles.create(item['state'], 'demo', selection, controller_input)
-    with pytest.raises(ValueError, match='Controller execution unavailable for screen'):
+    with pytest.raises(ValueError, match='Full controller scope requires complete original full admissions'):
         training_cycles.authorize_controller(item['state'], 'demo', 'blocked-controller', controller_input,
             packet['sha256'], item['state'].project('demo')['revision'], confirm=True, execute_selected=True)
     assert not (item['state'].root / 'training-cycles/demo/blocked-controller').exists()
@@ -1267,9 +1458,9 @@ def test_baseline_reference_is_consumed_by_two_complete_independent_cpu_runs(sea
     extension_marker = item['tmp_path'] / 'historical-current-coverage-extension.json'
     extension = f'''import json
 from pathlib import Path
-import ergora.training.execution_protocol as protocol
 from ergora._paths import PACKAGE_ROOT
-name='training/search.py'
+import ergora.training.execution_protocol as protocol
+name='interfaces/web.py'
 assert name not in protocol.GATE_SOURCES and (PACKAGE_ROOT / name).is_file()
 before=list(protocol.GATE_SOURCES)
 protocol.GATE_SOURCES=(*protocol.GATE_SOURCES,name)
@@ -1289,7 +1480,7 @@ Path({str(extension_marker)!r}).write_text(json.dumps({{'before':before,'after':
     assert len(extended_readers) == 1, 'The coverage extension must reach the actual training reader child'
     assert extension_marker.is_file(), 'The training reader child must record its actual coverage extension'
     extended = json.loads(extension_marker.read_bytes())
-    assert extended['after'] == [*extended['before'], 'training/search.py']
+    assert extended['after'] == [*extended['before'], 'interfaces/web.py']
     source_output = source['job'] / 'run-output'
     source_comparison = json.loads((source_output / 'comparison-input.json').read_bytes())
     seen_runs = {pair[arm]['run_id'] for pair in source_comparison['pairs'] for arm in ('baseline', 'candidate')}
@@ -1493,7 +1684,12 @@ def test_actual_process_resource_soft_limit_preserves_other_reference_dimensions
 
 
 def test_source_callbacks_do_not_declare_reference_support(search_input, configuration_source):
-    state, _, runtime, _, request = search_input
+    state, definition, runtime, _, request = search_input
+    runner_path = Path(definition['execution']['config_directory']) / 'training-runners/trusted.json'
+    runner = json.loads(runner_path.read_bytes())
+    runner['configuration_readback']['baseline_reference_protocol'] = None
+    runner['configuration_readback']['screen'] = None
+    runner_path.write_text(json.dumps(runner) + '\n')
     request['experiment_template']['baseline_reference'] = {
         'experiment_id': 'alpha', 'evidence_sha256': 'a' * 64, 'reference_sha256': 'b' * 64}
     with pytest.raises(ValueError, match='[Bb]aseline.reference|[Pp]rotocol'):
@@ -1620,7 +1816,7 @@ def test_reference_receipt_raw_durability_and_cached_windows_fail_in_managed_con
             assert mutation['before_sha256'] != mutation['after_sha256']
         if fault == 'reference-current-coverage-extension':
             injected = json.loads((item['markers'] / (fault + '.jsonl')).read_text().splitlines()[-1])
-            assert injected['after'] == [*injected['before'], 'training/search.py']
+            assert injected['after'] == [*injected['before'], 'interfaces/web.py']
             assert injected['managed'] == {name + '_sha256': observed['record_sha256'][name]
                                           for name in ('request', 'launch', 'attempt', 'ack')}
             assert 'Current execution source coverage is incomplete or unsupported' in (job / 'run-output/execution.log').read_text()
@@ -1719,8 +1915,8 @@ def test_prepared_intent_directory_sync_precedes_all_five_native_outputs_and_res
     state, _, runtime, _, request = search_input
     preview = training_search.preview(state, 'demo', request)
     choice = preview['plan']['choices'][0]
-    ident = choice['experiment_id']
-    assert len(choice['native_plan']['files']) == 5
+    ident = choice['stages']['screen']['experiment_id']
+    assert len(choice['stages']['screen']['native_plan']['files']) == 5
     trace = tmp_path / 'prepared-intent-sync.jsonl'
     directory = tmp_path / 'prepared-inputs'
     stop_after(sync_failure='parent', trace=trace, ident=ident)
@@ -1728,7 +1924,7 @@ def test_prepared_intent_directory_sync_precedes_all_five_native_outputs_and_res
         _prepare(state, request, preview, directory)
     original = (runtime / f'ergora/training-preparations/{ident}.intent.json').read_bytes()
     assert training_search.read(directory)['plan'] == preview['plan']
-    assert not any((runtime / name).exists() for name in choice['native_plan']['files'])
+    assert not any((runtime / name).exists() for name in choice['stages']['screen']['native_plan']['files'])
     events = [json.loads(line) for line in trace.read_text().splitlines()]
     assert events and not any(event['event'] == 'native-output-call' for event in events)
     assert not configuration_source['markers'].exists()
@@ -1737,9 +1933,9 @@ def test_prepared_intent_directory_sync_precedes_all_five_native_outputs_and_res
     restored = _prepare(state, request, preview, directory)
     assert restored['status'] == 'prepared'
     assert restored['experiments'][0]['experiment_id'] == ident
-    assert restored['experiments'][0]['intent_sha256'] == choice['native_preview_sha256']
+    assert restored['experiments'][0]['confirmed_preview_sha256'] == choice['stages']['screen']['native_preview_sha256']
     assert (runtime / f'ergora/training-preparations/{ident}.intent.json').read_bytes() == original
-    for relative, raw in choice['native_plan']['files'].items():
+    for relative, raw in choice['stages']['screen']['native_plan']['files'].items():
         assert (runtime / relative).read_bytes() == raw.encode('utf-8')
     assert not configuration_source['markers'].exists()
     assert not (state.root / 'training-cycles').exists()
@@ -1789,3 +1985,414 @@ def test_prepared_receipt_readback_confirms_the_actual_inode_before_work(search_
     assert 'changed during durable readback' in (job / 'run-output/execution.log').read_text()
     for name in ('supervisor', 'executor'):
         assert_budget_process_stopped(observed['records']['attempt'][name])
+
+
+def test_offline_search_rejects_same_byte_inode_replacement_during_material_read(
+        search_input, tmp_path, monkeypatch):
+    state, _, runtime, _, request = search_input
+    preview = training_search.preview(state, 'demo', request)
+    directory = tmp_path / 'inode-search'
+    _prepare(state, request, preview, directory)
+    choice = preview['plan']['choices'][0]
+    target = directory / choice['configuration']['path']
+    raw = target.read_bytes()
+    native_before = _files(runtime)
+    original = handoff.evidence
+    changed = []
+    def replace_after_read(path, *args, **kwargs):
+        result = original(path, *args, **kwargs)
+        if Path(path) == directory / 'materials/preparation.zip' and not changed:
+            before = target.stat().st_ino
+            replacement = target.with_name('replacement.json')
+            replacement.write_bytes(raw)
+            os.replace(replacement, target)
+            changed.append((before, target.stat().st_ino))
+        return result
+    monkeypatch.setattr(handoff, 'evidence', replace_after_read)
+    with pytest.raises(ValueError, match='changed during complete offline read'):
+        training_search.read(directory)
+    assert changed[0][0] != changed[0][1] and target.read_bytes() == raw
+    assert _files(runtime) == native_before
+
+
+def test_logical_trial_budget_produces_64_distinct_stage_ids_at_the_maximum_search_id(search_request):
+    request = deepcopy(search_request)
+    request['search_id'] = 'x' * 40
+    request['selection']['max_trials'] = 32
+    request['dimensions'][0]['values'] = list(range(1, 33))
+    request, _, cardinality = training_search._request(request)
+    project = {'id': 'demo', 'repo': '/frozen/project', 'revision': 7, 'registration_sha256': 'a' * 64}
+    choices = [training_search._choice(request, project, ordinal, grid, combination)[0]
+        for ordinal, (grid, combination) in enumerate(training_search._selected_v1(request))]
+    stages = _stages({'choices': choices})
+    assert cardinality == len(choices) == 32 and len(stages) == 64
+    assert len({stage['experiment_id'] for stage in stages}) == 64
+    assert all(len(stage['experiment_id']) <= 80 for stage in stages)
+    projected = training_search._legacy_performance_policy_v1(request)
+    assert projected['statistics']['confidence'] == float(1 - Fraction(12, 100) / (32 * 2))
+    for choice in choices:
+        screen, full = (choice['stages'][name] for name in ('screen', 'full'))
+        assert screen['native_request']['experiment']['execution']['plan']['verification_experiment_id'] == full['experiment_id']
+        assert full['native_request']['experiment']['execution'] == {'operation': 'full-verify'}
+        for stage in (screen, full):
+            assert stage['native_request']['experiment']['performance_policy'] == projected
+            assert stage['native_request']['configuration_materials']['candidate']['sha256'] == choice['configuration']['sha256']
+    assert request['selection']['max_trials'] == 32
+
+
+def test_complete_preparation_handoff_retains_artifact_bytes_and_rejects_wrong_scope(
+        search_request, tmp_path, monkeypatch):
+    request = deepcopy(search_request)
+    index = _bind_preparation(request, tmp_path, monkeypatch)
+    materials = training_search._material_selection(request)
+    assert materials['index'] == index
+    assert len(materials['artifacts']) == 3
+    assert all(item['bytes'] == len(item['text'].encode('utf-8')) for item in materials['artifacts'])
+    training_search._check_material_scope(request, {'id': 'demo'}, materials)
+    for field in ('baseline_commit', 'candidate_commit'):
+        changed = deepcopy(request)
+        changed['experiment_template'][field] = 'f' * 40
+        with pytest.raises(ValueError, match='reviewed source scope'):
+            training_search._check_material_scope(changed, {'id': 'demo'}, materials)
+    changed = deepcopy(request)
+    changed['preparation_materials']['artifacts']['inventory'] = changed['preparation_materials']['artifacts']['plan']
+    with pytest.raises(ValueError, match='wrong original stage'):
+        training_search._material_selection(changed)
+    packet = Path(request['preparation_materials']['packet']['path'])
+    raw = packet.read_bytes()
+    packet.write_bytes(raw + b'\n')
+    with pytest.raises(ValueError, match='expected SHA256'):
+        training_search._material_selection(request)
+
+
+def test_preparation_reads_all_original_declared_outputs_and_rejects_audit_anchors(
+        search_request, tmp_path, monkeypatch):
+    request = deepcopy(search_request)
+    index = _bind_preparation(request, tmp_path, monkeypatch)
+    with zipfile.ZipFile(request['preparation_materials']['packet']['path']) as archive:
+        blobs = {item['sha256']: archive.read('blobs/' + item['sha256'])
+                 for job in index['jobs'] for item in job['receipt']['artifacts']}
+    profile = index['contract']['spec']['profile']
+    extras = {'inventory': ['behavior-baseline'], 'plan': ['ownership-map', 'rollback-plan']}
+    for job in index['jobs']:
+        stage = job['stage']
+        profile['artifacts_by_stage'][stage].extend(extras[stage])
+        for name in [*extras[stage], 'audit']:
+            raw = (name + ': distinct original auxiliary source body.\n').encode()
+            digest = _sha(raw)
+            blobs[digest] = raw
+            job['receipt']['artifacts'].append({'name': name,
+                'path': 'analysis-task/' + stage + '-' + name + '.txt', 'sha256': digest})
+        job['receipt_sha256'] = _canonical_sha(job['receipt'])
+    spec = index['contract']['spec']
+    spec['profile_sha256'] = _canonical_sha(profile)
+    index['profile_sha256'] = spec['profile_sha256']
+    index['contract']['spec_sha256'] = _canonical_sha(spec)
+    index['contract']['original_input_sha256'] = _canonical_sha(spec)
+    packet = tmp_path / 'complete-original.zip'
+    saved = handoff.create(index, lambda artifact: blobs[artifact['sha256']], packet)
+    request['preparation_materials']['packet'] = {'path': str(packet), 'sha256': saved['sha256']}
+    # An auxiliary declared output locates the producer; it cannot hide the
+    # producer's required inventory/plan bodies from the analysis materials.
+    request['preparation_materials']['artifacts']['inventory']['name'] = 'behavior-baseline'
+    request['preparation_materials']['artifacts']['plan']['name'] = 'rollback-plan'
+    materials, raw = training_search._capture_materials(None, {'id': 'demo'}, request)
+    expected = {(job['job_id'], name) for job in index['jobs']
+                for name in profile['artifacts_by_stage'][job['stage']]}
+    assert {(item['job_id'], item['artifact']['name']) for item in materials['artifacts']} == expected
+    assert all(item['text'].encode() == blobs[item['artifact']['sha256']] for item in materials['artifacts'])
+    assert raw == packet.read_bytes()
+    for role in ('inventory', 'plan'):
+        invalid = deepcopy(request)
+        invalid['preparation_materials']['artifacts'][role]['name'] = 'audit'
+        with pytest.raises(ValueError, match='outside its original declared outputs'):
+            training_search._capture_materials(None, {'id': 'demo'}, invalid)
+
+
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('search_execution', [{'baseline_reference_support': True, 'screen_support': True,
+    'profile_support': True, 'profile_policy': _profile_policy()}], indirect=True)
+def test_original_baseline_profile_is_frozen_once_and_two_screens_use_separate_actual_windows(search_execution, monkeypatch):
+    from ergora.training.runtime.evidence import profile_bundle, validate_trial_diagnostics
+
+    item = _prepare_cpu_screens(search_execution, [{'global_batch': 24}, {'global_batch': 48}])
+    policy = item['profile_policy']
+    baseline = item['reference_saved']
+    assert validate_trial_diagnostics(baseline['diagnostics'], policy)['profile_sha256']
+    baseline_output = item['reference_source']['job'] / 'run-output'
+    baseline_raw = (baseline_output / 'profile-receipt.json').read_bytes()
+    baseline_capture = profile_bundle(baseline_output, policy)
+    assert baseline_capture['status'] == 'complete'
+    results = _execute_search(item, wait_completion=True)
+    seen = set()
+    for result in results:
+        output = result['job'] / 'run-output'
+        diagnostics = profile_bundle(output, policy)
+        assert diagnostics['status'] == 'complete'
+        assert diagnostics['receipt']['phase'] == 'screen'
+        validate_trial_diagnostics(diagnostics, policy)
+        report = json.loads((output / 'screen-result.json').read_bytes())
+        assert report['throughput'] == report['windows'][0]['effective_work'] / report['windows'][0]['elapsed_seconds']
+        unprofiled = {window['provenance'][key] for window in report['windows'] for key in ('window_id', 'run_id')}
+        for capture in diagnostics['receipt']['captures']:
+            selected = capture['selection']
+            assert selected['window_id'] not in unprofiled and selected['run_id'] not in unprofiled
+            assert selected['window_id'] not in seen and selected['run_id'] not in seen
+            seen.update((selected['window_id'], selected['run_id']))
+            for key in ('raw_ref', 'derived_ref'):
+                ref = capture[key]
+                raw = (output / ref['path']).read_bytes()
+                assert ref['sha256'] == _sha(raw) and ref['bytes'] == len(raw)
+        assert result['execution']['durable_stop_confirmed'] is True
+        assert result['execution']['executor_stop_confirmed'] is True
+        assert (baseline_output / 'profile-receipt.json').read_bytes() == baseline_raw
+    markers = [json.loads(line) for line in (item['markers'] / 'profile.jsonl').read_text().splitlines()]
+    assert [entry['phase'] for entry in markers] == ['baseline', 'screen', 'screen']
+    assert all(entry['source_samples'] == policy['window']['work'] for entry in markers)
+    assert len({entry['window_id'] for entry in markers}) == len(markers)
+
+    # Current search/cycle preparation consumes the same original accepted reference;
+    # no controller birth, model slot or full execution is granted by preparation.
+    import ergora.training.cycles as training_cycles
+    import ergora.definitions.workflows as workflows
+    request = deepcopy(item['request'])
+    request['search_id'] = 'profile-bound-search'
+    request['experiment_template']['baseline_reference'] = item['reference_selector']
+    source_directory = item['tmp_path'] / 'current-search-source'
+    source_directory.mkdir()
+    _bind_preparation(request, source_directory, monkeypatch)
+    preview = training_search.preview(item['state'], 'demo', request)
+    directory = item['tmp_path'] / 'current-search-input'
+    prepared = _prepare(item['state'], request, preview, directory)
+    assert len(prepared['experiments']) == 2 * len(preview['plan']['choices'])
+    installed = workflows.install_preset(item['state'], 'optimization-profiling')
+    selected = installed['root']
+    root = workflows.get(item['state'], selected['id'], selected['version'])['definition']
+    grant = {'schema_version': 1, 'permissions': root['permissions'], 'limits': root['limits']}
+    manifest = workflows.prepare_manifest(item['state'].root, root['id'], root['version'], grant,
+                                         item['tmp_path'] / 'analyst-manifest')
+    frozen = workflows.inspect_manifest(Path(manifest['path']), material=True)
+    leaf = next(instance for instance in frozen['composition']['instances']
+                if instance.get('ref', {}).get('id') == 'ergora-performance-analyst')
+    choices = preview['plan']['choices']
+    definition = {'schema_version': 2, 'execution_scope': 'bounded-screen-profile-skip',
+        'candidates': [{'experiment_id': choice['stages']['screen']['experiment_id'],
+            'manifest_sha256': next(stage['manifest_sha256'] for stage in prepared['experiments']
+                if stage['experiment_id'] == choice['stages']['screen']['experiment_id']),
+            'change': 'Frozen configuration ' + choice['variant_id'],
+            'next_bottleneck': 'Fixed readonly screen/profile analysis'} for choice in choices],
+        'budget': request['budget'], 'search': {'directory': str(directory), 'sha256': prepared['sha256']},
+        'historical_failures': [], 'profile_policy': policy, 'resources': {'kind': 'cpu'},
+        'analyst': {'manifest': {'directory': frozen['path'],
+            'preview_sha256': frozen['manifest']['preview_sha256']}, 'instance': leaf['path'],
+            'binding': leaf['backend_request'], 'maximum_seconds': 15, 'mode': 'text-only'}}
+    destination = item['tmp_path'] / 'bounded-cycle-input'
+    cycle = training_cycles.create(item['state'], 'demo', definition, destination)
+    saved = training_cycles.read(destination, sha256=cycle['sha256'])
+    assert len(saved['plan']['admissions']) == len(saved['plan']['stage_map']) == len(choices)
+    assert saved['plan']['search']['preparation_materials']['index']['project'] == 'demo'
+    assert (destination / 'search/search.json').read_bytes() == (directory / 'search.json').read_bytes()
+    assert (destination / 'search/materials/preparation.zip').read_bytes() == (directory / 'materials/preparation.zip').read_bytes()
+    assert saved['plan']['analyst']['definition_id'] == 'ergora-performance-analyst'
+    assert saved['plan']['analyst']['composition'] == frozen['composition']
+    assert not (item['state'].root / 'training-cycles/demo/bounded/authorization.json').exists()
+    assert [json.loads(line)['phase'] for line in (item['markers'] / 'profile.jsonl').read_text().splitlines()] == [
+        'baseline', 'screen', 'screen']
+    # Birth and static intent preparation use the real source authenticator.
+    # Only its original task-evidence service port is substituted by this fixture.
+    task_query = tasks.evidence
+    proofs = []
+    def original_task_evidence(selected_state, project_id, task_id, *, run_id, **options):
+        proofs.append((selected_state.root, project_id, task_id, run_id))
+        return task_query(selected_state, project_id, task_id, run_id=run_id, **options)
+    monkeypatch.setattr(tasks, 'evidence', original_task_evidence)
+    cycle_id = 'profile-bound-ready'
+    authorization_path = item['state'].root / ('training-cycles/demo/' + cycle_id + '/authorization.json')
+    jobs_before = {path.name for path in (item['runtime'] / 'training/jobs').iterdir()}
+    full_id = choices[0]['stages']['full']['experiment_id']
+    drift_evidence = item['tmp_path'] / 'full-admission-drift'
+    drift_evidence.mkdir()
+    rejections = []
+    for label, path in (
+            ('full-manifest', item['runtime'] / ('training/manifests/' + full_id + '.json')),
+            ('full-intent', item['runtime'] / ('ergora/training-preparations/' + full_id + '.intent.json'))):
+        original = path.read_bytes()
+        (drift_evidence / (label + '-original.json')).write_bytes(original)
+        (drift_evidence / (label + '-changed.json')).write_bytes(original + b'\n')
+        bad_id = 'profile-bound-' + label
+        bad_root = item['state'].root / ('training-cycles/demo/' + bad_id)
+        try:
+            # Semantically equal JSON still changes the original raw admission.
+            path.write_bytes(original + b'\n')
+            with pytest.raises(ValueError) as rejected:
+                bad = training_cycles.authorize_controller(item['state'], 'demo', bad_id, destination,
+                    cycle['sha256'], item['state'].project('demo')['revision'], confirm=True, execute_selected=True)
+                training_cycles.prepare_controller(item['state'], 'demo', bad_id,
+                    bad['authorization_sha256'], item['state'].project('demo')['revision'])
+            assert not (bad_root / 'controller/intent.json').exists()
+            rejections.append({'kind': label, 'path': str(path), 'original_sha256': _sha(original),
+                'changed_sha256': _sha(original + b'\n'), 'error': str(rejected.value),
+                'controller_intent_created': False, 'controller_attempt_created': (bad_root / 'controller/attempt.json').exists()})
+            (drift_evidence / 'observations.json').write_text(json.dumps(rejections, indent=2) + '\n')
+        finally:
+            path.write_bytes(original)
+            if (bad_root / 'authorization.json').exists():
+                authorization = json.loads((bad_root / 'authorization.json').read_bytes())
+                stopped = training_cycles.stop_controller(item['state'], 'demo', bad_id, authorization['sha256'],
+                    reason='Full admission drift check complete; retain the original rejected clock')
+                assert stopped['stop_visible'] is True and stopped['stop_durable'] is True
+    try:
+        queries_before_birth = len(proofs)
+        born = training_cycles.authorize_controller(item['state'], 'demo', cycle_id, destination,
+            cycle['sha256'], item['state'].project('demo')['revision'], confirm=True, execute_selected=True)
+        assert born['status'] == 'ready' and born['authorization']['schema_version'] == 5
+        assert len(proofs) > queries_before_birth and all(row[1:] == ('demo', request['preparation_materials']['task_id'],
+                                         request['preparation_materials']['run_id']) for row in proofs)
+        original_clock = authorization_path.read_bytes(), authorization_path.stat().st_ino
+        birth_queries = len(proofs)
+        intent = training_cycles.prepare_controller(item['state'], 'demo', cycle_id,
+            born['authorization_sha256'], item['state'].project('demo')['revision'])
+        assert intent['created'] is True and intent['cycle']['status'] == 'ready'
+        assert len(proofs) > birth_queries
+        assert (authorization_path.read_bytes(), authorization_path.stat().st_ino) == original_clock
+        folder = authorization_path.parent / 'controller'
+        assert (folder / 'intent.json').is_file() and not (folder / 'attempt.json').exists()
+        assert {path.name for path in (item['runtime'] / 'training/jobs').iterdir()} == jobs_before
+        assert not list((item['state'].root / 'runs').glob('*'))
+    finally:
+        if authorization_path.exists():
+            authorization = json.loads(authorization_path.read_bytes())
+            stopped = training_cycles.stop_controller(item['state'], 'demo', cycle_id, authorization['sha256'],
+                reason='Static preparation check complete; no controller dispatch is authorized by this test')
+            assert stopped['stop_visible'] is True and stopped['stop_durable'] is True
+    assert [json.loads(line)['phase'] for line in (item['markers'] / 'profile.jsonl').read_text().splitlines()] == [
+        'baseline', 'screen', 'screen']
+
+
+def _cpu_contract_declaration():
+    from ergora.training.materials import CPU_CONFORMANCE
+    return {'kind': 'training-cpu-execution-declaration', 'operation': 'cpu-diagnostic-v1',
+        'conformance': dict(CPU_CONFORMANCE), 'input_domain': {'type': 'object', 'additionalProperties': False,
+            'required': ['global_batch', 'microbatch', 'strategy'], 'properties': {
+                'global_batch': {'type': 'integer', 'minimum': 1}, 'microbatch': {'type': 'integer', 'minimum': 1},
+                'strategy': {'type': 'string', 'enum': ['redundant-loop', 'closed-form']},
+                'precision': {'type': 'string', 'enum': ['float32']}, 'seed': {'type': 'integer'}, 'fault': {'type': 'null'}}}}
+
+
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+def test_cpu_contract_original_native_preparation_acceptance_without_clock_or_source_callback(search_execution):
+    import ergora.training.materials as materials
+    from ergora.training.runtime.evidence import read_cpu_preparation_admission
+    item = search_execution
+    stage = deepcopy(item['preview']['plan']['choices'][0]['stages']['full']['native_request'])
+    stage['experiment'].pop('baseline_reference', None)
+    stage['experiment']['experiment_id'] = 'typed-cpu-original-preparation'
+    stage['experiment']['execution'] = {'operation': 'full-verify', 'cpu_contract': _cpu_contract_declaration()}
+    checked = training.preview_experiment(item['state'], 'demo', **stage)
+    cpu = checked['plan']['request']['experiment']['execution']['cpu_contract']
+    assert cpu['kind'] == 'training-cpu-execution-contract'
+    assert not (item['runtime'] / 'ergora/training-preparations/typed-cpu-original-preparation.cpu-contract-admission.json').exists()
+    result = training.prepare_experiment(item['state'], 'demo', **stage,
+        expected_revision=item['state'].project('demo')['revision'], preview_sha256=checked['preview_sha256'])
+    assert result['status'] == 'prepared' and result['confirmed_preview_sha256'] == checked['preview_sha256']
+    assert result['intent_sha256'] != checked['preview_sha256']
+    manifest = json.loads((item['runtime'] / 'training/manifests/typed-cpu-original-preparation.json').read_bytes())
+    runner = checked['plan']['sources']['runner']['document']
+    accepted = read_cpu_preparation_admission(item['runtime'], manifest['experiment_id'], manifest, runner)
+    assert accepted['admission'] == materials.make_cpu_preparation_admission(result['intent'])
+    assert any(entry['path'].endswith('.cpu-contract-admission.json') for entry in result['files'])
+    files = _files(item['runtime'])
+    repeated = training.prepare_experiment(item['state'], 'demo', **stage,
+        expected_revision=item['state'].project('demo')['revision'], preview_sha256=checked['preview_sha256'])
+    assert repeated['intent_sha256'] == result['intent_sha256'] and _files(item['runtime']) == files
+    assert not (item['runtime'] / 'training/jobs/typed-cpu-original-preparation').exists()
+    assert not (item['state'].root / 'training-cycles').exists()
+    assert not item['markers'].exists(), 'Static source identity must not import/prepare/run the driver'
+
+
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+def test_cpu_contract_search_preparation_binds_both_stages_without_clock(search_execution, tmp_path):
+    from ergora.training.runtime.evidence import read_cpu_preparation_admission
+    item = search_execution
+    request = deepcopy(item['request'])
+    request.update(search_id='typed-search-original', cpu_execution_contract=_cpu_contract_declaration())
+    preview = training_search.preview(item['state'], 'demo', request)
+    observed = _prepare(item['state'], request, preview, tmp_path / 'typed-search-original')
+    assert observed['status'] == 'prepared'
+    contracts = []
+    for stage in _stages(preview['plan']):
+        ident = stage['experiment_id']
+        contract = stage['native_request']['experiment']['execution']['cpu_contract']
+        contracts.append(contract)
+        assert contract['kind'] == 'training-cpu-execution-contract'
+        manifest = json.loads((item['runtime'] / ('training/manifests/' + ident + '.json')).read_bytes())
+        accepted = read_cpu_preparation_admission(item['runtime'], ident, manifest, stage['native_plan']['sources']['runner']['document'])
+        assert accepted['contract'] == contract
+        assert accepted['preview_sha256'] == stage['native_preview_sha256']
+        assert accepted['intent_sha256'] != accepted['preview_sha256']
+        assert not (item['runtime'] / ('training/jobs/' + ident)).exists()
+    assert contracts and all(contract == contracts[0] for contract in contracts)
+    assert not (item['state'].root / 'training-cycles').exists() and not item['markers'].exists()
+
+
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('failure', ['cpu-admission-link', 'cpu-admission-file', 'cpu-admission-parent', 'cpu-admission-root'])
+def test_cpu_contract_acceptance_partial_durability_recovers_same_original_intent(search_execution, stop_after, failure):
+    from ergora.training.materials import validate_preparation_intent
+    item = search_execution
+    stage = deepcopy(item['preview']['plan']['choices'][0]['stages']['full']['native_request'])
+    stage['experiment'].pop('baseline_reference', None)
+    ident = 'typed-cpu-partial-' + failure.removeprefix('cpu-admission-')
+    stage['experiment'].update(experiment_id=ident, execution={'operation': 'full-verify', 'cpu_contract': _cpu_contract_declaration()})
+    checked = training.preview_experiment(item['state'], 'demo', **stage)
+    stop_after(sync_failure=failure, ident=ident)
+    with pytest.raises(ValueError, match='original CPU acceptance'):
+        training.prepare_experiment(item['state'], 'demo', **stage,
+            expected_revision=item['state'].project('demo')['revision'], preview_sha256=checked['preview_sha256'])
+    intent_path = item['runtime'] / ('ergora/training-preparations/' + ident + '.intent.json')
+    admission_path = intent_path.with_name(ident + '.cpu-contract-admission.json')
+    original = intent_path.read_bytes()
+    checked_intent = validate_preparation_intent(json.loads(original))
+    assert checked_intent['preview_sha256'] == checked['preview_sha256']
+    admission = (admission_path.read_bytes(), admission_path.stat().st_ino) if admission_path.exists() else None
+    assert not any((item['runtime'] / name).exists() for name in checked['plan']['files'])
+    stop_after()
+    recovered = training.resume_prepare(item['state'], 'demo', ident, item['state'].project('demo')['revision'], checked_intent['intent_sha256'])
+    assert recovered['status'] == 'prepared' and recovered['intent_sha256'] == checked_intent['intent_sha256']
+    assert intent_path.read_bytes() == original
+    if admission is not None:
+        assert admission_path.read_bytes() == admission[0] and admission_path.stat().st_ino == admission[1]
+    assert not item['markers'].exists()
+    assert not (item['state'].root / 'training-cycles').exists()
+    assert not (item['runtime'] / 'training/jobs' / ident).exists()
+
+
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+def test_cpu_contract_missing_acceptance_cannot_fill_after_unknown_auth_namespace(search_execution, stop_after):
+    from ergora.training.materials import validate_preparation_intent
+    item = search_execution
+    stage = deepcopy(item['preview']['plan']['choices'][0]['stages']['full']['native_request'])
+    stage['experiment'].pop('baseline_reference', None)
+    ident = 'typed-cpu-no-late-acceptance'
+    stage['experiment'].update(experiment_id=ident, execution={'operation': 'full-verify', 'cpu_contract': _cpu_contract_declaration()})
+    preview = training.preview_experiment(item['state'], 'demo', **stage)
+    stop_after(0, ident=ident)
+    with pytest.raises(ValueError, match='status 73'):
+        training.prepare_experiment(item['state'], 'demo', **stage,
+            expected_revision=item['state'].project('demo')['revision'], preview_sha256=preview['preview_sha256'])
+    stop_after()
+    intent = item['runtime'] / ('ergora/training-preparations/' + ident + '.intent.json')
+    original = intent.read_bytes()
+    token = validate_preparation_intent(json.loads(original))['intent_sha256']
+    # Malformed existing catalog data is an unknown opportunity, not a clock created by this test.
+    busy = item['state'].root / 'training-cycles/demo/synthetic-opportunity'
+    busy.mkdir(parents=True)
+    (busy / 'authorization.json').write_text('{}')
+    with pytest.raises(ValueError):
+        training.resume_prepare(item['state'], 'demo', ident, item['state'].project('demo')['revision'], token)
+    admission = intent.with_name(ident + '.cpu-contract-admission.json')
+    assert not admission.exists() and intent.read_bytes() == original
+    (busy / 'authorization.json').unlink()
+    busy.rmdir()
+    assert training.resume_prepare(item['state'], 'demo', ident, item['state'].project('demo')['revision'], token)['status'] == 'prepared'
+    assert intent.read_bytes() == original and not item['markers'].exists()

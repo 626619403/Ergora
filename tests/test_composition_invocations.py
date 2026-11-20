@@ -13,12 +13,14 @@ import pytest
 import ergora.agents.backends as agent_backends
 import ergora.definitions.agents as agent_definitions
 import ergora.agents.runs as agent_runs
+import ergora.agents.native_sources as native_sources
 import ergora.agents.invocation as agents
 import ergora.configuration.projects as projects
 import ergora.definitions.workflows as workflows
 from ergora.runtime import processes
 from ergora.interfaces.cli import main
 from ergora.storage.state import State
+from ergora._paths import IMPORT_ROOT
 
 
 EXAMPLES = Path(__file__).resolve().parents[1] / "examples"
@@ -88,6 +90,452 @@ def prepared(tmp_path):
                                 "Review the supplied candidate. 核对结构。\r\n".encode(), target, 30000)
         return state, repo, target
     return build
+
+
+@pytest.fixture
+def cycle_analysis_case(prepared, tmp_path, monkeypatch):
+    from ergora.runtime import budget_clock
+    import ergora.training.cycles as training_cycles
+    state, _, original = prepared(binding={'tool': 'codex', 'model': 'gpt-6.1-sol', 'reasoning_effort': 'max'})
+    source = tmp_path / 'analysis-input'
+    packet = {'schema_version': 1, 'kind': 'training-round-analysis-packet', 'gaps': [], 'profile': 'controlled packet'}
+    raw = json.dumps(packet, sort_keys=True, ensure_ascii=False, separators=(',', ':')).encode()
+    request = workflows.inspect_input(original)['request']
+    workflows.prepare_input(state.root, 'structure-review', '1.0.0', 'root/review', request['grant'], raw, source, 30000)
+    saved = workflows.inspect_input(source, material=True)
+    leaf = next(item for item in saved['composition']['instances'] if item['path'] == saved['request']['instance'])
+    slot = {'authorization_sha256': 'a' * 64, 'ordinal': 0, 'phase': 'screen',
+            'packet_sha256': hashlib.sha256(raw).hexdigest(), 'definition_digest': leaf['ref']['digest'],
+            'binding': leaf['backend_request']}
+    slot_raw = json.dumps(slot, sort_keys=True, ensure_ascii=False, separators=(',', ':')).encode()
+    native_state = tmp_path / 'native-state'
+    (native_state / 'ergora/training-submissions').mkdir(parents=True)
+    boot, ticks = budget_clock._clock()
+    preparation = {'schema_version': 1, 'kind': 'training-cycle-analysis-preparation',
+                   'authorization_sha256': slot['authorization_sha256'], 'ordinal': slot['ordinal'], 'phase': slot['phase'],
+                   'operation_id': 'e' * 32, 'boot_id': boot, 'started_ns': ticks}
+    prep_path = tmp_path / 'preparation.json'
+    prep_raw = json.dumps(preparation, sort_keys=True, ensure_ascii=False, separators=(',', ':')).encode()
+    prep_path.write_bytes(prep_raw)
+    authority = {'schema_version': 1, 'kind': 'training-cycle-analysis-authority',
+        'operation': {'identity': {'operation_id': 'e' * 32},
+                      'bootstrap': {'boot_id': boot, 'started_ns': ticks, 'deadline_ns': ticks + 30_000_000_000},
+                      'snapshot': {'candidate_count': 32}}, 'slot': slot,
+        'fixed_run_id': hashlib.sha256(slot_raw).hexdigest()[:32],
+        'input_digest': saved['digest'], 'composition_preview_sha256': request['preview_sha256'],
+        'prompt_sha256': saved['request']['prompt_sha256'], 'packet': packet, 'maximum_seconds': 30, 'mode': 'text-only',
+        'preparation': {'path': str(prep_path), 'sha256': hashlib.sha256(prep_raw).hexdigest(), 'bytes': len(prep_raw)}}
+    calls = []
+
+    def validate(selected_state, project, value, *, prepared):
+        assert selected_state.root == state.root and project == 'demo'
+        assert value == authority and prepared['digest'] == saved['digest']
+        calls.append('authority')
+        return value
+
+    import ergora.training.execution_protocol as training_execution_protocol
+    monkeypatch.setattr(training_execution_protocol, 'resolve_cycle_snapshot', lambda operation: (
+        {'definition': {'candidates': [{'experiment_id': 'screen-' + str(number)} for number in range(32)]}},
+        {'execution': {'state_directory': str(native_state)}}))
+    monkeypatch.setattr(training_cycles, 'validate_analysis_authority', validate, raising=False)
+    monkeypatch.setattr(training_cycles, 'analysis_authority_remaining',
+        lambda selected: 30 - (budget_clock._clock()[1] - ticks) / 1_000_000_000, raising=False)
+    # This fixture substitutes the native model/process port in the test runner;
+    # the actual dedicated subtree owner is exercised in test_agents.
+    monkeypatch.setattr(processes, 'prepare_supervised', lambda: None)
+    monkeypatch.setattr(processes, '_reap_children', lambda: [])
+
+    def model(argv, cwd, output, timeout, stdin, env, **options):
+        calls.append('model')
+        assert options['supervised'] and options['record_lifecycle'] and not options['stop_requested']()
+        folder = agent_runs.cycle_analysis_path(state.root, slot['authorization_sha256'], slot['ordinal'], slot['phase'])
+        assert (folder / 'intent.json').is_file() and (folder / 'attempt.json').is_file()
+        assert timeout <= authority['maximum_seconds'] and stdin == saved['prompt']
+        output.mkdir()
+        owner = processes.identity(os.getpid())
+        cleanup = {'schema_version': 1, 'kind': 'supervised-process-cleanup', 'owner': owner,
+                   'model': {'pid': 123456789, 'start_ticks': '1', 'boot_id': owner['boot_id']},
+                   'model_waited': True, 'returncode': 0, 'descendants': [], 'remaining_children': []}
+        (output / 'process-cleanup.json').write_text(json.dumps(cleanup))
+        (output / 'stdout.txt').write_text('{}\n')
+        Path(argv[argv.index('--output-last-message') + 1]).write_text(json.dumps(
+            {'summary': 'Fixed packet analysis', 'artifacts': {'response': 'Bounded feedback'}, 'decision': 'approve'}))
+        return {'status': 'succeeded', 'returncode': 0, 'output': str(output)}
+
+    monkeypatch.setattr(processes, 'run', model)
+    return state, source, authority, calls
+
+
+@pytest.mark.parametrize('ordinal', [-1, 0, 31])
+def test_cycle_analysis_consumes_one_durable_fixed_run_and_lost_reply_only_inspects(cycle_analysis_case, monkeypatch, ordinal):
+    import ergora.training.cycles as training_cycles
+    state, source, authority, calls = cycle_analysis_case
+    authority['slot'].update(ordinal=ordinal, phase='baseline' if ordinal == -1 else 'screen')
+    prep_path = Path(authority['preparation']['path'])
+    preparation = json.loads(prep_path.read_bytes())
+    preparation.update(ordinal=ordinal, phase=authority['slot']['phase'])
+    prep_raw = json.dumps(preparation, sort_keys=True, ensure_ascii=False, separators=(',', ':')).encode()
+    prep_path.write_bytes(prep_raw)
+    authority['preparation'].update(sha256=hashlib.sha256(prep_raw).hexdigest(), bytes=len(prep_raw))
+    raw = json.dumps(authority['slot'], sort_keys=True, ensure_ascii=False, separators=(',', ':')).encode()
+    authority['fixed_run_id'] = hashlib.sha256(raw).hexdigest()[:32]
+    first = agent_runs.run_cycle_analysis(state, 'demo', source, authority, stop_requested=lambda: False)
+    assert first['outcome'] == 'provisional' and first['cleanup']['model']['state'] == 'reaped'
+    assert first['cleanup']['MCP']['state'] == 'not_requested' and first['receipt_sha256']
+    assert calls.count('model') == 1
+    shutil.rmtree(source)
+    monkeypatch.setattr(training_cycles, 'validate_analysis_authority', lambda *a, **k: pytest.fail('No current readmission after attempt'))
+    monkeypatch.setattr(agents, 'invoke', lambda *a, **k: pytest.fail('No repeat model'))
+    repeated = agent_runs.run_cycle_analysis(State(state.root), 'demo', source, authority, stop_requested=lambda: True)
+    assert repeated == first and calls.count('model') == 1
+
+
+def test_cycle_analysis_pending_attempt_and_changed_packet_never_buy_another_opportunity(cycle_analysis_case, monkeypatch):
+    state, source, authority, calls = cycle_analysis_case
+
+    class LostReply(BaseException):
+        pass
+
+    def lose(*args, **kwargs):
+        raise LostReply()
+
+    monkeypatch.setattr(agent_runs, '_run_prepared', lose)
+    with pytest.raises(LostReply):
+        agent_runs.run_cycle_analysis(state, 'demo', source, authority, stop_requested=lambda: False)
+    folder = agent_runs.cycle_analysis_path(state.root, authority['slot']['authorization_sha256'], 0)
+    original = (folder / 'attempt.json').read_bytes()
+    repeated = agent_runs.run_cycle_analysis(state, 'demo', source, authority, stop_requested=lambda: False)
+    assert repeated['outcome'] == 'needs_reconciliation' and calls.count('model') == 0
+    changed = {**authority, 'packet': {'different': 'packet'}, 'fixed_run_id': 'analysis-' + 'b' * 48}
+    observed = agent_runs.run_cycle_analysis(state, 'demo', source, changed, stop_requested=lambda: False)
+    assert observed['outcome'] == 'needs_reconciliation' and (folder / 'attempt.json').read_bytes() == original
+    assert len(list((state.root / 'runs').glob('.cycle-analysis-*'))) == 2  # original packet and original lock
+
+
+@pytest.mark.parametrize('changed', ['result', 'cleanup', 'cleanup-inode'])
+def test_cycle_analysis_late_artifacts_cannot_replace_original_terminal_receipt(cycle_analysis_case, monkeypatch, changed):
+    state, source, authority, calls = cycle_analysis_case
+    first = agent_runs.run_cycle_analysis(state, 'demo', source, authority, stop_requested=lambda: False)
+    run_id = authority['fixed_run_id']
+    target = state.root / 'runs' / run_id / ('result.json' if changed == 'result' else 'process-cleanup.json')
+    if changed == 'result':
+        target.write_text('{"summary":"late"}')
+    elif changed == 'cleanup':
+        value = json.loads(target.read_text())
+        value['remaining_children'] = ['123']
+        target.write_text(json.dumps(value))
+    else:
+        original_sync = native_sources.sync_directory_chain
+
+        def replace(directory):
+            original_sync(directory)
+            if directory == target.parent:
+                other = target.with_suffix('.late')
+                other.write_bytes(target.read_bytes())
+                other.replace(target)
+
+        monkeypatch.setattr(native_sources, 'sync_directory_chain', replace)
+    observed = agent_runs.run_cycle_analysis(state, 'demo', source, authority, stop_requested=lambda: False)
+    assert first['outcome'] == 'provisional' and observed['outcome'] == 'needs_reconciliation'
+    assert calls.count('model') == 1
+
+
+def test_cycle_analysis_stop_during_input_preparation_consumes_attempt_without_model(cycle_analysis_case, monkeypatch):
+    state, source, authority, calls = cycle_analysis_case
+    original = shutil.copy2
+    stopped = False
+
+    def copy(*args, **kwargs):
+        nonlocal stopped
+        result = original(*args, **kwargs)
+        stopped = True
+        return result
+
+    monkeypatch.setattr(shutil, 'copy2', copy)
+    observed = agent_runs.run_cycle_analysis(state, 'demo', source, authority, stop_requested=lambda: stopped)
+    assert observed['outcome'] == 'failed' and calls.count('model') == 0
+    assert observed['cleanup']['model']['state'] == 'not_started'
+    repeated = agent_runs.run_cycle_analysis(state, 'demo', source, authority, stop_requested=lambda: False)
+    assert repeated == observed and calls.count('model') == 0
+
+
+def test_cycle_analysis_stop_during_final_sync_keeps_original_opportunity_unknown(cycle_analysis_case, monkeypatch):
+    state, source, authority, calls = cycle_analysis_case
+    original = agent_runs._publish_session_packet
+    stopped = False
+
+    def publish(destination, values):
+        nonlocal stopped
+        original(destination, values)
+        if destination.name == 'final':
+            stopped = True
+
+    monkeypatch.setattr(agent_runs, '_publish_session_packet', publish)
+    first = agent_runs.run_cycle_analysis(state, 'demo', source, authority, stop_requested=lambda: stopped)
+    assert first['outcome'] == 'needs_reconciliation' and calls.count('model') == 1
+    repeated = agent_runs.run_cycle_analysis(state, 'demo', source, authority, stop_requested=lambda: False)
+    assert repeated['outcome'] == 'needs_reconciliation' and calls.count('model') == 1
+
+
+@pytest.mark.parametrize('boundary', ['final', 'confirmation-stop', 'confirmation-readback', 'confirmation-eviction'])
+def test_cycle_analysis_original_terminal_confirmation_never_repaired_after_interrupted_publication(
+        cycle_analysis_case, monkeypatch, boundary):
+    state, source, authority, calls = cycle_analysis_case
+    original = agent_runs._publish_session_packet
+    stopped = False
+
+    class LostReply(BaseException):
+        pass
+
+    def publish(destination, values):
+        nonlocal stopped
+        original(destination, values)
+        if destination.name == 'final' and boundary == 'final':
+            raise LostReply()
+        if destination.name == 'confirmation':
+            if boundary == 'confirmation-readback':
+                raise ValueError('Original confirmation readback is unconfirmed')
+            stopped = True
+            if boundary == 'confirmation-eviction':
+                raise LostReply()
+
+    monkeypatch.setattr(agent_runs, '_publish_session_packet', publish)
+    if boundary in ('final', 'confirmation-eviction'):
+        with pytest.raises(LostReply):
+            agent_runs.run_cycle_analysis(state, 'demo', source, authority, stop_requested=lambda: stopped)
+    else:
+        first = agent_runs.run_cycle_analysis(state, 'demo', source, authority, stop_requested=lambda: stopped)
+        assert first['outcome'] == 'needs_reconciliation'
+    repeated = agent_runs.run_cycle_analysis(state, 'demo', source, authority, stop_requested=lambda: False)
+    assert repeated['outcome'] == ('provisional' if boundary == 'confirmation-eviction' else 'needs_reconciliation')
+    assert calls.count('model') == 1
+    folder = agent_runs.cycle_analysis_path(state.root, authority['slot']['authorization_sha256'], 0)
+    assert (folder / 'final').is_dir()
+    if boundary == 'final':
+        assert not (folder / 'confirmation').exists()
+    elif boundary == 'confirmation-eviction':
+        assert (folder / 'confirmation').is_dir() and not (folder / 'interrupted').exists()
+        # H's visible evidence is provisional. Only the original S's normal
+        # H wait/exit + complete operation proof can authorize continuation.
+        operation = authority['operation']['identity']['operation_id']
+        assert not (state.root / 'operations/training-cycles' / operation / 'completion.json').exists()
+    else:
+        assert (folder / 'confirmation').is_dir() and (folder / 'interrupted').is_dir()
+
+
+@pytest.mark.parametrize('changed', ['missing', 'unwaited', 'owner', 'MCP'])
+def test_cycle_analysis_model_success_needs_original_process_and_mcp_cleanup(cycle_analysis_case, monkeypatch, changed):
+    import ergora.agents.mcp as task_mcp
+    state, source, authority, calls = cycle_analysis_case
+    original = processes.run
+    if changed == 'MCP':
+        authority['mode'] = 'task-mcp'
+        monkeypatch.setattr(task_mcp, 'check_available', lambda: None)
+        monkeypatch.setattr(task_mcp, 'freeze', lambda *a, **k: {'sha256': 'f' * 64})
+        monkeypatch.setattr(task_mcp, 'launch', lambda *a, **k: {'command': 'fixed-resources-only'})
+
+        async def preflight(*args, **kwargs):
+            assert not kwargs['stop_requested']() and kwargs['remaining']() <= authority['maximum_seconds']
+            return {'initialized': True}
+
+        monkeypatch.setattr(task_mcp, 'probe', preflight)
+        monkeypatch.setattr(task_mcp, 'verify_native', lambda *a, **k: {'ready': True})
+
+    def model(*args, **kwargs):
+        result = original(*args, **kwargs)
+        path = args[2] / 'process-cleanup.json'
+        if changed == 'missing':
+            path.unlink()
+        elif changed != 'MCP':
+            value = json.loads(path.read_text())
+            if changed == 'unwaited':
+                value['descendants'] = [{'process': {'pid': 123}, 'wait_pid': None, 'wait_status': None}]
+            else:
+                value['owner']['start_ticks'] = 'different-owner'
+            path.write_text(json.dumps(value))
+        return result
+
+    monkeypatch.setattr(processes, 'run', model)
+    observed = agent_runs.run_cycle_analysis(state, 'demo', source, authority, stop_requested=lambda: False)
+    assert calls.count('model') == 1 and observed['outcome'] == 'needs_reconciliation'
+    assert observed['cleanup']['model']['state'] == 'unknown'
+
+
+def test_cycle_analysis_mcp_preparation_consumes_original_stop_and_never_spawns_model(cycle_analysis_case, monkeypatch):
+    import ergora.agents.mcp as task_mcp
+    state, source, authority, calls = cycle_analysis_case
+    authority['mode'] = 'task-mcp'
+    stopped = False
+    monkeypatch.setattr(task_mcp, 'check_available', lambda: None)
+    monkeypatch.setattr(task_mcp, 'freeze', lambda *a, **k: {'sha256': 'f' * 64})
+    monkeypatch.setattr(task_mcp, 'launch', lambda *a, **k: {'command': 'fixed-resources-only'})
+
+    async def preflight(*args, **kwargs):
+        nonlocal stopped
+        assert kwargs['remaining']() <= authority['maximum_seconds']
+        stopped = True
+        assert kwargs['stop_requested']()
+        raise ValueError('Parent stopped in MCP preparation')
+
+    monkeypatch.setattr(task_mcp, 'probe', preflight)
+    observed = agent_runs.run_cycle_analysis(state, 'demo', source, authority, stop_requested=lambda: stopped)
+    assert observed['outcome'] == 'needs_reconciliation' and calls.count('model') == 0
+    repeated = agent_runs.run_cycle_analysis(state, 'demo', source, authority, stop_requested=lambda: False)
+    assert repeated == observed
+
+
+@pytest.mark.parametrize('boundary', ['boot', 'ticks', 'operation'])
+def test_cycle_analysis_never_renews_original_parent_or_slot_allowance(cycle_analysis_case, monkeypatch, boundary):
+    from ergora.runtime import budget_clock
+    import ergora.training.cycles as training_cycles
+    state, source, authority, calls = cycle_analysis_case
+    original_clock = budget_clock._clock
+    original_publish = agent_runs._publish_session_packet
+    consumed = False
+
+    def publish(destination, values):
+        nonlocal consumed
+        original_publish(destination, values)
+        if 'attempt.json' in values:
+            consumed = True
+
+    def clock():
+        boot, ticks = original_clock()
+        if consumed:
+            if boundary == 'boot':
+                boot = 'different-original-boot'
+            elif boundary == 'ticks':
+                ticks += 31_000_000_000
+        return boot, ticks
+
+    monkeypatch.setattr(agent_runs, '_publish_session_packet', publish)
+    monkeypatch.setattr(budget_clock, '_clock', clock)
+    monkeypatch.setattr(budget_clock, 'authorize', lambda *a: pytest.fail('Analysis cannot authorize any new clock'))
+    monkeypatch.setattr(training_cycles, 'analysis_authority_remaining',
+                        lambda value: 0 if consumed and boundary == 'operation' else 30)
+    observed = agent_runs.run_cycle_analysis(state, 'demo', source, authority, stop_requested=lambda: False)
+    assert observed['outcome'] == 'needs_reconciliation' and calls.count('model') == 0
+    assert agent_runs.run_cycle_analysis(state, 'demo', source, authority, stop_requested=lambda: False) == observed
+
+
+def test_cycle_analysis_skip_first_vetoes_durable_attempt_under_original_submission_lock(cycle_analysis_case):
+    import ergora.training.execution_protocol as training_execution_protocol
+    state, source, authority, calls = cycle_analysis_case
+    _, authorization = training_execution_protocol.resolve_cycle_snapshot(authority['operation'])
+    path = training_execution_protocol.skip_decision_path(authorization['execution'], 'screen-0')
+    path.write_bytes(b'Unresolved original skip is still an irreversible veto')
+    with pytest.raises(ValueError, match='skip|Skip'):
+        agent_runs.run_cycle_analysis(state, 'demo', source, authority, stop_requested=lambda: False)
+    folder = agent_runs.cycle_analysis_path(state.root, authority['slot']['authorization_sha256'], 0)
+    assert not folder.exists() and calls.count('model') == 0
+
+
+def test_task_mcp_closed_audit_cannot_certify_a_still_live_original_process():
+    import ergora.agents.mcp as task_mcp
+    identity = processes.identity(os.getpid())
+    events = [{'event': 'started', 'scope_sha256': 'd' * 64, 'pid': os.getpid(), 'identity': identity},
+              {'event': 'closed', 'scope_sha256': 'd' * 64, 'pid': os.getpid()}]
+    raw = ('\n'.join(json.dumps(event) for event in events) + '\n').encode()
+    with pytest.raises(ValueError, match='still alive'):
+        task_mcp.verify_cleanup(raw, 'd' * 64)
+    with pytest.raises(ValueError, match='closed lifecycle'):
+        task_mcp.verify_cleanup(raw.splitlines()[0], 'd' * 64)
+
+
+@pytest.mark.parametrize('stop', [False, True])
+def test_candidate_source_task_mcp_closes_its_actual_original_process(cycle_analysis_case, tmp_path, monkeypatch, stop):
+    import asyncio
+    import importlib.util
+    import ergora.agents.mcp as task_mcp
+
+    if sys.platform != 'linux' or importlib.util.find_spec('mcp') is None:
+        pytest.skip('Explicit Linux source stdio MCP fixture requires task-mcp extra')
+    _, source, _, _ = cycle_analysis_case
+    scope = task_mcp.freeze(workflows.inspect_input(source, material=True), 'f' * 32, tmp_path / 'source-scope.json')
+    audit = tmp_path / 'source-audit.jsonl'
+    # Production launch deliberately uses -I and the installed package. This
+    # controlled source child checks these changed server bytes independently.
+    source_root = str(IMPORT_ROOT)
+    configuration = {'command': sys.executable, 'args': ['-P', '-c',
+        'import sys;from pathlib import Path;sys.path.insert(0,sys.argv[1]);import ergora.agents.mcp as task_mcp;'
+        "assert Path(task_mcp.__file__).resolve()==Path(sys.argv[1])/'ergora/agents/mcp.py';"
+        'task_mcp.serve(Path(sys.argv[2]),sys.argv[3],Path(sys.argv[4]))', source_root, scope['path'], scope['sha256'], str(audit)]}
+
+    def stopped():
+        return stop and audit.exists() and bool(audit.read_bytes())
+
+    if stop:
+        with pytest.raises(ValueError, match='Parent stopped'):
+            asyncio.run(task_mcp.probe(configuration, tmp_path / 'source-stderr.txt',
+                                      stop_requested=stopped, remaining=lambda: 5))
+    else:
+        result = asyncio.run(task_mcp.probe(configuration, tmp_path / 'source-stderr.txt',
+                                          stop_requested=stopped, remaining=lambda: 5))
+        assert result['read_only_probe'] == 'succeeded'
+    cleanup = task_mcp.verify_cleanup(audit.read_bytes(), scope['sha256'])
+    assert cleanup['state'] == 'closed' and cleanup['process']['pid'] != os.getpid()
+
+
+def test_cycle_analysis_fixed_task_mcp_confirms_both_actual_source_lifecycles_once(cycle_analysis_case, tmp_path, monkeypatch):
+    import asyncio
+    import importlib.util
+    import ergora.agents.mcp as task_mcp
+
+    if sys.platform != 'linux' or importlib.util.find_spec('mcp') is None:
+        pytest.skip('Explicit Linux source stdio MCP fixture requires task-mcp extra')
+    state, source, authority, calls = cycle_analysis_case
+    authority['mode'] = 'task-mcp'
+    native = None
+    launches = []
+
+    def launch(scope, audit):
+        nonlocal native
+        native = {'command': sys.executable, 'args': ['-P', '-c',
+            'import sys;from pathlib import Path;sys.path.insert(0,sys.argv[1]);import ergora.agents.mcp as task_mcp;'
+            "assert Path(task_mcp.__file__).resolve()==Path(sys.argv[1])/'ergora/agents/mcp.py';"
+            'task_mcp.serve(Path(sys.argv[2]),sys.argv[3],Path(sys.argv[4]))',
+            str(IMPORT_ROOT), scope['path'], scope['sha256'], str(audit)]}
+        launches.append(audit)
+        return native
+
+    model_port = processes.run
+
+    def model(*args, **kwargs):
+        result = asyncio.run(task_mcp.probe(native, tmp_path / 'source-native-stderr.txt',
+            stop_requested=kwargs['stop_requested'], remaining=lambda: args[3]))
+        assert result['read_only_probe'] == 'succeeded'
+        return model_port(*args, **kwargs)
+
+    monkeypatch.setattr(task_mcp, 'launch', launch)
+    monkeypatch.setattr(processes, 'run', model)
+    observed = agent_runs.run_cycle_analysis(state, 'demo', source, authority, stop_requested=lambda: False)
+    assert observed['outcome'] == 'provisional' and observed['cleanup']['MCP']['state'] == 'closed'
+    preflight, native_process = (observed['cleanup']['MCP'][key]['process'] for key in ('preflight', 'native'))
+    assert preflight != native_process and preflight['pid'] != os.getpid() and native_process['pid'] != os.getpid()
+    assert len(launches) == 2 and calls.count('model') == 1
+    assert agent_runs.run_cycle_analysis(state, 'demo', source, authority, stop_requested=lambda: False) == observed
+    assert len(launches) == 2 and calls.count('model') == 1
+
+
+def test_provisional_analysis_cannot_satisfy_default_native_reader_without_original_s_completion(cycle_analysis_case):
+    import ergora.training.execution_protocol as protocol
+    state, source, authority, calls = cycle_analysis_case
+    observed = agent_runs.run_cycle_analysis(state, 'demo', source, authority, stop_requested=lambda: False)
+    assert observed['outcome'] == 'provisional'
+    raw = Path(observed['receipt']['path']).read_bytes()
+    ref = {**observed['receipt'], 'bytes': len(raw)}
+    material = workflows.inspect_input(source, material=True)
+    plan = {'analyst': {'definition_digest': authority['slot']['definition_digest'],
+                       'binding': authority['slot']['binding'], 'instance': material['request']['instance'],
+                       'composition': material['composition']}}
+    authorization = {'sha256': authority['slot']['authorization_sha256'], 'project': 'demo', 'control_home': str(state.root)}
+    arguments = (ref, plan, authorization, 0, 'screen', authority['slot']['packet_sha256'])
+    own = protocol._analysis_receipt(*arguments, provisional_operation_id=authority['operation']['identity']['operation_id'])
+    assert own['outcome'] == 'provisional'
+    with pytest.raises(FileNotFoundError, match='completion.json'):
+        protocol._analysis_receipt(*arguments)
+    assert agent_runs.run_cycle_analysis(state, 'demo', source, authority, stop_requested=lambda: False) == observed
+    assert calls.count('model') == 1
 
 
 @pytest.mark.parametrize("floor,effort", [("medium", "medium"), ("high", "xhigh"), ("xhigh", "max"), ("max", "ultra")])

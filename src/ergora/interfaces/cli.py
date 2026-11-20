@@ -135,8 +135,42 @@ def parser() -> argparse.ArgumentParser:
         operation.add_argument("--sha256", help="Independently obtained whole-packet SHA256")
         if name == "read":
             operation.add_argument("--selection", type=Path, help="JSON array of exact job_id/name pairs; omitted reads the complete index")
-    retrospective = commands.add_parser("retrospective", help="Prepare, check or export source-bound Skill, memory and workflow proposals; never adopt")
+    retrospective = commands.add_parser("retrospective", help="Propose improvements; explicitly confirm exact project-document edits separately")
     operations = retrospective.add_subparsers(dest="operation", required=True)
+    document = operations.add_parser("prepare-document", help="Freeze an explicit correction and one existing project Markdown document")
+    document.add_argument("project")
+    document.add_argument("--document", required=True, help="Exact project-relative existing Markdown path")
+    document.add_argument("--correction", type=Path, required=True, help="Complete operator-submitted UTF-8 correction")
+    document.add_argument("--source", required=True, help="Source description; imported text is not authenticated human consent")
+    document.add_argument("--revision", type=int, required=True)
+    document.add_argument("--manifest", type=Path, required=True)
+    document.add_argument("--instance", required=True)
+    document.add_argument("--directory", type=Path, required=True)
+    document.add_argument("--max-prompt-bytes", type=int, required=True)
+    document.add_argument("--max-material-bytes", type=int, default=1_048_576)
+    document.add_argument("--parent-preview", type=Path, help="Original preview when editing or superseding a prior proposal")
+    for name in ("check-document", "preview-document"):
+        document = operations.add_parser(name, help="Inspect full document diff offline" if name == "check-document" else
+                                         "Seal one exact candidate at its original control authority; no document write")
+        if name == "preview-document":
+            document.add_argument("project")
+            document.add_argument("--revision", type=int, required=True)
+        document.add_argument("input", type=Path)
+        document.add_argument("result", type=Path)
+        document.add_argument("--input-digest", required=True)
+        document.add_argument("--result-sha256", required=True)
+    for name in ("apply-document", "withdraw-document", "document-status"):
+        document = operations.add_parser(name, help="Use the original authority-owned document candidate; never recreate a missing slot")
+        document.add_argument("project")
+        document.add_argument("preview", type=Path, help="Saved complete sealed preview")
+        if name == "withdraw-document":
+            document.add_argument("--reason", required=True)
+        if name == "apply-document":
+            document.add_argument("--revision", type=int, required=True)
+            document.add_argument("--candidate-digest", required=True)
+            document.add_argument("--base-sha256", required=True)
+            document.add_argument("--scope-sha256", required=True)
+            document.add_argument("--confirm", action="store_true", help="Explicit decision for these exact bytes/scope; not general task agreement")
     for name in ("prepare", "prepare-memory", "prepare-workflow"):
         preparing = operations.add_parser(name, help="Freeze complete evidence and the selected baseline for a proposal-producing leaf")
         preparing.add_argument("project")
@@ -272,6 +306,10 @@ def parser() -> argparse.ArgumentParser:
     show.add_argument("id")
     configuration = operations.add_parser("config", help="Show effective bindings, sources and project revision")
     configuration.add_argument("id")
+    suggestions = operations.add_parser("correction-suggestions", help="Set suggestions for new native sessions; changes the project revision")
+    suggestions.add_argument("id")
+    suggestions.add_argument("--enabled", choices=("true", "false"), required=True)
+    suggestions.add_argument("--revision", type=int, required=True)
     registration = operations.add_parser("register", help="Register a complete project and publish reference configuration")
     registration.add_argument("definition", type=Path)
     registration.add_argument("--revision", type=int, required=True, help="0 for a new project, otherwise its current revision")
@@ -665,8 +703,6 @@ def parser() -> argparse.ArgumentParser:
     cycle.add_argument("--revision", type=int, required=True)
     cycle.add_argument("--confirm", action="store_true")
     cycle.add_argument("--execute-selected", action="store_true", help="Explicitly consent to executing the exact selected candidates")
-    cycle.add_argument("--program-version", type=int, choices=(1, 2, 3), default=2,
-                       help="Freeze this controller version; an existing cycle ID retains its original version")
     for action, description in (
             ('status', 'Read saved parent intent/attempt/receipt without querying or dispatching'),
             ('prepare', 'Freeze the original parent intent without dispatch'),
@@ -997,7 +1033,35 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "retrospective":
             import ergora.improvement.retrospectives as retrospectives
 
-            if args.operation == "check":
+            if args.operation in ("prepare-document", "check-document", "preview-document", "apply-document",
+                                  "withdraw-document", "document-status"):
+                import ergora.improvement.document_corrections as corrections
+
+                if args.operation == "prepare-document":
+                    with args.correction.open('rb') as stream:
+                        raw = stream.read(min(max(args.max_material_bytes, 0), corrections.MAX_MATERIAL_BYTES) + 1)
+                    output = corrections.prepare(State(args.home), args.project, args.document, raw,
+                        source=args.source, revision=args.revision, manifest=args.manifest, instance=args.instance,
+                        destination=args.directory, max_prompt_bytes=args.max_prompt_bytes,
+                        max_material_bytes=args.max_material_bytes,
+                        parent_preview=corrections.read_preview(args.parent_preview) if args.parent_preview else None)
+                elif args.operation == "check-document":
+                    output = corrections.check(args.input, args.result, result_sha256=args.result_sha256,
+                                               input_digest=args.input_digest)
+                elif args.operation == "preview-document":
+                    output = corrections.preview(State(args.home), args.project, args.input, args.result,
+                        revision=args.revision, result_sha256=args.result_sha256, input_digest=args.input_digest)
+                else:
+                    state, value = State(args.home), corrections.read_preview(args.preview)
+                    if args.operation == "apply-document":
+                        output = corrections.apply(state, args.project, value, revision=args.revision,
+                            candidate_digest=args.candidate_digest, base_sha256=args.base_sha256,
+                            scope_sha256=args.scope_sha256, confirm=args.confirm)
+                    elif args.operation == "withdraw-document":
+                        output = corrections.withdraw(state, args.project, value, reason=args.reason)
+                    else:
+                        output = corrections.status(state, args.project, value)
+            elif args.operation == "check":
                 output = retrospectives.check(args.input, args.result, result_sha256=args.result_sha256)
             elif args.operation == "check-memory":
                 output = retrospectives.check_memory(args.input, args.result, result_sha256=args.result_sha256)
@@ -1089,6 +1153,8 @@ def main(argv: list[str] | None = None) -> int:
                 output = state.project(args.id)
             elif args.operation == "config":
                 output = projects.effective_configuration(state.project(args.id))
+            elif args.operation == "correction-suggestions":
+                output = projects.set_correction_suggestions(state, args.id, args.enabled == "true", args.revision)
             elif args.operation == "register":
                 output = registrations.register(state, json.loads(args.definition.read_text(encoding="utf-8-sig")), args.revision)
             elif args.operation == "registration":
@@ -1430,8 +1496,7 @@ def main(argv: list[str] | None = None) -> int:
                 import ergora.training.cycles as training_cycles
 
                 output = training_cycles.authorize_controller(State(args.home), args.project, args.cycle_id, args.directory,
-                    args.sha256, args.revision, confirm=args.confirm, execute_selected=args.execute_selected,
-                    program_version=args.program_version)
+                    args.sha256, args.revision, confirm=args.confirm, execute_selected=args.execute_selected)
             elif args.operation.startswith('cycle-controller-'):
                 import ergora.training.cycles as training_cycles
 

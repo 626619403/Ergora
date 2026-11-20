@@ -50,7 +50,7 @@ def test_native_cli_keeps_the_original_loader_at_each_sdk_use(
     spec.parent.mkdir(parents=True)
     manifest = state / 'training/manifests/alpha.json'
     manifest.parent.mkdir(parents=True)
-    manifest.write_text(json.dumps({'execution': {'operation': 'full-verify'}}))
+    manifest.write_text(json.dumps({'execution': {'operation': 'full-verify'}, 'runner_template_id': 'trusted'}))
     binding = {'experiment_id': 'alpha', 'manifest_sha': hashlib.sha256(manifest.read_bytes()).hexdigest(),
                'candidate_sha': 'b' * 40, 'baseline_sha': 'c' * 40}
     value = {'binding': binding, 'manifest_uri': (tmp_path / 'manifest.json').as_uri()}
@@ -372,22 +372,20 @@ def cycle_sdk_completion():
             async def complete_activity_task(self, completion):
                 completions.append(completion)
 
-        declared = activity._Definition.must_from_callable(fn).name.endswith('.v4')
-        worker = _ActivityWorker(bridge_worker=Bridge, task_queue=source.pop('task_queue', 'ergora-training-cycle-v3' if declared else 'ergora-training-cycle-v2'),
+        worker = _ActivityWorker(bridge_worker=Bridge, task_queue=source.pop('task_queue', 'ergora-training-cycle-v3'),
             activities=[fn], activity_executor=None, shared_state_manager=None, data_converter=converter,
             interceptors=[], metric_meter=MetricMeter.noop, client=SimpleNamespace(namespace='default'),
             encode_headers=False)
         definition = activity._Definition.must_from_callable(fn)
         start = Start(activity_id='candidate-0-1', activity_type=definition.name, attempt=1,
-            workflow_namespace='default', workflow_type='TrainingCycleWorkflowV3' if declared else 'TrainingCycleWorkflowV2',
+            workflow_namespace='default', workflow_type='TrainingCycleWorkflowV3',
             workflow_execution=WorkflowExecution(workflow_id='parent', run_id='parent-run'),
             input=await converter.encode([value]))
-        if declared:
-            from datetime import datetime, timezone
-            start.scheduled_time.FromDatetime(datetime.now(timezone.utc))
-            start.started_time.CopyFrom(start.scheduled_time)
-            start.schedule_to_close_timeout.FromSeconds(sdk_timeout_seconds)
-            start.start_to_close_timeout.FromSeconds(sdk_timeout_seconds)
+        from datetime import datetime, timezone
+        start.scheduled_time.FromDatetime(datetime.now(timezone.utc))
+        start.started_time.CopyFrom(start.scheduled_time)
+        start.schedule_to_close_timeout.FromSeconds(sdk_timeout_seconds)
+        start.start_to_close_timeout.FromSeconds(sdk_timeout_seconds)
         for key, item in source.items():
             if key == 'workflow_execution':
                 start.workflow_execution.CopyFrom(item)
@@ -436,7 +434,7 @@ def cycle_capacity_converter():
 
 
 @pytest.mark.parametrize('source', ['request', 'inspection', 'operation', 'cancel'])
-def test_cycle_v3_wrapper_failure_does_not_export_original_error(cycle_sdk_completion, monkeypatch, source):
+def test_cycle_wrapper_failure_does_not_export_original_error(cycle_sdk_completion, monkeypatch, source):
     if sys.platform != 'linux' and source != 'request':
         pytest.skip('Valid cycle operation construction requires the original Linux boot clock')
     import asyncio
@@ -445,8 +443,8 @@ def test_cycle_v3_wrapper_failure_does_not_export_original_error(cycle_sdk_compl
     from temporalio.exceptions import CancelledError
     import ergora.training.runtime.worker as worker
 
-    activities = worker.create_cycle_activities(SimpleNamespace(namespace='default', data_converter=DataConverter.default), 2)
-    original = {'protocol': 'ergora-training-cycle-v2', 'control_home': '/', 'project': 'demo',
+    activities = worker.create_cycle_activities(SimpleNamespace(namespace='default', data_converter=DataConverter.default))
+    original = {'protocol': 'ergora-training-cycle-v3', 'control_home': '/', 'project': 'demo',
         'cycle_id': 'first', 'input_sha256': 'a' * 64, 'authorization_sha256': 'b' * 64}
     raw = 'Complete original small error marker'
     if source == 'request':
@@ -592,92 +590,28 @@ def test_cycle_execution_sdk_rejects_untrusted_input_before_any_operation(monkey
 
     monkeypatch.setattr(worker, '_CycleOperation', forbidden)
     activities = worker.create_cycle_activities(SimpleNamespace(namespace='default', data_converter=DataConverter.default))
-    original = {'protocol': 'ergora-training-cycle-v1', 'control_home': str(tmp_path),
+    original = {'protocol': 'ergora-training-cycle-v3', 'control_home': str(tmp_path),
         'project': 'demo', 'cycle_id': 'first', 'input_sha256': 'a' * 64, 'authorization_sha256': 'b' * 64}
     for action in ('request-execution-or-observe', 'observe-candidate'):
-        for request, changes in (({'workflow_input': original, 'ordinal': 1}, {}),
-                ({'workflow_input': original, 'ordinal': 0, 'confirm': True}, {}),
-                ({'workflow_input': original | {'source': 'caller'}, 'ordinal': 0}, {}),
-                ({'workflow_input': original, 'ordinal': 0}, {'is_local': True}),
-                ({'workflow_input': original, 'ordinal': 0}, {'namespace': 'foreign'}),
-                ({'workflow_input': original, 'ordinal': 0}, {'workflow_namespace': 'foreign'}),
-                ({'workflow_input': original, 'ordinal': 0}, {'workflow_type': 'OtherWorkflow'}),
-                ({'workflow_input': original, 'ordinal': 0}, {'activity_type': worker.protocol.CYCLE_ACTIVITY_NAMES['start']})):
+        valid = {'workflow_input': original, 'ordinal': 0, 'predecessor': None}
+        for request, changes in (({**valid, 'ordinal': 32}, {}),
+                ({**valid, 'confirm': True}, {}),
+                ({**valid, 'workflow_input': original | {'source': 'caller'}}, {}),
+                (valid, {'is_local': True}), (valid, {'namespace': 'foreign'}),
+                (valid, {'workflow_namespace': 'foreign'}), (valid, {'workflow_type': 'OtherWorkflow'}),
+                (valid, {'activity_type': worker.protocol.CYCLE_ACTIVITY_NAMES['start']})):
             environment = ActivityEnvironment()
             environment.info = replace(environment.info, workflow_id='original', workflow_run_id='run',
-                workflow_type='TrainingCycleWorkflow', workflow_namespace='default', namespace='default',
-                activity_type=worker.protocol.CYCLE_ACTIVITY_NAMES[action], task_queue=worker.protocol.CYCLE_TASK_QUEUE)
+                workflow_type='TrainingCycleWorkflowV3', workflow_namespace='default', namespace='default',
+                activity_type=worker.protocol.CYCLE_ACTIVITY_NAMES[action], task_queue=worker.protocol.CYCLE_TASK_QUEUE_V3)
             environment.info = replace(environment.info, **changes)
             with pytest.raises(ApplicationError) as failed:
                 asyncio.run(environment.run(activities[action], request))
             assert failed.value.type == 'cycle_activity_request_rejected' and failed.value.non_retryable
 
 
-@pytest.mark.skipif(sys.platform != 'linux', reason='SDK work windows use the original Linux boot clock')
-@pytest.mark.parametrize('control,wall,cleanup,attempt', [(30, 900, 170, 1), (2, 900, 170, 1),
-                                                         (30, 4, 2, 1), (30, 900, 170, 2)])
-def test_cycle_execution_sdk_keeps_one_work_window_without_parent_file_reads(
-        monkeypatch, tmp_path, control, wall, cleanup, attempt):
-    pytest.importorskip('temporalio')
-    import asyncio
-    from dataclasses import replace
-    from types import SimpleNamespace
-    from temporalio.converter import DataConverter
-    from temporalio.testing import ActivityEnvironment
-    import ergora.training.runtime.worker as worker
-    import ergora.training.cycles as training_cycles
-    from ergora.runtime import budget_clock
-
-    clock = budget_clock.authorize(wall)
-    authorization = {'schema_version': 2, 'control_home': str(tmp_path), 'project': 'demo', 'cycle_id': 'first',
-                     'input_sha256': 'a' * 64, 'clock': clock}
-    authorization['sha256'] = training_cycles._sha(authorization)
-    snapshot = {'authorization': authorization,
-        'policy': {'wall_seconds': wall, 'cleanup_seconds': cleanup, 'control_timeout_seconds': control},
-        'candidates': [{'ordinal': 0, 'experiment_id': 'alpha', 'manifest_sha256': 'b' * 64}]}
-    workflow_input = {key: authorization[key] for key in ('control_home', 'project', 'cycle_id', 'input_sha256')}
-    workflow_input.update(protocol='ergora-training-cycle-v1', authorization_sha256=authorization['sha256'])
-    seen = []
-
-    async def observed(operation):
-        seen.append(operation)
-        result = {'status': 'observed', 'facts': {'source_operation_id': operation.identity['operation_id'],
-            'budget': {'state': 'valid', 'work_remaining_seconds': wall - cleanup,
-                'total_remaining_seconds': wall, 'control_timeout_seconds': control,
-                'boot_id': clock['boot_id'], 'boottime_ns': clock['boottime_ns'], 'observed_at': clock['authorized_at']}}}
-        if operation.identity['mode'] == 'inspect-controller-activity':
-            result.update(status='inspected', snapshot=snapshot,
-                          controller={'workflow_id': 'original', 'run_id': 'run', 'intent_sha256': 'c' * 64})
-        return operation.observation(result)
-
-    def forbidden(*args, **kwargs):
-        raise AssertionError('SDK parent must not read business records or result refs')
-
-    monkeypatch.setattr(worker._CycleOperation, 'run', observed)
-    monkeypatch.setattr(worker.protocol, 'read_raw', forbidden)
-    monkeypatch.setattr(worker.State, 'project', forbidden)
-    activities = worker.create_cycle_activities(SimpleNamespace(namespace='default', data_converter=DataConverter.default))
-    env = ActivityEnvironment()
-    env.info = replace(env.info, workflow_id='original', workflow_run_id='run', workflow_type='TrainingCycleWorkflow',
-        workflow_namespace='default', namespace='default', task_queue=worker.protocol.CYCLE_TASK_QUEUE, attempt=attempt,
-        activity_type=worker.protocol.CYCLE_ACTIVITY_NAMES['request-execution-or-observe'])
-    envelope = asyncio.run(env.run(activities['request-execution-or-observe'], {'workflow_input': workflow_input, 'ordinal': 0}))
-    cold, ordinary = seen
-    assert ordinary.identity['mode'] == ('request-execution-candidate' if attempt == 1 else 'observe-candidate')
-    original = cold.payload['bootstrap']
-    window = ordinary.payload['bootstrap']
-    assert window['started_ns'] == original['started_ns']
-    assert original['deadline_ns'] - original['started_ns'] == 10_000_000_000
-    assert window['deadline_ns'] == min(original['deadline_ns'], window['started_ns'] + control * 1_000_000_000,
-                                       clock['boottime_ns'] + (wall - cleanup) * 1_000_000_000)
-    assert worker.protocol.cycle_operation_remaining(ordinary.payload) <= min(10, control, wall - cleanup)
-    assert envelope['schema_version'] == 2 and envelope['facts']['source_operation_id'] == ordinary.identity['operation_id']
-
-
-@pytest.mark.parametrize('fault', ['normal-validate', 'stop-validate', 'validate-during-shutdown', 'stop-fatal',
-                                  'v3-normal-validate', 'v3-stop-validate', 'v3-validate-during-shutdown', 'v3-stop-fatal',
-                                  'v2-normal-validate', 'v2-stop-validate', 'v2-validate-during-shutdown', 'v2-stop-fatal',
-                                  'shutdown', 'cancel', 'normal-run-cancel', 'one-normal-run-cancel'])
+@pytest.mark.parametrize('fault', ['normal-validate', 'stop-validate', 'validate-during-shutdown',
+                                  'stop-fatal', 'shutdown', 'cancel', 'normal-run-cancel'])
 def test_cycle_service_closes_peers_with_real_sdk_lifecycle(monkeypatch, tmp_path, fault):
     """Keep SDK run/shutdown ordering; only its bridge and activity poller are local."""
     pytest.importorskip('temporalio')
@@ -700,8 +634,7 @@ def test_cycle_service_closes_peers_with_real_sdk_lifecycle(monkeypatch, tmp_pat
         run_cancel = fault.endswith('normal-run-cancel')
         validate_release, cleanup_release = asyncio.Event(), asyncio.Event()
         fatal = RuntimeError(fault)
-        failing_index = (None if fault in ('shutdown', 'cancel') or run_cancel else 5 if fault.startswith('v3-stop-') else 2 if fault.startswith('v3-')
-                         else 4 if fault.startswith('v2-stop-') else 1 if fault.startswith('v2-') else 3 if fault.startswith('stop-') else 0)
+        failing_index = None if fault in ('shutdown', 'cancel') or run_cancel else 1 if fault.startswith('stop-') else 0
 
         class Bridge:
             def __init__(self, index):
@@ -771,26 +704,23 @@ def test_cycle_service_closes_peers_with_real_sdk_lifecycle(monkeypatch, tmp_pat
         serving = asyncio.create_task(service._serve_cycle())
         try:
             async def registered():
-                while len(workers) < 6:
+                while len(workers) < 2:
                     await asyncio.sleep(0)
             await asyncio.wait_for(registered(), 2)
-            assert [item._config['task_queue'] for item in workers] == [service.protocol.CYCLE_TASK_QUEUE,
-                service.protocol.CYCLE_TASK_QUEUE_V2, service.protocol.CYCLE_TASK_QUEUE_V3,
-                service.protocol.CYCLE_STOP_TASK_QUEUE, service.protocol.CYCLE_STOP_TASK_QUEUE_V2, service.protocol.CYCLE_STOP_TASK_QUEUE_V3]
-            assert workers[0]._client is workers[3]._client is client
-            assert workers[1]._client is workers[4]._client
-            assert workers[1]._client is not client and workers[1]._client.service_client is client.service_client
+            assert [item._config['task_queue'] for item in workers] == [service.protocol.CYCLE_TASK_QUEUE_V3,
+                service.protocol.CYCLE_STOP_TASK_QUEUE_V3]
+            assert workers[0]._client is workers[1]._client
+            assert workers[0]._client is not client and workers[0]._client.service_client is client.service_client
             assert client.data_converter is DataConverter.default
-            assert workers[1]._client.data_converter.failure_converter_class is service._CycleFailureConverter
-            for index, version in enumerate((1, 2, 3)):
-                assert workers[index]._config['workflows'] == [service.create_cycle_workflow(version)]
-                assert 'workflows' not in workers[index + 3]._config
-                names = service.protocol.cycle_activity_names(version)
-                assert {activity._Definition.must_from_callable(fn).name
-                        for fn in workers[index]._config['activities']} == {name for action, name in names.items()
-                                                                           if action != 'stop'}
-                assert [activity._Definition.must_from_callable(fn).name
-                        for fn in workers[index + 3]._config['activities']] == [names['stop']]
+            assert workers[0]._client.data_converter.failure_converter_class is service._CycleFailureConverter
+            assert workers[0]._config['workflows'] == [service.create_cycle_workflow()]
+            assert 'workflows' not in workers[1]._config
+            names = service.protocol.cycle_activity_names()
+            assert {activity._Definition.must_from_callable(fn).name
+                    for fn in workers[0]._config['activities']} == {name for action, name in names.items()
+                                                                    if action != 'stop'}
+            assert [activity._Definition.must_from_callable(fn).name
+                    for fn in workers[1]._config['activities']] == [names['stop']]
             assert all(item._config['max_concurrent_activities'] == 1 for item in workers)
             await asyncio.gather(*(worker._bridge_worker.validating.wait() for worker in workers))
             if fault.endswith('validate-during-shutdown') or fault in ('shutdown', 'cancel') or run_cancel:
@@ -800,40 +730,37 @@ def test_cycle_service_closes_peers_with_real_sdk_lifecycle(monkeypatch, tmp_pat
                     handlers[signal.SIGTERM]()
                 await asyncio.wait_for(workers[0]._shutdown_event.wait(), 2)
             if fault in ('shutdown', 'cancel') or run_cancel:
-                await asyncio.gather(*(worker._activity_worker.completing.wait() for worker in workers[:3]))
-                assert all(not worker._bridge_worker.stopping.is_set() for worker in workers[3:])
-                assert all(worker._activity_worker.running.is_set() for worker in workers[3:])
+                await workers[0]._activity_worker.completing.wait()
+                assert not workers[1]._bridge_worker.stopping.is_set()
+                assert workers[1]._activity_worker.running.is_set()
                 assert not serving.done()
                 if fault == 'cancel':
                     serving.cancel()
                 elif run_cancel:
                     sdk_runs = {task.get_coro().cr_frame.f_locals['self']: task for task in asyncio.all_tasks()
                         if getattr(task.get_coro(), 'cr_code', None) is sdk_worker.run.__code__
-                        and task.get_coro().cr_frame.f_locals.get('self') in workers[:3]}
-                    assert len(sdk_runs) == 3
-                    aborted_workers.update(workers[:1] if fault.startswith('one-') else workers[:3])
+                        and task.get_coro().cr_frame.f_locals.get('self') in workers[:1]}
+                    assert len(sdk_runs) == 1
+                    aborted_workers.add(workers[0])
                     cancelled_runs = [sdk_runs[worker] for worker in aborted_workers]
                     for task in cancelled_runs:
                         task.cancel()
                     await asyncio.gather(*cancelled_runs, return_exceptions=True)
                     try:
-                        await asyncio.wait_for(workers[3]._shutdown_event.wait(), .1)
+                        await asyncio.wait_for(workers[1]._shutdown_event.wait(), .1)
                         stop_started = True
                     except TimeoutError:
                         stop_started = False
                     observation = {'cleanup_released': cleanup_release.is_set(),
-                        'aborted_normal_indexes': [index for index, worker in enumerate(workers[:3])
+                        'aborted_normal_indexes': [index for index, worker in enumerate(workers[:1])
                                                    if worker in aborted_workers],
                         'normal_tasks': [{'done': sdk_runs[worker].done(), 'cancelled': sdk_runs[worker].cancelled()}
-                                         for worker in workers[:3]],
+                                         for worker in workers[:1]],
                         'normal_workers': [{'is_shutdown': worker.is_shutdown,
-                            'finalized': worker._bridge_worker.finalized} for worker in workers[:3]],
+                            'finalized': worker._bridge_worker.finalized} for worker in workers[:1]],
                         'stop_shutdown_started': stop_started, 'serving_done': serving.done()}
                     (tmp_path / 'sdk-run-cancel.json').write_text(json.dumps(observation, indent=2) + '\n')
                     assert not stop_started, 'Stop shutdown began before the original normal SDK cleanup completed'
-                    if fault.startswith('one-'):
-                        assert not sdk_runs[workers[1]].done()
-                        assert not serving.done(), 'An aborted run interrupted its peer normal drain'
             validate_release.set()
             if fault.endswith('stop-fatal'):
                 await asyncio.wait_for(workers[failing_index]._activity_worker.completing.wait(), 2)
@@ -841,7 +768,7 @@ def test_cycle_service_closes_peers_with_real_sdk_lifecycle(monkeypatch, tmp_pat
                 await asyncio.wait_for(workers[0]._bridge_worker.stopping.wait(), 2)
                 await asyncio.wait_for(workers[1]._bridge_worker.stopping.wait(), 2)
                 assert all(not peer._bridge_worker.stopping.is_set()
-                           for index, peer in enumerate(workers) if index >= 3 and index != failing_index)
+                           for index, peer in enumerate(workers) if index >= 1 and index != failing_index)
                 assert not serving.done() and not workers[failing_index]._bridge_worker.finalized
                 serving.cancel()
                 await asyncio.sleep(0)
@@ -852,11 +779,11 @@ def test_cycle_service_closes_peers_with_real_sdk_lifecycle(monkeypatch, tmp_pat
             if run_cancel:
                 with pytest.raises(RuntimeError, match='cleanup is incomplete; running state is unknown'):
                     serving.result()
-                assert all(not worker._shutdown_event.is_set() for worker in workers[3:])
+                assert not workers[1]._shutdown_event.is_set()
                 assert all(not worker.is_shutdown and not worker._bridge_worker.finalized for worker in aborted_workers)
                 # Only the test now closes the still-running stop group through
                 # the SDK public API. Aborted normals stay unknown, not finalized.
-                await asyncio.gather(*(worker.shutdown() for worker in workers[3:]))
+                await workers[1].shutdown()
             elif fault == 'shutdown':
                 assert serving.result() is None
             elif fault == 'cancel':
@@ -900,24 +827,22 @@ def cycle_workflow():
     from ergora.training.runtime.worker import create_cycle_workflow
 
     class Harness:
-        original = {'protocol': 'ergora-training-cycle-v1', 'control_home': str(Path.cwd().anchor),
+        original = {'protocol': 'ergora-training-cycle-v3', 'control_home': str(Path.cwd().anchor),
             'project': 'demo', 'cycle_id': 'first', 'input_sha256': 'a' * 64, 'authorization_sha256': 'b' * 64}
 
-        def __init__(self, program_version=1, *, data_converter=None):
-            self.program_version = program_version
-            self.original = {**self.original, 'protocol': 'ergora-training-cycle-v' + str(program_version)}
-            self.workflow_type = 'TrainingCycleWorkflow' + ('V' + str(program_version) if program_version in (2, 3) else '')
+        def __init__(self, *, data_converter=None):
+            self.original = dict(self.original)
+            self.workflow_type = 'TrainingCycleWorkflowV3'
             if data_converter is None:
                 from ergora.training.runtime.worker import _CycleFailureConverter
 
-                data_converter = (replace(DataConverter.default, failure_converter_class=_CycleFailureConverter)
-                                  if program_version in (2, 3) else DataConverter.default)
+                data_converter = replace(DataConverter.default, failure_converter_class=_CycleFailureConverter)
             self.data_converter = data_converter
             self.converter = data_converter.payload_converter
             self.time = 0
             self.commands = []
             async def create():
-                cls = create_cycle_workflow(program_version)
+                cls = create_cycle_workflow()
                 assert (cls.__module__, cls.__name__, cls.__qualname__) == (
                     'ergora.training.runtime.worker', self.workflow_type, self.workflow_type)
                 runner = SandboxedWorkflowRunner()
@@ -929,7 +854,7 @@ def cycle_workflow():
                     interceptor_classes=[], defn=defn,
                     info=replace(_fake_info, workflow_id='parent', run_id='parent-run',
                         workflow_type=self.workflow_type, namespace='default',
-                        task_queue='ergora-training-cycle-v' + str(program_version)), randomness_seed=1, extern_functions={},
+                        task_queue='ergora-training-cycle-v3'), randomness_seed=1, extern_functions={},
                     disable_eager_activity_execution=False, worker_level_failure_exception_types=[],
                     patch_activation_callback=None, last_completion_result=Payloads(), last_failure=Failure()))
             self.instance = asyncio.run(create())
@@ -972,16 +897,16 @@ def cycle_workflow():
             response = next(c.respond_to_query for c in commands if c.HasField('respond_to_query'))
             return self.converter.from_payloads([response.succeeded.response])[0]
 
-        def envelope(self, action='observe-candidate', *, submitted=False, queued=False, work=1000, total=1100):
+        def envelope(self, action='observe-candidate', *, ordinal=0, count=2, submitted=False,
+                     queued=False, completed=False, accepted=False, work=1000, total=1100):
+            import ergora.training.execution_protocol as protocol
+
             source = '1' * 32
-            value = {'schema_version': 2, 'protocol': 'ergora-training-cycle-activity-v2', 'action': action,
+            value = {'schema_version': 4, 'protocol': 'ergora-training-cycle-activity-v4', 'action': action,
                 'status': 'observed', 'workflow_input': deepcopy(self.original),
                 'controller': {'workflow_id': 'parent', 'run_id': 'parent-run', 'intent_sha256': 'c' * 64},
                 'observation': {'total_remaining_seconds': total, 'boot_id': 'original-boot'},
                 'inspection': {'operation_id': source}, 'operations': [], 'runtime_status': 'queried'}
-            if action in ('start', 'reconcile', 'stop'):
-                value.update(schema_version=1, protocol='ergora-training-cycle-activity-v1')
-                return value
             binding = {'experiment_id': 'alpha', 'manifest_sha': 'd' * 64, 'candidate_sha': '1' * 40, 'baseline_sha': '2' * 40}
             value['facts'] = {'source_operation_id': source,
                 'budget': {'state': 'valid' if work > 0 else 'exhausted', 'work_remaining_seconds': work,
@@ -989,122 +914,138 @@ def cycle_workflow():
                     'boot_id': 'original-boot', 'boottime_ns': 123, 'observed_at': 'unused'},
                 'candidate': {'ordinal': 0, 'experiment_id': 'alpha', 'manifest_sha256': 'd' * 64,
                     'project_revision': 1, 'current_project_matches': True, 'parent_stop_visible': False},
-                'submission': {'state': 'submitted' if submitted else 'not_recorded',
-                    'intent_sha256': 'e' * 64 if submitted else None, 'workflow_id': 'child',
-                    'run_id': 'child-run' if submitted else None, 'attempt_saved': submitted, 'result_saved': submitted},
+                'submission': {'state': 'submitted' if submitted or completed else 'not_recorded',
+                    'intent_sha256': 'e' * 64 if submitted or completed else None, 'workflow_id': 'child',
+                    'run_id': 'child-run' if submitted or completed else None, 'attempt_saved': submitted or completed, 'result_saved': submitted or completed},
                 'execution': {'state': 'not_requested', 'request_sha256': None, 'record_sha256': {},
                     'reap_record_observed': False, 'durable_stop_confirmed': None, 'executor_stop_confirmed': None},
-                'runtime': {'state': 'queried' if queued else 'not_queried',
-                    'workflow_id': 'child' if queued else None, 'run_id': 'child-run' if queued else None,
-                    'temporal_status': 'RUNNING' if queued else None, 'terminal': False if queued else None,
-                    'phase': 'QUEUED' if queued else None, 'binding': binding if queued else None,
-                    'job_id': 'job' if queued else None},
-                'native': {'state': 'QUEUED' if queued else 'not_queried', 'job_id': 'job' if queued else None},
+                'runtime': {'state': 'queried' if queued or completed else 'not_queried',
+                    'workflow_id': 'child' if queued or completed else None, 'run_id': 'child-run' if queued or completed else None,
+                    'temporal_status': 'RUNNING' if queued or completed else None, 'terminal': False if queued or completed else None,
+                    'phase': 'QUEUED' if queued or completed else None, 'binding': binding if queued or completed else None,
+                    'job_id': 'job' if queued or completed else None},
+                'native': {'state': 'QUEUED' if queued or completed else 'not_queried', 'job_id': 'job' if queued or completed else None},
                 'request_outcome': 'not_attempted'}
+            value['observation'].update(boottime_ns=123, observed_at='synthetic-fixture')
+            if action == 'stop':
+                value['facts'] = None
+                return value
+            facts = value['facts']
+            value['inspection'] = {'operation_id': '0' * 32, 'mode': 'inspect-controller-activity',
+                'ordinal': None, 'operation_stopped': True, 'supervisor_returncode': 0,
+                'result': {'inline': {'status': 'inspected'}}}
+            value['operations'] = [{'operation_id': facts['source_operation_id'],
+                'mode': action if action in ('collect-round', 'reconcile-round') else 'observe-candidate',
+                'ordinal': ordinal, 'operation_stopped': True, 'supervisor_returncode': 0,
+                'result': {'ref': {'file': 'helper/stdout.txt', 'bytes': 100, 'sha256': '1' * 64}}}]
+            facts['candidate'].update(ordinal=ordinal, experiment_id='candidate' + str(ordinal))
+            facts['submission']['workflow_id'] = 'child' + str(ordinal)
+            if queued or completed:
+                facts['runtime'].update(workflow_id='child' + str(ordinal))
+                facts['runtime']['binding']['experiment_id'] = 'candidate' + str(ordinal)
+            facts['selection'] = {'count': count, 'common_sha256': 'a' * 64, 'measurement_sources_sha256': 'b' * 64}
+            facts['measurement'] = {'measurement_state': 'pending', 'index_state': 'absent',
+                'continuation_ready': False, 'prefix': None, 'acceptance': None}
+            if completed:
+                facts['execution'].update(state='stopped', request_sha256='f' * 64,
+                    record_sha256=dict.fromkeys(('request', 'launch', 'attempt', 'ack', 'stopped'), 'f' * 64),
+                    reap_record_observed=True, durable_stop_confirmed=True, executor_stop_confirmed=True)
+                facts['runtime']['phase'] = 'AWAITING_RELEASE'
+                facts['native']['state'] = 'SUCCEEDED'
+            if accepted:
+                prefix = {'directory': str(Path(self.original['control_home']) / 'training-cycles/demo/first/controller/rounds' / str(ordinal)),
+                    'sha256': '3' * 64, 'bytes': 1000 + ordinal, 'rounds': ordinal + 1,
+                    'last_round_sha256': '4' * 64, 'initial_anchor_sha256': '5' * 64}
+                acceptance = {'source_operation_id': facts['source_operation_id'],
+                    'observation': {'path': str(Path(self.original['control_home']) / 'operations/training-cycles' /
+                        facts['source_operation_id'] / 'helper/observation.json'), 'bytes': 2000, 'sha256': '6' * 64},
+                    'candidate': {key: facts['candidate'][key] for key in
+                                  ('ordinal', 'experiment_id', 'manifest_sha256', 'project_revision')},
+                    'submission': {key: facts['submission'][key] for key in ('intent_sha256', 'workflow_id', 'run_id')},
+                    'execution': {'owner_sha256': '7' * 64, 'record_sha256': facts['execution']['record_sha256'],
+                                  'raw_inventory_sha256': '8' * 64},
+                    'runtime': {'namespace': 'default', 'kind': 'status', 'phase': 'AWAITING_RELEASE', 'job_id': 'job',
+                        'binding_sha256': protocol.CycleAdmission._sha(facts['runtime']['binding']),
+                        'memo_sha256': facts['submission']['intent_sha256'], 'evidence_sha': '9' * 64, 'report_uri': None},
+                    'evidence': {'evidence_sha256': '9' * 64, 'gate_report_sha256': 'a' * 64, 'files_sha256': 'b' * 64},
+                    'common_sha256': facts['selection']['common_sha256'],
+                    'measurement_sources_sha256': facts['selection']['measurement_sources_sha256']}
+                acceptance['candidate']['registration_sha256'] = 'c' * 64
+                acceptance['submission']['spec_sha256'] = 'd' * 64
+                facts['measurement'] = {'measurement_state': 'accepted', 'index_state': 'durable',
+                    'continuation_ready': True, 'prefix': prefix, 'acceptance': acceptance}
+            return value
+
+        def trial_envelope(self, action='observe-candidate', *, ordinal=0, count=3, kind=None,
+                           ready=False, verdict='no_gain', screen_state='SCREEN_COMPLETED', predecessor=None, submitted=False,
+                           queued=False, operation_id='1' * 32, original_operation_id=None, **budget):
+            """Synthetic H facts for the real SDK consumer; no collector or analyst runs."""
+            import ergora.training.execution_protocol as protocol
+
+            executed = kind == 'executed'
+            value = self.envelope(action, ordinal=ordinal, count=count, completed=executed,
+                submitted=submitted, queued=queued, **budget)
+            if action == 'stop':
+                return value
+            facts = value['facts']
+            facts['source_operation_id'] = value['operations'][0]['operation_id'] = operation_id
+            facts['selection']['execution_scope'] = protocol.D_SCOPE
+            if facts['runtime']['state'] == 'queried':
+                facts['runtime']['job_id'] = facts['native']['job_id'] = 'job' + str(ordinal)
+            if executed:
+                facts['runtime'].update(phase=screen_state, terminal=True, temporal_status='COMPLETED')
+                facts['native']['state'] = screen_state
+            facts['measurement']['trial'] = None
+            if not ready:
+                facts['measurement']['measurement_state'] = 'skipped' if kind == 'skipped_known_failure' else 'pending'
+                return value
+            folder = Path(self.original['control_home']) / 'training-cycles/demo/first/controller/trials' / str(ordinal)
+
+            def ref(path, digest='a' * 64):
+                return {'path': str(path), 'sha256': digest, 'bytes': 100}
+
+            entry = {'ordinal': ordinal, 'variant_id': protocol.CycleAdmission._sha({'variant': ordinal}),
+                'stage_map_sha256': '3' * 64,
+                'kind': kind, 'predecessor_sha256': predecessor['acceptance']['sha256'] if predecessor else None}
+            if executed:
+                operation = original_operation_id or operation_id
+                entry.update(sources={'operation': ref(Path(self.original['control_home']) /
+                    'operations/training-cycles' / operation / 'request.json'),
+                    **{key: facts['submission'][key] for key in ('intent_sha256', 'workflow_id', 'run_id')},
+                    'native_binding': facts['runtime']['binding'], 'job_id': facts['native']['job_id'],
+                    'managed': facts['execution']['record_sha256'], 'cleanup': ref(folder / 'cleanup.json')},
+                    observation=ref(folder / 'observation.json', protocol.CycleAdmission._sha({'verdict': verdict})),
+                    diagnostics={'profile': ref(folder / 'profile.json'), 'packet': ref(folder / 'packet.json'),
+                        'analysis': ref(folder / 'analysis.json'), 'baseline_analysis': {
+                            'packet': ref(folder.parent / 'baseline-packet.json'),
+                            'analysis': ref(folder.parent / 'baseline-analysis.json')}})
+            else:
+                entry.update(sources={'decision': ref(folder / 'skip.json'), 'historical': ref(folder / 'historical.json')},
+                    observation=None, diagnostics=None)
+            entry['sha256'] = protocol.CycleAdmission._sha(entry)
+            prefix = {'path': str(folder / 'trials.json'), 'sha256': protocol.CycleAdmission._sha(entry),
+                'bytes': 2000 + ordinal, 'trials': ordinal + 1, 'last_trial_sha256': entry['sha256']}
+            if executed:
+                performance = 'unavailable' if screen_state == 'SCREEN_REJECTED' else verdict
+                decision = 'rejected' if screen_state == 'SCREEN_REJECTED' else {
+                    'promising': 'promising', 'no_gain': 'stop_direction',
+                    'below_noise': 'stop_direction', 'unavailable': 'inconclusive'}[performance]
+                trial = {'kind': kind, 'state': screen_state, 'performance_state': performance, 'decision': decision}
+            else:
+                trial = {'kind': kind, 'state': None, 'performance_state': None, 'decision': None}
+            facts['measurement'] = {'measurement_state': 'trial_completed', 'index_state': 'durable',
+                'continuation_ready': True, 'prefix': prefix, 'acceptance': entry, 'trial': trial}
             return value
 
         def activity(self, commands):
             return next(command for command in commands if command.HasField('schedule_activity'))
 
         def scheduled(self, action):
-            suffix = '.' + action + ('.v4' if self.program_version == 3 else '.v3' if self.program_version == 2 else
-                '.v2' if action in ('observe-candidate', 'request-execution-or-observe') else '.v1')
+            suffix = '.' + action + '.v4'
             return [c.schedule_activity for c in self.commands if c.HasField('schedule_activity')
                     and c.schedule_activity.activity_type.endswith(suffix)]
 
     return Harness
-
-
-def test_cycle_workflow_delays_request_and_keeps_the_first_round_gate(cycle_workflow):
-    h = cycle_workflow()
-    cold = h.activity(h.start())
-    start = h.activity(h.result(cold, h.envelope(), at=1))
-    assert start.schedule_activity.activity_type.endswith('.start.v1')
-    commands = h.result(start, h.envelope('start'), at=2)
-    observe = h.activity(h.timer(commands, at=3))
-    early = h.envelope(submitted=True, queued=True)
-    early.update(status='unknown')
-    early['facts']['runtime'].update(phase='SUBMITTING', job_id=None)
-    early['facts']['native'] = {'state': 'unconfirmed', 'job_id': None}
-    commands = h.result(observe, early, at=4)
-    assert not h.scheduled('request-execution-or-observe')
-    observe = h.activity(h.timer(commands, at=5))
-    request = h.activity(h.result(observe, h.envelope(submitted=True, queued=True), at=6))
-    assert request.schedule_activity.retry_policy.maximum_attempts == 1
-    requested = h.envelope('request-execution-or-observe', submitted=True, queued=True)
-    requested['facts']['request_outcome'] = 'requested'
-    requested['facts']['execution'].update(state='requested', request_sha256='f' * 64, record_sha256={'request': 'f' * 64})
-    commands = h.result(request, requested, at=7)
-    observe = h.activity(h.timer(commands, at=8))
-    native_first = h.envelope(submitted=True, queued=True)
-    native_first['facts']['execution'] = requested['facts']['execution'].copy()
-    native_first['facts']['native']['state'] = 'SUCCEEDED'
-    commands = h.result(observe, native_first, at=9)
-    assert h.query()['measurement_accepted'] is None
-    observe = h.activity(h.timer(commands, at=10))
-    native_first['facts']['execution'].update(state='stopped', durable_stop_confirmed=True, executor_stop_confirmed=True)
-    commands = h.result(observe, native_first, at=11)
-    assert not any(c.HasField('complete_workflow_execution') for c in commands)
-    observe = h.activity(h.timer(commands, at=12))
-    native_first['facts']['runtime']['phase'] = 'AWAITING_RELEASE'
-    commands = h.result(observe, native_first, at=13)
-    outcome = h.converter.from_payloads([next(c.complete_workflow_execution.result for c in commands
-                                            if c.HasField('complete_workflow_execution'))])[0]
-    assert outcome['outcome'] == 'first_round_observed_c1d_required' and outcome['ordinal'] == 0
-    assert outcome['continuation'] == 'disabled_until_c1d' and outcome['measurement_accepted'] is None
-    assert len(h.scheduled('start')) == len(h.scheduled('request-execution-or-observe')) == 1
-    assert not h.scheduled('stop')
-
-
-@pytest.mark.parametrize('effect,completion', [('start', 'failure'),
-    ('request-execution-or-observe', 'failure'), ('request-execution-or-observe', 'partial-envelope')])
-def test_cycle_workflow_lost_effect_completion_never_regrants_its_command(cycle_workflow, effect, completion):
-    h = cycle_workflow()
-    cold = h.activity(h.start())
-    if effect == 'start':
-        command = h.activity(h.result(cold, h.envelope(), at=1))
-    else:
-        commands = h.result(cold, h.envelope(submitted=True), at=1)
-        observe = h.activity(h.timer(commands, at=2))
-        command = h.activity(h.result(observe, h.envelope(submitted=True, queued=True), at=3))
-    from temporalio.api.failure.v1 import ActivityFailureInfo, Failure, TimeoutFailureInfo
-    from temporalio.bridge.proto import activity_result as ar, workflow_activation as wa
-    if completion == 'failure':
-        failure = Failure(message='Completion unavailable', activity_failure_info=ActivityFailureInfo(),
-                          cause=Failure(message='RPC deadline', timeout_failure_info=TimeoutFailureInfo()))
-        commands = h.activate(resolve_activity=wa.ResolveActivity(seq=command.schedule_activity.seq,
-            result=ar.ActivityResolution(failed=ar.Failure(failure=failure))))
-    else:
-        partial = h.envelope(effect, submitted=True, queued=True)
-        partial.update(status='unknown', facts=None)
-        commands = h.result(command, partial)
-    observe = h.activity(h.timer(commands, at=4))
-    # Even an absent request after a scheduled command cannot grant that effect again.
-    value = h.envelope(submitted=effect != 'start', queued=effect != 'start')
-    commands = h.result(observe, value, at=5)
-    assert len(h.scheduled(effect)) == 1
-    if effect != 'start':
-        assert h.query()['request_scheduled'] is True
-        observe = h.activity(h.timer(commands, at=6))
-        h.result(observe, value, at=7)
-        assert len(h.scheduled(effect)) == 1
-
-
-def test_cycle_workflow_budget_uses_schedule_time_and_v1_only_narrows_total(cycle_workflow):
-    h = cycle_workflow()
-    cold = h.activity(h.start())
-    start = h.activity(h.result(cold, h.envelope(work=9, total=12), at=4))
-    assert start.schedule_activity.schedule_to_close_timeout.ToTimedelta().total_seconds() == 5
-    commands = h.result(start, h.envelope('start', total=1000), at=5)
-    observe = h.activity(h.timer(commands, at=6))
-    assert observe.schedule_activity.schedule_to_close_timeout.ToTimedelta().total_seconds() == 3
-    commands = h.result(observe, h.envelope(submitted=True, work=6, total=1000), at=7)
-    observe = h.activity(h.timer(commands, at=8))
-    assert observe.schedule_activity.schedule_to_close_timeout.ToTimedelta().total_seconds() == 1
-    stop = h.activity(h.result(observe, h.envelope(submitted=True, queued=True, work=1000, total=1000), at=10))
-    assert stop.schedule_activity.task_queue == 'ergora-training-cycle-stop-v1'
-    assert stop.schedule_activity.schedule_to_close_timeout.ToTimedelta().total_seconds() == 2
-    assert not h.scheduled('request-execution-or-observe')
 
 
 @pytest.mark.parametrize('boundary', ['work', 'history-events', 'history-bytes', 'ordinary-count'])
@@ -1121,12 +1062,7 @@ def test_cycle_workflow_final_facts_cannot_bypass_the_stop_guard(cycle_workflow,
     remaining = timeout / 4
     received = final_ordinal + remaining * 2
     assert received - final_ordinal < timeout
-    final = h.envelope(submitted=True, queued=True)
-    final['facts']['native']['state'] = 'SUCCEEDED'
-    final['facts']['runtime']['phase'] = 'AWAITING_RELEASE'
-    final['facts']['execution'].update(state='stopped', request_sha256='f' * 64,
-        record_sha256={'request': 'f' * 64, 'stopped': 'e' * 64},
-        reap_record_observed=True, durable_stop_confirmed=True, executor_stop_confirmed=True)
+    final = h.envelope(completed=True, accepted=True)
     changes = {}
     if boundary == 'work':
         final['facts']['budget']['work_remaining_seconds'] = remaining
@@ -1138,7 +1074,7 @@ def test_cycle_workflow_final_facts_cannot_bypass_the_stop_guard(cycle_workflow,
     commands = h.result(observe, final, at=received, **changes)
     assert not any(c.HasField('complete_workflow_execution') for c in commands), (h.query(), len(h.scheduled('stop')))
     stop = h.activity(commands)
-    assert stop.schedule_activity.task_queue == 'ergora-training-cycle-stop-v1'
+    assert stop.schedule_activity.task_queue == 'ergora-training-cycle-stop-v3'
     assert stop.schedule_activity.schedule_to_close_timeout.ToTimedelta().total_seconds() > 0
     commands = h.result(stop, h.envelope('stop'), at=received + remaining)
     outcome = h.converter.from_payloads([next(c.complete_workflow_execution.result for c in commands
@@ -1155,7 +1091,7 @@ def test_cycle_workflow_stop_bypasses_pending_normal_and_survives_repeated_cance
     commands = h.cancel() if cancel else h.signal({'workflow_input': h.original, 'reason': 'Stop original candidate'})
     assert any(c.HasField('request_cancel_activity') and c.request_cancel_activity.seq == normal.schedule_activity.seq for c in commands)
     stop = h.activity(commands)
-    assert stop.schedule_activity.task_queue == 'ergora-training-cycle-stop-v1'
+    assert stop.schedule_activity.task_queue == 'ergora-training-cycle-stop-v3'
     assert not h.cancel()
     assert not h.cancel()
     commands = h.result(stop, h.envelope('stop'), at=3)
@@ -1164,13 +1100,13 @@ def test_cycle_workflow_stop_bypasses_pending_normal_and_survives_repeated_cance
     assert h.query()['stop_durable'] is h.query()['admission_drained'] is None
 
 
-@pytest.mark.parametrize('program_version', [1, 2, 3])
-def test_cycle_workflow_evicts_after_stop_before_normal_cancellation_ack(cycle_workflow, cycle_v2_workflow, tmp_path, program_version):
+@pytest.mark.parametrize('bounded', [False, True])
+def test_cycle_workflow_evicts_after_stop_before_normal_cancellation_ack(cycle_workflow, tmp_path, bounded):
     import subprocess
     from google.protobuf.json_format import MessageToDict
     from temporalio.api.common.v1 import Payloads
 
-    h = cycle_workflow() if program_version == 1 else cycle_v2_workflow(program_version)
+    h = cycle_workflow()
     events = []
 
     def payloads(value):
@@ -1184,7 +1120,7 @@ def test_cycle_workflow_evicts_after_stop_before_normal_cancellation_ack(cycle_w
 
     def workflow_task(at):
         scheduled = event('WORKFLOW_TASK_SCHEDULED', {'workflowTaskScheduledEventAttributes': {
-            'taskQueue': {'name': 'ergora-training-cycle-v' + str(program_version)}, 'startToCloseTimeout': '10s', 'attempt': 1}}, at)
+            'taskQueue': {'name': 'ergora-training-cycle-v3'}, 'startToCloseTimeout': '10s', 'attempt': 1}}, at)
         started = event('WORKFLOW_TASK_STARTED', {'workflowTaskStartedEventAttributes': {
             'scheduledEventId': str(scheduled), 'identity': 'test-worker'}}, at)
         return event('WORKFLOW_TASK_COMPLETED', {'workflowTaskCompletedEventAttributes': {
@@ -1194,8 +1130,8 @@ def test_cycle_workflow_evicts_after_stop_before_normal_cancellation_ack(cycle_w
     def activity(action, ident, request, completed_task, timeout, at):
         return event('ACTIVITY_TASK_SCHEDULED', {'activityTaskScheduledEventAttributes': {
             'activityId': ident, 'activityType': {'name': 'ergora.training_cycle.' + action},
-            'taskQueue': {'name': 'ergora-training-cycle-stop-v' + str(program_version) if action.startswith('stop.')
-                          else 'ergora-training-cycle-v' + str(program_version)}, 'input': payloads(request),
+            'taskQueue': {'name': 'ergora-training-cycle-stop-v3' if action.startswith('stop.')
+                          else 'ergora-training-cycle-v3'}, 'input': payloads(request),
             'scheduleToCloseTimeout': f'{timeout}s', 'startToCloseTimeout': f'{timeout}s',
             'workflowTaskCompletedEventId': str(completed_task), 'retryPolicy': {'maximumAttempts': 1}}}, at)
 
@@ -1209,14 +1145,14 @@ def test_cycle_workflow_evicts_after_stop_before_normal_cancellation_ack(cycle_w
     # cancellation result. The server has not acknowledged normal cancellation.
     event('WORKFLOW_EXECUTION_STARTED', {'workflowExecutionStartedEventAttributes': {
         'workflowType': {'name': h.workflow_type}, 'workflowId': 'parent',
-        'taskQueue': {'name': 'ergora-training-cycle-v' + str(program_version)}, 'input': payloads(h.original),
+        'taskQueue': {'name': 'ergora-training-cycle-v3'}, 'input': payloads(h.original),
         'workflowTaskTimeout': '10s', 'originalExecutionRunId': 'parent-run',
         'firstExecutionRunId': 'parent-run', 'attempt': 1}})
-    request = {'workflow_input': h.original, 'ordinal': 0, **({'predecessor': None} if program_version in (2, 3) else {})}
-    suffix = '.v4' if program_version == 3 else '.v3' if program_version == 2 else '.v1'
-    cold = activity('observe-candidate' + ('.v2' if program_version == 1 else suffix), 'candidate-0-1', request, workflow_task(0), 10, 0)
-    complete_activity(cold, h.envelope(), 1)
-    normal = activity('start' + suffix, 'candidate-0-2', request, workflow_task(1), 30 if program_version == 3 else 10, 1)
+    request = {'workflow_input': h.original, 'ordinal': 0, 'predecessor': None}
+    suffix = '.v4'
+    cold = activity('observe-candidate' + suffix, 'candidate-0-1', request, workflow_task(0), 10, 0)
+    complete_activity(cold, h.trial_envelope() if bounded else h.envelope(), 1)
+    normal = activity('start' + suffix, 'candidate-0-2', request, workflow_task(1), 30, 1)
     event('WORKFLOW_EXECUTION_CANCEL_REQUESTED', {'workflowExecutionCancelRequestedEventAttributes': {}}, 2)
     stopping = workflow_task(2)
     stop = activity('stop' + suffix, 'cycle-stop', {'workflow_input': h.original, 'reason': 'workflow_cancelled'},
@@ -1238,11 +1174,11 @@ from temporalio.worker import Replayer
 from ergora.training.runtime.worker import create_cycle_workflow
 async def replay():
     history = WorkflowHistory.from_json('parent', Path(sys.argv[2]).read_text())
-    await Replayer(workflows=[create_cycle_workflow(int(sys.argv[3]))]).replay_workflow(history)
+    await Replayer(workflows=[create_cycle_workflow()]).replay_workflow(history)
     print('REPLAY_AND_EVICTION_COMPLETED', flush=True)
 asyncio.run(replay())
 '''
-    command = [sys.executable, '-I', '-B', '-c', script, str(IMPORT_ROOT), str(history), str(program_version)]
+    command = [sys.executable, '-I', '-B', '-c', script, str(IMPORT_ROOT), str(history)]
     try:
         replay = subprocess.run(command, capture_output=True, text=True, timeout=10)
     except subprocess.TimeoutExpired as error:
@@ -1257,7 +1193,7 @@ def test_cycle_workflow_history_bound_reserves_only_stop(cycle_workflow, bound):
     h = cycle_workflow()
     cold = h.activity(h.start())
     stop = h.activity(h.result(cold, h.envelope(), at=1, **bound))
-    assert stop.schedule_activity.activity_type.endswith('.stop.v1')
+    assert stop.schedule_activity.activity_type.endswith('.stop.v4')
     assert not h.scheduled('start') and not h.scheduled('request-execution-or-observe')
 
 
@@ -1320,79 +1256,11 @@ def test_cycle_workflow_unconfirmed_identity_never_requests_execution(cycle_work
         value['facts']['runtime'].update(phase=fault, terminal=True, temporal_status='COMPLETED')
     h.result(cold, value, at=1)
     assert not h.scheduled('start') and not h.scheduled('request-execution-or-observe')
-    assert h.query()['measurement_accepted'] is None
+    assert h.query()['confirmed_rounds'] == 0
 
 
-@pytest.fixture
-def cycle_v2_workflow(cycle_workflow):
-    """SDK contracts with synthetic inline facts; no schema3 execution or training."""
-    import ergora.training.execution_protocol as protocol
-
-    class Harness(cycle_workflow):
-        def __init__(self, program_version=2, **config):
-            super().__init__(program_version, **config)
-
-        def envelope(self, action='observe-candidate', *, ordinal=0, count=2, submitted=False,
-                     queued=False, completed=False, accepted=False, work=1000, total=1100):
-            value = super().envelope(submitted=submitted or completed, queued=queued or completed, work=work, total=total)
-            value.update(schema_version=4 if self.program_version == 3 else 3,
-                protocol='ergora-training-cycle-activity-v4' if self.program_version == 3 else 'ergora-training-cycle-activity-v3', action=action)
-            value['observation'].update(boottime_ns=123, observed_at='synthetic-fixture')
-            if action == 'stop':
-                value['facts'] = None
-                return value
-            facts = value['facts']
-            value['inspection'] = {'operation_id': '0' * 32, 'mode': 'inspect-controller-activity',
-                'ordinal': None, 'operation_stopped': True, 'supervisor_returncode': 0,
-                'result': {'inline': {'status': 'inspected'}}}
-            value['operations'] = [{'operation_id': facts['source_operation_id'],
-                'mode': action if action in ('collect-round', 'reconcile-round') else 'observe-candidate',
-                'ordinal': ordinal, 'operation_stopped': True, 'supervisor_returncode': 0,
-                'result': {'ref': {'file': 'helper/stdout.txt', 'bytes': 100, 'sha256': '1' * 64}}}]
-            facts['candidate'].update(ordinal=ordinal, experiment_id='candidate' + str(ordinal))
-            facts['submission']['workflow_id'] = 'child' + str(ordinal)
-            if queued or completed:
-                facts['runtime'].update(workflow_id='child' + str(ordinal))
-                facts['runtime']['binding']['experiment_id'] = 'candidate' + str(ordinal)
-            facts['selection'] = {'count': count, 'common_sha256': 'a' * 64, 'measurement_sources_sha256': 'b' * 64}
-            facts['measurement'] = {'measurement_state': 'pending', 'index_state': 'absent',
-                'continuation_ready': False, 'prefix': None, 'acceptance': None}
-            if completed:
-                facts['execution'].update(state='stopped', request_sha256='f' * 64,
-                    record_sha256=dict.fromkeys(('request', 'launch', 'attempt', 'ack', 'stopped'), 'f' * 64),
-                    reap_record_observed=True, durable_stop_confirmed=True, executor_stop_confirmed=True)
-                facts['runtime']['phase'] = 'AWAITING_RELEASE'
-                facts['native']['state'] = 'SUCCEEDED'
-            if accepted:
-                prefix = {'directory': str(Path(self.original['control_home']) / 'training-cycles/demo/first/controller/rounds' / str(ordinal)),
-                    'sha256': '3' * 64, 'bytes': 1000 + ordinal, 'rounds': ordinal + 1,
-                    'last_round_sha256': '4' * 64, 'initial_anchor_sha256': '5' * 64}
-                acceptance = {'source_operation_id': facts['source_operation_id'],
-                    'observation': {'path': str(Path(self.original['control_home']) / 'operations/training-cycles' /
-                        facts['source_operation_id'] / 'helper/observation.json'), 'bytes': 2000, 'sha256': '6' * 64},
-                    'candidate': {key: facts['candidate'][key] for key in
-                                  ('ordinal', 'experiment_id', 'manifest_sha256', 'project_revision')},
-                    'submission': {key: facts['submission'][key] for key in ('intent_sha256', 'workflow_id', 'run_id')},
-                    'execution': {'owner_sha256': '7' * 64, 'record_sha256': facts['execution']['record_sha256'],
-                                  'raw_inventory_sha256': '8' * 64},
-                    'runtime': {'namespace': 'default', 'kind': 'status', 'phase': 'AWAITING_RELEASE', 'job_id': 'job',
-                        'binding_sha256': protocol.CycleAdmission._sha(facts['runtime']['binding']),
-                        'memo_sha256': facts['submission']['intent_sha256'], 'evidence_sha': '9' * 64, 'report_uri': None},
-                    'evidence': {'evidence_sha256': '9' * 64, 'gate_report_sha256': 'a' * 64, 'files_sha256': 'b' * 64},
-                    'common_sha256': facts['selection']['common_sha256'],
-                    'measurement_sources_sha256': facts['selection']['measurement_sources_sha256']}
-                acceptance['candidate']['registration_sha256'] = 'c' * 64
-                acceptance['submission']['spec_sha256'] = 'd' * 64
-                facts['measurement'] = {'measurement_state': 'accepted', 'index_state': 'durable',
-                    'continuation_ready': True, 'prefix': prefix, 'acceptance': acceptance}
-            return value
-
-    return Harness
-
-
-@pytest.mark.parametrize('program_version', [2, 3])
-def test_cycle_v2_consumes_selected_rounds_with_one_opportunity_each(cycle_v2_workflow, program_version):
-    h = cycle_v2_workflow(program_version)
+def test_cycle_consumes_selected_rounds_with_one_opportunity_each(cycle_workflow):
+    h = cycle_workflow()
     observe = h.activity(h.start())
     accepted = None
     for ordinal in range(2):
@@ -1417,10 +1285,183 @@ def test_cycle_v2_consumes_selected_rounds_with_one_opportunity_each(cycle_v2_wo
     assert not h.scheduled('stop')
 
 
-def test_cycle_v2_lost_collect_completion_only_reconciles_existing_index(cycle_v2_workflow):
+def test_cycle_bounded_skip_no_gain_promising_keeps_full_acceptance_separate(cycle_workflow):
+    """Collector verdict refs drive scheduling; this does not execute those measurements."""
+    h = cycle_workflow()
+    observe = h.activity(h.start())
+    predecessor = None
+    for ordinal, kind in enumerate(('skipped_known_failure', 'executed', 'executed')):
+        request = h.converter.from_payloads(observe.schedule_activity.arguments)[0]
+        assert request == {'workflow_input': h.original, 'ordinal': ordinal, 'predecessor': predecessor}
+        start = h.activity(h.result(observe, h.trial_envelope(ordinal=ordinal), at=ordinal * 10 + 1))
+        assert start.schedule_activity.activity_type.endswith('.start.v4')
+        if kind == 'skipped_known_failure':
+            collect = h.activity(h.result(start, h.trial_envelope('start', ordinal=ordinal, kind=kind), at=2))
+            assert not h.scheduled('request-execution-or-observe')
+        else:
+            execute = h.activity(h.result(start, h.trial_envelope('start', ordinal=ordinal,
+                submitted=True, queued=True), at=ordinal * 10 + 2))
+            assert execute.schedule_activity.activity_type.endswith('.request-execution-or-observe.v4')
+            collect = h.activity(h.result(execute, h.trial_envelope('request-execution-or-observe',
+                ordinal=ordinal, kind=kind), at=ordinal * 10 + 3))
+        assert collect.schedule_activity.activity_id == 'candidate-' + str(ordinal) + '-collect'
+        value = h.trial_envelope('collect-round', ordinal=ordinal, kind=kind, ready=True,
+            verdict='no_gain' if ordinal == 1 else 'promising', predecessor=predecessor)
+        predecessor = {key: value['facts']['measurement'][key] for key in ('prefix', 'acceptance')}
+        commands = h.result(collect, value, at=ordinal * 10 + 4)
+        assert h.query()['confirmed_rounds'] == 0
+        if ordinal < 2:
+            observe = h.activity(h.timer(commands, at=ordinal * 10 + 5))
+    outcome = h.converter.from_payloads([next(command.complete_workflow_execution.result for command in commands
+        if command.HasField('complete_workflow_execution'))])[0]
+    assert outcome['outcome'] == 'screen_search_completed'
+    assert (outcome['sequence_trials'], outcome['executed_trials'], outcome['skipped_trials']) == (3, 2, 1)
+    assert outcome['promising_count'] == 1 and outcome['ordinal'] == 2
+    assert outcome['confirmed_rounds'] == outcome['full_accepted_count'] == outcome['verified_gain_count'] == 0
+    assert len(h.scheduled('start')) == len(h.scheduled('collect-round')) == 3
+    assert len(h.scheduled('request-execution-or-observe')) == 2 and not h.scheduled('stop')
+
+
+def test_cycle_bounded_all_skips_keep_full_and_execution_counts_zero(cycle_workflow):
+    """The SDK consumes the H report pin; baseline receipt authentication is H's boundary."""
+    h = cycle_workflow()
+    observe = h.activity(h.start())
+    predecessor = None
+    for ordinal in range(2):
+        start = h.activity(h.result(observe, h.trial_envelope(ordinal=ordinal, count=2), at=ordinal * 10 + 1))
+        collect = h.activity(h.result(start, h.trial_envelope('start', ordinal=ordinal, count=2,
+            kind='skipped_known_failure'), at=ordinal * 10 + 2))
+        value = h.trial_envelope('collect-round', ordinal=ordinal, count=2, kind='skipped_known_failure',
+            ready=True, predecessor=predecessor)
+        predecessor = {key: value['facts']['measurement'][key] for key in ('prefix', 'acceptance')}
+        commands = h.result(collect, value, at=ordinal * 10 + 3)
+        if ordinal == 0:
+            observe = h.activity(h.timer(commands, at=4))
+    status = h.query()
+    assert status['outcome'] == 'screen_search_completed'
+    assert (status['sequence_trials'], status['skipped_trials'], status['executed_trials'], status['confirmed_rounds']) == (2, 2, 0, 0)
+    assert status['promising_count'] == status['full_accepted_count'] == status['verified_gain_count'] == 0
+    assert not h.scheduled('request-execution-or-observe')
+    assert predecessor['acceptance']['observation'] is predecessor['acceptance']['diagnostics'] is None
+
+
+def test_cycle_bounded_rejected_screen_remains_an_executed_trial(cycle_workflow):
+    h = cycle_workflow()
+    observe = h.activity(h.start())
+    value = h.trial_envelope(kind='executed', count=1, screen_state='SCREEN_REJECTED')
+    collect = h.activity(h.result(observe, value, at=1))
+    value = h.trial_envelope('collect-round', kind='executed', count=1, ready=True,
+        screen_state='SCREEN_REJECTED', verdict='first_failure')
+    h.result(collect, value, at=2)
+    status = h.query()
+    assert status['outcome'] == 'screen_search_completed'
+    assert status['executed_trials'] == status['sequence_trials'] == 1
+    assert status['confirmed_rounds'] == status['skipped_trials'] == 0
+    assert status['promising_count'] == status['full_accepted_count'] == status['verified_gain_count'] == 0
+    assert not h.scheduled('start') and not h.scheduled('request-execution-or-observe')
+
+
+@pytest.mark.parametrize('fault', ['unknown', 'cleanup', 'failed', 'wrong-prefix'])
+def test_cycle_bounded_incomplete_trial_never_advances(cycle_workflow, fault):
+    h = cycle_workflow()
+    observe = h.activity(h.start())
+    collect = h.activity(h.result(observe, h.trial_envelope(kind='executed'), at=1))
+    value = h.trial_envelope('collect-round', kind='executed', ready=True)
+    if fault == 'unknown':
+        value['status'] = 'unknown'
+    elif fault == 'cleanup':
+        value['facts']['execution']['executor_stop_confirmed'] = None
+    elif fault == 'failed':
+        value['facts']['native']['state'] = value['facts']['runtime']['phase'] = 'FAILED'
+    else:
+        value['facts']['measurement']['prefix']['path'] += '.late'
+    stop = h.activity(h.result(collect, value, at=2))
+    assert stop.schedule_activity.activity_type.endswith('.stop.v4')
+    status = h.query()
+    assert status['sequence_trials'] == status['executed_trials'] == status['confirmed_rounds'] == 0
+    assert len(h.scheduled('collect-round')) == 1 and not h.scheduled('start')
+
+
+def test_cycle_bounded_unknown_skip_does_not_consume_collect_opportunity(cycle_workflow):
+    h = cycle_workflow()
+    observe = h.activity(h.start())
+    start = h.activity(h.result(observe, h.trial_envelope(), at=1))
+    value = h.trial_envelope('start', kind='skipped_known_failure')
+    value['status'] = 'unknown'
+    h.result(start, value, at=2)
+    assert not h.scheduled('collect-round') and not h.scheduled('request-execution-or-observe')
+    assert h.query()['sequence_trials'] == h.query()['skipped_trials'] == 0
+
+
+@pytest.mark.parametrize('boundary', ['work', 'history-events', 'history-bytes'])
+def test_cycle_bounded_completed_trial_cannot_bypass_stop_guard(cycle_workflow, boundary):
+    h = cycle_workflow()
+    observe = h.activity(h.start())
+    collect = h.activity(h.result(observe, h.trial_envelope(kind='executed', count=1), at=1))
+    value = h.trial_envelope('collect-round', kind='executed', count=1, ready=True)
+    changes = {'at': 3}
+    if boundary == 'work':
+        value['facts']['budget']['work_remaining_seconds'] = 1
+    elif boundary == 'history-events':
+        changes['history_length'] = 8000
+    else:
+        changes['history_size'] = 8 * 1024 * 1024
+    commands = h.result(collect, value, **changes)
+    assert not any(command.HasField('complete_workflow_execution') for command in commands)
+    stop = h.activity(commands)
+    assert stop.schedule_activity.activity_type.endswith('.stop.v4')
+    assert h.query()['sequence_trials'] == h.query()['executed_trials'] == 0
+
+
+def test_cycle_bounded_stop_ignores_late_collect_completion(cycle_workflow):
+    h = cycle_workflow()
+    observe = h.activity(h.start())
+    collect = h.activity(h.result(observe, h.trial_envelope(kind='executed'), at=1))
+    stop = h.activity(h.signal({'workflow_input': h.original, 'reason': 'Stop before collect completion'}, at=2))
+    h.result(collect, h.trial_envelope('collect-round', kind='executed', ready=True), at=3)
+    assert h.query()['sequence_trials'] == h.query()['executed_trials'] == 0
+    commands = h.result(stop, h.trial_envelope('stop'), at=4)
+    assert any(command.HasField('complete_workflow_execution') for command in commands)
+    assert not h.scheduled('start') and len(h.scheduled('collect-round')) == len(h.scheduled('stop')) == 1
+
+
+def test_cycle_bounded_lost_collect_reconciles_same_trial_and_original_operation(cycle_workflow):
     from temporalio.api.failure.v1 import ActivityFailureInfo, Failure, TimeoutFailureInfo
     from temporalio.bridge.proto import activity_result as ar, workflow_activation as wa
-    h = cycle_v2_workflow()
+
+    h = cycle_workflow()
+    observe = h.activity(h.start())
+    collect = h.activity(h.result(observe, h.trial_envelope(kind='executed'), at=1))
+    original = h.trial_envelope('collect-round', kind='executed', ready=True, operation_id='3' * 32)
+    failure = Failure(message='Lost typed completion', activity_failure_info=ActivityFailureInfo(),
+        cause=Failure(message='RPC deadline', timeout_failure_info=TimeoutFailureInfo()))
+    commands = h.activate(resolve_activity=wa.ResolveActivity(seq=collect.schedule_activity.seq,
+        result=ar.ActivityResolution(failed=ar.Failure(failure=failure))))
+    for at in (2, 4):
+        reconcile = h.activity(h.timer(commands, at=at))
+        assert reconcile.schedule_activity.activity_type.endswith('.reconcile-round.v4')
+        assert h.converter.from_payloads(reconcile.schedule_activity.arguments)[0] == {
+            'workflow_input': h.original, 'ordinal': 0, 'predecessor': None}
+        if at == 2:
+            commands = h.result(reconcile, h.trial_envelope('reconcile-round', kind='executed'), at=3)
+            assert h.query()['sequence_trials'] == 0
+        else:
+            recovered = h.trial_envelope('reconcile-round', kind='executed', ready=True,
+                operation_id='4' * 32, original_operation_id='3' * 32)
+            commands = h.result(reconcile, recovered, at=5)
+    observe = h.activity(h.timer(commands, at=6))
+    predecessor = h.converter.from_payloads(observe.schedule_activity.arguments)[0]['predecessor']
+    assert predecessor['acceptance']['sources']['operation'] == original['facts']['measurement']['acceptance']['sources']['operation']
+    assert h.query()['sequence_trials'] == h.query()['executed_trials'] == 1
+    assert h.query()['confirmed_rounds'] == 0 and h.query()['ordinal'] == 1
+    assert len(h.scheduled('collect-round')) == 1 and len(h.scheduled('reconcile-round')) == 2
+    assert not h.scheduled('start') and not h.scheduled('request-execution-or-observe')
+
+
+def test_cycle_lost_collect_completion_only_reconciles_existing_index(cycle_workflow):
+    from temporalio.api.failure.v1 import ActivityFailureInfo, Failure, TimeoutFailureInfo
+    from temporalio.bridge.proto import activity_result as ar, workflow_activation as wa
+    h = cycle_workflow()
     observe = h.activity(h.start())
     collect = h.activity(h.result(observe, h.envelope(completed=True), at=1))
     failure = Failure(message='Lost completion', activity_failure_info=ActivityFailureInfo(),
@@ -1428,7 +1469,7 @@ def test_cycle_v2_lost_collect_completion_only_reconciles_existing_index(cycle_v
     commands = h.activate(resolve_activity=wa.ResolveActivity(seq=collect.schedule_activity.seq,
         result=ar.ActivityResolution(failed=ar.Failure(failure=failure))))
     reconcile = h.activity(h.timer(commands, at=2))
-    assert reconcile.schedule_activity.activity_type.endswith('.reconcile-round.v3')
+    assert reconcile.schedule_activity.activity_type.endswith('.reconcile-round.v4')
     commands = h.result(reconcile, h.envelope('reconcile-round', completed=True), at=3)
     reconcile = h.activity(h.timer(commands, at=4))
     commands = h.result(reconcile, h.envelope('reconcile-round', completed=True, accepted=True), at=5)
@@ -1439,8 +1480,8 @@ def test_cycle_v2_lost_collect_completion_only_reconciles_existing_index(cycle_v
 
 
 @pytest.mark.parametrize('fault', ['selection-drift', 'late-ordinal', 'acceptance-job'])
-def test_cycle_v2_rejects_unbound_or_oversized_received_envelope(cycle_v2_workflow, fault):
-    h = cycle_v2_workflow()
+def test_cycle_rejects_unbound_or_oversized_received_envelope(cycle_workflow, fault):
+    h = cycle_workflow()
     observe = h.activity(h.start())
     collect = h.activity(h.result(observe, h.envelope(completed=True), at=1))
     value = h.envelope('collect-round', completed=True, accepted=True)
@@ -1451,16 +1492,16 @@ def test_cycle_v2_rejects_unbound_or_oversized_received_envelope(cycle_v2_workfl
     else:
         value['facts']['measurement']['acceptance']['runtime']['job_id'] = 'other-job'
     stop = h.activity(h.result(collect, value, at=2))
-    assert stop.schedule_activity.activity_type.endswith('.stop.v3')
+    assert stop.schedule_activity.activity_type.endswith('.stop.v4')
     assert h.query()['confirmed_rounds'] == 0 and h.query()['ordinal'] == 0
 
 
 @pytest.mark.parametrize('size', [32767, 32768, 32769])
-def test_cycle_v2_received_aggregate_capacity_preserves_opportunities(cycle_v2_workflow, tmp_path, size):
+def test_cycle_received_aggregate_capacity_preserves_opportunities(cycle_workflow, tmp_path, size):
     from copy import deepcopy
     from temporalio.api.common.v1 import Payloads
 
-    h = cycle_v2_workflow()
+    h = cycle_workflow()
     observe = h.activity(h.start())
     start = h.activity(h.result(observe, h.envelope(), at=1))
     request = h.activity(h.result(start, h.envelope('start', submitted=True, queued=True), at=2))
@@ -1496,14 +1537,14 @@ def test_cycle_v2_received_aggregate_capacity_preserves_opportunities(cycle_v2_w
     else:
         assert status['confirmed_rounds'] == status['ordinal'] == 0 and status['prefix'] is None
         assert all(status[key] for key in ('start_scheduled', 'request_scheduled', 'collect_scheduled'))
-        assert h.activity(commands).schedule_activity.activity_type.endswith('.stop.v3')
+        assert h.activity(commands).schedule_activity.activity_type.endswith('.stop.v4')
 
 
 @pytest.mark.parametrize('size', [32767, 32768, 32769])
-def test_cycle_v2_signal_and_stop_command_use_complete_multibyte_payload(cycle_v2_workflow, tmp_path, size):
+def test_cycle_signal_and_stop_command_use_complete_multibyte_payload(cycle_workflow, tmp_path, size):
     from temporalio.api.common.v1 import Payloads
 
-    h = cycle_v2_workflow()
+    h = cycle_workflow()
     cold = h.activity(h.start())
     request = {'workflow_input': h.original, 'reason': '完整停止原因' + '界' * 1000}
     for _ in range(3):
@@ -1531,13 +1572,13 @@ def test_cycle_v2_signal_and_stop_command_use_complete_multibyte_payload(cycle_v
 
 
 @pytest.mark.parametrize('size', [32767, 32768, 32769, 'raised-failure'])
-def test_cycle_v2_query_and_run_encode_full_status_or_failure(
-        cycle_v2_workflow, cycle_capacity_converter, tmp_path, size):
+def test_cycle_query_and_run_encode_full_status_or_failure(
+        cycle_workflow, cycle_capacity_converter, tmp_path, size):
     from temporalio.api.common.v1 import Payloads
     from temporalio.bridge.proto import workflow_activation as wa
 
-    converter = cycle_capacity_converter('ergora-training-cycle-workflow-v2', size)
-    h = cycle_v2_workflow(data_converter=converter)
+    converter = cycle_capacity_converter('ergora-training-cycle-workflow-v3', size)
+    h = cycle_workflow(data_converter=converter)
     observe = h.activity(h.start())
     collect = h.activity(h.result(observe, h.envelope(completed=True), at=1))
     accepted = h.envelope('collect-round', completed=True, accepted=True)
@@ -1574,12 +1615,12 @@ def test_cycle_v2_query_and_run_encode_full_status_or_failure(
 
 
 @pytest.mark.parametrize('size', [32767, 32768, 32769])
-def test_cycle_v2_initial_input_counts_actual_converter_metadata(
-        cycle_v2_workflow, cycle_capacity_converter, tmp_path, size):
+def test_cycle_initial_input_counts_actual_converter_metadata(
+        cycle_workflow, cycle_capacity_converter, tmp_path, size):
     from temporalio.api.common.v1 import Payloads
 
-    converter = cycle_capacity_converter('ergora-training-cycle-v2', size)
-    h = cycle_v2_workflow(data_converter=converter)
+    converter = cycle_capacity_converter('ergora-training-cycle-v3', size)
+    h = cycle_workflow(data_converter=converter)
     incoming = converter.payload_converter.to_payloads_wrapper([h.original])
     assert incoming.ByteSize() == size
     (tmp_path / 'input.pb').write_bytes(incoming.SerializeToString())
@@ -1599,9 +1640,8 @@ def test_cycle_v2_initial_input_counts_actual_converter_metadata(
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Assembled cycle operations retain the original Linux boot clock')
 @pytest.mark.parametrize('size', [32767, 32768, 32769])
-@pytest.mark.parametrize('program_version', [2, 3])
-def test_cycle_v3_completion_counts_assembled_measurement_and_all_operations(
-        cycle_v2_workflow, cycle_capacity_converter, cycle_sdk_completion, monkeypatch, tmp_path, size, program_version):
+def test_cycle_completion_counts_assembled_measurement_and_all_operations(
+        cycle_workflow, cycle_capacity_converter, cycle_sdk_completion, monkeypatch, tmp_path, size):
     """Synthetic H facts enter the real v3 wrapper and final SDK completion."""
     import asyncio
     from copy import deepcopy
@@ -1611,15 +1651,17 @@ def test_cycle_v3_completion_counts_assembled_measurement_and_all_operations(
     import ergora.training.cycles as training_cycles
     from ergora.runtime import budget_clock
 
-    h = cycle_v2_workflow(program_version)
-    wire = 'ergora-training-cycle-activity-v' + str(program_version + 1)
+    h = cycle_workflow()
+    wire = 'ergora-training-cycle-activity-v4'
     clock = budget_clock.authorize(120)
-    authorization = {'schema_version': program_version + 1, 'control_home': str(tmp_path), 'project': 'demo', 'cycle_id': 'first',
+    authorization = {'schema_version': 5, 'control_home': str(tmp_path), 'project': 'demo', 'cycle_id': 'first',
                      'input_sha256': 'a' * 64, 'clock': clock}
     authorization['sha256'] = training_cycles._sha(authorization)
     h.original.update(control_home=str(tmp_path), authorization_sha256=authorization['sha256'])
-    snapshot = {'authorization': authorization, 'candidates': [{}, {}],
-        'policy': {'wall_seconds': 120, 'cleanup_seconds': 10, 'control_timeout_seconds': 2}}
+    # Synthetic H wire port only; no source admission or file provenance is claimed.
+    snapshot = {'plan_ref': {'bytes': 1, 'sha256': authorization['input_sha256']},
+        'authorization_ref': {'bytes': 1, 'sha256': '0' * 64}, 'candidate_count': 2,
+        'budget': {'clock': clock, 'policy': {'wall_seconds': 120, 'cleanup_seconds': 10, 'control_timeout_seconds': 2}}}
     expected = h.envelope('collect-round', completed=True, accepted=True)['facts']
     seen, assembled = [], []
 
@@ -1645,7 +1687,7 @@ def test_cycle_v3_completion_counts_assembled_measurement_and_all_operations(
     monkeypatch.setattr(worker, '_cycle_capacity', capacity)
     converter = cycle_capacity_converter(wire, size)
     client = SimpleNamespace(namespace='default', data_converter=converter)
-    activities = worker.create_cycle_activities(client, program_version)
+    activities = worker.create_cycle_activities(client)
     completion = asyncio.run(cycle_sdk_completion(activities['collect-round'],
         {'workflow_input': h.original, 'ordinal': 0, 'predecessor': None}, converter=converter))
     (tmp_path / 'completion.pb').write_bytes(completion.SerializeToString())
@@ -1666,15 +1708,15 @@ def test_cycle_v3_completion_counts_assembled_measurement_and_all_operations(
         assert failure.application_failure_info.non_retryable and not failure.HasField('cause')
 
 
-def test_cycle_v2_round_change_never_renews_work_deadline(cycle_v2_workflow):
-    h = cycle_v2_workflow()
+def test_cycle_round_change_never_renews_work_deadline(cycle_workflow):
+    h = cycle_workflow()
     observe = h.activity(h.start())
     collect = h.activity(h.result(observe, h.envelope(completed=True, work=5, total=8), at=1))
     commands = h.result(collect, h.envelope('collect-round', completed=True, accepted=True, work=1000, total=1100), at=2)
     observe = h.activity(h.timer(commands, at=3))
     assert observe.schedule_activity.schedule_to_close_timeout.seconds == 2
     stop = h.activity(h.result(observe, h.envelope(ordinal=1, work=1000, total=1100), at=5))
-    assert stop.schedule_activity.activity_type.endswith('.stop.v3')
+    assert stop.schedule_activity.activity_type.endswith('.stop.v4')
     assert stop.schedule_activity.schedule_to_close_timeout.seconds == 3
 
 
@@ -1682,10 +1724,11 @@ def test_cycle_v2_round_change_never_renews_work_deadline(cycle_v2_workflow):
 @pytest.mark.parametrize('action', ['start', 'reconcile', 'request-execution-or-observe', 'observe-candidate',
                                     'collect-round', 'reconcile-round', 'stop'])
 @pytest.mark.parametrize('attempt', [1, 2])
-def test_cycle_v3_activity_routes_actual_sdk_source_without_reclaiming_retry(
-        monkeypatch, tmp_path, cycle_v2_workflow, action, attempt):
+def test_cycle_activity_routes_actual_sdk_source_without_reclaiming_retry(
+        monkeypatch, tmp_path, cycle_workflow, action, attempt):
     import asyncio
     from dataclasses import replace
+    from datetime import datetime, timedelta, timezone
     from types import SimpleNamespace
     from temporalio.converter import DataConverter
     from temporalio.testing import ActivityEnvironment
@@ -1693,13 +1736,15 @@ def test_cycle_v3_activity_routes_actual_sdk_source_without_reclaiming_retry(
     import ergora.training.cycles as training_cycles
     from ergora.runtime import budget_clock
 
-    h = cycle_v2_workflow()
+    h = cycle_workflow()
     clock = budget_clock.authorize(120)
-    authorization = {'schema_version': 3, 'control_home': str(tmp_path), 'project': 'demo', 'cycle_id': 'first',
+    authorization = {'schema_version': 5, 'control_home': str(tmp_path), 'project': 'demo', 'cycle_id': 'first',
                      'input_sha256': 'a' * 64, 'clock': clock}
     authorization['sha256'] = training_cycles._sha(authorization)
-    snapshot = {'authorization': authorization, 'candidates': [{}, {}],
-        'policy': {'wall_seconds': 120, 'cleanup_seconds': 10, 'control_timeout_seconds': 2}}
+    # Synthetic H wire port only; no source admission or file provenance is claimed.
+    snapshot = {'plan_ref': {'bytes': 1, 'sha256': authorization['input_sha256']},
+        'authorization_ref': {'bytes': 1, 'sha256': '0' * 64}, 'candidate_count': 2,
+        'budget': {'clock': clock, 'policy': {'wall_seconds': 120, 'cleanup_seconds': 10, 'control_timeout_seconds': 2}}}
     original = {**h.original, 'control_home': str(tmp_path), 'authorization_sha256': authorization['sha256']}
     seen = []
 
@@ -1715,17 +1760,23 @@ def test_cycle_v3_activity_routes_actual_sdk_source_without_reclaiming_retry(
         return operation.observation({'status': 'observed', 'facts': h.envelope()['facts']})
 
     monkeypatch.setattr(worker._CycleOperation, 'run', observed)
-    activities = worker.create_cycle_activities(SimpleNamespace(namespace='default', data_converter=DataConverter.default), 2)
-    env = ActivityEnvironment()
-    env.info = replace(env.info, workflow_id='parent', workflow_run_id='parent-run', workflow_type='TrainingCycleWorkflowV2',
-        workflow_namespace='default', namespace='default', task_queue=(worker.protocol.CYCLE_STOP_TASK_QUEUE_V2
-            if action == 'stop' else worker.protocol.CYCLE_TASK_QUEUE_V2), attempt=attempt,
-        activity_type=worker.protocol.CYCLE_ACTIVITY_NAMES_V3[action])
+    def forbidden(*args, **kwargs):
+        raise AssertionError('SDK parent must not read business records or result refs')
+
+    monkeypatch.setattr(worker.protocol, 'read_raw', forbidden)
+    monkeypatch.setattr(worker.State, 'project', forbidden)
+    activities = worker.create_cycle_activities(SimpleNamespace(namespace='default', data_converter=DataConverter.default))
+    env, now = ActivityEnvironment(), datetime.now(timezone.utc)
+    env.info = replace(env.info, workflow_id='parent', workflow_run_id='parent-run', workflow_type='TrainingCycleWorkflowV3',
+        workflow_namespace='default', namespace='default', task_queue=(worker.protocol.CYCLE_STOP_TASK_QUEUE_V3
+            if action == 'stop' else worker.protocol.CYCLE_TASK_QUEUE_V3), attempt=attempt,
+        activity_type=worker.protocol.CYCLE_ACTIVITY_NAMES[action], scheduled_time=now, started_time=now,
+        schedule_to_close_timeout=timedelta(seconds=30), start_to_close_timeout=timedelta(seconds=30))
     request = {'workflow_input': original, **({'reason': 'fixture-stop'} if action == 'stop' else {'ordinal': 0, 'predecessor': None})}
     value = asyncio.run(env.run(activities[action], request))
-    assert value['schema_version'] == 3 and value['protocol'] == 'ergora-training-cycle-activity-v3'
+    assert value['schema_version'] == 4 and value['protocol'] == 'ergora-training-cycle-activity-v4'
     modes = [item.identity['mode'] for item in seen]
-    assert all(item.identity['protocol'] == 'ergora-training-cycle-operation-v2' for item in seen)
+    assert all(item.identity['protocol'] == 'ergora-training-cycle-operation-v3' for item in seen)
     if action == 'stop':
         assert modes[1:] == ['stop-writer', 'drain', 'notify-owner', 'observe-execution', 'notify-owner', 'observe-execution']
         assert value['facts'] is None and len(value['operations']) == 6
@@ -1744,60 +1795,92 @@ def test_cycle_v3_activity_routes_actual_sdk_source_without_reclaiming_retry(
                 cold['started_ns'] + 2_000_000_000, clock['boottime_ns'] + 110_000_000_000)
 
 
-@pytest.mark.parametrize('registered_version', [2, 3])
-def test_cycle_v3_factory_rejects_unknown_program_and_cross_version_request(monkeypatch, tmp_path, registered_version):
+@pytest.mark.skipif(sys.platform != 'linux', reason='SDK source retains the original Linux boot clock')
+def test_cycle_sdk_start_inspects_selected_ordinal_before_preparation(cycle_workflow, monkeypatch, tmp_path):
     import asyncio
+    from dataclasses import replace
+    from datetime import datetime, timedelta, timezone
     from types import SimpleNamespace
     from temporalio.converter import DataConverter
-    from temporalio.exceptions import ApplicationError
     from temporalio.testing import ActivityEnvironment
+    from ergora.runtime import budget_clock
     import ergora.training.runtime.worker as worker
-    client = SimpleNamespace(namespace='default', data_converter=DataConverter.default)
-    for version in (True, 0, 4):
-        with pytest.raises(ValueError):
-            worker.create_cycle_workflow(version)
-        with pytest.raises(ValueError):
-            worker.create_cycle_activities(client, version)
-    def forbidden(*args, **kwargs):
-        raise AssertionError('Cross-version request cannot reach an operation')
-    monkeypatch.setattr(worker, '_CycleOperation', forbidden)
-    actions = worker.create_cycle_activities(client, registered_version)
-    original = {'protocol': 'ergora-training-cycle-v1', 'control_home': str(tmp_path), 'project': 'demo',
-        'cycle_id': 'first', 'input_sha256': 'a' * 64, 'authorization_sha256': 'b' * 64}
-    with pytest.raises(ApplicationError) as rejected:
-        asyncio.run(ActivityEnvironment().run(actions['observe-candidate'], {'workflow_input': original, 'ordinal': 0}))
-    assert rejected.value.type == 'cycle_activity_request_rejected'
+    import ergora.training.cycles as training_cycles
+
+    h = cycle_workflow()
+    clock = budget_clock.authorize(120)
+    authorization = {'schema_version': 5, 'control_home': str(tmp_path), 'project': 'demo', 'cycle_id': 'first',
+        'input_sha256': 'a' * 64, 'clock': clock}
+    authorization['sha256'] = training_cycles._sha(authorization)
+    h.original.update(control_home=str(tmp_path), authorization_sha256=authorization['sha256'])
+    first = h.trial_envelope('collect-round', kind='skipped_known_failure', ready=True)['facts']['measurement']
+    predecessor = {key: first[key] for key in ('prefix', 'acceptance')}
+    # Synthetic H wire port only; no source admission or file provenance is claimed.
+    snapshot = {'plan_ref': {'bytes': 1, 'sha256': authorization['input_sha256']},
+        'authorization_ref': {'bytes': 1, 'sha256': '0' * 64}, 'candidate_count': 2,
+        'budget': {'clock': clock, 'policy': {'wall_seconds': 120, 'cleanup_seconds': 10, 'control_timeout_seconds': 2}}}
+    seen = []
+
+    async def observed(operation):
+        seen.append(operation)
+        assert operation.identity['ordinal'] == 1
+        if operation.identity['mode'] == 'inspect-controller-activity':
+            return operation.observation({'status': 'inspected', 'snapshot': snapshot, 'candidate_exists': False,
+                'controller': {'workflow_id': 'parent', 'run_id': 'parent-run', 'intent_sha256': 'c' * 64}})
+        if operation.identity['mode'] == 'prepare-candidate':
+            return operation.observation({'status': 'unknown', 'reason': 'Closed test offer; no root created'})
+        return operation.observation({'status': 'observed', 'facts': h.trial_envelope(ordinal=1)['facts']})
+
+    monkeypatch.setattr(worker._CycleOperation, 'run', observed)
+    actions = worker.create_cycle_activities(SimpleNamespace(namespace='default', data_converter=DataConverter.default))
+    env, now = ActivityEnvironment(), datetime.now(timezone.utc)
+    env.info = replace(env.info, workflow_id='parent', workflow_run_id='parent-run', workflow_type='TrainingCycleWorkflowV3',
+        workflow_namespace='default', namespace='default', task_queue=worker.protocol.CYCLE_TASK_QUEUE_V3,
+        activity_type=worker.protocol.CYCLE_ACTIVITY_NAMES['start'], scheduled_time=now, started_time=now,
+        schedule_to_close_timeout=timedelta(seconds=30), start_to_close_timeout=timedelta(seconds=30))
+    value = asyncio.run(env.run(actions['start'], {'workflow_input': h.original, 'ordinal': 1, 'predecessor': predecessor}))
+    assert [operation.identity['mode'] for operation in seen] == [
+        'inspect-controller-activity', 'prepare-candidate', 'observe-candidate']
+    assert seen[0].payload['snapshot'] is None
+    assert all(operation.payload['start_context']['controller']['predecessor'] == predecessor for operation in seen[1:])
+    assert value['status'] == 'unknown' and value['facts']['candidate']['ordinal'] == 1
 
 
-@pytest.mark.parametrize('effect', ['start', 'request-execution-or-observe'])
-def test_cycle_v2_lost_start_or_request_never_returns_its_opportunity(cycle_v2_workflow, effect):
+@pytest.mark.parametrize('effect,completion', [('start', 'failure'),
+    ('request-execution-or-observe', 'failure'), ('request-execution-or-observe', 'partial-envelope')])
+def test_cycle_lost_start_or_request_never_returns_its_opportunity(cycle_workflow, effect, completion):
     from temporalio.api.failure.v1 import ActivityFailureInfo, Failure, TimeoutFailureInfo
     from temporalio.bridge.proto import activity_result as ar, workflow_activation as wa
-    h = cycle_v2_workflow()
+    h = cycle_workflow()
     cold = h.activity(h.start())
     command = h.activity(h.result(cold, h.envelope(submitted=effect != 'start', queued=effect != 'start'), at=1))
-    failure = Failure(message='Lost effect completion', activity_failure_info=ActivityFailureInfo(),
-                      cause=Failure(message='Timeout', timeout_failure_info=TimeoutFailureInfo()))
-    commands = h.activate(resolve_activity=wa.ResolveActivity(seq=command.schedule_activity.seq,
-        result=ar.ActivityResolution(failed=ar.Failure(failure=failure))))
+    if completion == 'failure':
+        failure = Failure(message='Lost effect completion', activity_failure_info=ActivityFailureInfo(),
+                          cause=Failure(message='Timeout', timeout_failure_info=TimeoutFailureInfo()))
+        commands = h.activate(resolve_activity=wa.ResolveActivity(seq=command.schedule_activity.seq,
+            result=ar.ActivityResolution(failed=ar.Failure(failure=failure))))
+    else:
+        partial = h.envelope(effect, submitted=True, queued=True)
+        partial.update(status='unknown', facts=None)
+        commands = h.result(command, partial)
     observe = h.activity(h.timer(commands, at=2))
     commands = h.result(observe, h.envelope(submitted=effect != 'start', queued=effect != 'start'), at=3)
     assert len(h.scheduled(effect)) == 1
     assert h.query()['start_scheduled' if effect == 'start' else 'request_scheduled'] is True
     if effect == 'start':
-        assert h.activity(commands).schedule_activity.activity_type.endswith('.stop.v3')
+        assert h.activity(commands).schedule_activity.activity_type.endswith('.stop.v4')
     else:
         observe = h.activity(h.timer(commands, at=4))
         h.result(observe, h.envelope(submitted=True, queued=True), at=5)
         assert len(h.scheduled(effect)) == 1
 
 
-def test_cycle_v2_stop_has_its_own_queue_and_never_invents_cycle_stop_proof(cycle_v2_workflow):
-    h = cycle_v2_workflow()
+def test_cycle_stop_has_its_own_queue_and_never_invents_cycle_stop_proof(cycle_workflow):
+    h = cycle_workflow()
     cold = h.activity(h.start())
     pending = h.activity(h.result(cold, h.envelope(), at=1))
     stop = h.activity(h.signal({'workflow_input': h.original, 'reason': 'fixture-stop'}, at=2))
-    assert stop.schedule_activity.task_queue == 'ergora-training-cycle-stop-v2'
+    assert stop.schedule_activity.task_queue == 'ergora-training-cycle-stop-v3'
     assert stop.schedule_activity.activity_id == 'cycle-stop'
     assert stop.schedule_activity.seq != pending.schedule_activity.seq
     assert not h.scheduled('request-execution-or-observe')
@@ -1808,11 +1891,10 @@ def test_cycle_v2_stop_has_its_own_queue_and_never_invents_cycle_stop_proof(cycl
     assert status['stop_durable'] is status['admission_drained'] is status['executor_stop_confirmed'] is None
 
 
-@pytest.mark.parametrize('program_version,control,work,expected', [
-    (2, 4, 100, 4), (2, 30, 100, 10), (3, 4, 100, 4), (3, 30, 100, 30), (3, 30, 6, 5)])
+@pytest.mark.parametrize('control,work,expected', [(4, 100, 4), (30, 100, 30), (30, 6, 5)])
 def test_cycle_declared_command_window_uses_authenticated_original_policy(
-        cycle_v2_workflow, program_version, control, work, expected):
-    h = cycle_v2_workflow(program_version)
+        cycle_workflow, control, work, expected):
+    h = cycle_workflow()
     cold = h.activity(h.start())
     assert cold.schedule_activity.schedule_to_close_timeout.seconds == 10
     value = h.envelope(work=work)
@@ -1820,11 +1902,11 @@ def test_cycle_declared_command_window_uses_authenticated_original_policy(
     normal = h.activity(h.result(cold, value, at=1)).schedule_activity
     assert normal.schedule_to_close_timeout.seconds == normal.start_to_close_timeout.seconds == expected
     assert normal.activity_id == 'candidate-0-2'
-    assert normal.activity_type == 'ergora.training_cycle.start.v' + ('4' if program_version == 3 else '3')
-    assert normal.task_queue == 'ergora-training-cycle-v' + str(program_version)
+    assert normal.activity_type == 'ergora.training_cycle.start.v4'
+    assert normal.task_queue == 'ergora-training-cycle-v3'
     status = h.query()
-    assert status['schema_version'] == program_version
-    assert status['protocol'] == 'ergora-training-cycle-workflow-v' + str(program_version)
+    assert status['schema_version'] == 3
+    assert status['protocol'] == 'ergora-training-cycle-workflow-v3'
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='SDK windows retain the original Linux boot clock')
@@ -1843,7 +1925,7 @@ def test_cycle_declared_command_window_uses_authenticated_original_policy(
     ('observe-candidate', 30, 100, 12, 11, True, 25, 'inspection_expired'),
     ('observe-candidate', 30, 10, 12, 0, True, 25, 'command_expired'),
     ('observe-candidate', 4, 100, 0, 5, False, 25, 'command_expired')])
-def test_cycle_v3_sdk_windows_charge_queue_and_inspection_to_one_origin(
+def test_cycle_sdk_windows_charge_queue_and_inspection_to_one_origin(
         monkeypatch, tmp_path, action, control, work, queue_wait, inspection_elapsed, permit_enabled,
         sdk_remaining, expected):
     import asyncio
@@ -1857,11 +1939,13 @@ def test_cycle_v3_sdk_windows_charge_queue_and_inspection_to_one_origin(
     from ergora.runtime import budget_clock
 
     clock = budget_clock.authorize(work + 10)
-    authorization = {'schema_version': 4, 'control_home': str(tmp_path), 'project': 'demo', 'cycle_id': 'first',
+    authorization = {'schema_version': 5, 'control_home': str(tmp_path), 'project': 'demo', 'cycle_id': 'first',
                      'input_sha256': 'a' * 64, 'clock': clock}
     authorization['sha256'] = training_cycles._sha(authorization)
-    snapshot = {'authorization': authorization, 'candidates': [{}, {}],
-        'policy': {'wall_seconds': work + 10, 'cleanup_seconds': 10, 'control_timeout_seconds': control}}
+    # Synthetic H wire port only; no source admission or file provenance is claimed.
+    snapshot = {'plan_ref': {'bytes': 1, 'sha256': authorization['input_sha256']},
+        'authorization_ref': {'bytes': 1, 'sha256': '0' * 64}, 'candidate_count': 2,
+        'budget': {'clock': clock, 'policy': {'wall_seconds': work + 10, 'cleanup_seconds': 10, 'control_timeout_seconds': control}}}
     original = {key: authorization[key] for key in ('control_home', 'project', 'cycle_id', 'input_sha256')}
     original.update(protocol='ergora-training-cycle-v3', authorization_sha256=authorization['sha256'])
     ticks, seen, admitted = [clock['boottime_ns']], [], []
@@ -1897,11 +1981,11 @@ def test_cycle_v3_sdk_windows_charge_queue_and_inspection_to_one_origin(
     monkeypatch.setattr(worker._CycleOperation, 'run', observed)
     permit = Permit()
     options = {'normal_permit': permit, 'stop_permit': permit} if permit_enabled else {}
-    actions = worker.create_cycle_activities(SimpleNamespace(namespace='default', data_converter=DataConverter.default), 3, **options)
+    actions = worker.create_cycle_activities(SimpleNamespace(namespace='default', data_converter=DataConverter.default), **options)
     env, now = ActivityEnvironment(), datetime.now(timezone.utc)
     env.info = replace(env.info, workflow_id='parent', workflow_run_id='parent-run', workflow_type='TrainingCycleWorkflowV3',
         workflow_namespace='default', namespace='default', attempt=1,
-        activity_type=worker.protocol.CYCLE_ACTIVITY_NAMES_V4[action],
+        activity_type=worker.protocol.CYCLE_ACTIVITY_NAMES[action],
         task_queue=worker.protocol.CYCLE_STOP_TASK_QUEUE_V3 if action == 'stop' else worker.protocol.CYCLE_TASK_QUEUE_V3,
         scheduled_time=now - timedelta(seconds=5), started_time=now,
         schedule_to_close_timeout=timedelta(seconds=sdk_remaining + 5),

@@ -340,7 +340,7 @@ def test_source_capability_pins_complete_current_gate_and_offline_saved_shape(
     venv.EnvBuilder(with_pip=False).create(root / '.venv')
     cap = protocol.source_capability(root, {'original': 'ready'})
     assert {'training/configuration.py', 'training/runtime/setup.py', 'training/runtime/preparation.py',
-            'data/schemas/training-cycle-v1.json', 'data/native-runtime/training-executor-admission-v3.json'} <= set(cap['gate_sources'])
+            'data/schemas/training-cycle-v2.json', 'data/native-runtime/training-executor-admission-v3.json'} <= set(cap['gate_sources'])
     protocol.validate_sources(cap)
     owner = {'schema_version': 2, 'intent_sha256': 'a' * 64, 'authorization_sha256': 'b' * 64,
         'pid': 1, 'start_ticks': '0', 'boot_id': '0' * 36, 'context_sha256': 'c' * 64,
@@ -462,3 +462,206 @@ def test_cli_prepares_only_new_native_source_without_creating_control_state(tmp_
     before = {p: p.read_bytes() for p in root.rglob('*') if p.is_file()}
     repeated = subprocess.run(command, capture_output=True, text=True, timeout=30)
     assert repeated.returncode != 0 and all(p.read_bytes() == raw for p, raw in before.items())
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='CPU bootstrap uses Linux descriptor reads')
+@pytest.mark.parametrize('source_fault', [
+    None, 'omitted-nested', 'tampered-nested', 'omitted-initializer', 'omitted-paths'])
+def test_cpu_bootstrap_checks_recursive_sources_before_import(tmp_path, source_fault):
+    """Frozen synthetic lineage reaches only the selected wrapper's import marker."""
+    import hashlib
+
+    def raw(value):
+        return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(',', ':'), allow_nan=False).encode()
+
+    def sha(value):
+        return hashlib.sha256(raw(value)).hexdigest()
+
+    def publish(path, value):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(raw(value))
+
+    package = tmp_path / 'core/ergora'
+    imported = tmp_path / 'wrapper-imported'
+    files = {
+        '__init__.py': b'', '_paths.py': b'', 'training/__init__.py': b'',
+        'runtime/__init__.py': b'', 'runtime/processes.py': b'ORIGINAL = True\n',
+        'training/configuration.py': (
+            'from pathlib import Path\nPath(' + repr(str(imported)) + ").write_text('selected')\n").encode(),
+    }
+    native_name = 'data/reference/platform/local/agent_platform/process_job.py'
+    files[native_name] = (native_resources.ROOT / 'platform/local/agent_platform/process_job.py').read_bytes()
+    for name, content in files.items():
+        path = package / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(content)
+    sources = {name: hashlib.sha256(content).hexdigest() for name, content in files.items()}
+    omitted = {'omitted-nested': 'runtime/processes.py', 'omitted-initializer': 'training/__init__.py',
+               'omitted-paths': '_paths.py'}.get(source_fault)
+    if omitted is not None:
+        del sources[omitted]
+    if source_fault == 'tampered-nested':
+        (package / 'runtime/processes.py').write_bytes(b'ORIGINAL = False\n')
+
+    installation, runtime = tmp_path / 'native', tmp_path / 'state'
+    descriptor = installation / 'ergora-native-runtime.json'
+    publish(descriptor, {'synthetic': 'fixed-descriptor'})
+    job = runtime / 'training/jobs/alpha'
+    output = job / 'run-output'
+    command = [sys.executable, str(package / 'training/configuration.py'), str(job / 'configuration-request.json')]
+    runner = {'project': 'synthetic', 'repo': str(tmp_path / 'repo'), 'command': command,
+              'configuration_readback': {'synthetic': True}}
+    contract = {'kind': 'training-cpu-execution-contract', 'implementation': {
+        'wrapper_entry': 'ergora.training.configuration:main', 'runner_sha256': sha(runner),
+        'core_sources_sha256': sha(sources)}}
+    contract['sha256'] = sha(contract)
+    manifest = {'experiment_id': 'alpha', 'execution': {'cpu_contract': contract}}
+    binding = {'experiment_id': 'alpha', 'manifest_sha': hashlib.sha256(raw(manifest)).hexdigest()}
+    native = {'experiment': {'binding': binding}, 'runner': runner}
+    intent = {'schema_version': 1, 'operation': 'start', 'experiment_id': 'alpha',
+        'workflow_id': 'perf-experiment/alpha', 'project': runner['project'], 'repo': runner['repo'],
+        'execution': {'state_directory': str(runtime)}, 'budget': {'authorization_sha256': 'a' * 64},
+        'observation': {'experiment': {
+            'experiment_id': 'alpha', 'spec': native['experiment'], 'binding': binding,
+            'manifest': manifest, 'current_runner': runner}}}
+    context = {'intent': intent, 'authorization': {'sha256': 'a' * 64}}
+    owner = {'authorization_sha256': 'a' * 64, 'intent_sha256': sha(intent),
+        'context_sha256': sha(context), 'execution_capability': {'installation': str(installation),
+            'descriptor_sha256': hashlib.sha256(descriptor.read_bytes()).hexdigest()}}
+    managed = {'kind': 'training-execution-request', 'experiment_id': 'alpha',
+        'native_request_sha256': hashlib.sha256(raw(native)).hexdigest(), 'owner_sha256': sha(owner),
+        'start_intent_sha256': sha(intent), 'authorization_sha256': 'a' * 64}
+    configuration = {'binding': binding, 'output': str(output),
+        'native_request_sha256': managed['native_request_sha256'],
+        'managed': {'request_sha256': sha(managed)}, 'context': context, 'runner_sha256': sha(runner),
+        'cpu_contract_core': {'package_directory': str(package), 'sources_sha256': sha(sources)}}
+    preparation = {'schema_version': 2, 'experiment_id': 'alpha', 'project_revision': 1,
+        'request': {'synthetic': True}, 'files': {'training/manifests/alpha.json': raw(manifest).decode()}}
+    preparation['confirmed_preview_sha256'] = sha(preparation)
+    preparation['confirmation'] = {'request_sha256': sha(preparation['request']), 'project_revision': 1}
+    admission = {'preparation_intent_sha256': sha(preparation), 'manifest_sha256': binding['manifest_sha'],
+        'contract_sha256': contract['sha256'], 'confirmed_preview_sha256': preparation['confirmed_preview_sha256'],
+        'confirmation': preparation['confirmation']}
+    for path, value in (
+        (job / 'request.json', native), (runtime / 'training/manifests/alpha.json', manifest),
+        (runtime / 'ergora/training-submissions/alpha.intent.json', intent),
+        (runtime / 'ergora/training-submissions/alpha.budget/owner.json', owner),
+        (job / 'managed-execution/request.json', managed), (job / 'configuration-request.json', configuration),
+        (runtime / 'ergora/training-preparations/alpha.intent.json', preparation),
+        (runtime / 'ergora/training-preparations/alpha.cpu-contract-admission.json', admission),
+        (output / 'cpu-contract-admission.json', admission),
+        (output / 'cpu-core-sources.json', {'package_directory': str(package), 'sources': sources,
+            'contract_sha256': contract['sha256']}),
+    ):
+        publish(path, value)
+    process_folder = runtime / 'processes/af-perf-alpha-run'
+    script = '''import importlib.util,json,sys,types
+from pathlib import Path
+package,native_root,state,output,folder,command=json.loads(sys.argv[1])
+core=types.ModuleType('agent_platform.core')
+core.CONFIG=Path(native_root)/'config'
+core.ROOT=Path(native_root)
+core.STATE=Path(state)
+core.UPSTREAM=Path(native_root)/'upstream'
+def require(condition,message):
+    if not condition: raise ValueError(message)
+def forbidden(*args,**kwargs): raise AssertionError('Bootstrap reached an unrelated native effect')
+core.require=require
+core.environment=core.git=core.read=core.write=forbidden
+parent=types.ModuleType('agent_platform')
+parent.__path__=[]
+sys.modules['agent_platform']=parent
+sys.modules['agent_platform.core']=core
+source=Path(package)/'data/reference/platform/local/agent_platform/process_job.py'
+spec=importlib.util.spec_from_file_location('agent_platform.process_job',source)
+monitor=importlib.util.module_from_spec(spec)
+spec.loader.exec_module(monitor)
+selected=monitor._cpu_training_module(command,Path(output),Path(folder),{'name':Path(folder).name})
+print(selected.__file__)
+'''
+    result = subprocess.run([sys.executable, '-I', '-S', '-B', '-c', script, json.dumps([
+        str(package), str(installation), str(runtime), str(output), str(process_folder), command])],
+        capture_output=True, text=True, timeout=10)
+    if source_fault is None:
+        assert result.returncode == 0, result.stderr
+        assert Path(result.stdout.strip()) == package / 'training/configuration.py'
+        assert imported.read_text() == 'selected'
+    else:
+        expected = ('Original CPU core source bytes changed' if source_fault == 'tampered-nested'
+                    else 'CPU bootstrap package inventory changed')
+        assert result.returncode != 0 and expected in result.stderr
+        assert not imported.exists()
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Native final admission uses Linux process locks')
+def test_cpu_final_admission_follows_environment_log_and_stdin_io(tmp_path):
+    source = native_resources.ROOT / 'platform/local/agent_platform/process_job.py'
+    script = '''import importlib.util,json,sys,types
+from pathlib import Path
+source,root=map(Path,sys.argv[1:])
+state=root/'state'
+folder=state/'processes/synthetic'
+output=root/'output'
+protocol=root/'protocol'
+folder.mkdir(parents=True)
+protocol.mkdir()
+(protocol/'prompt.txt').write_bytes(b'fixed synthetic input')
+request={'name':'synthetic','output':str(output),'checkout':str(root), 'writable':True,
+    'command':['unreachable-business-command'],'fence':None,'model':'codex','protocol':str(protocol),
+    'policy':None,'timeout':5}
+(folder/'request.json').write_text(json.dumps(request))
+core=types.ModuleType('agent_platform.core')
+core.CONFIG=root/'config'
+core.ROOT=root
+core.STATE=state
+core.UPSTREAM=root/'upstream'
+def require(condition,message):
+    if not condition: raise ValueError(message)
+def read(path): return json.loads(path.read_bytes())
+def write(path,value): path.write_text(json.dumps(value))
+def forbidden(*args,**kwargs): raise AssertionError('Unrelated native effect')
+core.require,core.read,core.write=require,read,write
+core.environment=core.git=forbidden
+parent=types.ModuleType('agent_platform')
+parent.__path__=[]
+sys.modules['agent_platform']=parent
+sys.modules['agent_platform.core']=core
+spec=importlib.util.spec_from_file_location('agent_platform.process_job',source)
+monitor=importlib.util.module_from_spec(spec)
+spec.loader.exec_module(monitor)
+events=[]
+original_open=Path.open
+def opened(path,*args,**kwargs):
+    result=original_open(path,*args,**kwargs)
+    if path==output/'execution.log': events.append('log')
+    if path==protocol/'prompt.txt': events.append('stdin')
+    return result
+Path.open=opened
+def environment(model):
+    assert model=='codex'
+    events.append('environment')
+    return {}
+def denied(owned):
+    assert owned=='fixed-original-context'
+    assert events==['log','stdin','environment'],events
+    events.append('admission')
+    raise ValueError('fixed synthetic final denial')
+def spawn(*args,**kwargs):
+    events.append('business-popen')
+    raise AssertionError('Final denial must prevent business Popen')
+monitor._cpu_training_module=lambda *args: types.SimpleNamespace(
+    cpu_process_context=lambda *args:'fixed-original-context',cpu_process_last_admission=denied)
+monitor.child_environment=environment
+monitor.subprocess.Popen=spawn
+monitor.time.time=lambda:0
+monitor.run(folder)
+result=read(folder/'terminal.json')
+assert result['returncode']==125 and result['detail']=='ValueError: fixed synthetic final denial',result
+assert events[:4]==['log','stdin','environment','admission'] and 'business-popen' not in events,events
+print(json.dumps({'events':events,'returncode':result['returncode']}))
+'''
+    result = subprocess.run([sys.executable, '-I', '-S', '-B', '-c', script, str(source), str(tmp_path)],
+        capture_output=True, text=True, timeout=10)
+    assert result.returncode == 0, result.stderr
+    observed = json.loads(result.stdout)
+    assert observed['returncode'] == 125 and 'business-popen' not in observed['events']

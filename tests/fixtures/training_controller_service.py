@@ -180,8 +180,10 @@ class RoundService(DispatchService):
         self.folder = Path(identity['control_home']) / 'training-cycles' / identity['project'] / identity['cycle_id'] / 'controller'
         self.intent = json.loads((self.folder / 'intent.json').read_bytes())
         self.receipt = json.loads((self.folder / 'receipt.json').read_bytes())
-        self.runtime = Path(payload['snapshot']['authorization']['execution']['state_directory'])
-        self.ident = payload['snapshot']['candidates'][identity['ordinal']]['experiment_id']
+        from ergora.training.execution_protocol import resolve_cycle_snapshot
+        plan, authorization = resolve_cycle_snapshot(payload)
+        self.runtime = Path(authorization['execution']['state_directory'])
+        self.ident = plan['definition']['candidates'][identity['ordinal']]['experiment_id']
 
     def candidate(self, request):
         if request.execution.workflow_id != self.intent['workflow_id']:
@@ -240,7 +242,7 @@ class RoundService(DispatchService):
         original = {'workflow_input': self.intent['workflow_input'], 'ordinal': self.payload['identity']['ordinal'],
                     'predecessor': self.payload['start_context']['controller']['predecessor']}
         scheduled = ActivityTaskScheduledEventAttributes(activity_id='candidate-' + str(original['ordinal']) + '-collect',
-            activity_type=ActivityType(name=cycle_activity_names(3 if self.intent['protocol'] == 'ergora-training-cycle-v3' else 2)['collect-round']),
+            activity_type=ActivityType(name=cycle_activity_names()['collect-round']),
             task_queue=TaskQueue(name=self.intent['task_queue']), input=Payloads(payloads=await DataConverter.default.encode([original])))
         if self.case == 'round-history-input':
             original['predecessor'] = {'foreign': True}
@@ -251,7 +253,7 @@ class RoundService(DispatchService):
             events.append(HistoryEvent(event_id=3, activity_task_scheduled_event_attributes=scheduled))
         if self.payload['identity']['mode'] == 'reconcile-round':
             current = ActivityTaskScheduledEventAttributes(activity_id=self.payload['activity_context']['activity_source']['activity_id'],
-                activity_type=ActivityType(name=cycle_activity_names(3 if self.intent['protocol'] == 'ergora-training-cycle-v3' else 2)['reconcile-round']),
+                activity_type=ActivityType(name=cycle_activity_names()['reconcile-round']),
                 task_queue=TaskQueue(name=self.intent['task_queue']), input=Payloads(payloads=await DataConverter.default.encode([original])))
             events.append(HistoryEvent(event_id=4, activity_task_scheduled_event_attributes=current))
         if self.case == 'round-history-count':

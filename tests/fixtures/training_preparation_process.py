@@ -5,12 +5,13 @@ import os
 from pathlib import Path
 
 from agent_platform import core
-from ergora.training import materials as training_materials
+import ergora.training.materials as training_materials
 
 
 state = Path(os.environ['AGENTFLOW_STATE_DIR'])
 ident = os.environ['ERGORA_TEST_PREPARATION_ID']
 intent = state / f'ergora/training-preparations/{ident}.intent.json'
+admission = state / f'ergora/training-preparations/{ident}.cpu-contract-admission.json'
 targets = [intent, state / f'training/manifests/{ident}.json',
            state / f'training/projects/demo/perf/experiments/{ident}/manifest.json',
            state / f'training/specs/{ident}.json',
@@ -52,6 +53,13 @@ def publish_material(path, raw, root):
     published(path)
 
 
+original_link = os.link
+def link(source, destination, *args, **kwargs):
+    if failure == 'cpu-admission-link' and Path(destination) == admission:
+        raise OSError('Controlled original CPU acceptance publication link failure')
+    return original_link(source, destination, *args, **kwargs)
+os.link = link
+
 original_sync = os.fsync
 original_open = os.open
 root_synchronized = False
@@ -71,6 +79,11 @@ def open_file(path, flags, *args, **kwargs):
 def synchronize(descriptor):
     global root_synchronized
     path = Path('/proc/self/fd/' + str(descriptor)).resolve()
+    cpu_selected = {'cpu-admission-file': admission, 'cpu-admission-parent': admission.parent,
+                    'cpu-admission-root': state}.get(failure)
+    if admission.exists() and cpu_selected is not None and path == cpu_selected:
+        record('cpu-admission-sync-failed', path)
+        raise OSError('Controlled original CPU acceptance synchronization failure: ' + failure)
     selected = {'file': intent, 'parent': intent.parent, 'ancestor': state / 'ergora',
                 'root': state}.get(failure)
     if intent.exists() and path == selected:

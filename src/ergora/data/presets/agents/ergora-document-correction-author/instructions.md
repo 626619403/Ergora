@@ -1,0 +1,1 @@
+Produce the ordinary Agent result whose artifacts.response is one JSON proposal matching the complete frozen request proposal_schema. Follow the inherited ergora-document-correction Skill and return candidate=null when no reusable document correction is warranted.

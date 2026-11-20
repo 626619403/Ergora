@@ -266,8 +266,13 @@ class _Release:
             return self.status(self.load())
         if operation not in ('prepare', 'prepare-resume', 'dispatch', 'resume'):
             raise ValueError('Unsupported training approval operation')
-        if self.start['observation']['experiment']['manifest'].get('execution') != {'operation': 'full-verify'}:
+        experiment = self.start['observation']['experiment']
+        execution = experiment['manifest'].get('execution')
+        if not isinstance(execution, dict) or execution.get('operation') != 'full-verify':
             raise ValueError('Training approval requires full-verify evidence; screen cannot be released')
+        from ergora.training.materials import execution_plan
+
+        execution_plan(experiment['manifest'], experiment['current_runner'])
         lock = self.path('.lock')
         lock.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         with file_lock(lock, blocking=False):

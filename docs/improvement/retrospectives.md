@@ -2,6 +2,51 @@
 
 English · [Documentation](../README.md) · [简体中文](../zh-CN/improvement/retrospectives.md)
 
+## Propose a correction to one project document
+
+Use this explicit path when a behavioral correction should become a persistent project rule or lesson. Select one existing Markdown file in the registered project's repository, such as its `AGENTS.md`. Ordinary documentation edits already authorized by a development task keep that task's contract. Imported chat text is reported source material. Eligible ordinary [project-native sessions](../operations/services.md#project-native-sessions) can also suggest a concrete change during their existing turn, with a project opt-out; the same exact operator application gate follows.
+
+Install the read-only proposal preset, then prepare its complete manifest and grant through the [manifest steps](../definitions/workflows/compose.md#freeze-the-current-preview-into-the-persistent-control-directory). The root is `ergora-document-correction 1.0.0`, with leaf `root/propose`, Codex `gpt-6.1-sol` high, empty write/network permissions and shell disabled. Installing/preparing a manifest makes no model call.
+
+```bash
+ergora composition install-preset document-correction
+ergora retrospective prepare-document my-project --document AGENTS.md --correction ./correction.txt --source "Explicit operator correction" --revision PROJECT_REVISION --manifest ./correction-manifest --instance root/propose --directory ./correction-input --max-prompt-bytes 500000
+ergora composition run-input my-project ./correction-input --mode text-only --timeout 240
+```
+
+`correction.txt` contains the complete UTF-8 correction. Preparation freezes its original bytes, the full current document and governing ancestor rules, repository/HEAD, project revision and original control authority. Uncommitted document content is retained as the before image. `--max-material-bytes` bounds complete correction/document/rule bytes and the replacement; the complete prompt has the separately supplied limit. Oversized, nontext, linked or outside-project targets fail without truncation. Model invocation is the separate explicit `run-input`; missing backend support fails visibly. A one-off or unsupported correction can yield `candidate:null` without a document write.
+
+Use the original input digest and invocation receipt's result path/SHA to create a complete host-computed preview:
+
+```bash
+ergora retrospective preview-document my-project ./correction-input ORIGINAL_RESULT --revision PROJECT_REVISION --input-digest INPUT_DIGEST --result-sha256 RESULT_SHA > ./document-preview.json
+```
+
+Read `change.before`, `change.after` and `change.diff`, together with the lesson, applicability and `scope`. They contain the full original/replacement text and exact file identities, including original line endings, BOM, final-newline state and mode. `check-document INPUT RESULT --input-digest DIGEST --result-sha256 SHA` computes the same inspection offline; only `preview-document` at the original control home seals an actionable candidate. Neither operation changes the project document or grants consent. Candidate/source text saying that a user agrees is not consent.
+
+A completed eligible native response supplies this complete object as `correction_suggestion.preview`, without a second model call or a separate generation confirmation. Save that preview object rather than the entire Agent record when using the commands below. Its native request/result identities remain genuine native sources; it is not a composition result or a handoff. Ordinary status reads carry only an immutable candidate reference. The console fetches/renders the full body once per selected candidate and refreshes current action status independently. Missing, unsupported or malformed suggestions create no automatic follow-up call.
+
+After reviewing that exact preview, submit a separate explicit decision using its `candidate_digest`, `change.before.sha256` and `scope_sha256`:
+
+```bash
+ergora retrospective apply-document my-project ./document-preview.json --revision PROJECT_REVISION --candidate-digest CANDIDATE_DIGEST --base-sha256 BASE_SHA --scope-sha256 SCOPE_SHA --confirm
+ergora retrospective document-status my-project ./document-preview.json
+```
+
+Apply supports local Linux/WSL regular files with synchronization/replacement support; preview/status report actual apply availability. This is an explicit same-user operator boundary, not protected-human authentication or OS isolation. Cooperating Ergora writers share the repository mutex. External editors ignoring that mutex can race filesystem replacement; pause such editing during application.
+
+The host rechecks original input/result bytes, project revision, repository/HEAD, governing rules, path/inode/mode and before bytes immediately before replacement. Drift refuses the old candidate: prepare again from current content, inspect the new full diff and confirm that new identity. To decline or withdraw an unattempted candidate:
+
+```bash
+ergora retrospective withdraw-document my-project ./document-preview.json --reason "Do not persist this lesson"
+```
+
+To edit or supersede a proposal, prepare a fresh one with `--parent-preview ./document-preview.json`, retain its original outcome/authority reference, then obtain and inspect a complete new replacement. The direct parent's original outcome/history is checked again under its lock at final application. A changed parent requires fresh preparation, preview and consent; an explicitly shown unresolved parent remains unknown. Acceptance of the old candidate is never copied. Memory saving, active Skill adoption and code changes remain separate actions.
+
+Keep the complete original input directory, result, preview and control home. A preview belongs to its host-issued original slot and control-root/database identities: another `--home`, a copied/missing slot or a restored replacement authority cannot consume it. Backup/history inspection retains its existing behavior; migrating old preview consumption is unsupported. Reopen status under the original home. Status reports the original receipt separately from current file observations. A consumed/interrupted attempt without sufficient receipt remains `unknown`; neither status nor repeating apply resends it. Preserve its original records and any captured staged-file evidence. A new superseding proposal must show that unresolved history and requires its own exact decision.
+
+The original slot retains a durable record of consumption before issuing a decision. Lost issued records produce unknown/unavailable history rather than renewed readiness; a missing consumption record cannot be rebuilt from a saved preview. Manually replacing every journal file with a mutually consistent earlier snapshot under the same authority is outside this cooperative boundary and is unsupported. Use the complete backup/restore contract; restored identities cannot consume old previews.
+
 ## Select complete offline evidence for a retrospective
 
 The basic installation can also read the complete original index without the control database or online services:

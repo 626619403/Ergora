@@ -5,8 +5,10 @@ import fcntl
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import signal
+import stat
 import subprocess
 import sys
 import time
@@ -89,6 +91,219 @@ def stop(process: subprocess.Popen) -> None:
         process.wait(timeout=5)
 
 
+def _cpu_read_raw(path, limit=16 * 1_048_576):
+    """Bound and confirm one original bootstrap file without following links or FIFOs."""
+    path = Path(path)
+    require(path.is_absolute() and str(path) == os.path.normpath(str(path)) and len(path.parts) <= 64,
+            'CPU bootstrap requires an ordinary absolute original path')
+    with contextlib.ExitStack() as resources:
+        def opened(name, flags, parent=None):
+            fd = os.open(name, flags | os.O_CLOEXEC | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=parent)
+            resources.callback(os.close, fd)
+            return fd
+        def route():
+            parent = opened(path.anchor, os.O_RDONLY | os.O_DIRECTORY)
+            parents = [os.fstat(parent)]
+            for part in path.parts[1:-1]:
+                parent = opened(part, os.O_RDONLY | os.O_DIRECTORY, parent)
+                parents.append(os.fstat(parent))
+            return opened(path.name, os.O_RDONLY, parent), [(row.st_dev, row.st_ino) for row in parents]
+        fd, parents = route()
+        before = os.fstat(fd)
+        require(stat.S_ISREG(before.st_mode) and 0 <= before.st_size <= limit,
+                'CPU bootstrap material must be an ordinary bounded file')
+        raw = bytearray()
+        while len(raw) <= limit:
+            chunk = os.read(fd, min(65536, limit + 1 - len(raw)))
+            if not chunk: break
+            raw.extend(chunk)
+        again, current_parents = route()
+        def identity(row):
+            return (row.st_dev, row.st_ino, row.st_mode, row.st_size, row.st_mtime_ns, row.st_ctime_ns)
+        require(len(raw) <= limit and len(raw) == before.st_size and parents == current_parents
+                and identity(before) == identity(os.fstat(fd)) == identity(os.fstat(again)),
+                'CPU bootstrap material changed during its complete bounded descriptor read')
+        return bytes(raw)
+
+
+def _cpu_training_module(command, output, process_folder, process_request):
+    """Bootstrap only the original admitted fixed core, never ambient ergora."""
+    import importlib.util
+    from .core import ROOT
+
+    def sha(value):
+        return hashlib.sha256(json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(',', ':'), allow_nan=False).encode()).hexdigest()
+    def document(path, limit=16 * 1_048_576):
+        def unique(items):
+            value = {}
+            for key, item in items:
+                require(key not in value, 'Duplicate original CPU bootstrap JSON key')
+                value[key] = item
+            return value
+        raw = _cpu_read_raw(path, limit)
+        value = json.loads(raw, object_pairs_hook=unique)
+        require(isinstance(value, dict), 'CPU bootstrap original JSON must be a complete object')
+        return value, raw
+    def optional(path, limit=16 * 1_048_576):
+        try:
+            return document(path, limit)[0]
+        except FileNotFoundError:
+            return None
+    def directory_present(path):
+        try:
+            metadata = os.stat(path, follow_symlinks=False)
+        except FileNotFoundError:
+            return False
+        require(stat.S_ISDIR(metadata.st_mode), 'Original execution opportunity is not an ordinary directory')
+        return True
+    process_folder = Path(process_folder)
+    require(process_folder.parent == STATE / 'processes' and process_request['name'] == process_folder.name,
+            'CPU bootstrap process request lost its original registry owner')
+    selected = re.fullmatch(r'af-perf-([A-Za-z0-9][A-Za-z0-9_-]{0,79})-run', process_folder.name)
+    if selected is None:
+        return None
+    ident = selected.group(1)
+    require(re.fullmatch('[A-Za-z0-9][A-Za-z0-9_-]{0,79}', ident) is not None, 'Invalid CPU original experiment ID')
+    job = STATE / 'training/jobs' / ident
+    native, native_raw = document(job / 'request.json')
+    manifest, manifest_raw = document(STATE / 'training/manifests' / (ident + '.json'))
+    binding = native['experiment']['binding']
+    require(binding['experiment_id'] == ident and hashlib.sha256(manifest_raw).hexdigest() == binding['manifest_sha'],
+            'CPU bootstrap original native manifest binding changed')
+    execution = manifest.get('execution', {})
+    require(isinstance(execution, dict), 'CPU bootstrap original execution is malformed')
+    # Mode absence is meaningful only after independently saved original bindings.
+    # The current native/manifest pair may be coherently restored together.
+    managed_path = job / 'managed-execution'
+    submission_path = STATE / 'ergora/training-submissions'
+    budget_path = submission_path / (ident + '.budget')
+    managed = optional(managed_path / 'request.json', 1_048_576)
+    configuration = optional(job / 'configuration-request.json')
+    owner = optional(budget_path / 'owner.json', 1_048_576)
+    start_intent = optional(submission_path / (ident + '.intent.json'))
+    preparation_path = STATE / 'ergora/training-preparations'
+    intent = optional(preparation_path / (ident + '.intent.json'))
+    admission = optional(preparation_path / (ident + '.cpu-contract-admission.json'))
+    if start_intent is not None:
+        original = start_intent['observation']['experiment']
+        require(type(start_intent['schema_version']) is int and start_intent['schema_version'] == 1
+            and start_intent['operation'] == 'start' and start_intent['experiment_id'] == ident
+            and start_intent['workflow_id'] == 'perf-experiment/' + ident
+            and start_intent['project'] == native['runner']['project'] and start_intent['repo'] == native['runner']['repo']
+            and original['experiment_id'] == ident and original['spec'] == native['experiment']
+            and original['binding'] == binding and original['manifest'] == manifest
+            and original['current_runner'] == native['runner']
+            and Path(start_intent['execution']['state_directory']) == STATE,
+            'CPU bootstrap differs from its original admitted start experiment/source')
+    normal = (any(value is not None for value in (managed, configuration, owner, admission))
+              or start_intent is not None and 'budget' in start_intent or 'cpu_contract' in execution
+              or directory_present(managed_path) or directory_present(budget_path))
+    if normal:
+        require(all(value is not None for value in (managed, owner, start_intent)),
+                'Original managed execution lineage is incomplete; CPU absence cannot select ordinary execution')
+        require(managed['kind'] == 'training-execution-request' and managed['experiment_id'] == ident
+            and managed['native_request_sha256'] == hashlib.sha256(native_raw).hexdigest()
+            and managed['owner_sha256'] == sha(owner) and managed['start_intent_sha256'] == sha(start_intent)
+            and owner['intent_sha256'] == sha(start_intent)
+            and managed['authorization_sha256'] == owner['authorization_sha256'] == start_intent['budget']['authorization_sha256'],
+            'CPU bootstrap differs from its independently saved original managed native request/owner')
+        if native['runner'].get('configuration_readback') is not None or 'cpu_contract' in execution:
+            require(configuration is not None, 'Original configuration execution request is unavailable')
+        if configuration is not None:
+            require(configuration['binding'] == binding
+                and configuration['native_request_sha256'] == managed['native_request_sha256']
+                and configuration['managed']['request_sha256'] == sha(managed)
+                and configuration['context']['intent'] == start_intent
+                and configuration['context']['authorization']['sha256'] == managed['authorization_sha256']
+                and owner['context_sha256'] == sha(configuration['context']),
+                'CPU bootstrap original configuration/context/managed binding changed')
+    if intent is not None:
+        require(intent['experiment_id'] == ident
+            and intent['files']['training/manifests/' + ident + '.json'].encode('utf-8') == manifest_raw,
+            'CPU bootstrap differs from its independently saved original preparation')
+        if intent['schema_version'] == 2:
+            require(sha({key: value for key, value in intent.items() if key not in ('confirmation', 'confirmed_preview_sha256')})
+                    == intent['confirmed_preview_sha256']
+                and intent['confirmation']['request_sha256'] == sha(intent['request'])
+                and intent['confirmation']['project_revision'] == intent['project_revision'],
+                'CPU bootstrap original preparation confirmation changed')
+    if admission is not None:
+        require(intent is not None and admission['preparation_intent_sha256'] == sha(intent)
+            and admission['manifest_sha256'] == hashlib.sha256(manifest_raw).hexdigest(),
+            'CPU bootstrap original CPU admission lost its confirmed preparation')
+    if 'cpu_contract' not in execution:
+        return None
+    contract = execution['cpu_contract']
+    require(isinstance(contract, dict), 'CPU bootstrap original typed CPU contract is malformed')
+    require(normal and configuration is not None and intent is not None and admission is not None,
+            'Typed CPU bootstrap requires its complete original managed execution and preparation')
+    require(len(command) == 3 and Path(command[2]) == job / 'configuration-request.json'
+        and Path(configuration['output']) == output and output == job / 'run-output',
+        'CPU bootstrap moved outside its original managed job or fixed command')
+    require(hashlib.sha256(manifest_raw).hexdigest() == configuration['binding']['manifest_sha'], 'CPU bootstrap manifest binding changed')
+    require(hashlib.sha256(native_raw).hexdigest() == configuration['native_request_sha256']
+        and native['experiment']['binding'] == configuration['binding'], 'CPU bootstrap native request changed')
+    capability = owner['execution_capability']
+    original_intent = configuration['context']['intent']
+    original_experiment = original_intent['observation']['experiment']
+    require(original_intent['experiment_id'] == ident and original_experiment['binding'] == configuration['binding']
+        and original_experiment['manifest'] == manifest
+        and Path(original_intent['execution']['state_directory']) == STATE
+        and configuration['runner_sha256'] == sha(native['runner'])
+        and contract['implementation']['runner_sha256'] == sha(native['runner'])
+        and contract['kind'] == 'training-cpu-execution-contract'
+        and contract['implementation']['wrapper_entry'] == 'ergora.training.configuration:main'
+        and sha({key: value for key, value in contract.items() if key != 'sha256'}) == contract['sha256'],
+        'CPU bootstrap contract is not the original managed source/entry')
+    require(owner['context_sha256'] == sha(configuration['context']) and Path(capability['installation']) == ROOT,
+            'CPU bootstrap is not bound to its original execution owner/context')
+    require(hashlib.sha256(_cpu_read_raw(ROOT / 'ergora-native-runtime.json')).hexdigest() == capability['descriptor_sha256'],
+            'CPU bootstrap native installation descriptor changed')
+    admission_raw = _cpu_read_raw(preparation_path / (ident + '.cpu-contract-admission.json'))
+    require(_cpu_read_raw(output / 'cpu-contract-admission.json') == admission_raw,
+            'CPU bootstrap staged acceptance differs from its original admission')
+    require(admission['manifest_sha256'] == configuration['binding']['manifest_sha'] and admission['contract_sha256'] == contract['sha256']
+        and admission['preparation_intent_sha256'] == sha(intent)
+        and admission['confirmed_preview_sha256'] == intent['confirmed_preview_sha256']
+        and admission['confirmation'] == intent['confirmation']
+        and sha({key: value for key, value in intent.items() if key not in ('confirmation', 'confirmed_preview_sha256')}) == intent['confirmed_preview_sha256']
+        and intent['files']['training/manifests/' + ident + '.json'].encode('utf-8') == manifest_raw,
+        'CPU bootstrap lacks its original exact contract acceptance')
+    core, _ = document(output / 'cpu-core-sources.json')
+    package = Path(core['package_directory'])
+    require(configuration['cpu_contract_core'] == {'package_directory': str(package),
+        'sources_sha256': contract['implementation']['core_sources_sha256']}
+        and core['contract_sha256'] == contract['sha256'] and sha(core['sources']) == contract['implementation']['core_sources_sha256'],
+        'CPU bootstrap core sources are not the original admitted source closure')
+    require(package.is_absolute() and package.resolve() == package and package.name == 'ergora'
+        and command == [native['runner']['command'][0], str(package / 'training/configuration.py'), str(job / 'configuration-request.json')],
+        'CPU bootstrap has no original fixed wrapper command/package association')
+    require({path.relative_to(package).as_posix() for path in package.rglob('*.py')
+             if path.relative_to(package).parts[0] != 'data'}
+            == {name for name in core['sources'] if name.endswith('.py') and not name.startswith('data/')},
+            'CPU bootstrap package inventory changed')
+    for name, expected in core['sources'].items():
+        require(isinstance(name, str) and not Path(name).is_absolute() and '..' not in Path(name).parts,
+                'Invalid CPU core source relative path')
+        path = package / name
+        require(not any(node.is_symlink() for node in (path, *path.parents))
+            and hashlib.sha256(_cpu_read_raw(path)).hexdigest() == expected, 'Original CPU core source bytes changed: ' + name)
+    require(hashlib.sha256(_cpu_read_raw(Path(__file__))).hexdigest()
+        == core['sources']['data/reference/platform/local/agent_platform/process_job.py'],
+        'CPU bootstrap process owner differs from its original native source')
+    if 'ergora' in sys.modules:
+        require(Path(sys.modules['ergora'].__file__).resolve() == package / '__init__.py', 'Ambient CPU core is not the original selected core')
+    else:
+        spec = importlib.util.spec_from_file_location('ergora', package / '__init__.py', submodule_search_locations=[str(package)])
+        module = importlib.util.module_from_spec(spec)
+        sys.modules['ergora'] = module
+        spec.loader.exec_module(module)
+    import ergora.training.configuration as training_configuration
+    require(Path(training_configuration.__file__).resolve() == Path(command[1]), 'CPU helper import did not select original current wrapper')
+    return training_configuration
+
+
+
 def run(folder: Path) -> None:
     require(folder.resolve().is_relative_to((STATE / 'processes').resolve()), 'Job is outside the process registry')
     with (folder / 'lock').open('a') as lock:
@@ -114,6 +329,8 @@ def run(folder: Path) -> None:
             checkout = Path(request['checkout'])
             before = snapshot(checkout) if not request['writable'] else None
             command = mapped_command(request)
+            cpu_module = _cpu_training_module(command, output, folder, request)
+            cpu_owned = cpu_module.cpu_process_context(command, output) if cpu_module is not None else None
             write(folder / 'started.json', {'time': started, 'name': request['name'], 'command': command,
                                           'monitor_pid': os.getpid()})
             with contextlib.ExitStack() as resources:
@@ -122,10 +339,14 @@ def run(folder: Path) -> None:
                 if request['model']:
                     stdin = resources.enter_context((Path(request['protocol']) / 'prompt.txt').open('rb'))
                 stdout = log
+                child_env = child_environment(request['model'])
+                if cpu_module is not None:
+                    cpu_module.cpu_process_last_admission(cpu_owned)
+                require(fence is None or not fence.exists(), 'Cancelled at original last process admission')
                 process = subprocess.Popen(['/usr/bin/timeout', '--signal=TERM', '--kill-after=5',
                                             str(request['timeout']), *command], cwd=checkout,
                                            stdin=stdin, stdout=stdout, stderr=log,
-                                           env=child_environment(request['model']), start_new_session=True,
+                                           env=child_env, start_new_session=True,
                                            pass_fds=(lock.fileno(),))
                 stat = Path(f'/proc/{process.pid}/stat').read_text().rsplit(')', 1)[1].split()
                 write(folder / 'pid.json', {'pid': process.pid, 'start_ticks': stat[19],

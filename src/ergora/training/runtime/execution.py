@@ -11,6 +11,7 @@ import time
 import uuid
 
 import ergora.training.execution_protocol as protocol
+import ergora.training.runtime.evidence as execution_evidence
 from ergora.training.runtime.status import MEMO_KEY, lookup, observe
 import ergora.native.resources as native_resources
 
@@ -24,13 +25,14 @@ class Execution:
         from perf_temporal.models import Binding
 
         op, budget = self.operation, self.budget
+        protocol.require_not_skipped(op.execution, op.ident)
         op.registration()
         budget.require_active(owner=True)
         chain = protocol.ExecutionRecords(context['project'], op.ident, str(op.payload['control_home'])).load()
         if chain.owner is None or chain.owner.get('execution_capability') is None:
             raise ValueError('This original budget owner has no execution capability; it cannot be upgraded or restarted')
-        protocol.validate_context(context, chain)
-        actor = (context['authorization']['controller']['actor_id'] if context['authorization']['schema_version'] in (2, 3, 4)
+        execution_evidence.validate_context(context, chain)
+        actor = (context['authorization']['controller']['actor_id'] if context['authorization']['schema_version'] == 5
                  else f'unix:{os.getuid()}:{getpass.getuser()}')
         request = chain.request_record(actor)
         # These checks run in a supervised helper, never inside a DB reservation.
@@ -57,11 +59,12 @@ class Execution:
         from ergora.storage.state import State
 
         op = self.operation
+        protocol.require_not_skipped(op.execution, op.ident)
         if State(Path(op.payload['control_home'])).project(op.project['id'])['revision'] != context['intent']['project_revision']:
             raise ValueError('Project revision changed before explicit execution')
         current = protocol.ExecutionRecords(context['project'], op.ident, str(op.payload['control_home'])).load()
         protocol._match(current.owner, chain.owner, 'Original execution publication owner')
-        parent = protocol.validate_context(context, current)
+        parent = execution_evidence.validate_context(context, current)
         for path in (chain.folder.parent / 'started.json', chain.folder.parent / 'result.json',
                      chain.root / ('training/fences/' + op.ident + '.json')):
             if path.exists() or path.is_symlink():
@@ -104,6 +107,7 @@ class Execution:
 
         folder = self.operation.root / ('training/jobs/' + self.operation.ident + '/managed-execution')
         while True:
+            protocol.require_not_skipped(self.operation.execution, self.operation.ident)
             self.budget.require_active(owner=True)
             if not ((folder / 'request.json').exists() or (folder / 'request.json').is_symlink()):
                 await asyncio.sleep(.1)
@@ -238,8 +242,9 @@ def native_main(installation: str) -> None:
 
     def admit(folder, record):
         nonlocal parent, active
+        protocol.require_not_skipped(intent['execution'], intent['experiment_id'])
         chain = protocol.ExecutionRecords(project, intent['experiment_id'], intent['control_home']).load()
-        checked_parent = protocol.validate_context(context, chain)
+        checked_parent = execution_evidence.validate_context(context, chain)
         if parent is None and checked_parent is not None:
             parent = checked_parent
             admissions.enter_context(parent.permission())
@@ -251,7 +256,7 @@ def native_main(installation: str) -> None:
             'phase_id': launch['execution_phase_id'], 'mode': 'execute', 'context_sha256': chain.sha(context),
             'owner': {key: chain.owner[key] for key in ('pid', 'start_ticks', 'boot_id')}}
         protocol._match(phase, protocol_phase, 'Complete execution supervisor phase')
-        actor = (context['authorization']['controller']['actor_id'] if context['authorization']['schema_version'] in (2, 3, 4)
+        actor = (context['authorization']['controller']['actor_id'] if context['authorization']['schema_version'] == 5
                  else f'unix:{os.getuid()}:{getpass.getuser()}')
         if (folder != chain.folder.parent
                 or launch['clock_sha256'] != chain.sha(context['authorization']['clock'])
@@ -267,8 +272,9 @@ def native_main(installation: str) -> None:
         attempt, ack = None, None
 
         def active():
+            protocol.require_not_skipped(intent['execution'], intent['experiment_id'])
             refreshed = protocol.ExecutionRecords(project, intent['experiment_id'], intent['control_home']).load()
-            protocol.validate_context(context, refreshed)
+            execution_evidence.validate_context(context, refreshed)
             protocol._match(refreshed.owner, chain.owner, 'Native callback original owner')
             protocol._match(refreshed.records, {**chain.records, 'attempt': attempt, 'ack': ack},
                    'Native callback current publication stage')
@@ -292,6 +298,21 @@ def native_main(installation: str) -> None:
             'owner_sha256': chain.sha(chain.owner), 'executor': executor}
         protocol.publish(chain.folder / 'ack.json', ack, chain.root)
         active()
+        import ergora.training.materials as materials
+        manifest = materials.decode_record(protocol.read_raw(chain.root / ('training/manifests/' + chain.ident + '.json')))
+        accepted = execution_evidence.read_cpu_preparation_admission(chain.root, chain.ident, manifest, record['runner'])
+        if accepted is not None:
+            protocol.validate_cpu_budget_context(context, expected_budget=phase['owner'], require_complete=False)
+            binding = {'intent_sha256': chain.sha(intent), 'authorization_sha256': context['authorization']['sha256']}
+            cpu = materials.cpu_context_observation(accepted['contract'], 'native', binding)
+            materials.validate_cpu_context_observation(cpu, contract=accepted['contract'], role='native', binding=binding,
+                expected_subject=executor, require_complete=False)
+            materials.publish_material(chain.folder / 'cpu-native.json', materials.observation_bytes(cpu, 10 * 1_048_576), chain.root)
+            relation = {'kind': 'training-cpu-native-parent', 'binding': binding, 'supervisor': supervisor,
+                        'supervisor_parent_pid': int(parent_fields[1]), 'budget': phase['owner']}
+            materials.publish_material(chain.folder / 'cpu-native-parent.json', materials.observation_bytes(relation), chain.root)
+            active()
+
 
     def before_runner(folder, record, checkouts, manifest):
         from ergora.training.configuration import stage_request
@@ -309,10 +330,8 @@ def native_main(installation: str) -> None:
         # Hold the permit before the executor lock. New-version completed
         # results retain their original inert read even after the owner ends;
         # if that record vanishes, the callback still requires fresh admission.
-        if (context['authorization']['schema_version'] == 2
-                or context['authorization']['schema_version'] in (3, 4)
-                    and not (chain.folder.parent / 'result.json').exists()):
-            parent = protocol.validate_context(context, chain.load())
+        if context['authorization']['schema_version'] == 5 and not (chain.folder.parent / 'result.json').exists():
+            parent = execution_evidence.validate_context(context, chain.load())
             admissions.enter_context(parent.permission())
         print(json.dumps(process(chain.folder.parent, admit=admit, before_runner=before_runner),
                          ensure_ascii=False, allow_nan=False))
