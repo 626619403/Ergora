@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import hashlib
+import math
 import os
 from pathlib import Path
 import re
@@ -22,6 +24,23 @@ def container_identity() -> dict | None:
             'boot_id': Path('/proc/sys/kernel/random/boot_id').read_text().strip()}
 
 
+def process_deadline(deadline: dict | None, binding: dict | None = None) -> float | None:
+    if binding is not None:
+        require(isinstance(binding, dict) and binding.get('kind') == 'fixed-text-verification-process-v1',
+                'Unsupported native process binding')
+        require(deadline is not None, 'Fixed verification requires its original process deadline')
+    if deadline is None:
+        return None
+    require(isinstance(deadline, dict) and set(deadline) == {'monotonic', 'boot_id'},
+            'Invalid original process deadline')
+    cutoff = deadline['monotonic']
+    require(type(cutoff) is float and math.isfinite(cutoff) and cutoff > 0,
+            'Invalid original process deadline cutoff')
+    require(deadline['boot_id'] == Path('/proc/sys/kernel/random/boot_id').read_text().strip(),
+            'Original process deadline belongs to another boot; execution cannot be renewed')
+    return cutoff
+
+
 class Sandbox:
     """Trusted native processes inside the operator's existing Docker container."""
 
@@ -40,17 +59,32 @@ class Sandbox:
                 'filesystem_isolation_between_agents': False,
                 'detail': 'Trusted projects only; agents run as the current Unix user. The existing container is the security boundary.'}
 
-    def run(self, name: str, checkout: Path, output: Path, command: list[str], *, writable: bool,
-            fence: Path | None = None, timeout: int = 1800, model: str | None = None,
-            protocol: Path | None = None, policy: Path | None = None, gitdir: Path | None = None) -> int:
-        require(self.probe()['available'], 'Current-container execution requires a detected container and acknowledgment bound to its current namespaces')
+    def request(self, name: str, checkout: Path, output: Path, command: list[str], *, writable: bool,
+                fence: Path | None = None, timeout: int = 1800, model: str | None = None,
+                protocol: Path | None = None, policy: Path | None = None, binding: dict | None = None,
+                deadline: dict | None = None) -> dict:
+        """Construct the original complete frame for capacity admission and execution."""
         require(re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_-]{0,159}', name), 'Invalid process job name')
         require(1 <= timeout <= 86400, 'Invalid process walltime')
-        folder = STATE / 'processes' / name
+        process_deadline(deadline, binding)
         request = {'schema_version': 1, 'name': name, 'checkout': str(checkout.resolve()),
                    'output': str(output.resolve()), 'command': command, 'writable': writable,
                    'fence': str(fence) if fence else None, 'timeout': timeout, 'model': model,
                    'protocol': str(protocol) if protocol else None, 'policy': str(policy) if policy else None}
+        if binding is not None:
+            request['binding'] = binding
+        if deadline is not None:
+            request['deadline'] = deadline
+        return request
+
+    def run(self, name: str, checkout: Path, output: Path, command: list[str], *, writable: bool,
+            fence: Path | None = None, timeout: int = 1800, model: str | None = None,
+            protocol: Path | None = None, policy: Path | None = None, gitdir: Path | None = None,
+            binding: dict | None = None, deadline: dict | None = None) -> int:
+        require(self.probe()['available'], 'Current-container execution requires a detected container and acknowledgment bound to its current namespaces')
+        request = self.request(name, checkout, output, command, writable=writable, fence=fence,
+            timeout=timeout, model=model, protocol=protocol, policy=policy, binding=binding, deadline=deadline)
+        folder = STATE / 'processes' / name
         write(folder / 'request.json', request)
         terminal = folder / 'terminal.json'
         launcher = None
@@ -59,17 +93,27 @@ class Sandbox:
                 return subprocess.Popen([str(PYTHON), '-m', 'agent_platform.process_job', str(folder)],
                                         env=self.env, stdin=subprocess.DEVNULL, stdout=log, stderr=log,
                                         start_new_session=True, close_fds=True)
-        deadline = time.monotonic() + timeout + 30
+        wait_deadline = process_deadline(deadline) + 30 if deadline is not None else time.monotonic() + timeout + 30
         last_launch = 0.0
         while not terminal.exists():
+            require(not (not terminal.exists() and (folder / 'started.json').exists()
+                         and (launcher is None or launcher.poll() is not None)),
+                    f'Original process started without a confirmed terminal; outcome unknown. Inspect {folder}')
+            if deadline is not None and time.monotonic() >= wait_deadline:
+                raise Blocked(f'Process outcome unknown; inspect {folder}. It will not be resubmitted automatically.')
             if (launcher is None or launcher.poll() is not None) and time.monotonic() - last_launch > 2:
                 launcher = launch()
                 last_launch = time.monotonic()
-            if time.monotonic() >= deadline:
+            if time.monotonic() >= wait_deadline:
                 raise Blocked(f'Process outcome unknown; inspect {folder}. It will not be resubmitted automatically.')
             time.sleep(0.25)
         result = read(terminal)
         require(result['name'] == name, 'Process terminal record names another job')
+        if binding is not None:
+            digest = hashlib.sha256(json.dumps(request, ensure_ascii=False, sort_keys=True,
+                separators=(',', ':'), allow_nan=False).encode('utf-8')).hexdigest()
+            require(result['binding'] == binding and result['request_sha256'] == digest,
+                    'Process terminal differs from its original bound request')
         if launcher is not None:
             launcher.wait(timeout=5)
         return result['returncode']

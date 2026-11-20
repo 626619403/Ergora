@@ -15,6 +15,7 @@ import time
 import tomllib
 
 from .core import CONFIG, STATE, UPSTREAM, environment, git, read, require, write
+from .sandbox import process_deadline
 
 
 def child_environment(model: str | None) -> dict[str, str]:
@@ -314,6 +315,13 @@ def run(folder: Path) -> None:
         if (folder / 'terminal.json').exists():
             return
         request = read(folder / 'request.json')
+        # A lost monitor is an observation gap, not a new process outcome.
+        # Leave the original started record and missing terminal intact.
+        require(not (folder / 'started.json').exists(),
+                'Previous process submission has an unknown outcome. No automatic re-execution; reconcile its recorded PID and output.')
+        binding = ({'binding': request['binding'], 'request_sha256': hashlib.sha256(json.dumps(request,
+            ensure_ascii=False, sort_keys=True, separators=(',', ':'), allow_nan=False).encode('utf-8')).hexdigest()}
+            if 'binding' in request else {})
         output = Path(request['output'])
         output.mkdir(parents=True, exist_ok=True, mode=0o700)
         code = 125
@@ -322,17 +330,18 @@ def run(folder: Path) -> None:
         started = time.time()
         log_path = output / 'execution.log'
         try:
-            require(not (folder / 'started.json').exists(),
-                    'Previous process submission has an unknown outcome. No automatic re-execution; reconcile its recorded PID and output.')
+            cutoff = process_deadline(request.get('deadline'), request.get('binding'))
             fence = Path(request['fence']) if request['fence'] else None
             require(fence is None or not fence.exists(), 'Cancelled before process start')
             checkout = Path(request['checkout'])
             before = snapshot(checkout) if not request['writable'] else None
+            require(cutoff is None or time.monotonic() < cutoff,
+                    'Original process deadline expired during checkout snapshot')
             command = mapped_command(request)
             cpu_module = _cpu_training_module(command, output, folder, request)
             cpu_owned = cpu_module.cpu_process_context(command, output) if cpu_module is not None else None
             write(folder / 'started.json', {'time': started, 'name': request['name'], 'command': command,
-                                          'monitor_pid': os.getpid()})
+                                          'monitor_pid': os.getpid(), **binding})
             with contextlib.ExitStack() as resources:
                 log = resources.enter_context(log_path.open('ab'))
                 stdin = subprocess.DEVNULL
@@ -343,21 +352,25 @@ def run(folder: Path) -> None:
                 if cpu_module is not None:
                     cpu_module.cpu_process_last_admission(cpu_owned)
                 require(fence is None or not fence.exists(), 'Cancelled at original last process admission')
+                if cutoff is not None:
+                    cutoff = process_deadline(request['deadline'])
+                remaining = request['timeout'] if cutoff is None else min(request['timeout'], cutoff - time.monotonic())
+                require(remaining > 0, 'Original process deadline expired at last process admission')
                 process = subprocess.Popen(['/usr/bin/timeout', '--signal=TERM', '--kill-after=5',
-                                            str(request['timeout']), *command], cwd=checkout,
+                                            str(remaining), *command], cwd=checkout,
                                            stdin=stdin, stdout=stdout, stderr=log,
                                            env=child_env, start_new_session=True,
                                            pass_fds=(lock.fileno(),))
                 stat = Path(f'/proc/{process.pid}/stat').read_text().rsplit(')', 1)[1].split()
                 write(folder / 'pid.json', {'pid': process.pid, 'start_ticks': stat[19],
                                           'boot_id': Path('/proc/sys/kernel/random/boot_id').read_text().strip()})
-                deadline = time.monotonic() + request['timeout'] + 5
+                deadline = time.monotonic() + request['timeout'] + 5 if cutoff is None else min(cutoff, time.monotonic() + remaining)
                 while process.poll() is None:
                     if (fence and fence.exists()) or time.monotonic() >= deadline:
                         detail = 'Cancellation fence observed' if fence and fence.exists() else 'Process walltime exceeded'
                         stop(process)
                         break
-                    time.sleep(.2)
+                    time.sleep(.2 if cutoff is None else min(.2, max(0, deadline - time.monotonic())))
                 code = process.wait()
             if before is not None and snapshot(checkout) != before:
                 code = 126
@@ -370,7 +383,7 @@ def run(folder: Path) -> None:
         with log_path.open('a') as log:
             log.write('\n' + json.dumps({'returncode': code, 'detail': detail}) + '\n')
         write(folder / 'terminal.json', {'name': request['name'], 'returncode': code,
-                                         'detail': detail, 'started_at': started, 'finished_at': time.time()})
+                                         'detail': detail, 'started_at': started, 'finished_at': time.time(), **binding})
 
 
 if __name__ == '__main__':

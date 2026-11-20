@@ -15,7 +15,7 @@ import ergora.configuration.projects as projects
 import ergora.configuration.registrations as registrations
 import ergora.development.application as tasks
 from ergora.storage.state import State
-from test_registrations import design_policy, installation, registration
+from test_registrations import design_policy, fixed_checks, installation, registration
 
 
 @pytest.fixture
@@ -60,6 +60,51 @@ def test_v2_old_definition_is_rejected_before_creation_intent(registration):
     assert not _files(Path(registered['execution']['state_directory']))
 
 
+@pytest.mark.skipif(sys.platform != 'linux', reason='Live fixed runtime requires Linux/WSL2')
+def test_fixed_required_project_rejects_old_application_and_native_creation_without_effects(registration, monkeypatch, tmp_path):
+    state, registered = registration
+    registered['trusted_checks'] = fixed_checks(registered['execution']['installation'])
+    project = registrations.register(state, registered, 0)
+    definition = {'schema_version': 1, 'task_id': 'blocked-fixed-task', 'task_type': 'repository-governance', 'issue_id': '1',
+        'input': {'goal': 'Cannot omit the registered fixed oracle', 'allowed_paths': ['src'],
+            'acceptance': ['Keep the frozen checks'], 'constraints': [], 'risk': 'standard',
+            'work_units': [{'id': 'one', 'depends_on': [], 'paths': ['src'], 'instructions': 'Inspect source'}]}}
+    before = _files(state.root / 'registrations')
+    config = Path(registered['execution']['config_directory'])
+    native = _files(config)
+    calls = []
+    original = tasks.creation_process.task_creation
+
+    def creation(*args, **kwargs):
+        calls.append(args[2])
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(tasks.creation_process, 'task_creation', creation)
+    for operation in (lambda: tasks.preview(state, 'demo', definition, 1),
+                      lambda: tasks.create(state, 'demo', definition, 1, '0' * 64)):
+        with pytest.raises(ValueError, match='Definition8/Input12'):
+            operation()
+    assert calls == []
+    # The dedicated compiler also refuses a direct application bypass before
+    # it writes input.json or calls the original native task compiler.
+    with pytest.raises(ValueError, match='Definition8/Input12'):
+        original(project, state.root, 'preview', {'definition': definition})
+    input_path = tmp_path / 'raw-input.json'
+    input_path.write_text(json.dumps(definition['input']), encoding='utf-8')
+    installation = Path(registered['execution']['installation'])
+    environment = dict(os.environ, AGENTFLOW_CONFIG_DIR=str(config),
+        AGENTFLOW_STATE_DIR=registered['execution']['state_directory'], PYTHONDONTWRITEBYTECODE='1')
+    environment['PYTHONPATH'] = os.pathsep.join((str(Path(tasks.__file__).parents[2]),
+        str(installation / 'local'), str(installation / 'upstream/platform')))
+    raw = subprocess.run([sys.executable, '-P', '-S', '-c',
+        'from pathlib import Path; import sys; from agent_platform.projects import create_task; '
+        'create_task("demo", "repository-governance", "raw-fixed-task", "1", Path(sys.argv[1]))', str(input_path)],
+        capture_output=True, text=True, env=environment, timeout=30)
+    assert raw.returncode != 0 and 'Fixed verification requires current unified task creation' in raw.stderr
+    assert state.project('demo') == project and _files(state.root / 'registrations') == before
+    assert _files(config) == native and not _files(Path(registered['execution']['state_directory']))
+
+
 @pytest.mark.parametrize('template', ['repository-governance', 'large-change'])
 def test_preview_is_stable_offline_and_create_freezes_the_original_contract(creation_project, template):
     state, registration, definition = creation_project
@@ -73,6 +118,7 @@ def test_preview_is_stable_offline_and_create_freezes_the_original_contract(crea
     assert preview['execution_started_by_operation'] is False and preview['runtime_status'] == 'not_queried'
     files = preview['files']
     assert files['compiled.json']['spec'] == files['task.spec.json']
+    assert 'trusted_checks' not in files['project.json'] and 'verification' not in files['task.spec.json']
     assert files['task.spec.json']['request']['input'] == definition['input']
     assert files['agent-bindings.json']['configuration'] == projects.effective_configuration(before)
     assert tasks.creation(state, 'demo', 'new-task')['status'] == 'not_recorded'

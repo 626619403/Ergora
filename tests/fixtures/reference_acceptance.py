@@ -25,6 +25,7 @@ async def main():
     root, kind, backend = Path(sys.argv[1]), sys.argv[2], sys.argv[3]
     mode = sys.argv[4] if len(sys.argv) > 4 else "legacy-registration"
     composition_mode = mode.startswith("composition")
+    fixed_mode = mode.startswith('composition-work-materials-fixed-')
     native_auth = mode.startswith("native-auth")
     installation = root / "installation"
     for part in ("local", "upstream/platform"):
@@ -95,6 +96,12 @@ async def main():
     git(repo, "init")
     (repo / "src").mkdir()
     (repo / "src/base.py").write_bytes(b"VALUE = 1\r\n" if composition_mode else b"VALUE = 1\n")
+    if fixed_mode:
+        config_value = {'nodes': [{'id': 'a'}, {'id': 'a' if mode.endswith('-bad') else 'b'}],
+                        'edges': [{'source': 'a', 'target': 'missing' if mode.endswith('-bad') else 'b'}]}
+        (repo / 'src/config.json').write_bytes((json.dumps(config_value) + '\r\n').encode('utf-8'))
+        (repo / 'src/oracle.py').write_text('OBSERVATIONS = True  # candidate script has no oracle authority\n')
+        (repo / 'src/golden.json').write_text('true\n')
     if mode.startswith('composition-work-materials-'):
         (repo / 'AGENTS.md').write_bytes(b'Exact repository instructions.\r\n')
     if mode == 'composition-import-shadowing':
@@ -141,6 +148,24 @@ async def main():
                       "execution": {"installation": str(installation), "config_directory": str(config), "state_directory": str(runtime)}}
         if mode.startswith('design-policy-legacy-v2'):
             definition.update(schema_version=2, design_policy=read(root / 'design-policy.json'))
+        if fixed_mode:
+            sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+            from test_registrations import fixed_checks
+
+            definition['trusted_checks'] = fixed_checks(installation)
+            from ergora.storage.assets import manifest_digest
+
+            check = definition['trusted_checks']['configuration-integrity']
+            structured = ['完整 Unicode', True, False, None, 2**53 - 1, []]
+            for _ in range(42):
+                structured = [structured]
+            check['cases'].append({'id': 'structured', 'input': structured, 'expected': structured})
+            source = check['source']['files']['oracle.py']
+            source['text'] = source['text'].replace('"value": valid}',
+                '"value": valid if case["id"] == "integrity" else case["input"]}')
+            source['sha256'] = hashlib.sha256(source['text'].encode()).hexdigest()
+            check['source']['digest'] = manifest_digest({'oracle.py': {key: source[key]
+                for key in ('sha256', 'executable_bits')}})
         if mode == "imported-registration":
             register("demo", repo, "github", "fixtures/demo", ["src"], root / "checks.json")
             sources = {path: (config / path).read_bytes() for path in ("projects/demo.json", "policies/demo/scope.json")}
@@ -209,11 +234,19 @@ async def main():
                 task_definition['composition']['backend_overrides'] = {
                     'root/review': {'binding': {'tool': 'codex', 'model': model}, 'reason': 'Explicit native protocol failure fixture'}}
         revision = state.project('demo')['revision']
+        if mode.endswith('-fixed-review-reject'):
+            task_definition['composition']['backend_overrides']['root/development/review/correctness/review']['binding']['model'] = 'fixture-reject'
         if task_definition['schema_version'] == 8:
             assert tasks.prepare(state, 'demo', task_definition, revision)['status'] == 'prepared'
         preview = tasks.preview(state, 'demo', task_definition, revision)
         tasks.create(state, 'demo', task_definition, revision, preview['preview_sha256'],
                      **({'prepare_sha256': preview['prepare_sha256']} if task_definition['schema_version'] == 8 else {}))
+        if fixed_mode:
+            frozen = read(runtime / 'tasks/task-1/task.spec.json')['verification']
+            # An unrelated role edit cannot substitute the current revision
+            # into the already created task's fixed verification identity.
+            projects.bind(state, 'demo', 'reviewer', binding, state.project('demo')['revision'])
+            assert state.project('demo')['revision'] > frozen['project_revision']
         if mode == 'composition-work-materials-context':
             import ergora.improvement.memory as memory
             import ergora.definitions.skills as skill_assets

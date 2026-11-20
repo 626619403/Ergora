@@ -19,7 +19,7 @@ import time
 
 from agent_platform import executor as original
 from agent_platform.core import Blocked, CONFIG, PYTHON, ROOT, STATE, UPSTREAM, environment, read, require, settings, slug, write
-from dev_platform.adapter import FileAdapter, publish, read_raw
+from dev_platform.adapter import FileAdapter, publish, read_raw, safe_file
 from dev_platform.contracts import canonical_sha, path_contains, validate_spec
 from dev_platform.portable import validate_compiled
 
@@ -37,6 +37,10 @@ from ergora.development.inputs import execution_input, request_roots
 from ergora.development.runtime.review_opinions import review_observation
 from ergora.development.dags import preparation_stages
 from ergora.storage.state import State
+from ergora.storage.assets import inventory_tree
+from ergora.training.materials import read_raw as read_fixed_raw
+from ergora.development import verification
+from ergora.development import budget as reference_budget
 
 
 def _admit_project(spec: dict, home: Path) -> None:
@@ -52,14 +56,32 @@ def _admit_project(spec: dict, home: Path) -> None:
     if marker is not None:
         require(marker['schema_version'] == 1 and marker['id'] == native['name']
                 and Path(marker['control_home']) == home.resolve(), 'Registered project belongs to another control directory')
+    published = directory / 'task.spec.json'
+    document = task_envelopes.decode_admission(read_raw(published, task_envelopes.WIRE_LIMIT)) if published.exists() else spec
+    if 'trusted_checks' in native:
+        require(document.get('schema_version') == 12 and 'verification' in document,
+                'Fixed verification requires current unified Definition8/Input12 task creation')
+        fixed = verification.validate_snapshot(document['verification'])
+        require(verification.sha(fixed['checks']) == verification.sha(native['trusted_checks']) and fixed['project'] == native['name']
+                and marker is not None and fixed['registration_sha256'] == marker['definition_sha256'],
+                'Task verification differs from its native registered project')
+    else:
+        require('verification' not in document, 'Task project has no fixed verification declaration')
     state = State(home)
     try:
         project = state.project(native['name'])
     except ValueError:
-        # Legacy unknown projects retain their original failure receipt or
-        # frozen selection; neither path gains a new State-project prerequisite.
+        require('trusted_checks' not in native and 'verification' not in document,
+                'Fixed verification requires its original control project before claiming a Job')
         return
     task_design.require_execution_support(project)
+    if 'verification' in document:
+        record = task_creation(project, home, 'published', {'task_id': spec['request']['task_id']})
+        require(record['files']['task.spec.json'] == document and record['files']['project.json'] == native,
+                'Fixed verification requires its complete original published creation')
+        verification.require_admission(project, document, revision=record['project_revision'])
+    else:
+        verification.require_admission(project, document)
 
 
 class Executor(original.Executor):
@@ -169,6 +191,12 @@ class Executor(original.Executor):
         document = task_envelopes.decode_admission(read_raw(STATE / 'tasks' / self.task_id / 'task.spec.json', task_envelopes.WIRE_LIMIT))
         projection, _ = task_envelopes.unwrap(document)
         require(canonical_sha(projection) == canonical_sha(self.spec), 'Published task differs from the verification spec')
+        deadline = None
+        if 'verification' in document:
+            from ergora.development.runtime.jobs import require_owner
+
+            owner = read(require_owner(document, self.envelope) / 'owner.json')
+            deadline = owner['verification_deadline']
         spec_path = self.scratch / 'task.legacy-spec.json'
         write(spec_path, self.spec)
         scope_file = self.scratch / 'scope.json'
@@ -194,11 +222,118 @@ class Executor(original.Executor):
         require(set(baseline) == set(results), 'Trusted check commands changed during the task')
         report = {'candidate_sha': self.candidate, 'scope': scope, 'commands': results,
                   'baseline_commands': baseline, 'baseline_regression': all(v['exit_code'] == 0 for v in results.values())}
-        self.artifact('check-results', report)
+        if 'verification' in document:
+            report['verification'] = self._fixed_checks(document, report, deadline)
+            verification.validate_report(report, document['verification'], report['verification']['subject'],
+                process_root=STATE / 'processes', require_pass=False)
+            self._fixed_remaining(document, deadline)
+        self.artifact('check-results', report, compact='verification' in report)
         require(scope['status'] == 'PASS', 'Scope evidence does not pass')
         require(report['baseline_regression'], 'Final candidate check failed; baseline debt needs an explicit project policy')
+        if 'verification' in report:
+            require(report['verification']['passed'], 'Required fixed verification did not pass; inspect check-results')
         self.checks = [{'id': name, 'status': 'pass', 'artifact': 'check-results'}
                        for name in self.spec['profile']['required_checks']]
+
+    def _fixed_remaining(self, document, deadline):
+        require(not self.fence.exists(), 'Task is fenced; no next fixed check is admitted')
+        require(deadline['boot_id'] == Path('/proc/sys/kernel/random/boot_id').read_text().strip(),
+                'Original verification stage cutoff belongs to another boot')
+        remaining = min(deadline['monotonic'] - time.monotonic(), reference_budget.require_remaining(document['budget']['instance']))
+        require(remaining > 0, 'Original verification stage allowance expired')
+        return remaining
+
+    def _fixed_checks(self, document, ordinary, deadline):
+        fixed = document['verification']
+        verification.validate_checks(fixed['checks'], installation=ROOT, live=True)
+        require(self.candidate == self.context['expected_candidate_sha']
+                and original.git(self.checkout, 'rev-parse', 'HEAD').stdout.strip() == self.candidate,
+                'Fixed verification checkout differs from the exact expected candidate')
+        before = original.git(self.checkout, 'status', '--porcelain=v1', '-z', '--untracked-files=all').stdout
+        require(not before, 'Fixed verification requires an unchanged candidate checkout')
+        subject = verification.subject(document, self.job_id, self.envelope['job_sha256'], self.candidate, self.creation_sha256)
+        result = {'subject': subject, 'required_checks': sorted(fixed['checks']), 'checks': {}, 'passed': False}
+        inputs, candidate_files, requests = {}, {}, {}
+        for ident, check in sorted(fixed['checks'].items()):
+            self._fixed_remaining(document, deadline)
+            repository = self.materials.repository_sources({'candidate': self.candidate}, check['candidate_paths'])
+            inputs[ident] = verification.script_input(ident, check, subject, repository)
+            binding = verification.process_binding(inputs[ident])
+            name = verification.process_name(binding)
+            output = safe_file(self.scratch, name)
+            command = [check['runtime']['executable'], '-I', '-S', str(output / 'source' / check['entrypoint']),
+                       str(output / 'input.json'), str(output / 'observations.json')]
+            requests[ident] = self.sandbox.request(name, self.checkout, output, command,
+                writable=False, fence=self.fence, timeout=check['wall_seconds'], binding=binding, deadline=deadline)
+            for name, item in repository['candidate']['files'].items():
+                candidate_files[name] = repository['blobs'][item['git_object']]['text']
+        require(sum(len(text.encode('utf-8')) for text in candidate_files.values()) <= verification.CANDIDATE_BYTES,
+                'Fixed candidate text exceeds aggregate capacity')
+        # All exact inputs are known before the first process request. Include
+        # ordinary logs and reserve the maximum escaped observation/comparison
+        # contribution; the actual complete report is checked again below.
+        verification.capacity({'ordinary': ordinary, 'verification': fixed, 'inputs': inputs, 'requests': requests},
+            verification.ARTIFACT_BYTES, 'Fixed verification execution', reserve=verification.RESULT_RESERVE, compact=True)
+        raw_total = 0
+        for ident, check in sorted(fixed['checks'].items()):
+            self._fixed_remaining(document, deadline)
+            input_value = inputs[ident]
+            binding = verification.process_binding(input_value)
+            name = verification.process_name(binding)
+            output = safe_file(self.scratch, name)
+            source = safe_file(output, 'source')
+            process_folder = STATE / 'processes' / name
+            require(not (output / 'observations.json').exists() or (process_folder / 'terminal.json').exists(),
+                    'Fixed observations exist without their original completed process')
+            source.mkdir(parents=True, exist_ok=True, mode=0o700)
+            for relative, item in check['source']['files'].items():
+                path = safe_file(source, relative)
+                path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+                raw = item['text'].encode('utf-8')
+                if not path.exists():
+                    with path.open('xb') as stream:
+                        stream.write(raw)
+                        stream.flush()
+                        os.fsync(stream.fileno())
+                    path.chmod(0o600 | item['executable_bits'])
+                require(read_fixed_raw(path, verification.SOURCE_BYTES) == raw, 'Frozen fixed source bytes changed')
+            require(inventory_tree(source, label='Fixed source')[0] == check['source']['digest'],
+                    'Materialized fixed source inventory changed')
+            write(output / 'input.json', input_value)
+            require(verification.sha(json.loads(read_fixed_raw(output / 'input.json'))) == verification.sha(input_value),
+                    'Materialized fixed script input changed')
+            verification.validate_checks({ident: check}, installation=ROOT, live=True)
+            self._fixed_remaining(document, deadline)
+            timeout, original_deadline = check['wall_seconds'], deadline
+            if (process_folder / 'request.json').exists():
+                saved = read(process_folder / 'request.json')
+                timeout, original_deadline = saved['timeout'], saved['deadline']
+                require(original_deadline == deadline, 'Original fixed process cutoff differs from its Job owner')
+            command = [check['runtime']['executable'], '-I', '-S', str(source / check['entrypoint']),
+                       str(output / 'input.json'), str(output / 'observations.json')]
+            code = self.sandbox.run(name, self.checkout, output, command, writable=False, fence=self.fence,
+                timeout=timeout, gitdir=self.mirror, binding=binding, deadline=original_deadline)
+            process = {'name': name, **{key: json.loads(read_fixed_raw(process_folder / (key + '.json')))
+                                      for key in ('request', 'started', 'terminal')}}
+            try:
+                raw = read_fixed_raw(output / 'observations.json', verification.OBSERVATION_BYTES - raw_total)
+            except FileNotFoundError:
+                raw = None
+            raw_total += len(raw) if raw is not None else 0
+            observed = verification.observations(check, raw, code)
+            result['checks'][ident] = {'input': input_value, 'input_sha256': verification.sha(input_value),
+                                      'process': process, 'observations': observed}
+            require(inventory_tree(source, label='Fixed source')[0] == check['source']['digest']
+                    and verification.sha(json.loads(read_fixed_raw(output / 'input.json'))) == verification.sha(input_value),
+                    'Fixed source or input drifted during execution')
+            verification.validate_checks({ident: check}, installation=ROOT, live=True)
+        require(original.git(self.checkout, 'rev-parse', 'HEAD').stdout.strip() == self.candidate
+                and original.git(self.checkout, 'status', '--porcelain=v1', '-z', '--untracked-files=all').stdout == before,
+                'Fixed verification changed its candidate checkout')
+        result['passed'] = all(item['observations']['passed'] for item in result['checks'].values())
+        verification.capacity({**ordinary, 'verification': result}, verification.ARTIFACT_BYTES,
+            'Complete check-results', compact=True)
+        return result
 
     def _repository(self, commits: dict, paths: list[str], read_scope: list[str]) -> dict:
         return self.materials.repository_sources(commits, paths,
@@ -596,6 +731,16 @@ class Executor(original.Executor):
                 adapter.verify_receipt({'job_id': receipt['job_id'], 'job_sha256': receipt['job_sha256']}, receipt)
             evidence[stage], used = self._review_artifacts(adapter, receipt, used,
                 self._declared_results('verify' if stage == 'verification' else stage, receipt))
+            if stage == 'verification' and 'verification' in self.input.document:
+                job_id = receipt['job_id']
+                envelope = task_envelopes.decode_job(read_raw(adapter.path('requests', self.task_id + '/' + job_id + '.json'), task_envelopes.WIRE_LIMIT))
+                require(envelope['job_sha256'] == receipt['job_sha256']
+                        and envelope['context']['stage'] == 'verify'
+                        and task_envelopes.matches_context(self.spec, envelope['context'], self.input.document),
+                        'Review verification differs from its original admitted verify Job')
+                subject = verification.job_subject(self.input.document, envelope, STATE)
+                verification.read_report(evidence[stage]['check-results'].encode('utf-8'), self.input.document['verification'],
+                    subject, process_root=STATE / 'processes')
         if preparing:
             evidence, inventory_session = self._preparation_results(adapter)
             ports = self._preparation_ports(adapter, inventory_session)

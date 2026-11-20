@@ -367,7 +367,8 @@ class PreparationDAGInput(StageResultsInput):
 
     def stage_material(self) -> dict:
         return {**({'issue_source': self.document['issue_source']} if 'issue_source' in self.document else {}),
-                **({'selected_context': self.document['context']} if 'context' in self.document else {})}
+                **({'selected_context': self.document['context']} if 'context' in self.document else {}),
+                **({'verification': self.document['verification']} if 'verification' in self.document else {})}
 
     def evidence_contract(self) -> dict:
         return {'original_input': self.document, 'original_input_sha256': task_envelopes.identity(self.document)}

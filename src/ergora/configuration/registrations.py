@@ -23,6 +23,7 @@ from ergora.storage.assets import is_link
 from ergora.definitions.bundles import parse_json
 from ergora.storage.state import State, file_lock
 from ergora._paths import DATA_ROOT
+from ergora.development import verification
 
 
 _SCHEMAS = {version: json.loads((DATA_ROOT / f"schemas/project-registration-v{version}.json").read_text(encoding="utf-8"))
@@ -91,6 +92,8 @@ def _validate_definition(definition: dict, context: str) -> dict | None:
     version = definition.get('schema_version') if isinstance(definition, dict) else None
     schema = _SCHEMAS.get(version, _SCHEMA) if type(version) is int else _SCHEMA
     contracts.validate(definition, schema, context)
+    if 'trusted_checks' in definition:
+        verification.validate_checks(definition['trusted_checks'])
     if version == 2:
         policy = definition['design_policy']
         requirements = _design_requirements(policy)
@@ -128,7 +131,8 @@ def publication_files(project: dict, definition: dict, control_home: str | Path,
         scope: definition["scope_policy"],
         policy: {"allowed_task_types": [t for t in definition["templates"] if t != "training-optimization"]},
         config: {"schema_version": 1, "name": project["id"], "repo": project["repo"],
-                 **{key: definition[key] for key in ("tracker", "base_sha", "allowed_paths", "checks")}},
+                 **{key: definition[key] for key in ("tracker", "base_sha", "allowed_paths", "checks")},
+                 **({'trusted_checks': definition['trusted_checks']} if 'trusted_checks' in definition else {})},
     }
 
 
@@ -201,6 +205,9 @@ def published_project(control_home: str | Path, project_id: str, operation_id: s
 
 
 def _prepare(state: State, definition: dict, before: dict | None) -> dict:
+    if before and 'registration' in before and ('trusted_checks' in definition
+            or 'trusted_checks' in before['registration']['definition']):
+        raise ValueError('Fixed verification requires a first unified registration; resume the original operation')
     if before and 'registration' in before and (definition['schema_version'] == 2
                                                 or before['registration']['schema_version'] == 2):
         raise ValueError('Design policy requires a first unified registration; existing registrations cannot be '
@@ -237,6 +244,8 @@ def _prepare(state: State, definition: dict, before: dict | None) -> dict:
     execution = _execution_directories(selected["execution"], Path(project["repo"]))
     selected["execution"] = execution
     native_resources.validate_installation(Path(execution["installation"]))
+    if 'trusted_checks' in selected:
+        verification.validate_checks(selected['trusted_checks'], installation=Path(execution['installation']), live=True)
     result = subprocess.run(["git", "-C", project["repo"], "rev-parse", "--verify",
                              selected.get("base_sha", "HEAD") + "^{commit}"],
                             capture_output=True, text=True, encoding="utf-8", timeout=30)
@@ -244,12 +253,15 @@ def _prepare(state: State, definition: dict, before: dict | None) -> dict:
         raise ValueError("Registration requires an existing committed baseline")
     selected["base_sha"] = result.stdout.strip()
     observed = native_registration.registration_io(execution, project["id"], paths=selected["allowed_paths"], scope=selected["scope_policy"])
-    if definition['schema_version'] == 2 and any(value is not None for value in observed['files'].values()):
-        raise ValueError('Design policy requires a first unified registration without existing native projections; '
+    if (definition['schema_version'] == 2 or 'trusted_checks' in selected) and any(value is not None for value in observed['files'].values()):
+        raise ValueError('Design policy or fixed verification requires a first unified registration without existing native projections; '
                          'native registration migration is not supported')
     digest = _sha({"id": project["id"], "repo": project["repo"], "definition": selected})
     marker = native_registration.registration_paths(project["id"])[0]
     files = publication_files(project, selected, state.root, digest)
+    if 'trusted_checks' in selected:
+        for value in files.values():
+            verification.capacity(value, 1_048_576, 'Native registration file')
     if before and "registration" in before:
         previous = before["registration"]
         if previous["sha256"] == digest and previous["files"][marker] == files[marker]:
@@ -317,7 +329,7 @@ def _reserve(state: State, record: dict) -> None:
 
 
 def _finish(state: State, project: dict) -> dict:
-    if project['registration']['schema_version'] == 2:
+    if project['registration']['schema_version'] == 2 or 'trusted_checks' in project['registration']['definition']:
         _validate_saved(project)
     registration = project["registration"]
     journal = _journal(state, project)
@@ -327,6 +339,9 @@ def _finish(state: State, project: dict) -> dict:
         raise ValueError("Project does not match its saved recovery intent")
     execution = registration["definition"]["execution"]
     native_resources.validate_installation(Path(execution["installation"]))
+    if 'trusted_checks' in registration['definition']:
+        verification.validate_checks(registration['definition']['trusted_checks'],
+            installation=Path(execution['installation']), live=True)
     source_sha256 = {path: item["source_sha256"] for path, item in record["source"].get("files", {}).items()
                      if item["operation"] == "adopt"}
     native_registration.registration_io(execution, project["id"], files=registration["files"], publish=True,
@@ -357,10 +372,10 @@ def register(state: State, definition: dict, expected_revision: int) -> dict:
     with _publication_lock(state, registration["definition"]["execution"]):
         if _current(state, project["id"]) != before:
             raise ValueError("Project revision changed; reload before registering")
-        if registration['schema_version'] == 2:
+        if registration['schema_version'] == 2 or 'trusted_checks' in registration['definition']:
             existing = native_registration.registration_io(registration['definition']['execution'], project['id'])
             if any(value is not None for value in existing['files'].values()):
-                raise ValueError('Design policy requires a first unified registration without existing native projections')
+                raise ValueError('Design policy or fixed verification requires a first unified registration without existing native projections')
         observed = native_registration.registration_io(registration["definition"]["execution"], project["id"], files=registration["files"])
         marker = native_registration.registration_paths(project["id"])[0]
         if observed["files"][marker] is None and any(value is not None for value in observed["files"].values()):
@@ -472,7 +487,7 @@ def status(state: State, project_id: str) -> dict:
     if "registration" not in project:
         return {"project": project_id, "revision": project["revision"], "status": "unregistered"}
     registration = project["registration"]
-    if registration['schema_version'] == 2:
+    if registration['schema_version'] == 2 or 'trusted_checks' in registration['definition']:
         effective_requirements = _validate_saved(project)
     observed = native_registration.registration_io(registration["definition"]["execution"], project_id)
     files = {path: "missing" if observed["files"][path] is None else
@@ -485,6 +500,11 @@ def status(state: State, project_id: str) -> dict:
             "sha256": registration["sha256"], "files": files, "duplicate_tracker": duplicate_tracker,
             "consistent": all(value == "matches" for value in files.values()) and not duplicate_tracker,
             "recovery_record": str(_journal(state, project))}
+    if 'trusted_checks' in registration['definition']:
+        result['verification'] = {'scope': 'operator-fixed CPU text observations; stdlib only',
+            'required_checks': sorted(registration['definition']['trusted_checks']),
+            'snapshot_sha256': verification.snapshot(project)['sha256'], 'execution_observed': False,
+            'protected_human_assurance': False}
     if registration['schema_version'] == 2:
         policy = registration['definition']['design_policy']
         result['design'] = {'policy': deepcopy(policy), 'sha256': policy['sha256'],

@@ -16,6 +16,7 @@ import ergora.development.context as task_context
 from ergora.issues import identity as issue_sources
 from ergora.development import budget as reference_budget
 from ergora.development import envelopes as task_envelopes
+from ergora.development import verification
 
 
 _FILES = ('agent-bindings.json', 'task.json', 'policy.json', 'binding.json',
@@ -115,18 +116,19 @@ class _Creation:
 
         self.check_registration()
         definition = self.payload['definition']
+        fixed = verification.require_route(self.project, definition['schema_version'])
         check_task_type(self.project['id'], definition['task_type'])
         input_path = temporary / 'input.json'
         self.core.write(input_path, definition['input'])
         create_task(self.project['id'], definition['task_type'], self.task_id, definition['issue_id'],
-                    input_path, definition.get('starting_sha'))
+                    input_path, definition.get('starting_sha'), verification=fixed)
         files = {name: self.document(temporary / 'tasks' / self.task_id / name)
                  for name in _FILES if name != 'agent-bindings.json'}
         files['agent-bindings.json'] = self.payload['selection']
         if definition['schema_version'] in (2, 3, 8):
             files['task.spec.json'] = task_envelopes.wrap(files['task.spec.json'], self.payload['composition'],
                                                        self.payload.get('issue_source'), budget=self.payload.get('budget'),
-                                                       context=self.payload.get('context'))
+                                                       context=self.payload.get('context'), verification=fixed)
         record = {'schema_version': definition['schema_version'], 'control_home': self.payload['control_home'],
                   'project': self.project['id'], 'repo': self.project['repo'],
                   'project_revision': self.project['revision'],
@@ -159,6 +161,7 @@ class _Creation:
         self.check_size(record, _INTENT_LIMIT, 'creation intent')
         compiled = self.portable.validate_compiled(files['compiled.json'])
         spec, composition = task_envelopes.unwrap(files['task.spec.json'])
+        verification.require_admission(self.project, files['task.spec.json'], revision=record['project_revision'])
         if spec != compiled['spec'] or (composition is not None) != (record['schema_version'] in (2, 3, 8)):
             raise ValueError('Creation intent execution envelope differs from its original spec')
         if ('issue_source' in files['task.spec.json']) != ('source' in record['definition']):
@@ -391,6 +394,10 @@ class _Creation:
     def prepare(self) -> dict:
         """Persist once before expensive work; an uncertain attempt never reruns."""
         definition = self.payload['definition']
+        fixed = verification.require_route(self.project, definition['schema_version'])
+        if fixed is not None:
+            verification.capacity({'verification': fixed, 'root_task': definition}, verification.ARTIFACT_BYTES,
+                'Fixed task review materials', reserve=verification.RESULT_RESERVE)
         owner = reference_budget.scope(self.project, Path(self.payload['control_home']), definition)
         self.lock_path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         with file_lock(self.lock_path, blocking=False):

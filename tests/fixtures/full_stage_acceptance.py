@@ -289,8 +289,13 @@ async def _exercise(root, case, app, activities, adapter, installation, state, r
     authorization = await adapter.authorize({'task_id': 'task-1', 'request_sha256': app.spec['request_sha256'],
         'profile_sha256': app.spec['profile_sha256'], 'plan_sha256': plan_sha, 'receipt_id': 'fixture-approval'})
     app.approved_plan = {'plan_sha256': plan_sha, 'receipt': plan, 'approval': authorization}
-    result = await original_work(root, 'materials-specialists' if selected else ('materials-issue-source' if case == 'issue-source' else 'materials'), app, activities,
+    result = await original_work(root, case if case.startswith('fixed-') else 'materials-specialists' if selected else ('materials-issue-source' if case == 'issue-source' else 'materials'), app, activities,
         installation, state, runtime, requests, records)
+    if case == 'fixed-bad' or case.startswith('fixed-review-'):
+        assert result['fixed_rejected' if case == 'fixed-bad' else 'review_rejected']
+        if case == 'fixed-bad':
+            assert not any(stage.startswith('review') for stage in records)
+        return {**result, 'case': case}
     for stage, receipt in records.items():
         if not stage.startswith('review:'):
             continue

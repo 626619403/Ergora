@@ -110,10 +110,11 @@ class Executor:
         self.sandbox = Sandbox()
         self.config = settings()
 
-    def artifact(self, name: str, content: str | dict) -> str:
+    def artifact(self, name: str, content: str | dict, *, compact: bool = False) -> str:
         relative = f"{self.task_id}/{self.job_id}/{name}.json" if isinstance(content, dict) else f"{self.task_id}/{self.job_id}/{name}.md"
         path = STATE / "artifacts" / relative
-        raw = (json.dumps(content, ensure_ascii=False, indent=2) if isinstance(content, dict) else content).encode()
+        encoding = {'separators': (',', ':')} if compact else {'indent': 2}
+        raw = (json.dumps(content, ensure_ascii=False, **encoding) if isinstance(content, dict) else content).encode()
         require(len(raw) <= 16_777_216, "Artifact exceeds protocol limit")
         path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         if path.exists():
