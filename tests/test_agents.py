@@ -1363,10 +1363,15 @@ def test_native_correction_missing_original_final_remains_unknown_and_cannot_app
 
 
 def test_native_correction_stopped_original_turn_never_publishes_actionable_learning(native_correction_case):
+    from ergora.agents import native_sources
+
     state, repo, config, runs, before = native_correction_case
     result = runs.run_agent(state, 'demo', 'implementer', 'SLEEP this original correction until its original deadline.', 1,
                             session_intent='stopped-correction', expected_revision=state.project('demo')['revision'], codex_config=config)
-    assert result['status'] == 'timed_out' and result['execution_stopped'] is True, result
+    original = native_sources.packet(native_sources.turn_folder(state, result['id']) / 'final')
+    # Caller notification can reach the original owner before its deadline poll.
+    assert result['status'] == original['status'] in ('timed_out', 'cancelled'), result
+    assert result['execution_stopped'] is original['execution_stopped'] is True
     suggestion = result['correction_suggestion']
     assert suggestion['preview'] is None and suggestion['can_apply'] is False and suggestion['reason']
     assert (repo / 'AGENTS.md').read_bytes() == before

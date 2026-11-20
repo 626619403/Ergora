@@ -1320,7 +1320,7 @@ def test_controller_stop_after_attempt_sync_never_resends_the_consumed_rpc(
             finally:
                 marker.with_suffix('.release').touch()
             result = future.result(timeout=12)
-            assert result['status'] == 'unknown' and 'Original training budget cannot start work: stopped' in result['reason']
+            assert result['status'] == 'unknown' and 'Controller stop is visible; no new training action is admitted' in result['reason']
         intent = json.loads((prefix / 'alpha.intent.json').read_bytes())
         resumed = training.resume_start(state, 'demo', 'alpha', 1, training_cycles._sha(intent))
         assert resumed['status'] == 'unknown' and resumed['attempt_saved'] is True
@@ -1546,7 +1546,9 @@ def test_controller_consent_cannot_dispatch_through_either_manual_binding_path(c
     service[0]('accepted')
     digest = request['candidates'][0]['manifest_sha256']
     for cycle_entry in (True, False):
-        with pytest.raises(ValueError, match='Controller authorization requires complete controller binding'):
+        reason = ('Controller birth requires the fixed controller/run path' if cycle_entry else
+                  'Controller authorization requires complete controller binding')
+        with pytest.raises(ValueError, match=reason):
             if cycle_entry:
                 training_cycles.start(state, 'demo', 'controller', 'alpha', authorized['authorization_sha256'], 1)
             else:
