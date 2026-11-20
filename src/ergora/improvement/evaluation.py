@@ -95,7 +95,8 @@ def listing(state: State, project_id: str) -> dict:
 
 
 def evaluate(state: State, project_id: str, digest: str, suite_digest: str, case_ids: list[str] | None = None,
-             deadline: float | None = None, remaining_cost: float | None = None) -> dict:
+             deadline: float | None = None, remaining_cost: float | None = None, *,
+             unreserved_metric_calls: int | None = None) -> dict:
     candidate = skill_assets.get(state, project_id, digest)
     specification = suite(state, project_id, suite_digest)["manifest"]
     cost_limit = specification["max_reported_cost"]
@@ -118,16 +119,23 @@ def evaluate(state: State, project_id: str, digest: str, suite_digest: str, case
     with state.connect() as db:
         db.execute("INSERT INTO evaluations VALUES (?, ?, ?)", (run_id, project_id, json.dumps(document)))
     document["status"] = "succeeded"
-    for case in cases:
+    for index, case in enumerate(cases):
         try:
-            timeout = specification["timeout_seconds"]
+            current = time.monotonic()
+            call_deadline = current + specification["timeout_seconds"]
             if deadline is not None:
-                timeout = min(timeout, deadline - time.monotonic())
-                if timeout <= 0:
-                    document["status"] = "timed_out"
-                    break
-            payload = json.dumps({"skill_dir": candidate["path"], "case": case["input"]})
-            outcome = processes.run(specification["evaluator_argv"], working, directory / "cases" / case["id"], timeout, payload)
+                call_deadline = min(call_deadline, deadline)
+            timeout = call_deadline - current
+            if timeout <= 0:
+                document["status"] = "timed_out"
+                break
+            payload = json.dumps({"skill_dir": candidate["path"], "case": case["input"], "budget": {
+                "deadline_monotonic": call_deadline, "remaining_seconds": timeout,
+                "remaining_reported_cost": max(0.0, cost_limit - document["reported_cost"]),
+                "remaining_batch_calls": len(cases) - index,
+                "unreserved_metric_calls": unreserved_metric_calls}})
+            outcome = processes.run(specification["evaluator_argv"], working, directory / "cases" / case["id"],
+                                    timeout, payload, deadline=call_deadline)
             row = {"id": case["id"], "split": case["split"], **outcome}
             if outcome["status"] != "succeeded":
                 document["cases"].append(row)

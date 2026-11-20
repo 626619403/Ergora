@@ -95,7 +95,9 @@ def optimize(state: State, project_id: str, baseline_digest: str, suite_digest: 
                     document["candidates"].append(imported["digest"])
                 remaining_cost = max(0.0, specification["max_reported_cost"] - document["reported_cost"])
                 try:
-                    result = evaluation.evaluate(state, project_id, imported["digest"], suite_digest, list(set(batch)), deadline, remaining_cost)
+                    result = evaluation.evaluate(state, project_id, imported["digest"], suite_digest, list(set(batch)),
+                                                 deadline, remaining_cost,
+                                                 unreserved_metric_calls=max_evaluations - document["metric_calls"])
                 except (ValueError, OSError) as error:
                     document.update(status="failed", error=str(error))
                     persist()
@@ -126,9 +128,13 @@ def optimize(state: State, project_id: str, baseline_digest: str, suite_digest: 
         document["proposals"] += 1
         request = {"candidate": candidate, "feedback": reflective_dataset, "components": components_to_update,
                    "objective": objective, "response": {"skill": "complete SKILL.md text", "cost": "nonnegative reported cost"}}
-        remaining = max(1, min(300, int(deadline - time.monotonic())))
+        remaining = min(300, deadline - time.monotonic())
+        if remaining <= 0:
+            document["status"] = "budget_exhausted"
+            raise ValueError("Optimization time budget exhausted")
         outcome = processes.run(binding["proposer_argv"], Path(state.project(project_id)["repo"]),
-                                directory / f"proposal-{document['proposals']}", remaining, json.dumps(request))
+                                directory / f"proposal-{document['proposals']}", remaining, json.dumps(request),
+                                deadline=deadline)
         if outcome["status"] != "succeeded":
             document["status"] = outcome["status"]
             persist()
