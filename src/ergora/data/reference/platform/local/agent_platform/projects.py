@@ -34,8 +34,20 @@ def register(name: str, repo: Path, tracker: str, remote_project: str, paths: li
     return value
 
 
-def create_task(name: str, task_type: str, task_id: str, issue: str, input_file: Path, starting_sha: str | None = None) -> dict:
+def create_task(name: str, task_type: str, task_id: str, issue: str, input_file: Path, starting_sha: str | None = None,
+                *, verification: dict | None = None) -> dict:
     p = project(name)
+    if 'trusted_checks' in p:
+        from ergora.development.verification import validate_snapshot, sha
+
+        require(verification is not None, 'Fixed verification requires current unified task creation')
+        validate_snapshot(verification)
+        marker = read(CONFIG / 'ergora/registrations' / (slug(name) + '.json'))
+        require(sha(verification['checks']) == sha(p['trusted_checks']) and verification['project'] == name
+                and verification['registration_sha256'] == marker['definition_sha256'],
+                'Native task verification differs from its registered project')
+    else:
+        require(verification is None, 'Native project has no fixed verification declaration')
     task_id = slug(task_id)
     package = load_package(UPSTREAM / "platform/portable/packages" / task_type / "manifest.json")
     example_root = UPSTREAM / "platform/portable/examples" / task_type

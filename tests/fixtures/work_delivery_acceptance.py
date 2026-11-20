@@ -273,7 +273,9 @@ async def exercise(root, case, app, activities, installation, state, runtime, re
         else:
             assert 'only the trusted Executor may commit' in receipt['detail']
         return {'case': case, 'original_owners': True, 'failed_before_successor': True, 'detail': receipt['detail']}
-    assert case in ('full', 'recovery', 'results', 'issue-source', 'materials', 'materials-issue-source', 'materials-specialists')
+    compound_review_cases = {'fixed-review-ordinary-missing', 'fixed-review-baseline-false', 'fixed-review-scope-fail'}
+    assert case in {'full', 'recovery', 'results', 'issue-source', 'materials', 'materials-issue-source', 'materials-specialists',
+                    'fixed-good', 'fixed-bad', 'fixed-review-reject', 'fixed-review-corrupt'} | compound_review_cases
     work_stages = ['work:' + unit['id'] for unit in app.spec['request']['input']['work_units']]
     for stage in work_stages:
         receipt = records[stage]
@@ -312,7 +314,7 @@ async def exercise(root, case, app, activities, installation, state, runtime, re
                     assert set(source['artifacts']) == {'change-summary', 'test-results'}
                     assert source['artifacts'] == {item['name']: (runtime / 'artifacts' / item['path']).read_text()
                                                    for item in source['receipt']['artifacts'] if item['name'] in source['artifacts']}
-            elif case == 'issue-source' or case.startswith('materials'):
+            elif case == 'issue-source' or case.startswith(('materials', 'fixed-')):
                 source = materials['work_inputs']['results'][app.admission['composition']['execution']['assignments']['implementation']]
                 assert source['receipt'] == records['work:implementation']
                 assert set(source['artifacts']) == {'change-summary', 'test-results'}
@@ -324,8 +326,118 @@ async def exercise(root, case, app, activities, installation, state, runtime, re
                                                for item in source['receipt']['artifacts']}
     integration = await app.stage('integrate', dependencies={key: value for key, value in records.items() if key.startswith('work:')})
     candidate = integration['candidate_sha']
-    verify = await app.stage('verify', candidate, dependencies={'integration': integration})
-    review = await app.stage('review', candidate, dependencies={'verification': verify, 'plan': records['plan']})
+    try:
+        verify = await app.stage('verify', candidate, dependencies={'integration': integration})
+    except StopWork:
+        assert case == 'fixed-bad', records.get('verify')
+        failed = records['verify']
+        assert failed['state'] == 'FAILED' and 'Required fixed verification did not pass' in failed['detail']
+        item = next(item for item in failed['artifacts'] if item['name'] == 'check-results')
+        checked = read(runtime / 'artifacts' / item['path'])
+        assert checked['baseline_regression'] is True and all(item['exit_code'] == 0 for item in checked['commands'].values())
+        assert checked['verification']['passed'] is False
+        assert checked['verification']['checks']['configuration-integrity']['observations']['comparisons'][0]['observed'] is False
+        assert not any(stage.startswith('review') for stage in records)
+        return {'case': case, 'original_owners': True, 'fixed_rejected': True, 'ordinary_passed': True}
+    if case.startswith('fixed-'):
+        assert case in {'fixed-good', 'fixed-review-reject', 'fixed-review-corrupt'} | compound_review_cases
+        item = next(item for item in verify['artifacts'] if item['name'] == 'check-results')
+        checked = read(runtime / 'artifacts' / item['path'])
+        oracle = checked['verification']['checks']['configuration-integrity']
+        assert checked['baseline_regression'] is True and checked['verification']['passed'] is True
+        assert 'expected' not in oracle['input']['cases'][0]
+        assert oracle['input']['repository']['blobs'][next(iter(oracle['input']['repository']['blobs']))]['text'].endswith('\r\n')
+        assert oracle['process']['request']['command'][1:3] == ['-I', '-S']
+        assert oracle['observations']['comparisons'][1]['matches'] is True
+        artifact_path = runtime / 'artifacts' / item['path']
+        assert artifact_path.read_bytes() == json.dumps(checked, ensure_ascii=False, separators=(',', ':')).encode('utf-8')
+        assert len(artifact_path.read_bytes()) < len(json.dumps(checked, ensure_ascii=False, indent=2).encode('utf-8'))
+        # Corruption is injected into the actual original artifact and receipt,
+        # so FileAdapter hash agreement alone cannot satisfy the new consumer.
+        receipt_path = runtime / 'receipts/task-1' / (verify['job_id'] + '.json')
+        artifact_raw, receipt_raw = artifact_path.read_bytes(), receipt_path.read_bytes()
+        corruptions = [lambda value: value['verification']['checks'].clear(),
+                       lambda value: value['verification']['subject'].update(candidate_sha='0' * 40),
+                       lambda value: value['verification']['subject'].update(job_id='other-original-job'),
+                       lambda value: value['verification']['subject'].update(admission_sha256='0' * 64),
+                       lambda value: value['verification']['checks']['configuration-integrity']['input']['cases'][0].update(input={'substitute': True}),
+                       lambda value: value['commands'].update(overflow={'log': 'x' * 1_000_001}),
+                       lambda value: [value.pop(key) for key in ('scope', 'commands', 'baseline_commands', 'baseline_regression')],
+                       lambda value: value.update(baseline_regression=False),
+                       lambda value: value['scope'].update(status='FAIL'),
+                       lambda value: value['commands'].clear()]
+        for corrupt in corruptions:
+            changed = deepcopy(checked)
+            corrupt(changed)
+            raw = json.dumps(changed, ensure_ascii=False, indent=2).encode('utf-8')
+            altered = deepcopy(verify)
+            next(row for row in altered['artifacts'] if row['name'] == 'check-results')['sha256'] = hashlib.sha256(raw).hexdigest()
+            artifact_path.write_bytes(raw)
+            receipt_path.write_text(json.dumps(altered))
+            try:
+                await activities.poll(jobs['verify'])
+            except Exception as error:
+                from temporalio.exceptions import ApplicationError
+
+                assert isinstance(error, ApplicationError) and error.type == 'ContractViolation', error
+            else:
+                raise AssertionError('Actual verify poll accepted substituted fixed evidence')
+            finally:
+                artifact_path.write_bytes(artifact_raw)
+                receipt_path.write_bytes(receipt_raw)
+        assert await activities.poll(jobs['verify']) == verify
+        # Controlled saved-baseline data, not a new inventory policy: the
+        # compound reader must allow a failing baseline and passing candidate,
+        # and each argv retains its own original checkout path.
+        baseline_path = runtime / 'tasks/task-1/baseline-checks.json'
+        baseline_raw = baseline_path.read_bytes()
+        altered = deepcopy(verify)
+        repaired = deepcopy(checked)
+        next(iter(repaired['baseline_commands'].values()))['exit_code'] = 19
+        baseline_path.write_text(json.dumps(repaired['baseline_commands']))
+        raw = json.dumps(repaired, ensure_ascii=False, separators=(',', ':')).encode('utf-8')
+        next(row for row in altered['artifacts'] if row['name'] == 'check-results')['sha256'] = hashlib.sha256(raw).hexdigest()
+        artifact_path.write_bytes(raw)
+        receipt_path.write_text(json.dumps(altered))
+        try:
+            assert (await activities.poll(jobs['verify']))['state'] == 'SUCCEEDED'
+        finally:
+            baseline_path.write_bytes(baseline_raw)
+            artifact_path.write_bytes(artifact_raw)
+            receipt_path.write_bytes(receipt_raw)
+        if case == 'fixed-review-corrupt' or case in compound_review_cases:
+            changed = deepcopy(checked)
+            if case == 'fixed-review-corrupt':
+                changed['verification']['checks'].clear()
+            elif case == 'fixed-review-ordinary-missing':
+                for key in ('scope', 'commands', 'baseline_commands', 'baseline_regression'):
+                    changed.pop(key)
+            elif case == 'fixed-review-baseline-false':
+                changed['baseline_regression'] = False
+            else:
+                changed['scope']['status'] = 'FAIL'
+            raw = json.dumps(changed, ensure_ascii=False, indent=2).encode('utf-8')
+            verify = deepcopy(verify)
+            next(row for row in verify['artifacts'] if row['name'] == 'check-results')['sha256'] = hashlib.sha256(raw).hexdigest()
+            artifact_path.write_bytes(raw)
+            receipt_path.write_text(json.dumps(verify))
+    try:
+        review = await app.stage('review', candidate, dependencies={'verification': verify, 'plan': records['plan']})
+    except StopWork:
+        assert case in {'fixed-review-reject', 'fixed-review-corrupt'} | compound_review_cases and checked['verification']['passed'] is True
+        failed = (next(receipt for stage, receipt in records.items() if stage.startswith('review:') and receipt['state'] == 'FAILED')
+                  if case != 'fixed-review-reject' else records['review:root/development/review/correctness/review'])
+        assert failed['state'] == 'FAILED' and failed['actor']['role'] == 'reviewer'
+        if case == 'fixed-review-corrupt' or case in compound_review_cases:
+            expected = {'fixed-review-corrupt': 'Fixed results differ',
+                        'fixed-review-ordinary-missing': 'Complete check-results',
+                        'fixed-review-baseline-false': 'Baseline regression flag',
+                        'fixed-review-scope-fail': 'Scope result differs'}[case]
+            assert expected in failed['detail']
+            assert not (runtime / 'workspaces/task-1/jobs' / failed['job_id'] / 'selected-agent/request.json').exists()
+            artifact_path.write_bytes(artifact_raw)
+            receipt_path.write_bytes(receipt_raw)
+        return {'case': case, 'original_owners': True, 'review_rejected': True, 'fixed_accepted': True}
     assert review['decision'] == 'approve' and len(review['members']) == 3
     for path in review['members']:
         receipt = records['review:' + path]
@@ -347,6 +459,9 @@ async def exercise(root, case, app, activities, installation, state, runtime, re
             assert json.loads(source['artifacts']['composition-review-decision'])['decision'] == 'request-changes'
         assert set(materials['dependency_artifacts']) == {'verification', 'plan'}
         assert materials['candidate_sha'] == candidate
+        if case == 'fixed-good':
+            assert json.loads(materials['dependency_artifacts']['verification']['check-results']) == checked
+            assert materials['verification'] == app.admission['verification']
     before = len(agent_runs.runs(state, 'demo'))
     for stage in work_stages:
         receipt = records[stage]

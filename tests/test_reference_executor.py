@@ -160,3 +160,28 @@ def test_first_sigterm_cannot_interrupt_supervised_cleanup(tmp_path, boundary):
     summary = json.loads(result.stdout)
     assert summary["status"] == "cancelled"
     assert summary["late_write"] is False
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Original monitor requires Linux/WSL2')
+@pytest.mark.parametrize('case', ['good', 'bad', 'review-reject', 'review-corrupt',
+                                 'review-ordinary-missing', 'review-baseline-false', 'review-scope-fail'])
+def test_fixed_cpu_oracle_observes_candidate_through_original_stage_owners(tmp_path, case):
+    """Deterministic CLI/model doubles; actual registration, Git and CPU scripts."""
+    pytest.importorskip('temporalio')
+    pytest.importorskip('mcp')
+    fixture = Path(__file__).parent / 'fixtures/reference_acceptance.py'
+    result = subprocess.run([sys.executable, '-B', str(fixture), str(tmp_path), 'large-change', 'command',
+        'composition-work-materials-fixed-' + case], capture_output=True, text=True, timeout=210)
+    (tmp_path / 'fixture.stdout.json').write_text(result.stdout)
+    (tmp_path / 'fixture.stderr.log').write_text(result.stderr)
+    assert result.returncode == 0, result.stdout + result.stderr
+    summary = json.loads(result.stdout)
+    if summary.get('skip'):
+        pytest.skip(summary['skip'])
+    assert summary['original_owners']
+    if case == 'bad':
+        assert summary['fixed_rejected'] and summary['ordinary_passed']
+    elif case.startswith('review-'):
+        assert summary['review_rejected'] and summary['fixed_accepted']
+    else:
+        assert summary['candidate'] and summary['review_calls'] == 3

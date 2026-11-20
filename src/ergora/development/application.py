@@ -21,6 +21,7 @@ from ergora.configuration import catalog as components
 from ergora.configuration import validation as contracts
 from ergora.issues import identity as issue_sources
 from ergora.development import budget as reference_budget
+from ergora.development import verification
 from ergora.development.runtime.creation_process import task_preparation
 from ergora.storage.assets import inventory_tree
 from ergora.storage.state import State
@@ -54,12 +55,16 @@ def _definition(state: State, project: dict, definition: dict, *, working_direct
     schema = _DEFINITIONS.get(version, _DEFINITIONS[1]) if type(version) is int else _DEFINITIONS[1]
     contracts.validate(definition, schema, 'Task definition')
     task_design.require_execution_support(project)
+    fixed = verification.require_route(project, definition['schema_version'])
     if definition['task_type'] not in project['registration']['definition']['templates']:
         raise ValueError('Task template is not registered for this project')
     if len(json.dumps(definition, ensure_ascii=False, allow_nan=False).encode('utf-8')) > 1_048_576:
         raise ValueError('Task definition exceeds 1 MiB')
     selection = bindings.development_snapshot(project, projects.effective_configuration(project))
     result = {'definition': definition, 'selection': selection}
+    if fixed is not None:
+        verification.capacity({'verification': fixed, 'root_task': definition}, verification.ARTIFACT_BYTES,
+            'Fixed task review materials', reserve=verification.RESULT_RESERVE)
     if 'context' in definition:
         if working_directory is None:
             raise ValueError('Selected task context requires the original supervised preparation directory')
@@ -273,6 +278,10 @@ def _budget_project(state: State, project_id: str, definition: dict, expected_re
     project = _project(state, project_id, validate_runtime=False)
     _revision(project, expected_revision)
     task_design.require_execution_support(project)
+    fixed = verification.require_route(project, definition['schema_version'])
+    if fixed is not None:
+        verification.capacity({'verification': fixed, 'root_task': definition}, verification.ARTIFACT_BYTES,
+            'Fixed task review materials', reserve=verification.RESULT_RESERVE)
     return project
 
 

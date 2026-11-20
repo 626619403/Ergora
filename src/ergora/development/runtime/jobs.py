@@ -15,11 +15,12 @@ from pathlib import Path
 import signal
 import subprocess
 import sys
+import time
 import uuid
 from datetime import datetime, timezone
 
 from agent_platform import executor as original
-from agent_platform.core import Blocked, CONFIG, ROOT, STATE, UPSTREAM, read, require, slug, write
+from agent_platform.core import Blocked, CONFIG, ROOT, STATE, UPSTREAM, read, require, settings, slug, write
 from dev_platform.adapter import FileAdapter, MAX_RECEIPT_BYTES, identifier, publish, read_raw
 from dev_platform.contracts import canonical_sha
 
@@ -103,10 +104,47 @@ class BudgetedJob(Job):
     def remaining(self, *, cleanup=False) -> float:
         return reference_budget.remaining(self.instance, cleanup=cleanup)
 
-    def unknown(self) -> dict:
+    def unknown(self, *, nested=False) -> dict:
+        if nested:
+            return {'status': 'unknown', 'job_id': self.job_id, 'budget_sha256': self.instance['sha256'],
+                    'outer_cleanup_confirmed': True,
+                    'detail': 'Original fixed process outcome unknown despite confirmed outer cleanup; '
+                              'do not execute it again. Inspect ' + str(self.folder)}
         return {'status': 'unknown', 'job_id': self.job_id, 'budget_sha256': self.instance['sha256'],
                 'detail': 'Original job attempt has no confirmed stopping witness; do not execute it again. Inspect '
                           + str(self.folder)}
+
+    def unconfirmed_checks(self) -> bool:
+        """Nested process outcomes and outer subtree cleanup are separate facts."""
+        if 'verification' not in self.document or self.context['stage'] != 'verify':
+            return False
+        for folder in (STATE / 'processes').glob('af-oracle-' + self.identity['job_sha256'] + '-*'):
+            try:
+                request = json.loads(read_raw(folder / 'request.json'))
+            except FileNotFoundError:
+                # The original writer creates its directory before linking a
+                # request. No launch evidence means this publication stopped
+                # before a monitor could submit a command.
+                if not any(os.path.lexists(folder / name) for name in ('runner.log', 'lock', 'started.json', 'pid.json', 'terminal.json')):
+                    continue
+                return True
+            except (OSError, ValueError, TypeError):
+                return True
+            try:
+                binding = request['binding']
+                subject = binding['subject']
+                terminal = json.loads(read_raw(folder / 'terminal.json'))
+                confirmed = (binding['kind'] == 'fixed-text-verification-process-v1'
+                    and all(subject[key] == self.identity[key] for key in ('job_id', 'job_sha256', 'admission_sha256'))
+                    and terminal['name'] == request['name'] == folder.name
+                    and canonical_sha(terminal['binding']) == canonical_sha(binding)
+                    and terminal['request_sha256'] == canonical_sha(request)
+                    and type(terminal['returncode']) is int)
+            except (OSError, ValueError, KeyError, TypeError):
+                confirmed = False
+            if not confirmed:
+                return True
+        return False
 
     def failure(self, detail: str) -> dict:
         receipt = {'schema_version': 1, 'job_id': self.job_id, 'job_sha256': self.envelope['job_sha256'],
@@ -121,6 +159,11 @@ class BudgetedJob(Job):
         def stopped():
             if not cleanup and (self.cancelled or (STATE / 'fences' / (self.task_id + '.json')).exists()):
                 return True
+            if not cleanup and self.context['stage'] == 'verify' and 'verification' in self.document:
+                cutoff = read(self.folder / 'owner.json')['verification_deadline']
+                if (cutoff['boot_id'] != Path('/proc/sys/kernel/random/boot_id').read_text().strip()
+                        or time.monotonic() >= cutoff['monotonic']):
+                    return True
             try:
                 return self.remaining(cleanup=cleanup) <= 0
             except ValueError:
@@ -136,17 +179,25 @@ class BudgetedJob(Job):
         self.folder.mkdir(parents=True, exist_ok=True, mode=0o700)
         with (self.folder / 'lock').open('a') as lock:
             fcntl.flock(lock, fcntl.LOCK_EX)
+            stage_started = time.monotonic()
             self.cancelled = False
             self.session = original.claim(self.job_id, self.envelope['job_sha256'])
             attempt = self.folder / 'attempt.json'
             if attempt.exists():
                 require(read(attempt) == self.identity, 'Original budget job identity changed')
-                return self.reconcile()
+                return self.reconcile(lock)
             require(not self.terminal.exists(), 'Budget owner cannot adopt an independently published terminal')
             write(attempt, self.identity)
             ticks = Path('/proc/self/stat').read_text().rsplit(')', 1)[1].split()[19]
+            boot_id = Path('/proc/sys/kernel/random/boot_id').read_text().strip()
+            deadline = {}
+            if self.context['stage'] == 'verify' and 'verification' in self.document:
+                task_sampled = time.monotonic()
+                remaining = self.remaining()
+                deadline['verification_deadline'] = {'monotonic': min(stage_started + settings()['stage_walltime_seconds'],
+                    task_sampled + remaining), 'boot_id': boot_id}
             write(self.folder / 'owner.json', {**self.identity, 'pid': os.getpid(), 'start_ticks': ticks,
-                'boot_id': Path('/proc/sys/kernel/random/boot_id').read_text().strip()})
+                'boot_id': boot_id, **deadline})
             def cancel(signum, frame):
                 self.cancelled = True
 
@@ -158,19 +209,24 @@ class BudgetedJob(Job):
             # A returned pending receipt is not evidence that descendants have
             # stopped. run(supervised=True) returns only after their reaping.
             write(self.folder / 'stopped.json', {**self.identity, 'body': body, 'cleanup_confirmed': True})
+            if self.unconfirmed_checks():
+                return self.unknown(nested=True)
             receipt = None
             if body['status'] == 'succeeded':
-                collected = self.supervise('collection', [sys.executable, '-P', '-c',
-                    'from ergora.development.runtime.jobs import collect;collect()'],
-                    {'request': str(self.path), 'pending': str(pending), 'output': str(self.folder / 'collected.json')},
-                    lock, cleanup=True)
-                write(self.folder / 'collection-stopped.json', {**self.identity, 'collection': collected,
-                                                               'cleanup_confirmed': True})
-                if collected['status'] == 'succeeded':
-                    receipt = json.loads(read_raw(self.folder / 'collected.json', MAX_RECEIPT_BYTES))
+                receipt = self.collect_pending(lock)
             if receipt is None:
                 receipt = self.failure('Budget work stopped or evidence collection was not confirmed; pending evidence retained')
             return self.finalize(receipt)
+
+    def collect_pending(self, lock) -> dict | None:
+        collected = self.supervise('collection', [sys.executable, '-P', '-c',
+            'from ergora.development.runtime.jobs import collect;collect()'],
+            {'request': str(self.path), 'pending': str(self.folder / 'pending.json'),
+             'output': str(self.folder / 'collected.json')}, lock, cleanup=True)
+        write(self.folder / 'collection-stopped.json', {**self.identity, 'collection': collected,
+                                                       'cleanup_confirmed': True})
+        if collected['status'] == 'succeeded':
+            return json.loads(read_raw(self.folder / 'collected.json', MAX_RECEIPT_BYTES))
 
     def finalize(self, receipt: dict) -> dict:
         # Hashing was supervised after the business tree stopped. Fallbacks
@@ -212,12 +268,14 @@ class BudgetedJob(Job):
                 require(read_raw(self.terminal) == read_raw(candidate), 'Budget terminal publication conflicts with original evidence')
             return self.record_terminal(receipt)
 
-    def reconcile(self) -> dict:
+    def reconcile(self, lock) -> dict:
         if not (self.folder / 'stopped.json').exists():
             return self.unknown()
         stopped = read(self.folder / 'stopped.json')
         require(all(stopped[key] == value for key, value in self.identity.items())
                 and stopped['cleanup_confirmed'] is True, 'Original stopping witness changed')
+        if self.unconfirmed_checks():
+            return self.unknown(nested=True)
         if self.terminal.exists():
             raw = read_raw(self.terminal, MAX_RECEIPT_BYTES)
             # The single owner may have been interrupted after linking its
@@ -232,6 +290,14 @@ class BudgetedJob(Job):
         if stopped['body']['status'] != 'succeeded':
             return self.finalize(self.failure('Budget work stopped or evidence collection was not confirmed; pending evidence retained'))
         if not collection.exists():
+            # If nested outcomes arrived after the outer tree stopped, collect
+            # its complete saved pending receipt once. An existing collection
+            # directory is an original attempt and cannot be executed again.
+            if ('verification' in self.document and self.context['stage'] == 'verify'
+                    and not (self.folder / 'collection').exists() and (self.folder / 'pending.json').exists()):
+                receipt = self.collect_pending(lock)
+                return self.finalize(receipt if receipt is not None else
+                    self.failure('Budget work stopped or evidence collection was not confirmed; pending evidence retained'))
             return self.unknown()
         record = read(collection)
         require(all(record[key] == value for key, value in self.identity.items())

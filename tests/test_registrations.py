@@ -1,4 +1,5 @@
 from copy import deepcopy
+import base64
 import hashlib
 import json
 import os
@@ -17,6 +18,8 @@ import ergora.configuration.projects as projects
 import ergora.configuration.registrations as registrations
 import ergora.development.application as tasks
 from ergora.storage.state import State
+from ergora.storage.assets import manifest_digest
+from ergora.development import verification
 
 
 @pytest.fixture(scope="module")
@@ -51,6 +54,40 @@ def original_registration(state, project):
     return {'operation_id': operation, 'intent_sha256': result['intent_sha256'], 'confirm': True}
 
 
+def fixed_checks(installation):
+    """Freeze a real stdlib observer independently of the candidate's tests."""
+    if sys.platform != 'linux':
+        pytest.skip('Live fixed verification registration requires the Linux/WSL2 installation Python')
+    installation = Path(installation)
+    if not (installation / '.venv').exists():
+        try:
+            (installation / '.venv').symlink_to(Path(sys.prefix), target_is_directory=True)
+        except OSError as error:
+            pytest.skip('Fixed verification fixture requires an installation Python symlink: ' + str(error))
+    text = '''import json
+import pathlib
+import sys
+
+document = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
+repository = document["repository"]
+item = repository["candidate"]["files"]["src/config.json"]
+configuration = json.loads(repository["blobs"][item["git_object"]]["text"])
+ids = [item["id"] for item in configuration["nodes"]]
+valid = len(ids) == len(set(ids)) and all(
+    edge["source"] in ids and edge["target"] in ids for edge in configuration["edges"])
+result = {"observations": [{"case_id": case["id"], "value": valid} for case in document["cases"]]}
+pathlib.Path(sys.argv[2]).write_text(json.dumps(result), encoding="utf-8")
+'''
+    item = {'text': text, 'sha256': hashlib.sha256(text.encode('utf-8')).hexdigest(), 'executable_bits': 0}
+    return {'configuration-integrity': {'format': 'fixed-text-observations-v1',
+        'coverage': 'Every node ID is unique and every edge endpoint names an existing node.',
+        'entrypoint': 'oracle.py', 'source': {'files': {'oracle.py': item},
+            'digest': manifest_digest({'oracle.py': {key: item[key] for key in ('sha256', 'executable_bits')}})},
+        'runtime': verification.runtime_identity(installation / '.venv/bin/python'),
+        'candidate_paths': ['src/config.json'], 'cases': [{'id': 'integrity', 'input': {}, 'expected': True}],
+        'wall_seconds': 3}}
+
+
 def design_policy():
     """Nondefault requirements, not a human identity or executable profile."""
     profile = {'schema_version': 1, 'kind': 'task-design-policy-profile', 'id': 'fixture-policy-v1',
@@ -80,6 +117,202 @@ def design_policy():
 
 def _saved_files(root):
     return {path.relative_to(root).as_posix(): path.read_bytes() for path in root.rglob('*') if path.is_file()}
+
+
+@pytest.mark.parametrize('published_files', [1, 3, 4])
+@pytest.mark.skipif(sys.platform != 'linux', reason='Live fixed runtime requires Linux/WSL2')
+def test_fixed_registration_recovers_original_source_cases_and_projection(registration, monkeypatch, published_files):
+    state, definition = registration
+    definition['trusted_checks'] = fixed_checks(definition['execution']['installation'])
+    frozen = deepcopy(definition['trusted_checks'])
+    original_run, original_record = subprocess.run, registrations._record
+
+    def interrupt(argv, **kwargs):
+        if ('from ergora.native.registration import _registration_main;_registration_main()' in argv
+                and json.loads(kwargs['input'])['publish']):
+            argv = list(argv)
+            argv[-1] = '''from ergora.native.registration import _registration_main
+from agent_platform import core
+original = core.write
+count = 0
+def write(*args, **kwargs):
+ global count
+ if count == %d: raise OSError('fixed publication interrupted')
+ count += 1
+ return original(*args, **kwargs)
+core.write = write
+_registration_main()
+''' % published_files
+        return original_run(argv, **kwargs)
+
+    def record(path, value):
+        if published_files == 4 and path.name.endswith('.result.json'):
+            raise OSError('fixed publication interrupted after final file')
+        return original_record(path, value)
+
+    monkeypatch.setattr(subprocess, 'run', interrupt)
+    monkeypatch.setattr(registrations, '_record', record)
+    with pytest.raises((ValueError, OSError), match='fixed publication interrupted'):
+        registrations.register(state, definition, 0)
+    pending = state.project('demo')
+    config = Path(definition['execution']['config_directory'])
+    assert sum((config / name).exists() for name in native_registration.registration_paths('demo')) == published_files
+    journal = state.root / 'registrations/demo' / (pending['registration']['operation_id'] + '.json')
+    original_intent = journal.read_bytes()
+    definition['trusted_checks']['configuration-integrity']['cases'][0]['expected'] = False
+    definition['trusted_checks']['configuration-integrity']['source']['files']['oracle.py']['text'] = 'raise SystemExit(0)'
+    monkeypatch.undo()
+    resumed = subprocess.run([sys.executable, '-m', 'ergora', '--home', str(state.root), 'project',
+        'resume-registration', 'demo', '--revision', '1'], capture_output=True, text=True, timeout=30)
+    assert resumed.returncode == 0, resumed.stdout + resumed.stderr
+    project = json.loads(resumed.stdout)
+    assert journal.read_bytes() == original_intent
+    assert project['registration']['definition']['trusted_checks'] == frozen
+    assert json.loads((config / 'projects/demo.json').read_bytes())['trusted_checks'] == frozen
+    status = registrations.status(state, 'demo')
+    assert status['consistent'] and status['verification']['execution_observed'] is False
+    assert status['verification']['required_checks'] == ['configuration-integrity']
+    original = original_registration(state, project)
+    assert registrations.published_project(state.root, 'demo', original['operation_id'], original['intent_sha256']) == project
+    assert not Path(definition['execution']['state_directory']).exists()
+
+
+@pytest.mark.parametrize('projection', range(4))
+@pytest.mark.skipif(sys.platform != 'linux', reason='Live fixed runtime requires Linux/WSL2')
+def test_fixed_first_registration_requires_every_native_projection_absent(registration, projection):
+    state, definition = registration
+    definition['trusted_checks'] = fixed_checks(definition['execution']['installation'])
+    prepared = registrations._prepare(state, definition, None)
+    relative = native_registration.registration_paths('demo')[projection]
+    config = Path(definition['execution']['config_directory'])
+    target = config / relative
+    target.parent.mkdir(parents=True)
+    target.write_text(json.dumps(prepared['registration']['files'][relative]), encoding='utf-8')
+    original = _saved_files(config)
+    with pytest.raises(ValueError, match='first unified registration'):
+        registrations.register(state, definition, 0)
+    assert projects.list_projects(state) == [] and _saved_files(config) == original
+    assert not (state.root / 'registrations').exists()
+    assert not Path(definition['execution']['state_directory']).exists()
+
+
+@pytest.mark.parametrize('original_fixed', [False, True])
+@pytest.mark.skipif(sys.platform != 'linux', reason='Live fixed runtime requires Linux/WSL2')
+def test_existing_registration_cannot_add_replace_or_remove_fixed_checks(registration, original_fixed):
+    state, definition = registration
+    checks = fixed_checks(definition['execution']['installation'])
+    if original_fixed:
+        definition['trusted_checks'] = deepcopy(checks)
+    project = registrations.register(state, definition, 0)
+    journals = _saved_files(state.root / 'registrations')
+    config = Path(definition['execution']['config_directory'])
+    native = _saved_files(config)
+    for replacement in (checks, {**checks, 'second': deepcopy(checks['configuration-integrity'])}, None):
+        if replacement is None and not original_fixed:
+            continue
+        changed = deepcopy(definition)
+        changed.pop('trusted_checks', None)
+        if replacement is not None:
+            changed['trusted_checks'] = replacement
+        with pytest.raises(ValueError, match='first unified registration'):
+            registrations.register(state, changed, 1)
+        assert state.project('demo') == project
+        assert _saved_files(state.root / 'registrations') == journals and _saved_files(config) == native
+    assert not Path(definition['execution']['state_directory']).exists()
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Live fixed runtime requires Linux/WSL2')
+def test_first_fixed_registration_accepts_an_unregistered_control_project(registration):
+    state, definition = registration
+    original = projects.create(state, 'demo', Path(definition['repo']))
+    definition['trusted_checks'] = fixed_checks(definition['execution']['installation'])
+    project = registrations.register(state, definition, original['revision'])
+    assert project['created'] == original['created'] and project['revision'] == original['revision'] + 1
+    assert project['registration']['schema_version'] == 1
+
+
+@pytest.mark.parametrize('damage', ['source-sha', 'inventory-sha', 'entrypoint', 'traversal',
+    'float-input', 'float-expected', 'large-int', 'surrogate', 'duplicate-case',
+    'runtime-sha', 'runtime-resolved', 'runtime-selected'])
+@pytest.mark.skipif(sys.platform != 'linux', reason='Live fixed runtime requires Linux/WSL2')
+def test_fixed_registration_rejects_invalid_frozen_material_before_reserving(registration, damage):
+    state, definition = registration
+    checks = fixed_checks(definition['execution']['installation'])
+    definition['trusted_checks'] = checks
+    check = checks['configuration-integrity']
+    if damage == 'source-sha':
+        check['source']['files']['oracle.py']['text'] += '\n# changed bytes\n'
+    elif damage == 'inventory-sha':
+        check['source']['digest'] = '0' * 64
+    elif damage == 'entrypoint':
+        check['entrypoint'] = 'candidate.py'
+    elif damage == 'traversal':
+        check['source']['files']['../oracle.py'] = check['source']['files'].pop('oracle.py')
+    elif damage in ('float-input', 'float-expected'):
+        check['cases'][0][damage.removeprefix('float-')] = {'nested': [1.0]}
+    elif damage == 'large-int':
+        check['cases'][0]['expected'] = 2**53
+    elif damage == 'surrogate':
+        check['cases'][0]['input'] = '\ud800'
+    elif damage == 'duplicate-case':
+        check['cases'].append(deepcopy(check['cases'][0]))
+    elif damage == 'runtime-sha':
+        check['runtime']['sha256'] = '0' * 64
+    elif damage == 'runtime-resolved':
+        check['runtime']['resolved'] = str(Path(check['runtime']['resolved']).with_name('other-python'))
+    else:
+        check['runtime']['executable'] = str(Path(sys.executable).absolute())
+    expected_error = {'source-sha': 'source bytes', 'inventory-sha': 'inventory digest',
+        'entrypoint': 'entrypoint', 'traversal': 'relative paths', 'float-input': 'floats',
+        'float-expected': 'floats', 'large-int': 'exact JSON domain', 'surrogate': 'finite bounded JSON',
+        'duplicate-case': 'Duplicate fixed verification case', 'runtime-sha': 'runtime identity changed',
+        'runtime-resolved': 'runtime identity changed', 'runtime-selected': 'selected installation Python'}
+    with pytest.raises(ValueError, match=expected_error[damage]):
+        registrations.register(state, definition, 0)
+    assert projects.list_projects(state) == []
+    assert not (state.root / 'registrations').exists()
+    assert not Path(definition['execution']['config_directory']).exists()
+    assert not Path(definition['execution']['state_directory']).exists()
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Live fixed runtime requires Linux/WSL2')
+def test_fixed_registration_accounts_for_json_escaping_and_complete_result_capacity(registration):
+    state, definition = registration
+    definition['trusted_checks'] = fixed_checks(definition['execution']['installation'])
+    source = definition['trusted_checks']['configuration-integrity']['source']
+    item = source['files']['oracle.py']
+    item['text'] += '\n# ' + '\\' * 60_000
+    assert len(item['text'].encode('utf-8')) < 128 * 1024
+    item['sha256'] = hashlib.sha256(item['text'].encode('utf-8')).hexdigest()
+    source['digest'] = manifest_digest({'oracle.py': {key: item[key] for key in ('sha256', 'executable_bits')}})
+    with pytest.raises(ValueError, match='complete encoded capacity'):
+        registrations.register(state, definition, 0)
+    assert projects.list_projects(state) == [] and not (state.root / 'registrations').exists()
+    assert not Path(definition['execution']['config_directory']).exists()
+    assert not Path(definition['execution']['state_directory']).exists()
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Live fixed runtime requires Linux/WSL2')
+def test_fixed_registered_values_compare_exactly_and_reject_noninteger_output(registration):
+    state, definition = registration
+    definition['trusted_checks'] = fixed_checks(definition['execution']['installation'])
+    check = definition['trusted_checks']['configuration-integrity']
+    check['cases'] = [{'id': 'nested', 'input': {'empty': [], 'object': {}, 'nullable': None},
+        'expected': {'flag': True, 'limits': [-(2**53 - 1), 2**53 - 1], 'empty': []}},
+        {'id': 'zero', 'input': False, 'expected': 0}]
+    project = registrations.register(state, definition, 0)
+    frozen = project['registration']['definition']['trusted_checks']['configuration-integrity']
+    valid = (b'{"observations":[{"case_id":"nested","value":{"empty":[],"limits":'
+        b'[-9007199254740991,9007199254740991],"flag":true}},{"case_id":"zero","value":-0}]}')
+    result = verification.observations(frozen, valid, 0)
+    assert result['passed'] and base64.b64decode(result['raw_base64'], validate=True) == valid
+    assert result['raw_sha256'] == hashlib.sha256(valid).hexdigest()
+    bool_as_int = valid.replace(b'"flag":true', b'"flag":1')
+    result = verification.observations(frozen, bool_as_int, 0)
+    assert not result['passed'] and result['comparisons'][0]['matches'] is False
+    for token in (b'1.0', b'1e0', b'NaN', b'9007199254740992'):
+        result = verification.observations(frozen, valid.replace(b'"flag":true', b'"flag":' + token), 0)
+        assert not result['passed'] and result['failure'] and result['comparisons'] == []
 
 
 @pytest.mark.parametrize('published_files', range(5))

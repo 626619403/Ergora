@@ -4,6 +4,7 @@ import asyncio
 from contextlib import AsyncExitStack
 from datetime import datetime, timedelta
 import json
+import hashlib
 
 from temporalio import activity, workflow
 from temporalio.exceptions import ApplicationError
@@ -11,11 +12,13 @@ from temporalio.exceptions import ApplicationError
 with workflow.unsafe.imports_passed_through():
     from dev_platform.activities import Activities
     from dev_platform.adapter import FileAdapter, ContractViolation, identifier, sha
+    from dev_platform.adapter import read_raw
     from dev_platform.workflow import DevelopmentWorkflow, RETRY, StopWork
     from ergora.development import budget as reference_budget
     from ergora.development import envelopes as task_envelopes
     from ergora.development.runtime.review_opinions import review_observation
     from ergora.development.dags import preparation_stages
+    from ergora.development import verification
 
 
 class CompositionAdapter(FileAdapter):
@@ -476,6 +479,19 @@ class PreparationDAGActivities(WorkDeliveryActivities):
                     result = await self.adapter.poll(job)
             else:
                 result = await super().poll(job)
+            if (context['stage'] == 'verify' and result is not None and result['state'] == 'SUCCEEDED'
+                    and 'verification' in context['admission']):
+                selected = [item for item in result['artifacts'] if item['name'] == 'check-results']
+                if len(selected) != 1:
+                    raise ContractViolation('Fixed verify requires its complete check-results artifact')
+                item = selected[0]
+                raw = read_raw(self.adapter.path('artifacts', item['path']), verification.ARTIFACT_BYTES)
+                if hashlib.sha256(raw).hexdigest() != item['sha256']:
+                    raise ContractViolation('Fixed check-results artifact changed')
+                state = self.adapter.roots['receipts'].parent
+                subject = verification.job_subject(context['admission'], job, state)
+                verification.read_report(raw, context['admission']['verification'], subject,
+                    process_root=state / 'processes')
             if member is None or result is None or result['state'] != 'SUCCEEDED':
                 return result
             selected = preparation['members'][member]

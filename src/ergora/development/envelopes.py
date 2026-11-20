@@ -11,6 +11,8 @@ import json
 from ergora.configuration.catalog import validate_agent_minimum
 from ergora.development.dags import ReviewDAG, WorkDelivery, preparation_members, preparation_stages, require_root_task
 from ergora.issues.identity import validate_snapshot
+from ergora.development import verification as fixed_verification
+from ergora.training.materials import decode_record
 
 
 _KIND = 'composition-task-admission'
@@ -38,10 +40,7 @@ def context_limit(document: dict) -> int:
 def _wire_object(raw: bytes) -> dict:
     if len(raw) > WIRE_LIMIT:
         raise ValueError('Complete wire document exceeds 4 MiB')
-    document = json.loads(raw)
-    if not isinstance(document, dict):
-        raise ValueError('Task wire must be a JSON object')
-    return document
+    return decode_record(raw)
 
 
 def decode_admission(raw: bytes) -> dict:
@@ -99,7 +98,7 @@ def manifest_identity(snapshot: dict) -> str:
 
 
 def wrap(spec: dict, composition: dict, issue_source: dict | None = None, *, budget: dict | None = None,
-         context: dict | None = None) -> dict:
+         context: dict | None = None, verification: dict | None = None) -> dict:
     if 'preparation' in composition:
         if budget is None or 'native' not in composition:
             raise ValueError('Current preparation requires its native invocation and original budget')
@@ -116,6 +115,10 @@ def wrap(spec: dict, composition: dict, issue_source: dict | None = None, *, bud
         value['budget'] = budget
     if context is not None:
         value['context'] = context
+    if verification is not None:
+        if version != 12:
+            raise ValueError('Fixed verification requires current Input12')
+        value['verification'] = fixed_verification.validate_snapshot(verification)
     return {**value, 'sha256': identity(value)}
 
 
@@ -408,6 +411,8 @@ def unwrap(document: dict) -> tuple[dict, dict | None]:
         fields.add('budget')
     if document.get('schema_version') == 12 and 'context' in document:
         fields.add('context')
+    if document.get('schema_version') == 12 and 'verification' in document:
+        fields.add('verification')
     if (set(document) != fields
             or type(document['schema_version']) is not int or document['schema_version'] not in (2, 3, 4, 5, 6, 7, 12)
             or document['kind'] != _KIND):
@@ -577,6 +582,8 @@ def unwrap(document: dict) -> tuple[dict, dict | None]:
         validate_contract(document['budget'], composition, document['legacy_spec'])
     if 'context' in document:
         selected_context(document)
+    if 'verification' in document:
+        fixed_verification.validate_snapshot(document['verification'], owner=document['budget']['instance']['scope'])
     return document['legacy_spec'], composition
 
 
@@ -637,6 +644,9 @@ def summary(document: dict) -> dict:
             **({'budget': document['budget']}
                if 'budget' in document else {}),
             **({'context': document['context']} if 'context' in document else {}),
+            **({'verification': {'sha256': document['verification']['sha256'],
+                'required_checks': sorted(document['verification']['checks']), 'execution_observed': False}}
+               if 'verification' in document else {}),
             **({'issue_source': {'snapshot_sha256': document['issue_source']['sha256'],
                 'source': document['issue_source']['payload']['observation']['source'],
                 'native_id': document['issue_source']['payload']['observation']['issue']['native_id'],

@@ -58,9 +58,9 @@ def _prepare(budget_creation, monkeypatch, *, wall=8, reserve=2, omit_admission=
     return state, document, adapter, job, path, environment, folder
 
 
-def _launch(state, path, environment, *, worker='', owner='', service=False):
-    # Only fault injection varies. Public process() selects its owner from the
-    # trusted published input; the owner and supervisor are the product code.
+def _launch(state, path, environment, *, worker='', owner='', service=False, job_owner=False):
+    # Public process() selects its owner from the trusted published input;
+    # lifecycle-only tests can select the same original owner directly below.
     body_prefix = worker
     owner_source = '''
 from ergora.runtime import processes
@@ -83,6 +83,15 @@ subprocess.Popen = launch
 from ergora.development.runtime.executor import process
 print(json.dumps(process(Path(sys.argv[1]), Path(sys.argv[2]))))
 ''' .replace('OWNER', repr(owner_source))
+    if job_owner:
+        # Controlled lifecycle-only inputs bypass application admission. The
+        # original owner, supervisor, process records and ledger remain real.
+        source = source.replace('from ergora.development.runtime.executor import process',
+            'from ergora.development.runtime.jobs import BudgetedJob\n'
+            'def process(path, home):\n'
+            '    runtime = Path(__import__("os").environ["AGENTFLOW_STATE_DIR"])\n'
+            '    document = json.loads((runtime / "tasks" / path.parent.name / "task.spec.json").read_bytes())\n'
+            '    return BudgetedJob(path, home, document).run()')
     if service:
         source = source.replace(
             'from ergora.development.runtime.executor import process\nprint(json.dumps(process(Path(sys.argv[1]), Path(sys.argv[2]))))',
@@ -110,6 +119,528 @@ def pending(envelope, home):
         'candidate_sha': context['expected_candidate_sha'], 'artifacts': [], 'checks': []}
 reference_executor._execute = pending
 '''
+
+
+def _monitor_frame(tmp_path, *, cutoff_seconds=1.25, timeout=1.25):
+    runtime = tmp_path / 'runtime'
+    folder = runtime / 'processes' / ('af-oracle-' + '8' * 64 + '-' + '9' * 64)
+    folder.mkdir(parents=True)
+    checkout = tmp_path / 'checkout'
+    checkout.mkdir()
+    marker = tmp_path / 'child.json'
+    finished = tmp_path / 'child-finished'
+    command = [sys.executable, '-I', '-S', '-B', '-c',
+        'import json,os,time;from pathlib import Path;'
+        f'Path({str(marker)!r}).write_text(json.dumps({{"pid":os.getpid(),"started":time.monotonic()}}));'
+        f'time.sleep(10);Path({str(finished)!r}).touch()']
+    request = {'schema_version': 1, 'name': folder.name, 'checkout': str(checkout),
+        'output': str(tmp_path / 'output'), 'command': command, 'writable': False, 'fence': None,
+        'timeout': timeout, 'model': None, 'protocol': None, 'policy': None,
+        'deadline': {'monotonic': time.monotonic() + cutoff_seconds,
+                     'boot_id': Path('/proc/sys/kernel/random/boot_id').read_text().strip()},
+        'binding': {'kind': 'fixed-text-verification-process-v1',
+                    'subject': {'job_sha256': '8' * 64}, 'input_sha256': '2' * 64}}
+    (folder / 'request.json').write_text(json.dumps(request))
+    return runtime, folder, request, marker, finished
+
+
+def _run_original_monitor(runtime, folder, *, snapshot_delay=0, admission_delay=0):
+    # Only Git's readonly snapshot is controlled; admission, timeout and child
+    # stopping use the actual native monitor and its original process group.
+    source = '''
+import json,sys,time
+from pathlib import Path
+sys.path.insert(0, NATIVE)
+from agent_platform import process_job
+folder = Path(sys.argv[1])
+calls = []
+def snapshot(path):
+    (folder / 'snapshot-observed').touch()
+    if not calls: time.sleep(DELAY)
+    calls.append(True)
+    return ('same', 'same', 'same')
+process_job.snapshot = snapshot
+actual_environment = process_job.child_environment
+def child_environment(model):
+    time.sleep(ADMISSION_DELAY)
+    return actual_environment(model)
+process_job.child_environment = child_environment
+actual_clock = time.monotonic
+clock_reads = []
+def clock():
+    observed = actual_clock()
+    clock_reads.append(observed)
+    return observed
+process_job.time.monotonic = clock
+actual_launch = process_job.subprocess.Popen
+def launch(command, **kwargs):
+    (folder / 'admission.json').write_text(json.dumps({'monotonic': actual_clock(),
+        'sampled_monotonic': clock_reads[-1] if clock_reads else None,
+        'timeout': float(command[3])}))
+    return actual_launch(command, **kwargs)
+process_job.subprocess.Popen = launch
+process_job.run(folder)
+'''.replace('NATIVE', repr(str(native_resources.ROOT / 'platform/local'))).replace(
+        'ADMISSION_DELAY', repr(admission_delay)).replace('DELAY', repr(snapshot_delay))
+    environment = dict(os.environ, AGENTFLOW_STATE_DIR=str(runtime),
+                       AGENTFLOW_CONFIG_DIR=str(runtime.parent / 'config'))
+    result = subprocess.run([sys.executable, '-I', '-S', '-B', '-c', source, str(folder)],
+        env=environment, capture_output=True, text=True, timeout=15)
+    assert result.returncode == 0, result.stdout + result.stderr
+    return json.loads((folder / 'terminal.json').read_bytes())
+
+
+@pytest.mark.parametrize('delayed_phase', ['snapshot', 'last-admission'])
+def test_original_process_monitor_refuses_admission_after_stage_deadline(tmp_path, delayed_phase):
+    runtime, folder, request, marker, finished = _monitor_frame(tmp_path)
+    request_raw = (folder / 'request.json').read_bytes()
+    terminal = _run_original_monitor(runtime, folder,
+        **({'snapshot_delay': 1.45} if delayed_phase == 'snapshot' else {'admission_delay': 1.45}))
+    assert terminal['returncode'] == 125 and 'deadline' in terminal['detail'].lower()
+    assert not marker.exists() and not finished.exists() and not (folder / 'admission.json').exists()
+    terminal_raw = (folder / 'terminal.json').read_bytes()
+    assert _run_original_monitor(runtime, folder) == terminal
+    assert (folder / 'terminal.json').read_bytes() == terminal_raw
+    assert (folder / 'request.json').read_bytes() == request_raw
+    assert not marker.exists() and not (folder / 'pid.json').exists()
+
+
+def test_original_process_monitor_preserves_fractional_tail_and_stops_at_original_cutoff(tmp_path):
+    runtime, folder, request, marker, finished = _monitor_frame(tmp_path)
+    terminal = _run_original_monitor(runtime, folder, snapshot_delay=.6)
+    admission = json.loads((folder / 'admission.json').read_bytes())
+    assert 0 < admission['timeout'] < 1
+    assert admission['timeout'] <= request['deadline']['monotonic'] - admission['sampled_monotonic']
+    assert admission['monotonic'] < request['deadline']['monotonic']
+    assert marker.exists() and not finished.exists() and terminal['returncode'] != 0
+    pid = json.loads((folder / 'pid.json').read_bytes())['pid']
+    assert not Path('/proc', str(pid)).exists()
+    terminal_raw = (folder / 'terminal.json').read_bytes()
+    child_raw = marker.read_bytes()
+    assert _run_original_monitor(runtime, folder) == terminal
+    assert (folder / 'terminal.json').read_bytes() == terminal_raw and marker.read_bytes() == child_raw
+
+    # A later check shares the original absolute cutoff; the first terminal
+    # never grants a fresh interval to another original request.
+    successor = folder.with_name('af-oracle-' + '8' * 64 + '-' + 'a' * 64)
+    successor.mkdir()
+    (successor / 'request.json').write_text(json.dumps({**request, 'name': successor.name}))
+    refused = _run_original_monitor(runtime, successor)
+    assert refused['returncode'] == 125 and not (successor / 'admission.json').exists()
+    assert marker.read_bytes() == child_raw
+
+
+def test_original_process_monitor_rejects_deadline_from_another_boot(tmp_path):
+    runtime, folder, request, marker, finished = _monitor_frame(tmp_path, cutoff_seconds=10)
+    request['deadline']['boot_id'] = '0' * 36
+    (folder / 'request.json').write_text(json.dumps(request))
+    terminal = _run_original_monitor(runtime, folder)
+    assert terminal['returncode'] == 125 and 'boot' in terminal['detail'].lower()
+    assert not marker.exists() and not finished.exists() and not (folder / 'admission.json').exists()
+
+
+@pytest.mark.parametrize('boundary', ['sandbox', 'monitor'])
+def test_fixed_binding_requires_original_deadline_before_native_admission(tmp_path, boundary):
+    runtime, folder, request, marker, finished = _monitor_frame(tmp_path)
+    del request['deadline']
+    (folder / 'request.json').write_text(json.dumps(request))
+    if boundary == 'monitor':
+        terminal = _run_original_monitor(runtime, folder)
+        assert terminal['returncode'] == 125 and 'deadline' in terminal['detail'].lower()
+        assert not (folder / 'started.json').exists() and not (folder / 'admission.json').exists()
+        assert not (folder / 'snapshot-observed').exists()
+    else:
+        source = '''
+import json,subprocess,sys
+from pathlib import Path
+sys.path.insert(0, NATIVE)
+from agent_platform.core import Blocked,STATE
+from agent_platform.sandbox import Sandbox
+request = json.load(sys.stdin)
+sandbox = Sandbox.__new__(Sandbox)
+sandbox.env = {}
+sandbox.probe = lambda: {'available': True}
+def forbidden(*args, **kwargs):
+    raise AssertionError('A fixed request without its deadline launched a monitor')
+subprocess.Popen = forbidden
+try:
+    sandbox.run(request['name'], Path(request['checkout']), Path(request['output']),
+        request['command'], writable=False, timeout=request['timeout'], binding=request['binding'])
+except Blocked as error:
+    assert 'deadline' in str(error).lower(), str(error)
+else:
+    raise AssertionError('Fixed process admission omitted its original deadline')
+assert not (STATE / 'processes').exists()
+'''.replace('NATIVE', repr(str(native_resources.ROOT / 'platform/local')))
+        environment = dict(os.environ, AGENTFLOW_STATE_DIR=str(tmp_path / 'sandbox-runtime'),
+                           AGENTFLOW_CONFIG_DIR=str(tmp_path / 'config'))
+        result = subprocess.run([sys.executable, '-I', '-S', '-B', '-c', source], input=json.dumps(request),
+            env=environment, capture_output=True, text=True, timeout=10)
+        assert result.returncode == 0, result.stdout + result.stderr
+    assert not marker.exists() and not finished.exists() and not (folder / 'pid.json').exists()
+
+
+def test_sandbox_original_deadline_does_not_renew_observation_or_completed_request(tmp_path):
+    source = '''
+import hashlib,json,subprocess,sys,time
+from pathlib import Path
+sys.path.insert(0, NATIVE)
+from agent_platform.core import Blocked,STATE,write
+from agent_platform.sandbox import Sandbox
+sandbox = Sandbox.__new__(Sandbox)
+sandbox.env = {}
+sandbox.probe = lambda: {'available': True}
+checkout, output = STATE / 'checkout', STATE / 'output'
+ordinary = sandbox.request('ordinary', checkout, output, ['true'], writable=False)
+assert ordinary == {'schema_version': 1, 'name': 'ordinary', 'checkout': str(checkout.resolve()),
+    'output': str(output.resolve()), 'command': ['true'], 'writable': False, 'fence': None,
+    'timeout': 1800, 'model': None, 'protocol': None, 'policy': None}
+deadline = {'monotonic': time.monotonic() - 31,
+            'boot_id': Path('/proc/sys/kernel/random/boot_id').read_text().strip()}
+binding = {'kind': 'fixed-text-verification-process-v1', 'subject': {}, 'input_sha256': '4' * 64}
+name = 'af-oracle-' + '5' * 64 + '-' + '6' * 64
+folder = STATE / 'processes' / name
+def forbidden(*args, **kwargs):
+    raise AssertionError('An exhausted original observation window launched another monitor')
+subprocess.Popen = forbidden
+try:
+    sandbox.run(name, checkout, output, ['true'], writable=False, binding=binding, deadline=deadline)
+except Blocked as error:
+    assert 'outcome unknown' in str(error), str(error)
+else:
+    raise AssertionError('Missing terminal was accepted')
+request_raw = (folder / 'request.json').read_bytes()
+request = json.loads(request_raw)
+assert request['deadline'] == deadline
+digest = hashlib.sha256(json.dumps(request, ensure_ascii=False, sort_keys=True,
+    separators=(',', ':'), allow_nan=False).encode()).hexdigest()
+write(folder / 'terminal.json', {'name': name, 'returncode': 125,
+    'binding': binding, 'request_sha256': digest})
+assert sandbox.run(name, checkout, output, ['true'], writable=False,
+    binding=binding, deadline=deadline) == 125
+assert (folder / 'request.json').read_bytes() == request_raw
+assert not (folder / 'started.json').exists() and not (folder / 'pid.json').exists()
+'''.replace('NATIVE', repr(str(native_resources.ROOT / 'platform/local')))
+    environment = dict(os.environ, AGENTFLOW_STATE_DIR=str(tmp_path / 'runtime'),
+                       AGENTFLOW_CONFIG_DIR=str(tmp_path / 'config'))
+    result = subprocess.run([sys.executable, '-I', '-S', '-B', '-c', source],
+        env=environment, capture_output=True, text=True, timeout=10)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_original_process_monitor_preserves_started_without_terminal_as_unknown(tmp_path):
+    """Controlled lost-monitor record; the actual monitor must not manufacture an outcome."""
+    runtime = tmp_path / 'runtime'
+    folder = runtime / 'processes' / ('af-oracle-' + '1' * 64 + '-' + '2' * 64)
+    folder.mkdir(parents=True)
+    marker = tmp_path / 'forbidden-second-body'
+    request = {'name': folder.name, 'output': str(tmp_path / 'output'),
+        'command': [sys.executable, '-c', f'from pathlib import Path;Path({str(marker)!r}).touch()'],
+        'binding': {'kind': 'fixed-text-verification-process-v1', 'subject': {}, 'input_sha256': '2' * 64}}
+    request_raw = json.dumps(request).encode()
+    started_raw = json.dumps({'name': folder.name, 'binding': request['binding'], 'monitor_pid': 99999999}).encode()
+    (folder / 'request.json').write_bytes(request_raw)
+    (folder / 'started.json').write_bytes(started_raw)
+    code = ('import sys;from pathlib import Path;sys.path.insert(0,'
+            + repr(str(native_resources.ROOT / 'platform/local')) + ');'
+            'from agent_platform.process_job import run;run(Path(sys.argv[1]))')
+    environment = dict(os.environ, AGENTFLOW_STATE_DIR=str(runtime), AGENTFLOW_CONFIG_DIR=str(tmp_path / 'config'))
+    for _ in range(2):
+        result = subprocess.run([sys.executable, '-I', '-S', '-B', '-c', code, str(folder)],
+                                env=environment, capture_output=True, text=True, timeout=10)
+        assert result.returncode != 0 and 'unknown outcome' in result.stderr
+        assert not marker.exists() and not (folder / 'terminal.json').exists()
+        assert (folder / 'request.json').read_bytes() == request_raw
+        assert (folder / 'started.json').read_bytes() == started_raw
+
+
+def _prepare_fixed_verify_job(budget_creation, monkeypatch):
+    from ergora.development import verification
+    from test_full_stage_materials import _fixed_observation_checks
+
+    state, document, adapter, initial_job, initial_path, env, _ = _prepare(budget_creation, monkeypatch, wall=15)
+    project = state.project('demo')
+    project['registration']['definition']['trusted_checks'] = _fixed_observation_checks([
+        {'id': 'case', 'input': None, 'expected': True}])
+    document = {**document, 'verification': verification.snapshot(project)}
+    document['sha256'] = task_envelopes.identity({key: value for key, value in document.items() if key != 'sha256'})
+    runtime = Path(env['AGENTFLOW_STATE_DIR'])
+    (runtime / 'tasks' / initial_job['task_id'] / 'task.spec.json').write_text(json.dumps(document))
+    context = {**initial_job['context'], 'stage': 'verify', 'admission': document}
+    context['job_id'] = initial_job['task_id'] + '-' + task_envelopes.identity({'stage': 'verify'})[:24]
+    job = {'task_id': initial_job['task_id'], 'job_id': context['job_id'],
+           'job_sha256': task_envelopes.identity(context), 'context': context}
+    path = initial_path.with_name(job['job_id'] + '.json')
+    path.write_text(json.dumps({'schema_version': 1, 'job_id': job['job_id'],
+                               'job_sha256': job['job_sha256'], 'context': context}))
+    folder = runtime / 'workspaces' / job['task_id'] / 'jobs' / job['job_id'] / 'budget'
+    (Path(env['AGENTFLOW_CONFIG_DIR']) / 'platform.json').write_text(json.dumps({'stage_walltime_seconds': 30}))
+    return state, document, adapter, job, path, env, folder
+
+
+def test_fixed_stage_cutoff_includes_constructor_and_recovery_keeps_original_deadline(
+        budget_creation, monkeypatch, tmp_path):
+    from ergora.development import budget as reference_budget
+
+    state, document, adapter, job, path, env, folder = _prepare_fixed_verify_job(budget_creation, monkeypatch)
+    (Path(env['AGENTFLOW_CONFIG_DIR']) / 'platform.json').write_text(json.dumps({'stage_walltime_seconds': 2}))
+    marker = tmp_path / 'constructor-entered.json'
+    worker = f'''
+import json,os,time
+from pathlib import Path
+from ergora.development.runtime.executor import Executor
+def blocked(self, *args):
+    owner = json.loads((Path(os.environ['ERGORA_REFERENCE_JOB_OWNER']) / 'owner.json').read_bytes())
+    Path({str(marker)!r}).write_text(json.dumps({{'monotonic': time.monotonic(),
+        'deadline': owner['verification_deadline']}}))
+    time.sleep(30)
+    raise AssertionError('Expired constructor continued into verification')
+Executor.__init__ = blocked
+'''
+    receipt = _result(_launch(state, path, env, worker=worker, job_owner=True))
+    assert receipt['state'] == 'CANCELLED'
+    entered = json.loads(marker.read_bytes())
+    owner_raw = (folder / 'owner.json').read_bytes()
+    owner = json.loads(owner_raw)
+    assert entered['deadline'] == owner['verification_deadline']
+    assert entered['monotonic'] < owner['verification_deadline']['monotonic']
+    assert reference_budget.remaining(document['budget']['instance']) > 0
+    stopped = json.loads((folder / 'stopped.json').read_bytes())
+    assert stopped['body']['status'] == 'cancelled' and stopped['cleanup_confirmed'] is True
+    assert not (folder / 'pending.json').exists() and not (folder / 'model-attempt.json').exists()
+    assert not list((Path(env['AGENTFLOW_STATE_DIR']) / 'processes').glob('af-oracle-*'))
+    marker_raw = marker.read_bytes()
+    assert _result(_launch(state, path, env, worker=worker, job_owner=True)) == receipt
+    assert (folder / 'owner.json').read_bytes() == owner_raw and marker.read_bytes() == marker_raw
+    assert asyncio.run(adapter.poll(job)) == receipt
+
+
+def test_fixed_stage_reaping_confirms_cleanup_without_inventing_nested_terminal(
+        budget_creation, monkeypatch, tmp_path):
+    import sqlite3
+    from ergora.development import verification
+
+    state, document, adapter, job, path, env, folder = _prepare_fixed_verify_job(budget_creation, monkeypatch)
+    (Path(env['AGENTFLOW_CONFIG_DIR']) / 'platform.json').write_text(json.dumps({'stage_walltime_seconds': 3}))
+    marker = tmp_path / 'nested-child.json'
+    replay = tmp_path / 'forbidden-body-replay'
+    checkout = tmp_path / 'controlled-readonly-checkout'
+    checkout.mkdir()
+    child = ('import json,os,signal,time;from pathlib import Path;'
+        'signal.signal(signal.SIGTERM,signal.SIG_IGN);'
+        f'Path({str(marker)!r}).write_text(json.dumps({{"pid":os.getpid()}}));time.sleep(60)')
+    monitor = '''
+import sys,time
+from pathlib import Path
+from agent_platform import process_job
+process_job.snapshot = lambda path: ('same', 'same', 'same')
+def delayed_stop(process):
+    time.sleep(30)
+process_job.stop = delayed_stop
+process_job.run(Path(sys.argv[1]))
+'''
+    worker = _PENDING + f'''
+import os,subprocess,sys
+from pathlib import Path
+from agent_platform.core import read,write
+from agent_platform.sandbox import Sandbox
+from ergora.development import verification
+def nested(envelope, home):
+    binding = {{'kind': 'fixed-text-verification-process-v1', 'subject': {{
+        'job_id': envelope['job_id'], 'job_sha256': envelope['job_sha256'],
+        'admission_sha256': envelope['context']['admission']['sha256']}}, 'input_sha256': '4' * 64}}
+    name = verification.process_name(binding)
+    folder = STATE / 'processes' / name
+    deadline = read(Path(os.environ['ERGORA_REFERENCE_JOB_OWNER']) / 'owner.json')['verification_deadline']
+    sandbox = Sandbox.__new__(Sandbox)
+    request = sandbox.request(name, Path({str(checkout)!r}), STATE / 'nested-output',
+        [sys.executable, '-I', '-S', '-B', '-c', {child!r}], writable=False,
+        timeout=60, binding=binding, deadline=deadline)
+    write(folder / 'request.json', request)
+    subprocess.run([sys.executable, '-P', '-c', {monitor!r}, str(folder)], check=True)
+    raise AssertionError('Unconfirmed nested monitor returned a new receipt')
+reference_executor._execute = nested
+'''
+    process = _launch(state, path, env, worker=worker, job_owner=True)
+    stdout, stderr = process.communicate(timeout=20)
+    assert process.returncode != 0 and 'fixed process outcome unknown despite confirmed outer cleanup' in stderr, stdout + stderr
+    assert marker.exists()
+    runtime = Path(env['AGENTFLOW_STATE_DIR'])
+    binding = {'kind': 'fixed-text-verification-process-v1', 'subject': {
+        'job_id': job['job_id'], 'job_sha256': job['job_sha256'],
+        'admission_sha256': document['sha256']}, 'input_sha256': '4' * 64}
+    process_folder = runtime / 'processes' / verification.process_name(binding)
+    stopped = json.loads((folder / 'stopped.json').read_bytes())
+    assert stopped['cleanup_confirmed'] is True and stopped['body']['status'] == 'cancelled'
+    owner = (folder / 'owner.json').read_bytes()
+    request = (process_folder / 'request.json').read_bytes()
+    started = (process_folder / 'started.json').read_bytes()
+    assert json.loads(request)['deadline'] == json.loads(owner)['verification_deadline']
+    child_pid = json.loads(marker.read_bytes())['pid']
+    monitor_pid = json.loads(started)['monitor_pid']
+    native_pid = json.loads((process_folder / 'pid.json').read_bytes())['pid']
+    assert all(not Path('/proc', str(pid)).exists() for pid in (child_pid, monitor_pid, native_pid))
+    assert not (process_folder / 'terminal.json').exists() and asyncio.run(adapter.poll(job)) is None
+    repeated = _launch(state, path, env, job_owner=True,
+        worker=f'from pathlib import Path\nPath({str(replay)!r}).touch()\n' + _PENDING)
+    stdout, stderr = repeated.communicate(timeout=20)
+    assert repeated.returncode != 0 and 'fixed process outcome unknown despite confirmed outer cleanup' in stderr, stdout + stderr
+    assert not replay.exists() and not (process_folder / 'terminal.json').exists()
+    assert (folder / 'owner.json').read_bytes() == owner
+    assert (process_folder / 'request.json').read_bytes() == request and (process_folder / 'started.json').read_bytes() == started
+    with sqlite3.connect(runtime / 'executor.sqlite3') as db:
+        assert db.execute('SELECT hash,state FROM jobs WHERE id=?', (job['job_id'],)).fetchone() == (
+            job['job_sha256'], 'OWNED')
+
+
+@pytest.mark.parametrize('orphan_owner', ['unrelated', 'current-unsubmitted'])
+def test_fixed_budget_job_finalizes_despite_unsubmitted_process_directory(
+        budget_creation, monkeypatch, tmp_path, orphan_owner):
+    """An interrupted request publication cannot occupy an unrelated job's ledger slot."""
+    import sqlite3
+
+    state, document, adapter, job, path, env, folder = _prepare_fixed_verify_job(budget_creation, monkeypatch)
+    runtime = Path(env['AGENTFLOW_STATE_DIR'])
+    job_sha = 'a' * 64 if orphan_owner == 'unrelated' else job['job_sha256']
+    orphan = runtime / 'processes' / ('af-oracle-' + job_sha + '-' + 'b' * 64)
+    orphan.mkdir(parents=True)
+    receipt = _result(_launch(state, path, env, worker=_PENDING, job_owner=True))
+    assert receipt['state'] == 'SUCCEEDED'
+    assert json.loads((folder / 'stopped.json').read_bytes())['cleanup_confirmed'] is True
+    assert json.loads((folder / 'collection-stopped.json').read_bytes())['cleanup_confirmed'] is True
+    assert asyncio.run(adapter.poll(job)) == receipt and list(orphan.iterdir()) == []
+    with sqlite3.connect(runtime / 'executor.sqlite3') as db:
+        assert db.execute('SELECT hash,state FROM jobs WHERE id=?', (job['job_id'],)).fetchone() == (
+            job['job_sha256'], 'SUCCEEDED')
+    marker = tmp_path / 'forbidden-body-replay'
+    assert _result(_launch(state, path, env, job_owner=True,
+        worker=f'from pathlib import Path\nPath({str(marker)!r}).touch()\n' + _PENDING)) == receipt
+    assert not marker.exists() and list(orphan.iterdir()) == []
+
+
+@pytest.mark.parametrize('launch_evidence', ['runner.log', 'lock', 'started.json', 'pid.json', 'terminal.json', 'request.json'])
+def test_own_incomplete_fixed_process_publication_remains_unknown_without_replay(
+        budget_creation, monkeypatch, tmp_path, launch_evidence):
+    import sqlite3
+
+    state, document, adapter, job, path, env, folder = _prepare_fixed_verify_job(budget_creation, monkeypatch)
+    runtime = Path(env['AGENTFLOW_STATE_DIR'])
+    process_folder = runtime / 'processes' / ('af-oracle-' + job['job_sha256'] + '-' + 'c' * 64)
+    process_folder.mkdir(parents=True)
+    (process_folder / launch_evidence).write_bytes(b'Incomplete original publication')
+    marker = tmp_path / 'forbidden-body-replay'
+    for worker in (_PENDING, f'from pathlib import Path\nPath({str(marker)!r}).touch()\n' + _PENDING):
+        process = _launch(state, path, env, worker=worker, job_owner=True)
+        stdout, stderr = process.communicate(timeout=20)
+        assert process.returncode != 0 and 'fixed process outcome unknown despite confirmed outer cleanup' in stderr, stdout + stderr
+        assert json.loads((folder / 'stopped.json').read_bytes())['cleanup_confirmed'] is True
+        assert asyncio.run(adapter.poll(job)) is None and not (folder / 'collection').exists()
+        assert not marker.exists()
+        assert (process_folder / launch_evidence).read_bytes() == b'Incomplete original publication'
+        with sqlite3.connect(runtime / 'executor.sqlite3') as db:
+            assert db.execute('SELECT hash,state FROM jobs WHERE id=?', (job['job_id'],)).fetchone() == (
+                job['job_sha256'], 'OWNED')
+
+
+@pytest.mark.parametrize('collection_attempted', [False, True])
+def test_unconfirmed_nested_fixed_process_retains_owned_job_after_outer_cleanup(
+        budget_creation, monkeypatch, tmp_path, collection_attempted):
+    """A controlled body loses its monitor reply; real cleanup cannot establish that reply."""
+    import sqlite3
+    from ergora.development import verification
+
+    state, document, _, job, path, env, folder = _prepare_fixed_verify_job(budget_creation, monkeypatch)
+    runtime = Path(env['AGENTFLOW_STATE_DIR'])
+    binding = {'kind': 'fixed-text-verification-process-v1', 'subject': {
+        'job_id': job['job_id'], 'job_sha256': job['job_sha256'],
+        'admission_sha256': document['sha256']}, 'input_sha256': '4' * 64}
+    process_folder = runtime / 'processes' / verification.process_name(binding)
+    marker = tmp_path / 'forbidden-nested-reexecution'
+    worker = _PENDING + '''
+from agent_platform.core import write
+from ergora.development import verification
+actual_pending = reference_executor._execute
+def lost_nested(envelope, home):
+    receipt = actual_pending(envelope, home)
+    receipt['state'] = 'FAILED'
+    receipt['detail'] = 'Controlled missing nested outcome; this original failure cannot become success'
+    binding = {'kind': 'fixed-text-verification-process-v1', 'subject': {
+        'job_id': envelope['job_id'], 'job_sha256': envelope['job_sha256'],
+        'admission_sha256': envelope['context']['admission']['sha256']}, 'input_sha256': '4' * 64}
+    process_folder = STATE / 'processes' / verification.process_name(binding)
+    write(process_folder / 'request.json', {'name': process_folder.name, 'binding': binding})
+    write(process_folder / 'started.json', {'name': process_folder.name, 'binding': binding})
+    return receipt
+reference_executor._execute = lost_nested
+'''
+    first = _launch(state, path, env, worker=worker, job_owner=True)
+    stdout, stderr = first.communicate(timeout=20)
+    assert first.returncode != 0 and 'fixed process outcome unknown despite confirmed outer cleanup' in stderr, stdout + stderr
+    assert json.loads((folder / 'stopped.json').read_bytes())['cleanup_confirmed'] is True
+    attempt = (folder / 'attempt.json').read_bytes()
+    started = (process_folder / 'started.json').read_bytes()
+    pending = (folder / 'pending.json').read_bytes()
+    body_output = (folder / 'body/stdout.txt').read_bytes()
+    stopped = (folder / 'stopped.json').read_bytes()
+    budget = json.dumps(document['budget']['instance'], sort_keys=True)
+    forbidden_body = f'from pathlib import Path\nPath({str(marker)!r}).touch()\n' + _PENDING
+    repeated = _launch(state, path, env,
+        worker=forbidden_body, job_owner=True)
+    stdout, stderr = repeated.communicate(timeout=20)
+    assert repeated.returncode != 0 and 'fixed process outcome unknown despite confirmed outer cleanup' in stderr, stdout + stderr
+    assert not marker.exists() and not (process_folder / 'terminal.json').exists()
+    assert not (runtime / 'receipts' / job['task_id'] / (job['job_id'] + '.json')).exists()
+    assert (folder / 'attempt.json').read_bytes() == attempt
+    assert (process_folder / 'started.json').read_bytes() == started
+    with sqlite3.connect(runtime / 'executor.sqlite3') as db:
+        row = db.execute('SELECT hash,state FROM jobs WHERE id=?', (job['job_id'],)).fetchone()
+    assert row == (job['job_sha256'], 'OWNED')
+
+    # File visibility alone is not a confirmed original process terminal.
+    (process_folder / 'terminal.json').write_text(json.dumps({'name': process_folder.name, 'returncode': 125}))
+    invalid = _launch(state, path, env, worker=forbidden_body, job_owner=True)
+    stdout, stderr = invalid.communicate(timeout=20)
+    assert invalid.returncode != 0 and 'fixed process outcome unknown despite confirmed outer cleanup' in stderr
+    assert not marker.exists() and not (folder / 'collection').exists()
+    assert not (runtime / 'receipts' / job['task_id'] / (job['job_id'] + '.json')).exists()
+
+    # Controlled late arrival of the original process outcome. This does not
+    # rerun its body or upgrade the original failed pending receipt to success.
+    request = json.loads((process_folder / 'request.json').read_bytes())
+    (process_folder / 'terminal.json').write_text(json.dumps({'name': process_folder.name,
+        'binding': request['binding'], 'request_sha256': verification.sha(request), 'returncode': 125}))
+    if collection_attempted:
+        (folder / 'collection').mkdir()
+        (folder / 'collection/stdout.txt').write_bytes(b'Original incomplete collection output')
+    recovered = _launch(state, path, env, worker=forbidden_body, job_owner=True)
+    if collection_attempted:
+        stdout, stderr = recovered.communicate(timeout=20)
+        assert recovered.returncode != 0 and 'no confirmed stopping witness' in stderr, stdout + stderr
+        assert (folder / 'collection/stdout.txt').read_bytes() == b'Original incomplete collection output'
+        assert not (folder / 'collection-stopped.json').exists()
+        assert not (runtime / 'receipts' / job['task_id'] / (job['job_id'] + '.json')).exists()
+        expected_state = 'OWNED'
+    else:
+        receipt = _result(recovered)
+        assert receipt == json.loads(pending) and receipt['state'] == 'FAILED'
+        collected = (folder / 'collected.json').read_bytes()
+        collection_stopped = (folder / 'collection-stopped.json').read_bytes()
+        assert json.loads(collection_stopped)['cleanup_confirmed'] is True
+        assert _result(_launch(state, path, env, worker=forbidden_body, job_owner=True)) == receipt
+        assert (folder / 'collected.json').read_bytes() == collected
+        assert (folder / 'collection-stopped.json').read_bytes() == collection_stopped
+        expected_state = 'FAILED'
+    assert not marker.exists()
+    assert (folder / 'pending.json').read_bytes() == pending
+    assert (folder / 'body/stdout.txt').read_bytes() == body_output
+    assert (folder / 'stopped.json').read_bytes() == stopped
+    assert (folder / 'attempt.json').read_bytes() == attempt
+    assert (process_folder / 'started.json').read_bytes() == started
+    original_input = json.loads((runtime / 'tasks' / job['task_id'] / 'task.spec.json').read_bytes())
+    assert json.dumps(original_input['budget']['instance'], sort_keys=True) == budget
+    with sqlite3.connect(runtime / 'executor.sqlite3') as db:
+        row = db.execute('SELECT hash,state FROM jobs WHERE id=?', (job['job_id'],)).fetchone()
+    assert row == (job['job_sha256'], expected_state)
 
 
 @pytest.mark.parametrize('native_missing', [False, True])
