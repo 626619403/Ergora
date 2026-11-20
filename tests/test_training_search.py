@@ -956,6 +956,11 @@ def _execute_search(item, *, limit=None, lose_reply=False, wait_completion=False
     item['authorization'] = authorized
     authorization_path = state.root / ('training-cycles/demo/' + cycle_id + '/authorization.json')
     original_clock = authorization_path.read_bytes()
+    original_authorization = json.loads(original_clock)
+    cycle_path = authorization_path.with_name('cycle.json')
+    original_cycle = cycle_path.read_bytes()
+    assert _sha(original_cycle) == original_authorization['input_sha256']
+    original_policy = json.loads(original_cycle)['definition']['budget']
     results = []
     for result in _full_preparations(item['prepared'])[:limit]:
         ident = result['experiment_id']
@@ -986,10 +991,9 @@ def _execute_search(item, *, limit=None, lose_reply=False, wait_completion=False
                 execute()
             import time
             from ergora.runtime.budget_clock import remaining
-            original_authorization = json.loads(original_clock)
             # The observation includes the original cleanup reserve and never creates/renews a budget.
             until = time.monotonic() + max(0, remaining(original_authorization['clock'],
-                original_authorization['policy']['wall_seconds'], 0))
+                original_policy['wall_seconds'], 0))
             while not (job / 'managed-execution/stopped.json').exists() and time.monotonic() < until:
                 time.sleep(.03)
             assert (job / 'managed-execution/stopped.json').is_file(), 'The original supervisor must reap its executor'
@@ -998,7 +1002,7 @@ def _execute_search(item, *, limit=None, lose_reply=False, wait_completion=False
             if wait_completion:
                 final_path = runtime / f'ergora/training-submissions/{ident}.budget/final.json'
                 until = time.monotonic() + max(0, remaining(original_authorization['clock'],
-                    original_authorization['policy']['wall_seconds'], 0))
+                    original_policy['wall_seconds'], 0))
                 while not final_path.exists() and time.monotonic() < until:
                     time.sleep(.03)
                 assert final_path.is_file(), 'Original budget monitor must collect the typed terminal result'
@@ -1009,6 +1013,7 @@ def _execute_search(item, *, limit=None, lose_reply=False, wait_completion=False
         finally:
             stop_controller_test_owner(runtime, ident=ident)
         assert authorization_path.read_bytes() == original_clock
+        assert cycle_path.read_bytes() == original_cycle
     item['executions'] = results
     return results
 

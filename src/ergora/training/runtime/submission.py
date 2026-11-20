@@ -505,7 +505,18 @@ class _Submission(_TrainingProject):
                 if 'budget' in intent:
                     training_cycles._sync_directory(self.path('.intent.json').parent)
                     budgets.BudgetedStart(self, intent).require_active()
-                return {'created': True, 'submission': self.status(intent)}
+                prepared = {'created': True, 'submission': self.status(intent)}
+                source = self.payload.get('cycle_operation')
+                if source is not None:
+                    # Only this creator can consume the root offer, while the
+                    # original submission lock and DB reservation are still held.
+                    try:
+                        prepared['launch'] = budgets.BudgetedStart(self, intent).launch_context(source)
+                    except training_cycles._CycleCapacityError as error:
+                        prepared['offer_failure'] = {'status': 'capacity_exceeded', 'reason': str(error)}
+                    except (OSError, ValueError, KeyError, TypeError) as error:
+                        prepared['offer_failure'] = {'status': 'unknown', 'reason': str(error)}
+                return prepared
             if intent is None or self.payload['intent_sha256'] != self.sha(intent):
                 raise ValueError('Training resume requires the exact original intent SHA')
             status = self.status(intent)

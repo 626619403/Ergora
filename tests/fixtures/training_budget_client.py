@@ -299,10 +299,10 @@ if fault == 'phase-reap-overrun' and base.payload['mode'] == 'phase-supervisor' 
 
 if fault in ('phase-slow-reader', 'phase-held-reader'):
     if base.payload['mode'] == 'owner':
-        context = budget.BudgetedStart.context
+        context = budget.BudgetedStart._source_context
         def large_context(active):
             return {**context(active), 'transfer_probe': '训练场景' * 65_536}
-        budget.BudgetedStart.context = large_context
+        budget.BudgetedStart._source_context = large_context
     if base.payload['mode'] == 'phase-supervisor' and base.payload['phase']['mode'] == 'monitor':
         probe = base.payload['cached']['transfer_probe'].encode('utf-8')
         base.storage.with_suffix('.complete-input').write_text(json.dumps({

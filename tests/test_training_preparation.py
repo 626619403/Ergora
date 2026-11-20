@@ -3,6 +3,7 @@
 from contextlib import redirect_stdout
 from copy import deepcopy
 import hashlib
+import importlib.util
 import io
 import json
 from pathlib import Path

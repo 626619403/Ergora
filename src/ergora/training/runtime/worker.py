@@ -1390,12 +1390,12 @@ def _candidate_operation(payload: dict, plan: dict, admission, active) -> dict:
         active()
         project, prepared = training._prepare_submission(State(Path(identity['control_home'])), identity['project'],
             selected['experiment_id'], admission.authorization['project_revision'], selected['manifest_sha256'],
-            'prepare', 'manifest_sha256', plan['definition']['budget']['control_timeout_seconds'], budget=selector)
+            'prepare', 'manifest_sha256', plan['definition']['budget']['control_timeout_seconds'],
+            budget=selector, cycle_operation=payload)
         active()
         operation = _Submission({'project': project, 'control_home': identity['control_home'],
             'experiment_id': selected['experiment_id'], 'timeout': plan['definition']['budget']['control_timeout_seconds']})
         intent = operation.load()
-        budget = BudgetedStart(operation, intent)
         if not prepared['created']:
             return {'status': 'observed', 'submission': operation.status(intent)}
         # The immutable intent is the only offer. Losing any later reply never
@@ -1403,10 +1403,11 @@ def _candidate_operation(payload: dict, plan: dict, admission, active) -> dict:
         protocol.sync_directories(operation.path('.intent.json').parent, operation.root)
         if admission.authorization['schema_version'] == 5:
             _round_previous(payload, plan, admission, active)
-        launch = budget.launch_context(payload)
         active()
+        if 'offer_failure' in prepared:
+            return prepared['offer_failure']
         return {'status': 'new_offer', 'intent_sha256': operation.sha(intent),
-                'submission': prepared['submission'], 'launch': launch}
+                'submission': prepared['submission'], 'launch': prepared['launch']}
     if intent is None:
         return {'status': 'observed', 'submission': operation.status(None), 'owner': None}
     if mode == 'reconcile-candidate':

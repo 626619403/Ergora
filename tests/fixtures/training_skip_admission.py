@@ -123,7 +123,7 @@ else:
         original_parent = subprocess.Popen([sys.executable, '-c', 'import sys; sys.stdin.read()'], stdin=subprocess.PIPE)
         expected_parent = protocol.processes.identity(original_parent.pid)
         marker.with_suffix('.parent').write_text(json.dumps(expected_parent))
-    source = {'identity': {'ordinal': 0, 'input_sha256': authorization['input_sha256'],
+    source = {'identity': {'mode': 'prepare-candidate', 'ordinal': 0, 'input_sha256': authorization['input_sha256'],
                          'parent': expected_parent},
         'snapshot': {'candidate_count': 1}, 'start_context': {'controller': {'ordinal': 0}}}
     operation.payload['cycle_operation'] = source
@@ -143,7 +143,8 @@ else:
     submissions.training_cycles._controller_ready = lambda *args: None
     submissions.training_cycles._load = lambda *args: (deepcopy(plan), deepcopy(authorization), {})
     execution_evidence.validate_skip_decision = lambda value, **options: value
-    def decision(plan, authorization, ordinal, historical, *, absence_sha256):
+    def decision(plan, authorization, ordinal, historical, *, absence_sha256, current_context):
+        assert current_context is None, 'This lock fixture has no typed CPU execution contract'
         if payload.get('hold_skip'):
             hold()
         if original_parent is not None:

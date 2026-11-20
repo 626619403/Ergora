@@ -433,6 +433,20 @@ else:
         import training_submission_client
         sys.stdin = io.TextIOWrapper(io.BytesIO(raw), encoding='utf-8')
         mark('candidate-service-installed')
+        if fault == 'candidate-prepare-return' and mode == 'prepare-candidate':
+            import ergora.training.application as training
+
+            original_prepare = training._prepare_submission
+            def paused_prepare(*args, **kwargs):
+                prepared = original_prepare(*args, **kwargs)
+                if prepared[1]['created']:
+                    mark('candidate-prepared')
+                    while not (markers / 'candidate-prepare-release').exists():
+                        if protocol.cycle_operation_remaining(payload) <= 0:
+                            raise ValueError('Original prepare allowance ended at its return boundary')
+                        time.sleep(.01)
+                return prepared
+            training._prepare_submission = paused_prepare
         if fault in ('execution-sync-window', 'execution-source-drift') and mode == 'request-execution-candidate':
             project = worker.State.project
 
@@ -618,17 +632,16 @@ else:
             return fsync(descriptor)
 
         os.fsync = blocked_sync
-    if fault == 'blocked-stop' and mode == 'notify-owner' and payload['identity']['ordinal'] == 0:
-        read = protocol.read_raw
-
-        def blocked_owner(path, *args, **kwargs):
-            if path.name == 'owner.json' and path.parent.name == 'alpha.budget':
-                mark('alpha-owner-reader')
-                time.sleep(60)
-            return read(path, *args, **kwargs)
-
-        protocol.read_raw = blocked_owner
     if fault == 'blocked-stop' and mode == 'notify-owner' and payload['identity']['ordinal'] == 1:
+        target = worker._cycle_target
+
+        def blocked_target(*args, **kwargs):
+            mark('beta-target-reader')
+            time.sleep(60)
+            return target(*args, **kwargs)
+
+        worker._cycle_target = blocked_target
+    if fault == 'blocked-stop' and mode == 'notify-owner' and payload['identity']['ordinal'] == 0:
         notify = processes.notify_identity
 
         def record_notification(expected, signum):
@@ -638,11 +651,11 @@ else:
                 remaining = protocol.cycle_operation_remaining(payload)
                 if remaining <= 0:
                     raise ValueError('Original cycle allowance ended before both stop branches blocked')
-                if all((markers / name).is_file() for name in ('stop-writer', 'alpha-owner-reader')):
+                if all((markers / name).is_file() for name in ('stop-writer', 'beta-target-reader')):
                     break
                 time.sleep(min(.01, remaining))
             notify(expected, signum)
-            mark('beta-notified', {'target': expected, 'sender': processes.identity(os.getpid())})
+            mark('alpha-notified', {'target': expected, 'sender': processes.identity(os.getpid())})
 
         processes.notify_identity = record_notification
     if fault == 'blocked-inspect' and mode == 'inspect':

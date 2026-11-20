@@ -299,7 +299,8 @@ def _submission(state: State, project_id: str, experiment_id: str, expected_revi
 
 def _prepare_submission(state: State, project_id: str, experiment_id: str, expected_revision: int,
                         digest: str, operation: str, digest_name: str, timeout: int, *,
-                        original_registration: dict | None = None, budget: dict | None = None) -> tuple[dict, dict]:
+                        original_registration: dict | None = None, budget: dict | None = None,
+                        cycle_operation: dict | None = None) -> tuple[dict, dict]:
     """Freeze the original local start, without entering its remote dispatch."""
     if not isinstance(digest, str) or re.fullmatch('[a-f0-9]{64}', digest) is None:
         raise ValueError('Training operation requires the exact manifest or intent SHA-256')
@@ -315,7 +316,8 @@ def _prepare_submission(state: State, project_id: str, experiment_id: str, expec
             raise ValueError('Project revision changed; reload before the training operation')
         prepared = training_native.training_submission(project, state.root, operation,
                      {'experiment_id': experiment_id, digest_name: digest,
-                      **({'budget': budget} if budget is not None else {})}, timeout=timeout)
+                      **({'budget': budget} if budget is not None else {}),
+                      **({'cycle_operation': cycle_operation} if cycle_operation is not None else {})}, timeout=timeout)
     return project, prepared
 
 
