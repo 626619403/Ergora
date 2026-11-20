@@ -505,6 +505,17 @@
         "ergora-test-value-review",
         "ergora-delivery-review"
       ]
+    },
+    "document-correction": {
+      "description": "Explicit source-bound lesson proposal for one existing project Markdown document; preview, consent and application remain separate host operations.",
+      "runtime": "proposal-leaves",
+      "root": "ergora-document-correction",
+      "agents": [
+        "ergora-document-correction-author"
+      ],
+      "workflows": [
+        "ergora-document-correction"
+      ]
     }
   }
 }

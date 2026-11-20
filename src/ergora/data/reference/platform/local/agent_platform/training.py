@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from dataclasses import asdict
 import fcntl
 import getpass
@@ -70,6 +70,7 @@ def register_runner(source: Path) -> dict:
 def prepare(draft_path: Path, runner_id: str, max_run_seconds: int | None, *, configuration_materials: dict | None = None) -> dict:
     from ergora.training.materials import material_plan, publish_material, require_driver
     from ergora.training.configuration import validate_execution_sources
+    from ergora.training.execution_protocol import require_not_skipped
 
     draft = read(draft_path)
     materials = {}
@@ -83,6 +84,10 @@ def prepare(draft_path: Path, runner_id: str, max_run_seconds: int | None, *, co
     runner = read(CONFIG / 'training-runners' / (slug(runner_id) + '.json'))
     require_driver(draft, runner)
     validate_execution_sources(draft, runner)
+    if draft.get('execution', {}).get('cpu_contract') is not None and configuration_materials is not None:
+        from ergora.training.materials import validate_cpu_contract_configuration
+        for arm in ('baseline', 'candidate'):
+            validate_cpu_contract_configuration(draft['execution']['cpu_contract'], configuration_materials[arm]['utf8'].encode('utf-8'))
     maximum = max_run_seconds or max(60, runner['timeout_seconds'] + 3600)
     require(60 <= maximum <= 86400 and runner['timeout_seconds'] <= maximum, 'Invalid queue-plus-run window')
     for canonical, alias in [('candidate_commit', 'candidate_sha'), ('baseline_commit', 'baseline_sha')]:
@@ -93,22 +98,23 @@ def prepare(draft_path: Path, runner_id: str, max_run_seconds: int | None, *, co
     root = perf_root(runner['project'])
     perfctl.baseline_ok(draft, read(root / 'baseline.json'))
     require(draft['comparison_tool_sha256'] == hashlib.sha256((UPSTREAM / 'compare_runs.py').read_bytes()).hexdigest(), 'Comparator version differs from the reviewed contract')
-    for relative, raw_material in materials.items():
-        publish_material(TRAINING.parent / relative, raw_material, TRAINING.parent)
     path = TRAINING / 'manifests' / (ident + '.json')
-    write(path, draft)
-    raw = path.read_bytes()
     with registry_lock():
+        require_not_skipped({'state_directory': str(STATE)}, ident)
+        for relative, raw_material in materials.items():
+            publish_material(TRAINING.parent / relative, raw_material, TRAINING.parent)
+        write(path, draft)
+        raw = path.read_bytes()
         target = root / 'experiments' / ident / 'manifest.json'
         if target.exists(): require(target.read_bytes() == raw, 'Experiment ID already binds another manifest')
         else:
             write(target, draft)
-    binding = Binding(ident, hashlib.sha256(raw).hexdigest(), draft['candidate_sha'], draft['baseline_sha'])
-    experiment = Experiment(binding, path.as_uri(), poll_seconds=30, max_run_seconds=maximum,
-                            release_wait_seconds=86400, cancel_wait_seconds=60)
-    experiment.validate()
-    spec = TRAINING / 'specs' / (ident + '.json')
-    write(spec, asdict(experiment))
+        binding = Binding(ident, hashlib.sha256(raw).hexdigest(), draft['candidate_sha'], draft['baseline_sha'])
+        experiment = Experiment(binding, path.as_uri(), poll_seconds=30, max_run_seconds=maximum,
+                                release_wait_seconds=86400, cancel_wait_seconds=60)
+        experiment.validate()
+        spec = TRAINING / 'specs' / (ident + '.json')
+        write(spec, asdict(experiment))
     return {'experiment_id': ident, 'spec': str(spec), 'manifest': str(path),
             'manifest_sha256': binding.manifest_sha, 'started': False}
 
@@ -150,6 +156,7 @@ class LocalTrainingAdapter:
     async def create_job_if_absent(self, experiment: Experiment, manifest: bytes) -> Job:
         from ergora.training.materials import read_materials, require_driver
         from ergora.training.configuration import validate_execution_sources
+        from ergora.training.execution_protocol import require_not_skipped
 
         require(hashlib.sha256(manifest).hexdigest() == experiment.binding.manifest_sha, 'Manifest bytes changed')
         value = json.loads(manifest)
@@ -165,11 +172,17 @@ class LocalTrainingAdapter:
                 'Manifest differs from the registered performance contract')
         perfctl.baseline_ok(value, read(root / 'baseline.json'))
         with registry_lock():
+            require_not_skipped({'state_directory': str(STATE)}, experiment.binding.experiment_id)
             require(not fence_path(experiment.binding.experiment_id).exists(), 'Experiment is fenced against further submission')
             existing = await self.lookup_job(experiment)
-            if existing is not None: return existing
+            if existing is not None:
+                from ergora.training.runtime.evidence import read_cpu_preparation_admission
+                read_cpu_preparation_admission(STATE, experiment.binding.experiment_id, value, exact_job(existing)['runner'])
+                return existing
             require_driver(value, runner)
             validate_execution_sources(value, runner)
+            from ergora.training.runtime.evidence import read_cpu_preparation_admission
+            read_cpu_preparation_admission(STATE, experiment.binding.experiment_id, value, runner)
             read_materials(TRAINING.parent, value)
             job_id = 'local-perf-' + experiment.binding.experiment_id
             write(job_folder(experiment.binding.experiment_id) / 'request.json',
@@ -187,11 +200,13 @@ class LocalTrainingAdapter:
         return ScreenDecision(job, result['state'], result['result_sha256'], result['report_uri'], result['summary'])
 
     async def collect_and_gate(self, job: Job) -> GateDecision:
+        from ergora.training.materials import execution_plan
+
         record = exact_job(job)
         manifest_path = TRAINING / 'manifests' / (job.binding.experiment_id + '.json')
         require(hashlib.sha256(manifest_path.read_bytes()).hexdigest() == job.binding.manifest_sha, 'Full collector manifest bytes changed')
         manifest = read(manifest_path)
-        require(manifest.get('execution') == {'operation': 'full-verify'}, 'Full collector requires full-verify operation')
+        require(execution_plan(manifest, record['runner'])['operation'] == 'full-verify', 'Full collector requires full-verify operation')
         result = read(job_folder(job.binding.experiment_id) / 'result.json')
         require(result['state'] == 'SUCCEEDED' and result.get('screen') is None, 'Training job did not finish full verification')
         gate = result['gate']
@@ -293,13 +308,18 @@ def cli(arguments: list[str]):
     if operation == 'cancel': tail = ['--reason', args.reason]
     if operation == 'approve':
         from perf_temporal.client import load_experiment
+        from ergora.training.materials import execution_plan
 
         import re
         require(re.fullmatch('[a-f0-9]{64}', args.evidence_sha), 'Expected exact evidence SHA-256')
         experiment = load_experiment(str(spec))
         manifest_path = TRAINING / 'manifests' / (slug(args.experiment_id) + '.json')
         require(hashlib.sha256(manifest_path.read_bytes()).hexdigest() == experiment.binding.manifest_sha, 'Training approval manifest bytes changed')
-        require(read(manifest_path).get('execution') == {'operation': 'full-verify'},
+        manifest = read(manifest_path)
+        runner = {}
+        if isinstance(manifest.get('execution'), dict) and any(key in manifest['execution'] for key in ('profile', 'cpu_contract')):
+            runner = exact_job(Job(experiment.binding, 'local-perf-' + slug(args.experiment_id)))['runner']
+        require(execution_plan(manifest, runner)['operation'] == 'full-verify',
                 'Training approval requires full-verify; screen cannot be approved')
         async def check_phase():
             from perf_temporal.connection import connect
@@ -316,6 +336,29 @@ def cli(arguments: list[str]):
               'actor_id': f'unix:{os.getuid()}:{getpass.getuser()}', 'expires_at': time.time() + 86400, 'revoked': False})
         operation = 'release'; tail = ['--receipt-id', receipt_id, '--evidence-sha', args.evidence_sha]
     from .core import environment
-    process = subprocess.run([str(PYTHON), '-m', 'perf_temporal.client', operation, str(spec), *tail], env=environment())
+    ingress = nullcontext()
+    if operation == 'start':
+        from dev_platform.adapter import safe_file
+        from ergora.training.execution_protocol import require_not_skipped, sync_directories
+
+        lock_path = safe_file(STATE, 'ergora/training-submissions/' + args.experiment_id + '.lock')
+        lock_path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        ingress = lock_path.open('a+b')
+    with ingress as lock:
+        if operation == 'start':
+            # This is the same earliest ingress lock used by managed submission
+            # and skip. Native never takes it while holding the registry lock.
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            require_not_skipped({'state_directory': str(STATE)}, args.experiment_id)
+            opportunity = safe_file(STATE, 'training/jobs/' + args.experiment_id)
+            try:
+                opportunity.mkdir(parents=True, mode=0o700)
+            except FileExistsError as error:
+                raise ContractViolation('Original native start opportunity already exists; inspect the original workflow/job without resending') from error
+            # Even an empty/partial directory consumes this one start. A lost
+            # reply cannot create a gap in which skip or a repeated RPC wins.
+            sync_directories(opportunity, STATE)
+            require_not_skipped({'state_directory': str(STATE)}, args.experiment_id)
+        process = subprocess.run([str(PYTHON), '-m', 'perf_temporal.client', operation, str(spec), *tail], env=environment())
     require(process.returncode == 0, 'Training operation failed; inspect worker logs and the exact experiment identity')
     return None

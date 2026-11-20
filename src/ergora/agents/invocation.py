@@ -50,7 +50,7 @@ def invoke(binding: dict, role: str, prompt: str, cwd: Path, output: Path, timeo
            codex_options: list[str] | None = None, codex_bin: str = "codex", supervised: bool = False,
            codex_config: str | Path | None = None, mode: str = "native", task_mcp: dict | None = None,
            lock_fd: int | None = None,
-           session: dict | None = None, stop_requested=None) -> dict:
+           session: dict | None = None, stop_requested=None, record_lifecycle: bool = False) -> dict:
     """A successful process is not evidence acceptance; structured consumers validate separately."""
     validate_binding(role, binding, formal=bool(schema))
     backend = agent_backends.for_binding(binding, {"codex": {
@@ -69,16 +69,23 @@ def invoke(binding: dict, role: str, prompt: str, cwd: Path, output: Path, timeo
         (protocol / "schema.json").write_text(json.dumps(schema), encoding="utf-8", newline="\n")
     request = agent_backends.Invocation(role, prompt, cwd, protocol, timeout, schema, mode, task_mcp, session)
     argv, stdin = backend.command(request)
+    if stop_requested is not None and stop_requested():
+        return {'status': 'cancelled', 'returncode': None, 'error': 'Parent stopped before native spawn'}
     document = processes.run(argv, cwd, output, timeout, stdin, env, supervised=supervised,
                              command_record=protocol / "command.json" if mode != "native" or session is not None else None,
                              **({"stop_requested": stop_requested} if stop_requested is not None else {}),
+                             **({'record_lifecycle': True} if record_lifecycle else {}),
                              **({"lock_fd": lock_fd} if lock_fd is not None else {}))
     if document["status"] == "succeeded" and schema:
         try:
+            if stop_requested is not None and stop_requested():
+                raise ValueError('Parent stopped before structured result synchronization')
             result = backend.read_result(output, request)
             validate_result(result, schema)
             content = json.dumps(result, ensure_ascii=False, sort_keys=True).encode()
             (output / "result.json").write_bytes(content)
+            if stop_requested is not None and stop_requested():
+                raise ValueError('Parent stopped during structured result synchronization')
             document.update(result=str(output / "result.json"), result_sha256=hashlib.sha256(content).hexdigest())
         except (OSError, ValueError, TypeError, AttributeError, KeyError, RecursionError) as error:
             document.update(status="failed", error=f"Invalid structured agent result: {error}")

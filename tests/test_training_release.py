@@ -340,3 +340,32 @@ def test_cli_http_confirmations_and_unknown_recovery_share_one_intent(archive, s
         'revision': revision, 'intent_sha256': unknown['intent_sha256'], 'confirm': True})
     assert restored.status_code == 200 and restored.json()['signal_delivery'] == 'history'
     assert json.loads(record.read_bytes())['signals'] == 1
+
+
+def test_profiled_full_still_requires_the_original_archive_preflight(tmp_path):
+    from ergora.training.runtime.release import _Release
+
+    policy = {'protocol': 'training-profile-v1', 'tool': 'cprofile', 'reader': 'cprofile-json-v1',
+              'source_operation': 'cpu-diagnostic-v1', 'phases': ['baseline', 'screen'], 'ranks': [0],
+              'window': {'unit': 'source_samples', 'work': 6, 'warmup_work': 0}, 'captures': 1,
+              'maximum_seconds': 4, 'max_raw_bytes': 65536, 'max_derived_bytes': 8192, 'required': True}
+    original = object.__new__(_Release)
+    original.payload = {'operation': 'prepare', 'run_id': 'original-run', 'evidence_sha256': 'a' * 64}
+    original.run_id = 'original-run'
+    original.start = {'observation': {'experiment': {
+        'manifest': {'execution': {'operation': 'full-verify', 'profile': policy}},
+        'current_runner': {'configuration_readback': {'profile': {
+            'protocol': 'training-profile-v1', 'operations': ['cpu-diagnostic-v1']}}}}}}
+    original.path = lambda suffix: tmp_path / ('approval' + suffix)
+    original.load = lambda: None
+    reached = []
+
+    def require_archive():
+        reached.append('original-archive-preflight')
+        raise ValueError('Original archive/quality/source gate has not passed')
+
+    original.preflight = require_archive
+    with pytest.raises(ValueError, match='Original archive/quality/source gate has not passed'):
+        original.run()
+    assert reached == ['original-archive-preflight']
+    assert not list(tmp_path.glob('*.intent.json'))

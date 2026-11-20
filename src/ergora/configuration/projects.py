@@ -56,7 +56,9 @@ def effective_configuration(project: dict) -> dict:
             resolved["validation"] = {"valid": True}
         layers[layer] = resolved
     document = {"schema_version": 1, "resolution_version": 1, "scope": "project-bindings",
-                "project": {key: project[key] for key in ("id", "repo", "revision")}, "layers": layers}
+                "project": {key: project[key] for key in ("id", "repo", "revision")}, "layers": layers,
+                "correction_suggestions": {"enabled": project.get("correction_suggestions_enabled", True),
+                    "source": "project" if "correction_suggestions_enabled" in project else "default"}}
     if "registration" in project:
         document["scope"] = "registered-project"
         registration = project["registration"]
@@ -80,4 +82,24 @@ def bind(state: State, project_id: str, layer: str, binding: dict, expected_revi
         document["bindings"][layer] = binding
         document["revision"] += 1
         db.execute("UPDATE projects SET document=? WHERE id=?", (json.dumps(document), project_id))
+    return document
+
+
+def set_correction_suggestions(state: State, project_id: str, enabled: bool, expected_revision: int) -> dict:
+    """Change only default project suggestions; original session revisions stay frozen."""
+    if type(enabled) is not bool:
+        raise ValueError('Correction suggestions require an explicit boolean')
+    with state.connect() as db:
+        db.execute('BEGIN IMMEDIATE')
+        row = db.execute('SELECT document FROM projects WHERE id=?', (project_id,)).fetchone()
+        if row is None:
+            raise ValueError(f'Unknown project: {project_id}')
+        document = json.loads(row[0])
+        if document['revision'] != expected_revision:
+            raise ValueError('Project revision changed; reload before saving')
+        if document.get('registration', {}).get('status') == 'pending':
+            raise ValueError('Project registration is pending; resume it before changing settings')
+        document['correction_suggestions_enabled'] = enabled
+        document['revision'] += 1
+        db.execute('UPDATE projects SET document=? WHERE id=?', (json.dumps(document), project_id))
     return document

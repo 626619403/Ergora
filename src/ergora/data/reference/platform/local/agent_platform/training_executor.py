@@ -73,6 +73,8 @@ def process(folder: Path, *, admit: Callable[[Path, dict], None] | None = None,
             admit(folder, record)
         binding = binding_from(record['experiment']['binding'])
         ident = binding.experiment_id
+        from ergora.training.execution_protocol import require_not_skipped
+        require_not_skipped({'state_directory': str(STATE)}, ident)
         fence = fence_path(ident)
         state, detail = 'FAILED', ''
         gate_reference, screen_reference = None, None
@@ -83,6 +85,9 @@ def process(folder: Path, *, admit: Callable[[Path, dict], None] | None = None,
             manifest = read(manifest_path)
             from ergora.training.materials import execution_plan
             execution = execution_plan(manifest, record['runner'])
+            if execution.get('cpu_contract') is not None:
+                from ergora.training.runtime.evidence import read_cpu_preparation_admission
+                read_cpu_preparation_admission(STATE, ident, manifest, record['runner'])
             write(folder / 'started.json', {'binding': asdict(binding), 'job_id': record['job_id']})
             mirror = folder / 'repo.git'
             if not mirror.exists(): git(folder, 'clone', '--bare', '--no-local', record['runner']['repo'], str(mirror))
@@ -103,15 +108,20 @@ def process(folder: Path, *, admit: Callable[[Path, dict], None] | None = None,
                 command.append(arg)
             if configuration_runner:
                 active()
+                import ergora.training.execution_protocol as protocol
+                configuration = read(folder / 'configuration-request.json')
             runner_timeout = record['runner']['timeout_seconds']
-            if execution['operation'] == 'training-screen-v1':
+            if configuration_runner:
                 import ergora.training.execution_protocol as protocol
                 configuration = read(folder / 'configuration-request.json')
                 context = configuration['context']
                 active()
                 remaining = protocol.budget_clock.remaining(context['authorization']['clock'], context['policy']['wall_seconds'], context['policy']['cleanup_seconds'])
-                runner_timeout = min(runner_timeout, execution['plan']['window']['maximum_seconds'], remaining)
-                require(runner_timeout >= 1, 'blocked: remaining screen walltime below supported minimum')
+                runner_timeout = min(runner_timeout, remaining)
+                if execution['operation'] == 'training-screen-v1':
+                    runner_timeout = min(runner_timeout, execution['plan']['window']['maximum_seconds'])
+                require(runner_timeout >= 1, 'blocked: remaining original wrapper walltime below supported minimum')
+            require_not_skipped({'state_directory': str(STATE)}, ident)
             code = Sandbox().run('af-perf-' + ident + '-run', checkouts['candidate'], output,
                 command, writable=False, fence=fence, timeout=runner_timeout)
             require(code == 0, f'Training runner exited {code}; inspect {output}/execution.log')

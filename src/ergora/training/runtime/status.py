@@ -144,7 +144,7 @@ async def authenticate_round_collection(client, intent: dict, binding: dict, req
     from temporalio.client import WorkflowExecutionStatus
     import ergora.training.execution_protocol as protocol
 
-    names = protocol.cycle_activity_names(3 if intent['protocol'] == 'ergora-training-cycle-v3' else 2)
+    names = protocol.cycle_activity_names()
     action = ('collect-round' if context['activity_source']['activity_type'] ==
               names['collect-round'] and context['activity_source']['attempt'] == 1
               else 'reconcile-round')

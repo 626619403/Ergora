@@ -13,8 +13,9 @@ import sys
 import pytest
 
 from ergora._paths import IMPORT_ROOT
-
-import ergora.native.registration as native_registration; import ergora; import importlib; import subprocess
+import importlib
+import ergora.native.registration as native_registration
+import ergora.native.resources as native_resources
 import ergora.training.application as training
 from test_training import experiments, registration
 from test_training_runtime import installation
@@ -22,7 +23,6 @@ from test_training_submission import prepared, service
 from test_training_runner import configuration_source
 from test_training_search import (search_request, search_input, search_execution,
                                   _prepare_cpu_screens, _execute_search)
-import ergora.native.resources as native_resources
 
 
 @pytest.fixture
@@ -31,7 +31,7 @@ def saved_source_subject(tmp_path, request):
     import ergora.training.execution_protocol as protocol
 
     member, count = getattr(request, 'param', ('saved/protocol.py', 30))
-    names = (list(protocol.GATE_SOURCES) if count == 49 else
+    names = (list(protocol.GATE_SOURCES) if count == 'current' else
              [member, 'data/reference-manifest.json', *(f'saved/member_{index}.py' for index in range(count - 2))])
     raw = (f'PROTOCOL = {protocol.PROTOCOL!r}\nGATE_SOURCES = {tuple(names)!r}\n').encode()
     sources = {name: hashlib.sha256(('saved source data: ' + name).encode()).hexdigest() for name in names}
@@ -52,7 +52,7 @@ def saved_source_subject(tmp_path, request):
 
 
 @pytest.mark.parametrize('saved_source_subject', [
-    ('training_execution_protocol.py', 30), ('training/execution_protocol.py', 49), ('saved/protocol.py', 30)], indirect=True)
+    ('training_execution_protocol.py', 30), ('training/execution_protocol.py', 'current'), ('saved/protocol.py', 30)], indirect=True)
 def test_saved_source_association_uses_the_exact_subject_and_supplied_raw(saved_source_subject, monkeypatch):
     import ergora.training.execution_protocol as protocol
 
@@ -65,7 +65,7 @@ def test_saved_source_association_uses_the_exact_subject_and_supplied_raw(saved_
     assert observed == {'state': 'verified', 'capability_sha256': protocol.CycleAdmission._sha(capability),
         'declared_gate_sources_sha256': protocol.CycleAdmission._sha(capability['gate_sources']), 'reasons': []}
     assert (capability, manifest) == before
-    if len(capability['gate_sources']) == 30:
+    if set(capability['gate_sources']) != set(protocol.GATE_SOURCES):
         with pytest.raises(ValueError, match='Current execution source coverage'):
             protocol._current_capability(capability)
     else:
@@ -606,7 +606,7 @@ def test_reference_is_independent_of_mutable_heads_and_registration_formatting(a
                    runtime / 'training/negative-results/alpha.json']
         marker = tmp_path / 'actual-mutable-head-read-guard.txt'
         program = f'''from pathlib import Path
-import ergora.training.execution_protocol as protocol; from ergora.training import materials
+import ergora.training.materials as materials; import ergora.training.execution_protocol as protocol
 ignored={{Path(value) for value in {[str(path) for path in ignored]!r}}}
 marker=Path({str(marker)!r})
 original_raw,original_fd=materials.read_raw,protocol._fd
@@ -834,3 +834,759 @@ assert not any(name in sys.modules for name in ('yaml','jsonschema','temporalio'
 ''', str(IMPORT_ROOT), str(tmp_path / 'index/rounds.json'), created['sha256']],
         capture_output=True, text=True, encoding='utf-8', timeout=10)
     assert isolated.returncode == 0, isolated.stderr
+
+
+@pytest.fixture
+def cpu_profile_capture(tmp_path, monkeypatch):
+    """Real cProfile/source callback and durable files; managed-chain admission is a leaf."""
+    import runpy
+    from types import SimpleNamespace
+    import ergora.training.configuration as wrapper
+    import ergora.training.materials as materials
+
+    policy = {'protocol': 'training-profile-v1', 'tool': 'cprofile-json', 'reader': 'cprofile-json-v1',
+        'source_operation': 'cpu-diagnostic-v1', 'phases': ['baseline', 'screen'], 'ranks': [0],
+        'window': {'unit': 'source_samples', 'work': 17, 'warmup_work': 3}, 'captures': 2,
+        'maximum_seconds': 3, 'max_raw_bytes': 524_288, 'max_derived_bytes': 131_072, 'required': True}
+    output = tmp_path / 'job/run-output'
+    output.mkdir(parents=True)
+    markers = tmp_path / 'markers'
+    monkeypatch.setenv('ERGORA_TEST_CONFIGURATION_MARKERS', str(markers))
+    source = {'repo': str(tmp_path), 'commit': '1' * 40, 'inventory_sha256': '2' * 64, 'entrypoint': 'driver.py'}
+    request = {'binding': {'experiment_id': 'candidate-screen'}, 'managed': {'request_sha256': '3' * 64},
+        'native_request_sha256': '4' * 64, 'execution_phase_id': 'unit-cpu-phase',
+        'configuration_readback': {'source': source, 'profile': {'protocol': 'training-profile-v1', 'operations': ['cpu-diagnostic-v1']}},
+        'execution': {'operation': 'training-screen-v1', 'profile': policy}}
+    raw = materials.observation_bytes(request)
+    context = {'configurations': {arm: {'global_batch': 6, 'microbatch': 3, 'accumulation': 2,
+        'strategy': 'closed-form', 'fault': None} for arm in ('baseline', 'candidate')}, 'identity': 'same-source-context'}
+    driver = runpy.run_path(str(Path(__file__).parent / 'fixtures/training_configuration_driver.py'))
+    checks = []
+    def active(current, original):
+        assert current == request and original == raw
+        checks.append('original-chain-admission')
+        return SimpleNamespace(root=tmp_path), {}
+    monkeypatch.setattr(wrapper, '_inputs', active)
+    def publish(path, value, chain):
+        original = materials.observation_bytes(value) + b'\n'
+        materials.publish_material(path, original, chain.root)
+        return original
+    monkeypatch.setattr(wrapper, '_publish_receipt', publish)
+    def capture(*, first_failure=None):
+        return wrapper._record_profile(driver, context, request, output, raw, first_failure=first_failure)
+    return SimpleNamespace(policy=policy, output=output, request=request, raw=raw, context=context,
+        capture=capture, driver=driver, markers=markers, checks=checks)
+
+
+def test_independent_cpu_profile_captures_are_actual_finite_json_and_fixed_readback(cpu_profile_capture):
+    import ergora.training.runtime.evidence as evidence
+    item = cpu_profile_capture
+    originals = item.capture()
+    bundle = evidence.profile_bundle(item.output, item.policy, request={**item.request, '_raw_sha256': hashlib.sha256(item.raw).hexdigest()})
+    assert evidence.validate_trial_diagnostics(bundle, item.policy)['required_satisfied'] is True
+    assert len(bundle['raw']) == len(bundle['derived']) == 2
+    actual = [json.loads(line) for line in (item.markers / 'profile.jsonl').read_text().splitlines()]
+    assert all(entry['identity'] == 'same-source-context' and entry['source_samples'] == 17 for entry in actual)
+    assert len({entry['window_id'] for entry in actual}) == len({entry['run_id'] for entry in actual}) == 2
+    assert all(capture['capture']['actual']['measurement_mode'] == 'profiled' for capture in bundle['raw'])
+    assert all('calculate' in derived['text'] for derived in bundle['derived'])
+    assert all(path.read_bytes() == raw for path, raw in originals.items())
+    assert not list(item.output.rglob('*.prof')) and not (item.output / 'screen-result.json').exists()
+    baseline = {'reference': {'kind': 'baseline-reference', 'inventory': {'entries': []}}, 'diagnostics': bundle}
+    packet = evidence.build_analysis_packet(baseline=baseline, screen=None,
+        source_materials={'flow_map': {'nodes': ['actual-source'], 'edges': []}}, policy=item.policy)
+    assert packet['packet']['profile']['receipt_ref'] == bundle['receipt_ref']
+    assert packet['packet']['profile']['raw'] == bundle['raw']
+    assert packet['packet']['unprofiled_screen'] is None
+    assert len(item.checks) > 2
+
+
+@pytest.mark.parametrize('condition,status', [('first-failure', 'not_run'), ('unsupported-tool', 'unavailable'), ('missing-source-operation', 'unavailable')])
+def test_optional_unavailable_or_first_failure_never_opens_profile_window(cpu_profile_capture, condition, status):
+    import ergora.training.runtime.evidence as evidence
+    item = cpu_profile_capture
+    item.policy['required'] = False
+    if condition == 'unsupported-tool':
+        item.policy['tool'] = 'ncu'
+    elif condition == 'missing-source-operation':
+        item.request['configuration_readback']['profile'] = None
+    item.capture(first_failure={'check_id': 'finite'} if condition == 'first-failure' else None)
+    bundle = evidence.profile_bundle(item.output, item.policy)
+    assert bundle['status'] == status and bundle['receipt']['reason']
+    assert bundle['raw'] == bundle['derived'] == []
+    assert not (item.markers / 'profile.jsonl').exists() and not (item.output / 'profile').exists()
+    assert evidence.validate_trial_diagnostics(bundle, item.policy)['required_satisfied'] is False
+    item.policy['required'] = True
+    bundle['receipt']['policy_sha256'] = __import__('ergora.training.materials', fromlist=['observation_sha256']).observation_sha256(item.policy)
+    with pytest.raises(ValueError, match='policy differs'):
+        evidence.validate_trial_diagnostics(bundle, item.policy)
+
+
+@pytest.mark.parametrize('fault', ['profile-exception', 'profile-timeout'])
+def test_profile_callback_failure_or_subcap_is_never_optional_success(cpu_profile_capture, fault):
+    import ergora.training.runtime.evidence as evidence
+    item = cpu_profile_capture
+    item.context['configurations']['candidate']['fault'] = fault
+    item.policy['required'] = False
+    item.policy['maximum_seconds'] = 0.04
+    item.capture()
+    bundle = evidence.profile_bundle(item.output, item.policy)
+    assert bundle['status'] == 'failed' and bundle['receipt']['reason']
+    with pytest.raises(ValueError, match='failed or remains unknown'):
+        evidence.validate_trial_diagnostics(bundle, item.policy)
+    assert not (item.markers / 'profile.jsonl').exists()
+
+
+def test_profile_reader_rejects_tampering_inode_symlink_and_capacity(cpu_profile_capture):
+    import ergora.training.runtime.evidence as evidence
+    item = cpu_profile_capture
+    item.capture()
+    bundle = evidence.profile_bundle(item.output, item.policy)
+    raw_path = item.output / bundle['raw'][0]['ref']['path']
+    original = raw_path.read_bytes()
+    raw_path.write_bytes(original + b'\n')
+    with pytest.raises(ValueError, match='digest differs'):
+        evidence.profile_bundle(item.output, item.policy)
+    raw_path.write_bytes(original)
+    inventory = evidence.profile_bundle(item.output, item.policy)['inventory']
+    replacement = raw_path.with_suffix('.replacement')
+    replacement.write_bytes(original)
+    replacement.replace(raw_path)
+    with pytest.raises(ValueError, match='inode or raw'):
+        inventory.confirm()
+    raw_path.rename(replacement)
+    raw_path.symlink_to(replacement)
+    with pytest.raises(ValueError, match='Symlinks|symlink'):
+        evidence.profile_bundle(item.output, item.policy)
+    raw_path.unlink()
+    replacement.rename(raw_path)
+    raw_path.write_bytes(b' ' * (item.policy['max_raw_bytes'] + 1))
+    with pytest.raises(ValueError, match='capacity_exceeded'):
+        evidence.profile_bundle(item.output, item.policy)
+
+
+def test_missing_original_baseline_diagnostics_blocks_without_recollection():
+    from ergora.training.runtime.evidence import build_analysis_packet
+    from ergora.training.materials import validate_profile_policy
+    policy = {'protocol': 'training-profile-v1', 'tool': 'cprofile-json', 'reader': 'cprofile-json-v1',
+        'source_operation': 'cpu-diagnostic-v1', 'phases': ['baseline', 'screen'], 'ranks': [0],
+        'window': {'unit': 'source_samples', 'work': 1, 'warmup_work': 0}, 'captures': 1,
+        'maximum_seconds': 1, 'max_raw_bytes': 1024, 'max_derived_bytes': 1024, 'required': True}
+    validate_profile_policy(policy)
+    with pytest.raises(ValueError, match='receipt is missing or unknown'):
+        build_analysis_packet(baseline={'reference': {'kind': 'baseline-reference'}}, screen=None,
+            source_materials={'flow_map': {'nodes': ['source']}}, policy=policy)
+
+
+def test_required_first_failure_blocks_and_late_capture_is_not_absence(cpu_profile_capture):
+    import ergora.training.runtime.evidence as evidence
+    item = cpu_profile_capture
+    item.capture(first_failure={'check_id': 'finite'})
+    bundle = evidence.profile_bundle(item.output, item.policy)
+    with pytest.raises(ValueError, match='required diagnostic'):
+        evidence.validate_trial_diagnostics(bundle, item.policy)
+    assert not (item.markers / 'profile.jsonl').exists()
+    late = item.output / 'profile/screen-0-0.json'
+    late.parent.mkdir()
+    late.write_bytes(b'{}')
+    with pytest.raises(ValueError, match='absence became visible'):
+        bundle['inventory'].confirm()
+    with pytest.raises(ValueError, match='already has an original capture opportunity'):
+        evidence.profile_bundle(item.output, item.policy)
+
+
+def test_profile_reader_failure_and_complete_capacity_do_not_become_optional_absence(cpu_profile_capture, monkeypatch):
+    import ergora.training.runtime.evidence as evidence
+    item = cpu_profile_capture
+    item.policy['required'] = False
+    item.policy['max_raw_bytes'] = 16
+    item.capture()
+    bundle = evidence.profile_bundle(item.output, item.policy)
+    assert bundle['status'] == 'failed' and bundle['receipt']['readback'] == 'failed'
+    with pytest.raises(ValueError, match='failed or remains unknown'):
+        evidence.validate_trial_diagnostics(bundle, item.policy)
+
+
+def test_profile_offline_reader_denies_state_sdk_and_historical_source_execution(cpu_profile_capture):
+    item = cpu_profile_capture
+    item.capture()
+    source = IMPORT_ROOT
+    code = '''import json,sys
+from pathlib import Path
+class DenyApplication:
+    def find_spec(self,name,*args):
+        if name in ('ergora.storage.state','jsonschema','temporalio','perf_temporal','dev_platform') or name.startswith(('jsonschema.','temporalio.','perf_temporal.','dev_platform.')):
+            raise AssertionError('Offline profile reader imported application/native SDK: '+name)
+sys.meta_path.insert(0,DenyApplication())
+sys.path.insert(0,sys.argv[1])
+from ergora.training.runtime.evidence import profile_bundle
+receipt=json.loads((Path(sys.argv[2])/'profile-receipt.json').read_bytes())
+bundle=profile_bundle(Path(sys.argv[2]),receipt['policy'])
+assert bundle['status']=='complete' and len(bundle['raw'])==2
+'''
+    result = subprocess.run([sys.executable, '-I', '-S', '-B', '-c', code, str(source), str(item.output)],
+        capture_output=True, text=True, timeout=10)
+    assert result.returncode == 0, result.stderr
+
+
+def test_later_profile_failure_preserves_actual_prior_capture(cpu_profile_capture):
+    import ergora.training.runtime.evidence as evidence
+    item = cpu_profile_capture
+    original = item.driver['profile']
+    def second_fails(*args, selection, **kwargs):
+        if selection['capture_index'] == 1:
+            raise ValueError('Second independent diagnostic failed after first complete capture')
+        return original(*args, selection=selection, **kwargs)
+    item.driver['profile'] = second_fails
+    item.capture()
+    bundle = evidence.profile_bundle(item.output, item.policy)
+    assert bundle['status'] == 'failed'
+    assert len(bundle['raw']) == len(bundle['derived']) == 1
+    assert [entry['capture'] for entry in bundle['receipt']['attempts']] == ['complete', 'failed']
+    assert bundle['receipt']['raw_bytes'] == bundle['raw'][0]['ref']['bytes']
+    with pytest.raises(ValueError, match='failed or remains unknown'):
+        evidence.validate_trial_diagnostics(bundle, item.policy)
+
+
+def test_complete_analysis_packet_preserves_large_material_and_rejects_overflow(cpu_profile_capture):
+    import ergora.training.runtime.evidence as evidence
+    item = cpu_profile_capture
+    item.capture()
+    bundle = evidence.profile_bundle(item.output, item.policy)
+    baseline = {'reference': {'kind': 'baseline-reference'}, 'diagnostics': bundle}
+    material = {'flow_map': {'complete_utf8': 'x' * 1_100_000}}
+    packet = evidence.build_analysis_packet(baseline=baseline, screen=None, source_materials=material, policy=item.policy)
+    assert packet['packet']['source_materials'] == material and packet['bytes'] > 1_100_000
+    with pytest.raises(ValueError, match='complete read capacity'):
+        evidence.build_analysis_packet(baseline=baseline, screen=None,
+            source_materials={'flow_map': {'complete_utf8': 'x' * 10_000_000}}, policy=item.policy)
+
+
+@pytest.mark.parametrize('actual', ['CPU', 'CUDA', None])
+def test_cpu_profile_admission_consumes_actual_baseline_environment(actual):
+    from ergora.training.runtime.evidence import validate_cpu_applicability
+    baseline = {'reference_sha256': 'a' * 64, 'reference': {'receipt': {
+        'environment': {'observed': {'device': actual, 'ranks': [0], 'layout': 'single-process'},
+                        'report_ref': {'path': 'baseline-environment.json', 'sha256': 'b' * 64, 'bytes': 42}},
+        'baseline': {'workload': {'layout': {'kind': 'cpu-single-process'}}}}}}
+    if actual == 'CPU':
+        proof = validate_cpu_applicability(baseline)
+        assert proof['environment']['device'] == 'CPU' and proof['baseline_reference_sha256'] == 'a' * 64
+        with pytest.raises(ValueError, match='actual CPU single-process'):
+            validate_cpu_applicability(baseline, observations={arm: {'workload': {'layout': {'kind': 'gpu'}}}
+                                                            for arm in ('baseline', 'candidate')})
+    else:
+        with pytest.raises(ValueError, match='unsupported: original baseline'):
+            validate_cpu_applicability(baseline)
+
+
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('search_execution', [{
+    'baseline_reference_support': True, 'screen_support': True, 'profile_support': True,
+    'profile_policy': {'protocol': 'training-profile-v1', 'tool': 'cprofile-json', 'reader': 'cprofile-json-v1',
+        'source_operation': 'cpu-diagnostic-v1', 'phases': ['baseline', 'screen'], 'ranks': [0],
+        'window': {'unit': 'source_samples', 'work': 13, 'warmup_work': 2}, 'captures': 1,
+        'maximum_seconds': 5, 'max_raw_bytes': 1_048_576, 'max_derived_bytes': 65_536, 'required': True}}], indirect=True)
+def test_managed_cpu_wrapper_freezes_one_baseline_and_independent_screen_profiles(search_execution):
+    from ergora.training.runtime.evidence import profile_bundle, validate_trial_diagnostics, validate_cpu_applicability
+    item = _prepare_cpu_screens(search_execution, [{'global_batch': 24}, {'global_batch': 48}])
+    policy = item['profile_policy']
+    baseline = item['reference_saved']
+    validate_cpu_applicability(baseline)
+    validate_trial_diagnostics(baseline['diagnostics'], policy)
+    baseline_job = item['reference_source']['job']
+    baseline_originals = {path: path.read_bytes() for path in baseline_job.rglob('*') if path.is_file()}
+    baseline_receipt = baseline['diagnostics']['receipt']
+    assert baseline_receipt['phase'] == 'baseline' and baseline_receipt['status'] == 'complete'
+    results = _execute_search(item, wait_completion=True)
+    all_window_ids = {entry['selection']['window_id'] for entry in baseline_receipt['captures']}
+    for result in results:
+        output = result['job'] / 'run-output'
+        typed = json.loads((output / 'screen-result.json').read_bytes())
+        assert json.loads((result['job'] / 'result.json').read_bytes())['state'] == 'SCREEN_COMPLETED'
+        assert all(window['measurement_mode'] == 'unprofiled' for window in typed['windows'])
+        diagnostics = profile_bundle(output, policy)
+        validate_trial_diagnostics(diagnostics, policy)
+        assert diagnostics['receipt']['phase'] == 'screen'
+        for entry in diagnostics['receipt']['captures']:
+            assert entry['selection']['window_id'] not in all_window_ids
+            assert entry['selection']['window_id'] not in {window['provenance']['window_id'] for window in typed['windows']}
+            all_window_ids.add(entry['selection']['window_id'])
+        assert all(result['execution'][key] is True for key in ('durable_stop_confirmed', 'executor_stop_confirmed'))
+        observed = training.evidence(item['state'], 'demo', result['experiment_id'])
+        assert observed['screen_status'] == 'complete'
+    markers = [json.loads(line) for line in (item['markers'] / 'profile.jsonl').read_text().splitlines()]
+    assert [entry['phase'] for entry in markers] == ['baseline', 'screen', 'screen']
+    assert len({entry['run_id'] for entry in markers}) == 3
+    assert all(path.read_bytes() == raw for path, raw in baseline_originals.items())
+
+
+def test_original_stop_after_profile_callback_prevents_next_capture_and_receipt(cpu_profile_capture, monkeypatch):
+    import ergora.training.configuration as wrapper
+    item = cpu_profile_capture
+    admitted = wrapper._inputs
+    def stop_after_original_callback(request, original):
+        if (item.markers / 'profile.jsonl').exists():
+            raise ValueError('Original stop became visible during the source callback')
+        return admitted(request, original)
+    monkeypatch.setattr(wrapper, '_inputs', stop_after_original_callback)
+    with pytest.raises(ValueError, match='Original stop became visible'):
+        item.capture()
+    markers = (item.markers / 'profile.jsonl').read_text().splitlines()
+    assert len(markers) == 1
+    assert not (item.output / 'profile-receipt.json').exists()
+    assert not list(item.output.rglob('*.json'))
+
+
+@pytest.fixture
+def f1_cpu_snapshot():
+    """Data-only original OS frames for the explicitly supported narrow CPU scope."""
+    import ergora.training.materials as materials
+    model = {'vendor_id': 'GenuineIntel', 'cpu family': '6', 'model': '85', 'model name': 'Original CPU model',
+        'stepping': '7', 'microcode': '0x5003605', 'flags': 'fpu sse sse2 avx avx2', 'cache size': '1024 KB',
+        'clflush size': '64', 'cache_alignment': '64', 'address sizes': '46 bits physical, 48 bits virtual'}
+    root_files = {name: None for name in materials._CPU_LIMIT_FILES}
+    root_files.update({'cpuset.cpus.effective': '0-1\n', 'cpuset.mems.effective': '0\n'})
+    child_files = {**root_files, 'cpu.max': '100000 100000\n', 'cpu.weight': '100\n',
+                   'cpu.max.burst': '0\n', 'cpu.idle': '0\n', 'cpu.uclamp.min': '0.00\n', 'cpu.uclamp.max': 'max\n'}
+    raw = {'boot_id': '12345678-1234-1234-1234-123456789abc\n', 'architecture': 'x86_64',
+        'online': '0-1\n', 'affinity': [0, 1], 'models': [model],
+        'cpus': [{'cpu': cpu, 'model_index': 0, 'package_id': '0\n', 'core_id': '0\n', 'thread_siblings': '0-1\n'} for cpu in (0, 1)],
+        'frequency': [{'related_cpus': '0 1\n', 'driver': 'intel_pstate\n', 'governor': 'performance\n',
+            'minimum_khz': '1000000\n', 'maximum_khz': '3000000\n',
+            'hardware_minimum_khz': '800000\n', 'hardware_maximum_khz': '3500000\n'}],
+        'cgroup_membership': '0::/jobs/run\n',
+        'cgroup_mount': '27 23 0:25 / /sys/fs/cgroup rw,nosuid,nodev,noexec - cgroup2 cgroup rw',
+        'cgroup_namespace': 'cgroup:[4026531835]',
+        'limits': [{'relative': '/', 'files': root_files}, {'relative': '/jobs', 'files': dict(child_files)},
+                   {'relative': '/jobs/run', 'files': dict(child_files)}],
+        'scheduler': {'policy': 0, 'priority': 0, 'nice': 0, 'uclamp_min': '0', 'uclamp_max': '1024'}}
+    def snapshot(value):
+        identity = materials._cpu_identity_from_raw(value)
+        return {'protocol': materials.CPU_IDENTITY_PROTOCOL, 'scope': materials.CPU_IDENTITY_SCOPE,
+                'raw': value, 'identity': identity, 'raw_sha256': materials.observation_sha256(value),
+                'identity_sha256': materials.observation_sha256(identity)}
+    return raw, snapshot
+
+
+@pytest.mark.parametrize('change', ['model', 'topology', 'affinity', 'cpuset', 'quota', 'frequency', 'scheduler', 'boot'])
+def test_f1_independent_current_cpu_facts_change_observations_without_reuse_grant(f1_cpu_snapshot, change):
+    from copy import deepcopy
+    import ergora.training.materials as materials
+    original_raw, snapshot = f1_cpu_snapshot
+    current_raw = deepcopy(original_raw)
+    if change == 'model':
+        current_raw['models'][0]['model name'] = 'Different physical CPU model'
+    elif change == 'topology':
+        current_raw['cpus'][1]['core_id'] = '1\n'
+        current_raw['cpus'][0]['thread_siblings'] = '0\n'
+        current_raw['cpus'][1]['thread_siblings'] = '1\n'
+    elif change == 'affinity':
+        current_raw['affinity'] = [0]
+        current_raw['cpus'] = current_raw['cpus'][:1]
+    elif change == 'cpuset':
+        current_raw['online'] = '0-2\n'
+        for item in current_raw['limits']:
+            item['files']['cpuset.cpus.effective'] = '0-2\n'
+    elif change == 'quota':
+        current_raw['limits'][-1]['files']['cpu.max'] = '50000 100000\n'
+    elif change == 'frequency':
+        current_raw['frequency'][0]['maximum_khz'] = '2000000\n'
+    elif change == 'scheduler':
+        current_raw['scheduler']['nice'] = 5
+    else:
+        current_raw['boot_id'] = '12345678-1234-1234-1234-123456789abd\n'
+    historical = materials._read_cpu_execution_identity(snapshot(original_raw))
+    current = materials._read_cpu_execution_identity(snapshot(current_raw))
+    assert set(historical) == {'protocol', 'scope', 'hardware', 'placement'}
+    assert current != historical
+    assert materials.observation_sha256(current) != materials.observation_sha256(historical)
+    for facts in (original_raw, current_raw):
+        with pytest.raises(ValueError, match='independent.*complete allocation ancestry'):
+            materials.validate_cpu_execution_identity(snapshot(facts))
+
+
+def test_f1_cpu_reader_rejects_undeclared_identity_and_hidden_allocation(f1_cpu_snapshot):
+    from copy import deepcopy
+    import ergora.training.materials as materials
+    original_raw, snapshot = f1_cpu_snapshot
+    saved = snapshot(original_raw)
+    saved['identity']['hardware']['architecture'] = 'A changed derived assertion'
+    with pytest.raises(ValueError, match='differs from its original raw facts'):
+        materials.validate_cpu_execution_identity(saved)
+    clipped = deepcopy(original_raw)
+    clipped['limits'][0]['files']['cpu.max'] = '200000 100000\n'
+    visible = snapshot(clipped)
+    assert materials._read_cpu_execution_identity(visible)['placement']['cgroup']['allocations'][0]['files']['cpu.max']
+    with pytest.raises(ValueError, match='independent.*complete allocation ancestry'):
+        materials.validate_cpu_execution_identity(visible)
+
+
+def test_f1_source_window_binding_and_changes_do_not_backfill_old_facts(f1_cpu_snapshot):
+    from copy import deepcopy
+    import ergora.training.materials as materials
+    raw, snapshot = f1_cpu_snapshot
+    request = {'binding': {'experiment_id': 'original-screen'}, 'native_request_sha256': 'a' * 64,
+        'managed': {'request_sha256': 'b' * 64}, 'execution_phase_id': 'original-phase',
+        'configuration_readback': {'source': {'repo': '/original-source', 'commit': 'c' * 40,
+            'entrypoint': 'driver.py', 'inventory_sha256': 'd' * 64}}}
+    windows = [{'run_id': 'original-run', 'window_id': 'original-window'}]
+    kwargs = {'binding': request['binding'], 'native_request_sha256': request['native_request_sha256'],
+        'managed': request['managed'], 'source': request['configuration_readback']['source'],
+        'execution_phase_id': request['execution_phase_id'], 'phase': 'screen', 'operation': 'unprofiled', 'windows': windows}
+    proof = materials.cpu_window_identity(request, 'screen', 'unprofiled', windows, snapshot(raw), snapshot(deepcopy(raw)))
+    assert proof['state'] == 'unsupported'
+    assert materials.validate_cpu_window_identity(proof, **kwargs, require_complete=False) is None
+    with pytest.raises(ValueError, match='independent.*complete allocation ancestry'):
+        materials.validate_cpu_window_identity(proof, **kwargs)
+    # An old raw assertion of completeness stays data-readable, not authoritative.
+    old_assertion = deepcopy(proof)
+    old_assertion.update(state='complete', reason=None)
+    assert materials.validate_cpu_window_identity(old_assertion, **kwargs, require_complete=False) is None
+    with pytest.raises(ValueError, match='independent.*complete allocation ancestry'):
+        materials.validate_cpu_window_identity(old_assertion, **kwargs)
+    with pytest.raises(ValueError, match='original source/binding/window'):
+        materials.validate_cpu_window_identity(proof, **{**kwargs, 'windows': [{'run_id': 'other', 'window_id': 'other'}]})
+    moved = deepcopy(raw)
+    moved['limits'][-1]['files']['cpu.max'] = '50000 100000\n'
+    changed = materials.cpu_window_identity(request, 'screen', 'unprofiled', windows, snapshot(raw), snapshot(moved))
+    assert changed['state'] == 'unsupported'
+    with pytest.raises(ValueError, match='original CPU hardware/placement scope is unavailable'):
+        materials.validate_cpu_window_identity(changed, **kwargs)
+    assert materials.validate_cpu_window_identity(changed, **kwargs, require_complete=False) is None
+    with pytest.raises(ValueError, match='original CPU hardware/placement window evidence is missing'):
+        materials.validate_cpu_window_identity(None, **kwargs)
+
+
+def test_f1_static_os_collection_is_inprocess_and_explicitly_scoped(monkeypatch):
+    import ergora.training.materials as materials
+    def no_subprocess(*args, **kwargs):
+        raise AssertionError('Static CPU identity must not spawn a probe or measurement')
+    monkeypatch.setattr(subprocess, 'Popen', no_subprocess)
+    try:
+        saved = materials.cpu_execution_identity()
+    except ValueError as error:
+        assert str(error).startswith('unsupported:')
+    else:
+        value = materials._read_cpu_execution_identity(saved)
+        try:
+            materials.validate_cpu_execution_identity(saved)
+        except ValueError as error:
+            assert str(error).startswith('unsupported:')
+        assert value['placement']['affinity'] == sorted(os.sched_getaffinity(0))
+        assert value['scope'] == 'linux-x86_64-visible-cgroup2-local-boot'
+
+
+def test_f1_reuse_reads_each_original_window_proof_without_current_backfill(f1_cpu_snapshot, monkeypatch):
+    from copy import deepcopy
+    import ergora.training.materials as materials
+    from ergora.training.runtime.evidence import cpu_reuse_identity
+    raw, snapshot = f1_cpu_snapshot
+    def live_read_forbidden():
+        raise AssertionError('An original CPU proof reader must never backfill current host facts')
+    monkeypatch.setattr(materials, 'cpu_execution_identity', live_read_forbidden)
+    source = {'repo': '/original-source', 'commit': 'a' * 40, 'inventory_sha256': 'b' * 64, 'entrypoint': 'driver.py'}
+    baseline, screen = {}, {}
+    for phase, target in (('baseline', baseline), ('screen', screen)):
+        request = {'binding': {'experiment_id': 'original-' + phase}, 'native_request_sha256': 'c' * 64,
+            'managed': {'launch_sha256': phase + '-original-launch'}, 'execution_phase_id': phase + '-phase',
+            'configuration_readback': {'source': source}}
+        provenance = {'run_id': phase + '-unprofiled-run', 'window_id': phase + '-unprofiled-window',
+                      'execution_phase_id': request['execution_phase_id']}
+        selected = [{key: provenance[key] for key in ('run_id', 'window_id')}]
+        original = materials.cpu_window_identity(request, phase, 'unprofiled', selected, snapshot(deepcopy(raw)), snapshot(deepcopy(raw)))
+        owner = {key: request[key] for key in ('binding', 'native_request_sha256', 'managed')}
+        owner['source'] = source
+        profile_selection = {'phase': phase, 'run_id': phase + '-profile-run', 'window_id': phase + '-profile-window'}
+        profile_proof = materials.cpu_window_identity(request, phase, 'profiled',
+            [{key: profile_selection[key] for key in ('run_id', 'window_id')}], snapshot(deepcopy(raw)), snapshot(deepcopy(raw)))
+        target['diagnostics'] = {'status': 'complete', 'raw': [{'capture': {
+            'binding': request['binding'], 'managed': request['managed'], 'source': source, 'selection': profile_selection,
+            'actual': {'hardware': {'cpu_execution': profile_proof}}}}]}
+        if phase == 'baseline':
+            owner.update(baseline={'cpu_execution': original}, measurement=[{'provenance': provenance}])
+            target['reference'] = {'receipt': owner}
+        else:
+            owner.update(workload={'scope': {'cpu_execution': original}}, windows=[{'provenance': provenance}])
+            target['result'] = owner
+    with pytest.raises(ValueError, match='original typed CPU contract/acceptance'):
+        cpu_reuse_identity(baseline, screen)
+    moved = deepcopy(raw)
+    moved['models'][0]['model name'] = 'Different original profile CPU'
+    changed = deepcopy(screen)
+    proof = changed['diagnostics']['raw'][0]['capture']['actual']['hardware']['cpu_execution']
+    proof['before'] = snapshot(deepcopy(moved))
+    proof['after'] = snapshot(deepcopy(moved))
+    with pytest.raises(ValueError, match='original typed CPU contract/acceptance'):
+        cpu_reuse_identity(baseline, changed)
+    old_without_proof = deepcopy(baseline)
+    del old_without_proof['reference']['receipt']['baseline']['cpu_execution']
+    with pytest.raises(ValueError, match='original typed CPU contract/acceptance'):
+        cpu_reuse_identity(old_without_proof, screen)
+
+
+def test_f1_cpuset_only_namespace_does_not_authenticate_full_ancestry(f1_cpu_snapshot):
+    from copy import deepcopy
+    import ergora.training.materials as materials
+    raw, snapshot = f1_cpu_snapshot
+    cropped = deepcopy(raw)
+    cropped['cgroup_membership'] = '0::/\n'
+    cropped['cgroup_namespace'] = 'cgroup:[4026539999]'
+    cropped['limits'] = [deepcopy(raw['limits'][0])]
+    assert cropped['limits'][0]['files']['cpu.max'] is None
+    assert cropped['limits'][0]['files']['cpu.weight'] is None
+    assert cropped['limits'][0]['files']['cpuset.cpus.effective'] == '0-1\n'
+    # A hidden parent's quota is absent from these namespace-relative facts.
+    # File absence and syntactic namespace inode cannot prove a global root.
+    with pytest.raises(ValueError, match='independent.*complete allocation ancestry'):
+        materials.validate_cpu_execution_identity(snapshot(cropped))
+
+
+@pytest.fixture
+def positive_mock_fd_snapshot(f1_cpu_snapshot):
+    """Mock recorded FD facts only, not a real qualified namespace/window."""
+    import stat
+    from copy import deepcopy
+    import ergora.training.materials as m
+    original, snapshot = f1_cpu_snapshot
+    raw = deepcopy(original)
+    def meta(fs, inode, mode, mount=27, device=None):
+        return {'device': os.makedev(0, 25) if device is None else device, 'inode': inode,
+                'mode': mode, 'filesystem': fs, 'mount_id': mount}
+    root = meta(m._CGROUP2_MAGIC, 1, stat.S_IFDIR | 0o755)
+    subject = {'pid': 100, 'tid': 101, 'start_ticks': 10, 'thread_start_ticks': 12,
+               'parent_pid': 50, 'boot_id': raw['boot_id'].strip()}
+    def subject_raw(value):
+        def line(pid, ticks):
+            fields = ['0'] * 20
+            fields[0], fields[1], fields[19] = 'S', str(value['parent_pid']), str(ticks)
+            return str(pid) + ' (pure-unit) ' + ' '.join(fields)
+        return {'thread_stat': line(value['tid'], value['thread_start_ticks']),
+                'leader_stat': line(value['pid'], value['start_ticks']),
+                'thread_status': 'Tgid:\t' + str(value['pid']) + '\nPid:\t' + str(value['tid']) + '\n',
+                'observed_pid': value['pid'], 'observed_tid': value['tid']}
+    rows = []
+    for index, item in enumerate(raw['limits']):
+        files = {**item['files'], 'cgroup.controllers': 'cpu cpuset\n', 'cgroup.subtree_control': 'cpu cpuset\n', 'cgroup.type': 'domain\n' if index else None}
+        rows.append({'relative': item['relative'], 'node': {**root, 'inode': index + 1}, 'files': files,
+            'file_identities': {name: None if value is None else meta(m._CGROUP2_MAGIC, 1000 + index * 20 + ordinal, stat.S_IFREG | 0o644)
+                                for ordinal, (name, value) in enumerate(files.items())}})
+    target = meta(m._NSFS_MAGIC, m._INITIAL_CGROUP_INODE, stat.S_IFREG | 0o444, 2, os.makedev(0, 4))
+    entry = meta(m._PROC_MAGIC, 5, stat.S_IFLNK | 0o777, 1, os.makedev(0, 5))
+    proof = {'contract': m._CPU_KERNEL_CONTRACT, 'kernel': {'sysname': 'Linux', 'nodename': 'mock', 'release': '5.15-pure', 'version': '#pure', 'machine': 'x86_64'},
+        'proc_root': meta(m._PROC_MAGIC, 1, stat.S_IFDIR | 0o555, 1, os.makedev(0, 5)),
+        'thread_directory': meta(m._PROC_MAGIC, 3, stat.S_IFDIR | 0o555, 1, os.makedev(0, 5)),
+        'leader_directory': meta(m._PROC_MAGIC, 2, stat.S_IFDIR | 0o555, 1, os.makedev(0, 5)),
+        'namespace_entry': entry, 'namespace_target': target, 'namespace_type': m._CGROUP_NS_TYPE,
+        'namespace_link': 'cgroup:[' + str(m._INITIAL_CGROUP_INODE) + ']', 'subject': subject, 'subject_raw': subject_raw(subject),
+        'membership': raw['cgroup_membership'], 'mountinfo': raw['cgroup_mount'], 'selected_mount': raw['cgroup_mount'],
+        'root': root, 'ancestors': rows, 'subject_after': deepcopy(subject), 'subject_raw_after': subject_raw(subject),
+        'membership_after': raw['cgroup_membership'], 'mountinfo_after': raw['cgroup_mount'],
+        'namespace_target_after': deepcopy(target), 'namespace_entry_after': deepcopy(entry),
+        'root_after': deepcopy(root), 'ancestors_after': deepcopy(rows)}
+    contents = {'thread/stat': proof['subject_raw']['thread_stat'], 'thread/status': proof['subject_raw']['thread_status'],
+        'leader/stat': proof['subject_raw']['leader_stat'], 'thread/cgroup': proof['membership'],
+        'thread/mountinfo': proof['mountinfo'], 'proc/sys/kernel/random/boot_id': raw['boot_id']}
+    proof['proc_files'] = {key: [{'identity': meta(m._PROC_MAGIC, 50 + index, stat.S_IFREG | 0o444, 1, os.makedev(0, 5)),
+        'sha256': hashlib.sha256(value.encode()).hexdigest(), 'bytes': len(value.encode())} for _ in range(2)]
+        for index, (key, value) in enumerate(contents.items())}
+    raw['allocation_provenance'] = proof
+    return raw, snapshot, subject_raw
+
+
+def test_positive_mock_fd_proof_excludes_pid_provenance_from_stable_identity(positive_mock_fd_snapshot):
+    from copy import deepcopy
+    import ergora.training.materials as m
+    raw, snapshot, subject_raw = positive_mock_fd_snapshot
+    first = snapshot(deepcopy(raw))
+    changed = deepcopy(raw)
+    subject = {**changed['allocation_provenance']['subject'], 'pid': 200, 'tid': 201, 'start_ticks': 30, 'thread_start_ticks': 31}
+    proof = changed['allocation_provenance']
+    proof.update(subject=subject, subject_after=deepcopy(subject), subject_raw=subject_raw(subject), subject_raw_after=subject_raw(subject))
+    for route, key in (('thread/stat', 'thread_stat'), ('thread/status', 'thread_status'), ('leader/stat', 'leader_stat')):
+        encoded = proof['subject_raw'][key].encode()
+        for record in proof['proc_files'][route]:
+            record.update(sha256=hashlib.sha256(encoded).hexdigest(), bytes=len(encoded))
+    second = snapshot(changed)
+    assert first['raw_sha256'] != second['raw_sha256']
+    assert m.validate_cpu_execution_identity(first) == m.validate_cpu_execution_identity(second)
+
+
+def test_positive_initial_root_omits_nonroot_cgroup_type(positive_mock_fd_snapshot):
+    from copy import deepcopy
+    import ergora.training.materials as m
+    raw, snapshot, _ = positive_mock_fd_snapshot
+    raw = deepcopy(raw)
+    for key in ('ancestors', 'ancestors_after'):
+        raw['allocation_provenance'][key][0]['files']['cgroup.type'] = None
+        raw['allocation_provenance'][key][0]['file_identities']['cgroup.type'] = None
+    assert m.validate_cpu_execution_identity(snapshot(raw))['allocation_objects'][0]['relative'] == '/'
+
+
+@pytest.mark.parametrize('corruption', ['noninitial', 'wrong-proc', 'wrong-ioctl', 'overmount', 'persistent-path-object', 'subject'])
+def test_positive_mock_fd_reader_refuses_incomplete_or_wrong_subject_facts(positive_mock_fd_snapshot, corruption):
+    from copy import deepcopy
+    import ergora.training.materials as m
+    raw, snapshot, _ = positive_mock_fd_snapshot
+    raw = deepcopy(raw)
+    proof = raw['allocation_provenance']
+    if corruption == 'noninitial':
+        proof['namespace_target']['inode'] = proof['namespace_target_after']['inode'] = 4026549999
+        proof['namespace_link'] = 'cgroup:[4026549999]'
+        raw['cgroup_namespace'] = proof['namespace_link']
+    elif corruption == 'wrong-proc':
+        proof['namespace_entry']['mount_id'] += 1
+    elif corruption == 'wrong-ioctl':
+        proof['namespace_type'] = 0x20000
+    elif corruption == 'overmount':
+        proof['ancestors'][-1]['node']['mount_id'] += 1
+        proof['ancestors_after'] = deepcopy(proof['ancestors'])
+    elif corruption == 'persistent-path-object':
+        proof['ancestors_after'][-1]['node']['inode'] += 1
+    else:
+        proof['subject_raw']['observed_tid'] += 1
+    with pytest.raises(ValueError):
+        m.validate_cpu_execution_identity(snapshot(raw))
+
+
+@pytest.mark.parametrize('change', ['replaced-allocation', 'missing-after-proof'])
+def test_positive_window_qualifies_both_original_endpoints(positive_mock_fd_snapshot, change):
+    from copy import deepcopy
+    import ergora.training.materials as m
+    raw, snapshot, _ = positive_mock_fd_snapshot
+    before = snapshot(deepcopy(raw))
+    moved = deepcopy(raw)
+    if change == 'replaced-allocation':
+        for key in ('ancestors', 'ancestors_after'):
+            moved['allocation_provenance'][key][-1]['node']['inode'] += 1
+    else:
+        del moved['allocation_provenance']
+    after = snapshot(moved)
+    request = {'binding': {'experiment_id': 'mock-original'}, 'native_request_sha256': 'a' * 64,
+        'managed': {'attempt_sha256': 'b' * 64}, 'execution_phase_id': 'original-phase',
+        'configuration_readback': {'source': {'repo': '/original', 'commit': 'c' * 40}}}
+    windows = [{'run_id': 'original-run', 'window_id': 'original-window'}]
+    value = m.cpu_window_identity(request, 'baseline', 'unprofiled', windows, before, after)
+    assert value['state'] == 'unsupported'
+    kwargs = {key: request[key] for key in ('binding', 'native_request_sha256', 'managed', 'execution_phase_id')}
+    kwargs.update(source=request['configuration_readback']['source'], phase='baseline', operation='unprofiled', windows=windows)
+    # A saved record cannot bypass the strict second endpoint by claiming complete.
+    value.update(state='complete', reason=None)
+    with pytest.raises(ValueError, match='allocation objects changed|complete allocation ancestry'):
+        m.validate_cpu_window_identity(value, **kwargs)
+
+
+def test_positive_endpoint_reopens_current_path_instead_of_pinned_old_nodes():
+    """Pure fake kernfs: same membership text, deleted old leaf held open, new leaf."""
+    import stat
+    import ergora.training.materials as m
+    current = {'/': 1, '/job': 2, '/job/worker': 3}
+    opened_paths = []
+    def opened(path, flags, parent=None):
+        selected = '/' if parent is None else (Path(parent['path']) / path).as_posix()
+        opened_paths.append(selected)
+        return {'path': selected, 'inode': current[selected]}
+    def metadata(node):
+        return {'device': 25, 'inode': node['inode'], 'mode': stat.S_IFDIR | 0o755,
+                'filesystem': m._CGROUP2_MAGIC, 'mount_id': 27}
+    def control(node, name):
+        return None, None
+    before_root, before = m._cpu_endpoint_ancestry('/cg', '/job/worker', opened=opened, metadata=metadata, control=control)
+    pinned_old_leaf = {'path': '/job/worker', 'inode': 3}
+    current['/job/worker'] = 4
+    after_root, after = m._cpu_endpoint_ancestry('/cg', '/job/worker', opened=opened, metadata=metadata, control=control)
+    assert before_root == after_root and before[-1]['relative'] == after[-1]['relative']
+    assert metadata(pinned_old_leaf)['inode'] == before[-1]['node']['inode'] == 3
+    assert after[-1]['node']['inode'] == 4 and before != after
+    assert opened_paths.count('/') == 2
+
+
+@pytest.mark.parametrize('overmount', ['cgroup', 'mountinfo', 'stat', 'status', 'leader-stat', 'fdinfo', 'statx-error', 'statx-missing-mask'])
+def test_positive_proc_files_bind_actual_kernel_mount_before_read(monkeypatch, overmount):
+    """Pure genuine-proc bind-mount model; forged fdinfo cannot bless another file."""
+    import ctypes
+    import fcntl
+    import stat
+    import threading
+    from types import SimpleNamespace
+    import ergora.training.materials as m
+    entries, positions, next_fd = {}, {}, [10]
+    proc_dev, group_dev = os.makedev(0, 5), os.makedev(0, 25)
+    def stat_line(pid, ticks):
+        fields = ['0'] * 20
+        fields[0], fields[1], fields[19] = 'S', '50', str(ticks)
+        return str(pid) + ' (unit) ' + ' '.join(fields)
+    text = {'/proc/thread-self/stat': stat_line(101, 12), '/proc/self/stat': stat_line(100, 10),
+        '/proc/thread-self/status': 'Tgid:\t100\nPid:\t101\n', '/proc/thread-self/cgroup': '0::/work\n',
+        '/proc/thread-self/mountinfo': '27 1 0:25 / /fake-cgroup rw - cgroup2 cgroup rw\n',
+        '/proc/sys/kernel/random/boot_id': '12345678-1234-1234-1234-123456789abc\n'}
+    selected = '/proc/self/stat' if overmount == 'leader-stat' else '/proc/thread-self/' + overmount
+    def opened(path, flags, *, dir_fd=None):
+        key = str(path) if dir_fd is None else entries[dir_fd]['path'] + '/' + str(path)
+        fs, mount, device, mode = m._PROC_MAGIC, 1, proc_dev, stat.S_IFREG | 0o444
+        content = text.get(key, '')
+        if key in ('/proc', '/proc/self', '/proc/thread-self', '/proc/thread-self/ns'):
+            mode = stat.S_IFDIR | 0o555
+        elif key == '/proc/thread-self/ns/cgroup':
+            if flags & os.O_NOFOLLOW:
+                mode = stat.S_IFLNK | 0o777
+            else:
+                fs, mount, device = m._NSFS_MAGIC, 2, os.makedev(0, 4)
+        elif '/fdinfo/' in key:
+            target = entries[int(key.rsplit('/', 1)[1])]
+            content = 'mnt_id:\t' + str(1 if target['path'] == selected else target['mount']) + '\n'
+            if overmount == 'fdinfo': mount = 9
+        elif key.startswith('/fake-cgroup'):
+            fs, mount, device = m._CGROUP2_MAGIC, 27, group_dev
+            if key in ('/fake-cgroup', '/fake-cgroup/work'):
+                mode = stat.S_IFDIR | 0o755
+            else:
+                name = key.rsplit('/', 1)[1]
+                values = {'cgroup.controllers': 'cpu cpuset\n', 'cgroup.subtree_control': 'cpu cpuset\n',
+                    'cgroup.type': 'domain\n', 'cpu.max': 'max 100000\n', 'cpu.weight': '100\n',
+                    'cpuset.cpus.effective': '0-1\n', 'cpuset.mems.effective': '0\n'}
+                if name not in values: raise FileNotFoundError(key)
+                content = values[name]
+        if key == selected: mount = 9
+        fd = next_fd[0]; next_fd[0] += 1
+        entries[fd] = {'path': key, 'fs': fs, 'mount': mount, 'dev': device, 'mode': mode,
+            'inode': m._INITIAL_CGROUP_INODE if fs == m._NSFS_MAGIC else abs(hash(key)) % 100000 + 1,
+            'content': content.encode()}
+        return fd
+    def read(fd, size):
+        position = positions.get(fd, 0); positions[fd] = position + size
+        return entries[fd]['content'][position:position + size]
+    class Call:
+        def __init__(self, function): self.function = function
+        def __call__(self, *args): return self.function(*args)
+    def fstatfs(fd, buffer):
+        ctypes.c_long.from_buffer(buffer).value = entries[fd]['fs']
+        return 0
+    def syscall(number, fd, path, flags, mask, buffer):
+        assert number.value == 332 and path.value == b''
+        if overmount == 'statx-error':
+            ctypes.set_errno(38)
+            return -1
+        target = ctypes.cast(buffer, ctypes.POINTER(ctypes.c_ubyte * 256)).contents
+        ctypes.c_uint32.from_buffer(target).value = 0 if overmount == 'statx-missing-mask' else 0x1000
+        ctypes.c_uint64.from_buffer(target, 0x90).value = entries[fd.value]['mount']
+        return 0
+    libc = SimpleNamespace(fstatfs=Call(fstatfs), syscall=Call(syscall))
+    monkeypatch.setattr(ctypes, 'CDLL', lambda *a, **kw: libc)
+    monkeypatch.setattr(m.os, 'open', opened)
+    monkeypatch.setattr(m.os, 'close', lambda fd: None)
+    monkeypatch.setattr(m.os, 'read', read)
+    original_fstat = m.os.fstat
+    monkeypatch.setattr(m.os, 'fstat', lambda fd: SimpleNamespace(st_dev=entries[fd]['dev'], st_ino=entries[fd]['inode'], st_mode=entries[fd]['mode']) if fd in entries else original_fstat(fd))
+    monkeypatch.setattr(m.os, 'readlink', lambda *a, **kw: 'cgroup:[' + str(m._INITIAL_CGROUP_INODE) + ']')
+    monkeypatch.setattr(m.os, 'getpid', lambda: 100)
+    monkeypatch.setattr(threading, 'get_native_id', lambda: 101)
+    monkeypatch.setattr(fcntl, 'ioctl', lambda *a: m._CGROUP_NS_TYPE)
+    if overmount == 'fdinfo':
+        # The fixed observer must not consult any fdinfo path at all.
+        with m._cpu_fd_scope() as (proof, finish):
+            finish()
+        assert not any('/fdinfo/' in value['path'] for value in entries.values())
+    else:
+        with pytest.raises(ValueError, match='proc.*mount|proc.*overmount|statx'):
+            with m._cpu_fd_scope(): pass

@@ -14,7 +14,8 @@ import ergora.configuration.projects as projects
 import ergora.definitions.skills as skill_assets
 from ergora.storage.state import State
 from ergora.interfaces.web import create_app
-from test_agents import native_session_case
+from test_agents import native_session_case, native_correction_case
+from test_document_corrections import project as document_project, proposal as document_proposal, consent as document_consent
 
 
 @pytest.fixture
@@ -76,6 +77,149 @@ def test_binding_revisions_and_cli_web_share_durable_state(console):
     assert len(bounded["text"]) == 65536 and bounded["truncated"]
     assert client.get(f"/api/projects/other/agent-runs/{result['id']}/output").status_code == 400
     assert client.get("/api/projects/other/dashboard").json()["agent_runs"] == []
+
+
+def test_correction_suggestion_preference_http_and_cli_share_project_revision(console, capsys):
+    import ergora.interfaces.cli as cli
+
+    client, state, _ = console
+    base = "/api/projects/demo"
+    before = state.project("demo")
+    assert client.get(base + "/configuration").json()["correction_suggestions"] == {"enabled": True, "source": "default"}
+    assert state.project("demo") == before
+    updated = client.put(base + "/correction-suggestions", json={"enabled": False, "revision": before["revision"]})
+    assert updated.status_code == 200
+    assert updated.json()["revision"] == before["revision"] + 1
+    assert client.get(base + "/configuration").json()["correction_suggestions"] == {"enabled": False, "source": "project"}
+    assert cli.main(["--home", str(state.root), "project", "correction-suggestions", "demo", "--enabled", "true",
+                     "--revision", str(updated.json()["revision"])]) == 0
+    assert json.loads(capsys.readouterr().out) == state.project("demo")
+    assert client.get(base + "/configuration").json()["correction_suggestions"] == {"enabled": True, "source": "project"}
+    current = state.project("demo")
+    assert client.put(base + "/correction-suggestions", json={"enabled": False, "revision": before["revision"]}).status_code == 400
+    for payload in ({"enabled": "false", "revision": current["revision"]}, {"enabled": 0, "revision": current["revision"]},
+                    {"enabled": False, "revision": True}, {"enabled": False, "revision": str(current["revision"])},
+                    {"enabled": False, "revision": current["revision"], "confirm": True}):
+        assert client.put(base + "/correction-suggestions", json=payload).status_code == 422
+    assert client.put(base + "/correction-suggestions", json={"enabled": False, "revision": current["revision"]},
+                      headers={"X-Ergora-Request": ""}).status_code == 403
+    assert state.project("demo") == current and state.project("other")["revision"] == before["revision"]
+
+
+@pytest.mark.parametrize("action", ["apply", "withdraw"])
+@pytest.mark.skipif(sys.platform != "linux", reason="Exact document replacement uses the Linux/WSL process and file owner")
+def test_document_correction_http_reads_original_preview_and_observes_lost_decision(document_project, tmp_path, action, monkeypatch):
+    from ergora.improvement import document_corrections
+
+    state, repo, before = document_project
+    value = document_proposal(state, tmp_path / "proposal")
+    read_preview = document_corrections.get_preview
+    preview_reads = []
+    def tracked_preview(*args, **kwargs):
+        preview_reads.append(args[2])
+        return read_preview(*args, **kwargs)
+    monkeypatch.setattr(document_corrections, "get_preview", tracked_preview)
+    proposal_id = value["request"]["proposal_id"]
+    headers = {"Origin": "http://127.0.0.1:8977", "X-Ergora-Request": "1"}
+    with TestClient(create_app(state.root), base_url="http://127.0.0.1:8977", headers=headers) as client:
+        url = f"/api/projects/demo/document-corrections/{proposal_id}"
+        directory = state.root / "retrospectives" / "documents"
+        original = {str(path.relative_to(directory)): path.read_bytes() for path in directory.rglob("*") if path.is_file()}
+        for _ in range(2):
+            observed = client.get(url)
+            assert observed.status_code == 200
+            assert observed.json()["preview"] is None and observed.json()["can_apply"] is True
+            assert observed.json()["candidate_digest"] == value["candidate_digest"]
+        assert preview_reads == []
+        assert client.get(url + "/preview", params={"candidate_digest": value["candidate_digest"]}).json() == value
+        assert client.get(url + "/preview", params={"candidate_digest": "0" * 64}).status_code == 400
+        assert preview_reads == [proposal_id, proposal_id]
+        for query in ({}, {"candidate_digest": "invalid"}):
+            assert client.get(url + "/preview", params=query).status_code == 422
+        assert client.get(url.replace(proposal_id, "0" * 32)).status_code == 400
+        assert {str(path.relative_to(directory)): path.read_bytes() for path in directory.rglob("*") if path.is_file()} == original
+        assert (repo / "AGENTS.md").read_bytes() == before
+        consent = document_consent(value)
+        for change in ({"confirm": "true"}, {"confirm": 1}, {"revision": True}, {"revision": "1"},
+                       {"base_sha256": "invalid"}, {"preview": value}, {"path": "docs/guide.md"}, {"consent": "user approved"}):
+            assert client.post(url + "/apply", json={**consent, **change}).status_code == 422
+        for change in ({"confirm": False}, {"revision": consent["revision"] + 1}, {"candidate_digest": "0" * 64},
+                       {"base_sha256": "0" * 64}, {"scope_sha256": "0" * 64}):
+            assert client.post(url + "/apply", json={**consent, **change}).status_code == 400
+        assert client.post(url + "/apply", json=consent, headers={"X-Ergora-Request": ""}).status_code == 403
+        assert client.post(url + "/apply", json=consent, headers={"Origin": "https://other.example"}).status_code == 403
+        for payload in ({"reason": ""}, {"reason": "   "}, {"reason": True}, {"reason": "task only", "confirm": True}):
+            assert client.post(url + "/withdraw", json=payload).status_code == 422
+        assert (repo / "AGENTS.md").read_bytes() == before
+        assert client.get(url).json()["status"] == "ready"
+        # Discard the mutation reply and recover exclusively through the original proposal ID.
+        response = client.post(url + "/" + action, json=consent if action == "apply" else {"reason": "Use only for this task."})
+        assert response.status_code == 200
+        del response
+        terminal = "applied" if action == "apply" else "withdrawn"
+        before_status_reads = list(preview_reads)
+        for _ in range(2):
+            observed = client.get(url).json()
+            assert observed["status"] == terminal and observed["can_apply"] is False
+            assert observed["preview"] is None and observed["candidate_digest"] == value["candidate_digest"]
+        assert preview_reads == before_status_reads
+        expected = value["change"]["after"]["text"].encode("utf-8") if action == "apply" else before
+        assert (repo / "AGENTS.md").read_bytes() == expected
+        assert (repo / "docs/guide.md").read_bytes() == b"# Existing guide\nKeep the useful context."
+        projects.create(state, "other", repo)
+        assert client.get(url.replace("/demo/", "/other/")).status_code == 400
+        assert client.get(url.replace("/demo/", "/other/") + "/preview", params={"candidate_digest": value["candidate_digest"]}).status_code == 400
+        assert client.post(url.replace("/demo/", "/other/") + "/apply", json=consent).status_code == 400
+        assert (repo / "AGENTS.md").read_bytes() == expected
+
+
+def test_native_correction_http_first_reply_contains_preview_but_polling_is_light(native_correction_case, monkeypatch):
+    from ergora.improvement import document_corrections
+
+    state, repo, config, _, _ = native_correction_case
+    headers = {"Origin": "http://127.0.0.1:8977", "X-Ergora-Request": "1"}
+    with TestClient(create_app(state.root), base_url="http://127.0.0.1:8977", headers=headers) as client:
+        base = "/api/projects/demo"
+        response = client.post(base + "/agent-runs", json={"role": "implementer", "prompt": "A source-bound controlled correction.",
+            "timeout": 10, "session_intent": "http-light-correction", "expected_revision": state.project("demo")["revision"],
+            "codex_config": str(config)})
+        assert response.status_code == 200
+        run = response.json()
+        preview = run["correction_suggestion"]["preview"]
+        assert preview["change"]["before"]["text"] and preview["change"]["after"]["text"] and preview["change"]["diff"]
+        proposal_id, digest = preview["request"]["proposal_id"], preview["candidate_digest"]
+        url = base + "/document-corrections/" + proposal_id
+        original = Path(run["result"]).read_bytes()
+        assert client.get(url + "/preview", params={"candidate_digest": digest}).json() == preview
+
+        def forbidden(*args, **kwargs):
+            raise AssertionError("Light polling must not load the full preview or recompute proposal/Git material")
+
+        with monkeypatch.context() as patch:
+            for name in ("get_preview", "check_native", "_snapshot"):
+                patch.setattr(document_corrections, name, forbidden)
+            for _ in range(2):
+                status = client.get(url).json()
+                assert status["preview"] is None and status["candidate_digest"] == digest and status["can_apply"] is True
+                session = client.get(base + "/agent-sessions/" + run["id"]).json()
+                suggestion = session["turns"][0]["correction_suggestion"]
+                assert suggestion["preview"] is None and suggestion["candidate_digest"] == digest
+                recorded = client.get(base + "/agent-runs").json()[0]
+                assert recorded["id"] == run["id"]
+                if "correction_suggestion" in recorded:
+                    assert recorded["correction_suggestion"]["preview"] is None
+                    assert recorded["correction_suggestion"]["candidate_digest"] == digest
+                output = client.get(base + "/agent-runs/" + run["id"] + "/output").json()
+                assert output["result"]["text"].encode("utf-8") == original
+                if "correction_suggestion" in output:
+                    assert output["correction_suggestion"]["preview"] is None
+            final = state.root / "runs" / (run["id"] + ".session-turn") / "final"
+            final.rename(final.with_name("saved-final"))
+            assert client.get(url).json()["can_apply"] is False
+            changed = client.get(base + "/agent-sessions/" + run["id"]).json()
+            assert changed["status"] == "unknown" and changed["turns"][0]["correction_suggestion"]["can_apply"] is False
+        assert Path(run["result"]).read_bytes() == original
+        assert len((repo / "native-calls.jsonl").read_text().splitlines()) == 1
 
 
 def test_project_sessions_http_and_cli_preserve_exact_operation_inputs(console, tmp_path, monkeypatch, capsys):
@@ -370,3 +514,30 @@ def test_slow_optional_mini_probe_keeps_dashboard_repairable(console, tmp_path):
     check = next(item for item in response.json()["tools"]["checks"] if item["layer"] == "implementer")
     assert check["installed"] is False
     assert client.put(path, json={"binding": {"tool": "codex"}, "revision": 2}).status_code == 200
+
+
+def test_training_cycle_status_http_preserves_the_original_owner_projection(console, monkeypatch):
+    import ergora.training.cycles as training_cycles
+
+    client, state, _ = console
+    original = state.project('demo')
+    expected_sha = 'a' * 64
+    observed = {'cycle_id': 'fixed-search', 'status': 'ready', 'runtime_status': 'not_queried',
+                'search': {'status': 'needs_reconciliation', 'sequence_trials': 2, 'executed_trials': 1,
+                           'skipped_trials': 1, 'promising_count': 0, 'full_accepted_count': 0,
+                           'verified_gain_count': 0}}
+    calls = []
+
+    def status(control, project, cycle, *, authorization_sha256=None):
+        calls.append((control.root, project, cycle, authorization_sha256))
+        if authorization_sha256 not in (None, expected_sha):
+            raise ValueError('Original cycle authorization changed')
+        return observed
+
+    monkeypatch.setattr(training_cycles, 'status', status)
+    url = '/api/projects/demo/training-cycles/fixed-search'
+    assert client.get(url).json() == observed
+    assert client.get(url, params={'authorization_sha256': expected_sha}).json() == observed
+    assert client.get(url, params={'authorization_sha256': 'b' * 64}).status_code == 400
+    assert calls == [(state.root, 'demo', 'fixed-search', digest) for digest in (None, expected_sha, 'b' * 64)]
+    assert state.project('demo') == original

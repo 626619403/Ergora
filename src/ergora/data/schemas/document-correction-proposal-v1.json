@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Source-bound project document correction proposal v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "request_sha256",
+    "candidate"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "request_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "candidate": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "lesson",
+            "applicability",
+            "replacement_text"
+          ],
+          "properties": {
+            "lesson": {
+              "$ref": "#/$defs/text"
+            },
+            "applicability": {
+              "$ref": "#/$defs/text"
+            },
+            "replacement_text": {
+              "type": "string",
+              "maxLength": 1048576
+            }
+          }
+        }
+      ]
+    }
+  },
+  "$defs": {
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 65536,
+      "pattern": "\\S"
+    }
+  }
+}

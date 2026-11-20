@@ -201,14 +201,15 @@ def serve(path: Path, digest: str, audit: Path) -> None:
         """Read a declared resource by virtual URI, at most 64 KiB; no host paths."""
         return view.read(path, offset, max_bytes)
 
-    record(event="started", environment_keys=sorted(os.environ))
+    from ergora.runtime import processes
+    record(event="started", identity=processes.identity(os.getpid()), environment_keys=sorted(os.environ))
     try:
         server.run(transport="stdio")
     finally:
         record(event="closed")
 
 
-async def probe(configuration: dict, stderr: Path) -> dict:
+async def probe(configuration: dict, stderr: Path, *, stop_requested=None, remaining=None) -> dict:
     try:
         from mcp import ClientSession
         from mcp.client.stdio import StdioServerParameters, stdio_client
@@ -217,19 +218,34 @@ async def probe(configuration: dict, stderr: Path) -> dict:
     except ImportError as error:
         raise ValueError("Task MCP requires a working mcp 2.3.0 installation; reinstall 'ergora[task-mcp]'") from error
 
+    async def monitor(scope):
+        while True:
+            if stop_requested() or (remaining is not None and remaining() <= 0):
+                scope.cancel()
+                return
+            await anyio.sleep(.05)
+
     try:
+        if stop_requested is not None and stop_requested():
+            raise ValueError('Parent stopped before task MCP preflight')
         with stderr.open("w", encoding="utf-8") as errors:
-            with anyio.fail_after(15):
-                async with stdio_client(StdioServerParameters(**configuration), errlog=errors) as (reader, writer):
-                    async with ClientSession(reader, writer, read_timeout_seconds=5) as session:
-                        await session.initialize()
-                        tools = await session.list_tools()
-                        if sorted(tool.name for tool in tools.tools) != TOOLS:
-                            raise ValueError("Task MCP did not expose exactly list/read")
-                        result = await session.call_tool("list", {})
-                        if result.is_error:
-                            raise ValueError("Task MCP resource probe failed")
-                        return {"initialized": True, "tools": TOOLS, "read_only_probe": "succeeded"}
+            with anyio.fail_after(min(15, remaining()) if remaining is not None else 15):
+                async with anyio.create_task_group() as group:
+                    if stop_requested is not None:
+                        group.start_soon(monitor, group.cancel_scope)
+                    async with stdio_client(StdioServerParameters(**configuration), errlog=errors) as (reader, writer):
+                        async with ClientSession(reader, writer, read_timeout_seconds=5) as session:
+                            await session.initialize()
+                            tools = await session.list_tools()
+                            if sorted(tool.name for tool in tools.tools) != TOOLS:
+                                raise ValueError("Task MCP did not expose exactly list/read")
+                            result = await session.call_tool("list", {})
+                            if result.is_error:
+                                raise ValueError("Task MCP resource probe failed")
+                    group.cancel_scope.cancel()
+                if stop_requested is not None and stop_requested():
+                    raise ValueError('Parent stopped during task MCP preflight')
+                return {"initialized": True, "tools": TOOLS, "read_only_probe": "succeeded"}
     except (OSError, ValueError, TimeoutError, ExceptionGroup, MCPError) as error:
         raise ValueError(f"Task MCP preflight failed; see {stderr.name}: {error}") from error
 
@@ -248,6 +264,27 @@ def verify_native(audit: Path, scope_sha256: str) -> dict:
     return {"ready": True, "handshake_observed": any(event.get("method") == "initialize" and event.get("success") for event in events),
             "protocol_version": ready.get("protocol_version"), "tools": TOOLS, "receipt": str(audit),
             "receipt_sha256": hashlib.sha256(audit.read_bytes()).hexdigest()}
+
+
+def verify_cleanup(raw: bytes, scope_sha256: str) -> dict:
+    """Bind a closed server audit to its actual original Linux process."""
+    from ergora.runtime import processes
+    events = [definition_bundles.parse_json(line, 'Task MCP lifecycle', finite=True, bounded=True)
+              for line in raw.decode('utf-8').splitlines()]
+    starts = [event for event in events if event.get('event') == 'started']
+    if (len(starts) != 1 or not events or events[-1].get('event') != 'closed'
+            or any(event.get('scope_sha256') != scope_sha256 or event.get('pid') != starts[0]['pid'] for event in events)):
+        raise ValueError('Original task MCP server has no complete closed lifecycle')
+    expected = starts[0]['identity']
+    if expected['pid'] != starts[0]['pid']:
+        raise ValueError('Task MCP lifecycle differs from its original process')
+    try:
+        current = processes.identity(expected['pid'])
+    except (FileNotFoundError, ProcessLookupError, ValueError):
+        current = None
+    if current == expected:
+        raise ValueError('Original task MCP server is still alive')
+    return {'state': 'closed', 'process': expected, 'audit_sha256': hashlib.sha256(raw).hexdigest()}
 
 
 def verify_reads(scope: dict, audit: bytes) -> dict:

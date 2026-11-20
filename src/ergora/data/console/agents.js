@@ -62,7 +62,9 @@ export function agentDialog(data, base, refresh, origin = null) {
   const tab = app.tab;
   const control = app.bootstrap.state_directory;
   const pendingKey = `ergora-agent-pending:${JSON.stringify([control, data.project.id])}`;
+  const correctionPendingKey = `ergora-correction-pending:${JSON.stringify([control, data.project.id])}`;
   const pending = () => JSON.parse(sessionStorage.getItem(pendingKey) || "[]");
+  const correctionPending = () => JSON.parse(sessionStorage.getItem(correctionPendingKey) || "[]");
   function remember(operation) {
     sessionStorage.setItem(pendingKey, JSON.stringify([...pending(), operation]));
   }
@@ -78,6 +80,32 @@ export function agentDialog(data, base, refresh, origin = null) {
   const observationResult = node("div", { "aria-live": "polite" });
   const listing = node("div", { "aria-live": "polite" });
   const detail = node("div", { "aria-live": "polite" });
+  const preferenceResult = node("div", { "aria-live": "polite" });
+  const preference = data.configuration.correction_suggestions;
+  const preferenceFields = node("fieldset", { disabled: !preference },
+    checkbox("Suggest reusable corrections in new native sessions", "enabled", preference?.enabled === true));
+  const preferenceForm = form([preferenceFields], "Save suggestion preference", async (values) => {
+    if (!active() || preferenceFields.disabled) return;
+    preferenceFields.disabled = true;
+    preferenceNeedsReload = true;
+    selectionSequence++;
+    startFields.disabled = true;
+    detail.replaceChildren(empty("Project preference update is pending. Reload the project configuration before starting or continuing a session."));
+    try {
+      const project = await api(`${base}/correction-suggestions`,
+        { enabled: values.has("enabled"), revision: data.project.revision }, "PUT");
+      if (!active()) return;
+      preferenceResult.replaceChildren(panel("Suggestion preference saved",
+        `Project revision ${project.revision}. Start a new session to use this preference; earlier sessions retain their original revision.`,
+        row(button("Reload project configuration", () => refresh(data.project.id)))));
+      startFields.disabled = true;
+      detail.replaceChildren(empty("Project configuration changed. Reload the project and start a new session."));
+    } catch (error) {
+      if (active()) preferenceResult.replaceChildren(panel("Preference update unconfirmed", error.message,
+        "Reload project configuration to observe the saved value before another explicit update. No automatic resend.",
+        row(button("Reload project configuration", () => refresh(data.project.id)))));
+    }
+  });
   const read = button("读取项目会话", () => readSessions(true));
   const next = button("下一页会话", () => readSessions(false), "secondary", { disabled: true });
   const startFields = node("fieldset", {},
@@ -90,7 +118,12 @@ export function agentDialog(data, base, refresh, origin = null) {
     field("首次会话的 Codex 配置文件", "codex_config", "", "text", { autocomplete: "off" }),
     field("超时（秒）", "timeout", 300, "number", { required: true, min: 1, max: 3600, step: 1 }));
   const startForm = form([startFields], "开始调用", start);
-  const view = node("div", {}, unresolved, observationResult,
+  const view = node("div", {},
+    panel("Correction suggestions", preference
+      ? `${preference.enabled ? "Enabled" : "Disabled"} · ${preference.source === "default" ? "project default" : "explicit project setting"}. Availability is reported by each original native turn.`
+      : "Preference is unavailable in this project configuration.",
+      node("p", {}, "New eligible plain-text native sessions can suggest an exact change to the existing project AGENTS.md. Template and six-stage modes use the explicit manual document-correction workflow. This preference changes the project revision and requires a new session. Native workspace permissions still apply; suggestions do not isolate file writes."),
+      preferenceForm, preferenceResult), unresolved, observationResult,
     panel("项目历史会话", "选择原会话后输入任务说明继续。角色、模型、权限和材料沿首次冻结；变更配置需要新建会话。", row(read, next), listing, detail),
     node("details", {}, node("summary", {}, "新建会话或单次 Agent 调用"),
       node("p", {}, "沿当前角色的 native workspace 权限运行。普通开发会话不产生正式任务批准或可信候选；模板选项仅要求该角色的产物。持久化能力与阻断原因以服务器实际返回为准。"), startForm, result));
@@ -103,19 +136,169 @@ export function agentDialog(data, base, refresh, origin = null) {
   let starting = false;
   let resultSequence = 0;
   let observationSequence = 0;
+  let preferenceNeedsReload = false;
+  let previewGeneration = 0;
+  const previewCache = new Map();
 
   function pendingView() {
     if (!active()) return;
     const saved = pending();
-    startFields.disabled = starting || saved.some((item) => item.kind === "start");
+    startFields.disabled = preferenceNeedsReload || starting || saved.some((item) => item.kind === "start");
+    const corrections = correctionPending();
     unresolved.replaceChildren(...(saved.length ? [panel("提交尚待观察",
       "已保留原 intent 和完整请求，没有自动重发。先观察原操作；当前没有记录也不能证明未运行。",
       ...saved.map((item) => node("details", {}, node("summary", {}, `${item.kind} · ${item.intent}`), pre(item))),
-      row(button("观察原操作", observePending)))] : []));
+      row(button("观察原操作", observePending)))] : []),
+      ...(corrections.length ? [panel("Original document decisions awaiting observation",
+        "Only read the original proposal status after an unconfirmed reply. No decision is resent.",
+        ...corrections.map((item) => correctionView({ proposal_id: item.proposal_id, candidate_digest: item.candidate_digest, status: "unconfirmed", reason: `${item.action} reply unconfirmed` }, () => true, false)))] : []));
+  }
+
+  function correctionView(initial, current, showPreview = true) {
+    if (!initial) return empty("Correction suggestions were not recorded for this original turn. Use the explicit manual document-correction workflow if needed.");
+    const generation = previewGeneration;
+    let observation = { ...initial, preview: null };
+    let sequence = 0;
+    let preview = null;
+    let loadingDigest = null;
+    const proposal = initial.proposal_id;
+    const originalUrl = `${base}/document-corrections/${encodeURIComponent(proposal)}`;
+    const facts = node("div");
+    const body = node("div");
+    const feedback = node("div");
+    const note = node("p");
+    const apply = button("Apply exact project change", () => decide("apply"), "primary", { disabled: true });
+    const dismiss = button("Use only for this task / dismiss", () => decide("withdraw"), "secondary", { disabled: true });
+    const content = panel("Project correction suggestion", "", facts, body, feedback,
+      row(proposal ? button("Read original proposal status", readOriginal) : null, showPreview ? apply : null, showPreview ? dismiss : null), note);
+    const displayed = () => active() && current() && generation === previewGeneration && content.isConnected;
+
+    function update(message = null) {
+      const awaiting = correctionPending().some((item) => item.proposal_id === proposal);
+      const canDecide = preview && observation.candidate_digest === preview.candidate_digest && observation.status === "ready" && !awaiting;
+      apply.disabled = !canDecide || observation.can_apply !== true;
+      dismiss.disabled = !canDecide;
+      facts.replaceChildren(node("p", {}, observation.reason || "Read the complete proposed project change before deciding."),
+        table(["Original fact", "Value"], [["Preference", observation.enabled === undefined ? "See original turn" : observation.enabled ? "enabled" : "disabled"],
+          ["Apply action", observation.can_apply === true ? "available" : "unavailable"],
+          ["Source validation", observation.source_validation ?? "The host rechecks the original source and current project before exact apply"],
+          ["Proposal", proposal ?? "No proposal"], ["Status", observation.status ?? "unavailable"], ["Candidate digest", observation.candidate_digest ?? "No candidate"]]));
+      feedback.replaceChildren(...(message ? [message] : []),
+        ...(awaiting ? [empty("The original decision is pending observation. Applying or withdrawing again is disabled.")] : []));
+      note.textContent = preview ? "" : loadingDigest ? "Reading the exact saved preview; no model is invoked."
+        : "No host preview is displayed. The explicit manual document-correction workflow remains separate.";
+    }
+
+    function attach(entry) {
+      if (!entry.body) entry.body = previewBody(entry.preview);
+      preview = entry.preview;
+      if (body.firstChild !== entry.body) body.replaceChildren(entry.body);
+      loadingDigest = null;
+      update();
+    }
+
+    function loadPreview(full = null) {
+      const digest = observation.candidate_digest;
+      if (!showPreview || !proposal || !digest || preview?.candidate_digest === digest || loadingDigest === digest) return;
+      const key = JSON.stringify([control, data.project.id, generation, digest]);
+      let entry = previewCache.get(key);
+      if (!entry) {
+        entry = { preview: null, body: null };
+        const validate = (value) => {
+          if (value.candidate_digest !== digest || value.request.project !== data.project.id || value.request.proposal_id !== proposal)
+            throw new Error("Saved preview differs from the selected project, proposal or candidate digest");
+          return value;
+        };
+        entry.promise = full ? Promise.resolve(validate(full))
+          : api(`${originalUrl}/preview?${new URLSearchParams({ candidate_digest: digest })}`).then(validate);
+        if (full) entry.preview = full;
+        previewCache.set(key, entry);
+      }
+      if (entry.preview) {
+        attach(entry);
+        return;
+      }
+      loadingDigest = digest;
+      update();
+      entry.promise.then((value) => {
+        if (!displayed() || observation.candidate_digest !== digest) return;
+        entry.preview = value;
+        attach(entry);
+      }).catch((error) => {
+        if (!displayed() || observation.candidate_digest !== digest) return;
+        loadingDigest = null;
+        update(panel("Exact saved preview unavailable", error.message));
+      });
+    }
+
+    async function readOriginal() {
+      if (!displayed()) return;
+      const reading = ++sequence;
+      try {
+        const observed = await api(originalUrl);
+        if (!displayed() || reading !== sequence) return;
+        observation = { enabled: initial.enabled, ...observed, preview: null };
+        if (["applied", "withdrawn"].includes(observed.status)) {
+          sessionStorage.setItem(correctionPendingKey, JSON.stringify(correctionPending().filter((item) => item.proposal_id !== proposal)));
+        }
+        update();
+        loadPreview();
+      } catch (error) {
+        if (displayed() && reading === sequence) {
+          observation = { ...observation, can_apply: false };
+          update(panel("Original proposal observation failed", error.message));
+        }
+      }
+    }
+
+    async function decide(action) {
+      if (!displayed() || !preview || observation.candidate_digest !== preview.candidate_digest || observation.status !== "ready" ||
+          correctionPending().some((item) => item.proposal_id === proposal) || (action === "apply" && observation.can_apply !== true)) return;
+      const deciding = ++sequence;
+      sessionStorage.setItem(correctionPendingKey, JSON.stringify([...correctionPending(),
+        { proposal_id: proposal, action, candidate_digest: preview.candidate_digest }]));
+      update(empty("Waiting for the original decision. No automatic resend."));
+      const payload = action === "apply" ? { revision: preview.request.revision, candidate_digest: preview.candidate_digest,
+        base_sha256: preview.change.before.sha256, scope_sha256: preview.scope_sha256, confirm: true }
+        : { reason: "Operator chose task-only use or dismissed this exact project suggestion." };
+      try {
+        const response = await api(`${originalUrl}/${action}`, payload);
+        if (!displayed() || deciding !== sequence) return;
+        observation = { enabled: initial.enabled, ...response, preview: null, candidate_digest: preview.candidate_digest, can_apply: false };
+        if (["applied", "withdrawn"].includes(response.status)) {
+          sessionStorage.setItem(correctionPendingKey, JSON.stringify(correctionPending().filter((item) => item.proposal_id !== proposal)));
+        }
+        update(pre(response));
+      } catch (error) {
+        if (displayed() && deciding === sequence) update(panel("Document decision unconfirmed", error.message,
+          "Read the original proposal status. This action will not be resent."));
+      }
+    }
+
+    observation.candidate_digest ??= initial.preview?.candidate_digest;
+    update();
+    loadPreview(initial.preview);
+    return content;
+  }
+
+  function previewBody(preview) {
+    return node("div", {}, table(["Exact change", "Original value"], [["Project", preview.request.project],
+      ["Source", pre({ result: preview.source, correction: preview.request.correction })],
+      ["Prior document operation snapshot", preview.request.parent ? pre(preview.request.parent) : "None"], ["Target", preview.change.path],
+      ["Lesson", preview.lesson], ["Applicability", preview.applicability], ["Revision", preview.request.revision],
+      ["Candidate digest", preview.candidate_digest], ["Base SHA256", preview.change.before.sha256],
+      ["After SHA256", preview.change.after.sha256], ["Before / after mode", `${preview.change.before.mode} / ${preview.change.after.mode}`],
+      ["Scope SHA256", preview.scope_sha256]]), panel("Complete before text", "", pre(preview.change.before.text)),
+      panel("Complete after text", "", pre(preview.change.after.text)), panel("Full diff", "", pre(preview.change.diff)),
+      panel("Exact project scope and authority", "", pre(preview.scope)));
+  }
+
+  function runFacts(run) {
+    return run.correction_suggestion ? { ...run, correction_suggestion: { ...run.correction_suggestion, preview: null } } : run;
   }
 
   function showRun(target, run, current) {
-    target.replaceChildren(status(run.status), pre(run), row(button("读取这轮原输出", async () => {
+    target.replaceChildren(status(run.status), pre(runFacts(run)), correctionView(run.correction_suggestion, current), row(button("读取这轮原输出", async () => {
       try {
         const output = await api(`${base}/agent-runs/${encodeURIComponent(run.id)}/output`);
         if (active() && current()) target.append(...outputPanels(output, base, () => active() && current()));
@@ -174,7 +357,7 @@ export function agentDialog(data, base, refresh, origin = null) {
   }
 
   async function start(values) {
-    if (!active() || starting || pending().some((item) => item.kind === "start")) return;
+    if (!active() || startFields.disabled || starting || pending().some((item) => item.kind === "start")) return;
     const persistent = values.has("persistent");
     const payload = { role: values.get("role"), prompt: values.get("prompt"), timeout: Number(values.get("timeout")),
       skills: values.get("skills").split(",").map((value) => value.trim()).filter(Boolean),
@@ -192,9 +375,13 @@ export function agentDialog(data, base, refresh, origin = null) {
       const run = await api(`${base}/agent-runs`, payload);
       observed(intent);
       if (!active() || selection !== selectionSequence) return;
-      showRun(result, run, () => rendering === resultSequence);
-      if (run.session) await selectSession(run.session.id);
-      else result.append(row(button("刷新项目总览", () => refresh(data.project.id))));
+      if (run.session) {
+        result.replaceChildren(empty("原调用已返回；完整建议显示在所选会话中。"));
+        await selectSession(run.session.id, 0, null, run);
+      } else {
+        showRun(result, run, () => rendering === resultSequence && selection === selectionSequence);
+        result.append(row(button("刷新项目总览", () => refresh(data.project.id))));
+      }
     } catch (error) {
       const rejectedBeforeBirth = persistent && admissionRejected(error, intent);
       if (rejectedBeforeBirth) observed(intent);
@@ -232,17 +419,22 @@ export function agentDialog(data, base, refresh, origin = null) {
     }
   }
 
-  async function selectSession(id, after = 0, expectedSelection = null) {
+  async function selectSession(id, after = 0, expectedSelection = null, completedRun = null) {
     if (!active() || (expectedSelection !== null && expectedSelection !== selectionSequence)) return;
     const reading = ++selectionSequence;
+    if (selected !== id) {
+      previewGeneration++;
+      previewCache.clear();
+    }
     selected = id;
-    detail.replaceChildren(empty("正在读取原会话…"));
+    const current = () => reading === selectionSequence && selected === id;
+    if (completedRun) showRun(detail, completedRun, current);
+    else detail.replaceChildren(empty("正在读取原会话…"));
     try {
       const session = await api(`${base}/agent-sessions/${encodeURIComponent(id)}?after=${after}&limit=20`);
       if (!active() || reading !== selectionSequence || selected !== id) return;
-      const current = () => reading === selectionSequence && selected === id;
       const callResult = node("div", { "aria-live": "polite" });
-      const continueFields = node("fieldset", { disabled: !session.can_continue || pending().some((item) => item.session === id && item.kind === "continue") },
+      const continueFields = node("fieldset", { disabled: preferenceNeedsReload || !session.can_continue || pending().some((item) => item.session === id && item.kind === "continue") },
         field("继续任务说明", "prompt", "", "textarea", { required: true }),
         field("本轮超时（秒）", "timeout", 300, "number", { required: true, min: 1, max: 3600, step: 1 }));
       const continueForm = form([continueFields], "继续这个会话", async (values) => {
@@ -259,7 +451,8 @@ export function agentDialog(data, base, refresh, origin = null) {
           session.next_after === null ? null : button("下一页轮次", () => selectSession(id, session.next_after))),
         ...session.turns.map((run) => {
           const output = node("div");
-          return node("details", {}, node("summary", {}, `${run.id} · ${run.status} · ${run.started ?? ""}`), pre(run),
+          return node("div", {}, correctionView(run.correction_suggestion, current),
+            node("details", {}, node("summary", {}, `${run.id} · ${run.status} · ${run.started ?? ""}`), pre(runFacts(run)),
             row(button("读取这轮原输出", async () => {
               try {
                 const result = await api(`${base}/agent-runs/${encodeURIComponent(run.id)}/output`);
@@ -271,7 +464,7 @@ export function agentDialog(data, base, refresh, origin = null) {
               if (!active() || !current() || pending().some((item) => item.kind === "stop" && item.payload.run_id === run.id)) return;
               event.currentTarget.disabled = true;
               await submitTurn("stop", { run_id: run.id, intent_id: crypto.randomUUID() }, callResult, current, null, reading);
-            }, "secondary", { disabled: run.execution_stopped === true || Boolean(run.stop_request) || pending().some((item) => item.kind === "stop" && item.payload.run_id === run.id) })), output);
+            }, "secondary", { disabled: run.execution_stopped === true || Boolean(run.stop_request) || pending().some((item) => item.kind === "stop" && item.payload.run_id === run.id) })), output));
         }), continueForm, callResult));
     } catch (error) {
       if (active() && reading === selectionSequence) detail.replaceChildren(panel("会话读取失败", error.message));
@@ -289,7 +482,8 @@ export function agentDialog(data, base, refresh, origin = null) {
       observed(payload.intent_id);
       if (!active() || !current()) return;
       target.replaceChildren(panel(kind === "stop" ? "原停止请求已返回" : "原续答记录已返回",
-        kind === "stop" ? "stop_requested、notification 和 run 中的停止事实分别核对；请求返回不等于清理完成。" : "沿原会话读取本轮结果。", pre(response),
+        kind === "stop" ? "stop_requested、notification 和 run 中的停止事实分别核对；请求返回不等于清理完成。" : "沿原会话读取本轮结果。", pre(response.run ? { ...response, run: runFacts(response.run) } : runFacts(response)),
+        correctionView(response.correction_suggestion ?? response.run?.correction_suggestion, current),
         row(button("读取本轮后的会话", () => selectSession(id, 0, reading)))));
     } catch (error) {
       const rejected = kind === "continue" && admissionRejected(error, payload.intent_id);

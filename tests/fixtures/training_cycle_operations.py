@@ -16,6 +16,7 @@ stage, fault = sys.argv[1], os.environ['ERGORA_TEST_CYCLE_OPERATION']
 if stage != 'S':
     import ergora.training.cycles as training_cycles
     import ergora.training.runtime.worker as worker
+    import ergora.training.runtime.evidence as execution_evidence
 markers = Path(os.environ['ERGORA_TEST_CYCLE_MARKERS'])
 
 
@@ -200,10 +201,12 @@ if stage == 'S':
 
         protocol._read_cycle_bytes = blocked_result
 else:
+    if payload['snapshot'] is not None:
+        original_plan, original_authorization = protocol.resolve_cycle_snapshot(payload)
     if os.environ.get('ERGORA_TEST_OWNER_CONFIRM') and mode == 'confirm-candidate':
         from ergora.training.runtime.budget import BudgetedStart
 
-        record_owner, binding = BudgetedStart.owner_record, protocol.authenticate_cycle_binding
+        record_owner, binding = BudgetedStart.owner_record, execution_evidence.authenticate_cycle_binding
         observed_reads = {'owner': 0, 'missing': 0}
 
         def observe_owner(active):
@@ -215,9 +218,9 @@ else:
 
         def observe_missing(*args, **kwargs):
             value = binding(*args, **kwargs)
-            execution = payload['snapshot']['authorization']['execution']
+            execution = original_authorization['execution']
             target = Path(execution['state_directory']) / ('ergora/training-submissions/' +
-                payload['snapshot']['candidates'][payload['identity']['ordinal']]['experiment_id'] + '.budget/owner.json')
+                original_plan['definition']['candidates'][payload['identity']['ordinal']]['experiment_id'] + '.budget/owner.json')
             if not target.exists():
                 observed_reads['missing'] += 1
                 mark('confirm-missing-reads', {'count': observed_reads['missing'], 'pid': os.getpid(),
@@ -225,7 +228,7 @@ else:
             return value
 
         BudgetedStart.owner_record = observe_owner
-        protocol.authenticate_cycle_binding = observe_missing
+        execution_evidence.authenticate_cycle_binding = observe_missing
         if os.environ.get('ERGORA_TEST_OWNER_CONFIRM_LATE_CONTEXT'):
             require_active, read_context = BudgetedStart.require_active, BudgetedStart.context
             final_read = {'ready': False, 'held': False}
@@ -263,7 +266,7 @@ else:
         worker._cycle_operation = large_result
     if (mode in protocol.CYCLE_MEASUREMENT_MODES
             or mode in protocol.CYCLE_START_MODES and fault.startswith('round-')):
-        sys.path[:0] = [str(Path(payload['snapshot']['authorization']['execution']['installation']) / part)
+        sys.path[:0] = [str(Path(original_authorization['execution']['installation']) / part)
                        for part in ('local', 'upstream/platform', 'upstream/temporal', 'upstream')]
         sys.path.insert(0, str(Path(__file__).parent))
         from perf_temporal import connection
@@ -278,7 +281,7 @@ else:
 
         connection.connect = round_connect
         mark('round-helper-entered')
-        native_root = Path(payload['snapshot']['authorization']['execution']['state_directory'])
+        native_root = Path(original_authorization['execution']['state_directory'])
         if fault in ('round-final-index-stop', 'round-final-parent-source', 'round-final-parent-project',
                      'round-final-parent-predecessor', 'round-final-current-intent'):
             observation = (Path(payload['identity']['control_home']) / 'operations/training-cycles'
@@ -289,7 +292,7 @@ else:
                     value = original_read(path, *args, **kwargs)
                     caller = sys._getframe(2)
                     if (Path(path) == native_root / ('ergora/training-submissions/' + selected + '.budget/owner.json')
-                            and caller.f_code is protocol.authenticate_cycle_candidate.__code__
+                            and caller.f_code is execution_evidence.authenticate_cycle_candidate.__code__
                             and 'result' in caller.f_locals and observation.exists()
                             and sys._getframe(3).f_code is worker._round_operation.__code__):
                         mark('round-final-boundary')
@@ -317,7 +320,7 @@ else:
                             await worker.asyncio.sleep(.01)
                     return value
                 RoundService.describe_workflow_execution = final_parent_describe
-        selected = payload['snapshot']['candidates'][payload['identity']['ordinal']]['experiment_id']
+        selected = original_plan['definition']['candidates'][payload['identity']['ordinal']]['experiment_id']
         job = native_root / 'training/jobs' / selected
         if fault in ('round-no-archive', 'round-rejected', 'round-failed'):
             result = json.loads((job / 'result.json').read_bytes())
@@ -343,7 +346,7 @@ else:
                     path.write_text(json.dumps(baseline))
                 value = create(*args, **kwargs)
                 if fault == 'round-source-drift':
-                    path = Path(payload['snapshot']['authorization']['execution']['installation']) / 'ergora-native-runtime.json'
+                    path = Path(original_authorization['execution']['installation']) / 'ergora-native-runtime.json'
                     path.write_bytes(path.read_bytes() + b'\n')
                 return value
             training_rounds.create = changed_index
@@ -356,7 +359,7 @@ else:
                 calls += 1
                 if calls == 4:
                     directory = native_root.parents[0] / 'control/training-cycles/demo/controller'
-                    protocol.CycleAdmission(directory, payload['snapshot']['authorization']).request_stop('Stop at final observation gate')
+                    protocol.CycleAdmission(directory, original_authorization).request_stop('Stop at final observation gate')
             protocol.validate_sources = stopped_sources
         if fault == 'round-undurable-stop':
             synchronize = os.fsync
@@ -419,14 +422,14 @@ else:
             os.fsync = round_fsync
     if mode in protocol.CYCLE_CANDIDATE_MODES and os.environ.get('ERGORA_TEST_TRAINING_SERVICE'):
         mark('candidate-helper-entered')
-        sys.path[:0] = [str(Path(payload['snapshot']['authorization']['execution']['installation']) / part)
+        sys.path[:0] = [str(Path(original_authorization['execution']['installation']) / part)
                        for part in ('local', 'upstream/platform', 'upstream/temporal', 'upstream')]
         sys.path.insert(0, str(Path(__file__).parent))
-        selected = payload['snapshot']['candidates'][payload['identity']['ordinal']]
+        selected = original_plan['definition']['candidates'][payload['identity']['ordinal']]
         sys.stdin = io.StringIO(json.dumps({'project': worker.State(Path(payload['identity']['control_home'])).project(
             payload['identity']['project']), 'control_home': payload['identity']['control_home'],
             'experiment_id': selected['experiment_id'], 'operation': 'dispatch',
-            'timeout': payload['snapshot']['policy']['control_timeout_seconds']}))
+            'timeout': payload['snapshot']['budget']['policy']['control_timeout_seconds']}))
         import training_submission_client
         sys.stdin = io.TextIOWrapper(io.BytesIO(raw), encoding='utf-8')
         mark('candidate-service-installed')
@@ -506,7 +509,7 @@ else:
 
             training_cycles._sync_directory = drift_after_attempt
     if os.environ.get('ERGORA_TEST_CYCLE_DISPATCH') and mode in ('submit-controller', 'reconcile-controller', 'inspect-controller-activity'):
-        authorization = payload['snapshot']['authorization'] if payload['snapshot'] else json.loads((
+        authorization = original_authorization if payload['snapshot'] else json.loads((
             Path(payload['identity']['control_home']) / 'training-cycles' / payload['identity']['project']
             / payload['identity']['cycle_id'] / 'authorization.json').read_bytes())
         sys.path[:0] = [str(Path(authorization['execution']['installation']) / part)
@@ -566,7 +569,7 @@ else:
 
             def drift_project(*args, **kwargs):
                 root = validate(*args, **kwargs)
-                authorization = payload['snapshot']['authorization']
+                authorization = original_authorization
                 directory = Path(authorization['control_home']) / 'training-cycles' / authorization['project'] / authorization['cycle_id']
                 if (directory / 'controller/attempt.json').exists():
                     state = worker.State(Path(authorization['control_home']))
@@ -594,7 +597,7 @@ else:
             def stop_claimed(directory):
                 synchronize(directory)
                 if (directory / 'attempt.json').exists():
-                    authorization = payload['snapshot']['authorization']
+                    authorization = original_authorization
                     protocol.CycleAdmission(directory.parent, authorization).request_stop('Stop after single slot publication')
 
             training_cycles._sync_directory = stop_claimed

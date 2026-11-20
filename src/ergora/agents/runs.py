@@ -1,6 +1,7 @@
 """Independent Agent invocations, frozen context and durable run records."""
 
 import asyncio
+from contextlib import nullcontext
 import hashlib
 import json
 import os
@@ -15,11 +16,13 @@ import time
 import uuid
 
 import ergora.agents.backends as agent_backends
+import ergora.agents.native_sources as native_sources
 import ergora.definitions.agents as agent_definitions
 import ergora.agents.invocation as agents
 import ergora.configuration.projects as projects
 import ergora.agents.mcp as task_mcp
 import ergora.definitions.workflows as workflow_definitions
+import ergora.improvement.document_corrections as document_corrections
 from ergora.runtime import budget_clock
 from ergora.configuration import catalog as components
 from ergora.configuration import validation as contracts
@@ -32,7 +35,6 @@ from ergora._paths import IMPORT_ROOT
 
 
 _MAX_SESSION_TURNS = 10_000
-_SESSION_PACKET_BYTES = 10_000_000
 
 
 def _store(state: State, document: dict) -> None:
@@ -233,7 +235,8 @@ def run_workspace(state: State, project_id: str, source: Path, cwd: Path, author
 
 
 def _run_prepared(state, prepared, document, timeout, *, mode, codex_config, result_schema, env,
-                  codex_bin, supervised, workspace=None):
+                  codex_bin, supervised, workspace=None, stop_requested=None, remaining=None,
+                  record_lifecycle=False):
     """One immutable snapshot, MCP lifecycle and native invocation evidence owner."""
     run_id = document.get("id") or uuid.uuid4().hex
     output = state.root / "runs" / run_id
@@ -243,21 +246,41 @@ def _run_prepared(state, prepared, document, timeout, *, mode, codex_config, res
     schema = result_schema or agents.result_schema(["response"], document["role"] == "reviewer")
     document.update(kind="composition-agent-run", id=run_id, started=now(), status="preparing", template=None)
     _store(state, document)
+
+    def active():
+        if stop_requested is not None and stop_requested():
+            raise ValueError('Original parent stopped during composition preparation')
+
+    def copy_resource(source, destination):
+        active()
+        result = shutil.copy2(source, destination)
+        active()
+        return result
+
     try:
+        if record_lifecycle:
+            processes.prepare_supervised()
+        active()
         snapshot.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copytree(prepared["path"], snapshot, symlinks=True)
+        shutil.copytree(prepared["path"], snapshot, symlinks=True, copy_function=copy_resource)
         saved = workflow_definitions.inspect_input(snapshot, material=True)
+        active()
         if saved["digest"] != prepared["digest"]:
             raise ValueError("Composition input changed while copying the run snapshot")
+        if record_lifecycle:
+            _confirm_analysis_input(saved, active=active)
         document.update(input_path=str(snapshot))
         native_mcp = None
         if mode in ("task-mcp", "workspace-task-mcp"):
             scope = task_mcp.freeze(saved, run_id, output.with_name(run_id + ".scope.json"))
+            active()
             document["task_mcp"] = {"scope": scope}
             _store(state, document)
             preflight = task_mcp.launch(scope, output.with_name(run_id + ".mcp-preflight.jsonl"))
             document["task_mcp"]["preflight"] = asyncio.run(task_mcp.probe(
-                preflight, output.with_name(run_id + ".mcp-preflight.stderr")))
+                preflight, output.with_name(run_id + ".mcp-preflight.stderr"),
+                **({'stop_requested': stop_requested, 'remaining': remaining} if stop_requested is not None else {})))
+            active()
             native_audit = output.with_name(run_id + ".mcp-native.jsonl")
             native_mcp = task_mcp.launch(scope, native_audit)
         document["status"] = "running"
@@ -265,16 +288,33 @@ def _run_prepared(state, prepared, document, timeout, *, mode, codex_config, res
         working = workspace if workspace is not None else output.with_name(run_id + ".cwd")
         if workspace is None:
             working.mkdir(mode=0o700)
-        document.update(agents.invoke(document["binding"], document["role"], saved["prompt"], working, output, timeout,
+        active()
+        if record_lifecycle:
+            document['invocation_entered'] = True
+            _store(state, document)
+        document.update(agents.invoke(document["binding"], document["role"], saved["prompt"], working, output,
+            min(timeout, remaining()) if remaining is not None else timeout,
             schema, codex_config=codex_config, mode=mode, task_mcp=native_mcp, env=env, codex_bin=codex_bin,
-            supervised=supervised))
+            supervised=supervised, **({'stop_requested': stop_requested} if stop_requested is not None else {}),
+            **({'record_lifecycle': True} if record_lifecycle else {})))
         if mode in ("task-mcp", "workspace-task-mcp") and document["status"] == "succeeded":
             document["task_mcp"]["native"] = task_mcp.verify_native(native_audit, scope["sha256"])
+        active()
     except KeyboardInterrupt:
         # SDK preflight runs before the native process owner handles Ctrl+C.
         document.update(status="cancelled", error="Agent preparation or invocation interrupted")
     except (OSError, ValueError) as error:
         document.update(status="failed", error=str(error))
+    finally:
+        if record_lifecycle and not (output / 'process-cleanup.json').exists():
+            try:
+                descendants = processes._reap_children()
+                cleanup = {'schema_version': 1, 'kind': 'composition-preparation-cleanup',
+                           'owner': processes.identity(os.getpid()), 'descendants': descendants,
+                           'remaining_children': Path(f'/proc/{os.getpid()}/task/{os.getpid()}/children').read_text().split()}
+                _publish_session_packet(output.with_name(run_id + '.preparation-cleanup'), {'record.json': native_sources.encode(cleanup)})
+            except (OSError, ValueError) as error:
+                document.update(status='unknown', error='Original preparation cleanup is unconfirmed: ' + str(error))
     document["finished"] = now()
     _store(state, document)
     return document
@@ -287,56 +327,305 @@ def runs(state: State, project_id: str) -> list[dict]:
             "SELECT document FROM agent_runs WHERE project=? ORDER BY rowid DESC LIMIT 100", (project_id,))]
 
 
-def _record(state: State, project_id: str, run_id: str) -> dict:
+def cycle_analysis_path(control_home: Path, authorization_sha256: str, ordinal: int, phase: str = 'screen') -> Path:
+    """The single opportunity is independent of a caller's proposed packet/run ID."""
+    key = {'authorization_sha256': authorization_sha256, 'ordinal': ordinal, 'phase': phase}
+    return Path(control_home) / 'runs' / ('.cycle-analysis-' + native_sources.sha(key))
+
+
+def _analysis_identity(prepared, authority):
+    slot = authority['slot']
+    contracts.validate(slot['ordinal'], {'type': 'integer', 'minimum': -1, 'maximum': 31}, 'Analysis ordinal')
+    if slot['phase'] != ('baseline' if slot['ordinal'] == -1 else 'screen'):
+        raise ValueError('Analysis phase differs from its original ordinal')
+    request, composition = prepared['request'], prepared['composition']
+    leaf = next(item for item in composition['instances'] if item['path'] == request['instance'])
+    if (leaf['kind'] != 'agent' or leaf['ref']['digest'] != slot['definition_digest']
+            or prepared['digest'] != authority['input_digest']
+            or request['preview_sha256'] != authority['composition_preview_sha256']
+            or request['prompt_sha256'] != authority['prompt_sha256']
+            or request['task_sha256'] != native_sources.sha(authority['packet'])
+            or slot['packet_sha256'] != request['task_sha256']
+            or authority['mode'] not in ('text-only', 'task-mcp')):
+        raise ValueError('Analysis input differs from the complete frozen slot and packet')
+    if (Path(prepared['path']) / 'task.txt').read_bytes() != native_sources.encode(authority['packet']):
+        raise ValueError('Analysis task is not the complete canonical packet')
+    permissions = leaf['permissions']
+    if permissions['write'] or permissions['shell'] or permissions['network']:
+        raise ValueError('Analysis requires an actual readonly leaf')
+    path, chain = leaf['path'], []
+    instances = {item['path']: item for item in composition['instances']}
+    while path is not None:
+        member = instances[path]
+        chain.append(member)
+        path = member['parent']
+    expected_run = native_sources.sha(slot)[:32]
+    if authority['fixed_run_id'] != expected_run:
+        raise ValueError('Analysis run differs from its deterministic original slot')
+    return expected_run, leaf, list(reversed(chain))
+
+
+def _confirm_analysis_input(prepared, *, active=lambda: None):
+    root = Path(prepared['path'])
+    _, files, _ = inventory_tree(root, label='Analysis input', max_directories=1000, max_depth=48)
+    for name, details in files.items():
+        active()
+        path = root / name
+        raw = native_sources.artifact(path.parent, path.name, native_sources.PACKET_BYTES, confirm_durable=True)
+        if hashlib.sha256(raw).hexdigest() != details['sha256']:
+            raise ValueError('Analysis input changed during original durable confirmation')
+    active()
+    if workflow_definitions.inspect_input(root, material=True) != prepared:
+        raise ValueError('Analysis complete input changed during durable confirmation')
+
+
+def _analysis_cleanup(state, intent, attempt, *, durable):
+    storage, run_id = state.root / 'runs', intent['run_id']
+    raw = native_sources.artifact(storage / run_id, 'process-cleanup.json', native_sources.PACKET_BYTES, confirm_durable=durable)
+    cleanup = parse_json(raw.decode('utf-8'), 'Original model cleanup', finite=True, bounded=True)
+    if (cleanup.get('kind') != 'supervised-process-cleanup' or cleanup['owner'] != attempt['owner']
+            or cleanup['model'] is None or cleanup['model_waited'] is not True
+            or cleanup['remaining_children'] != [] or type(cleanup['returncode']) is not int
+            or any(item['process'] is None or item['wait_pid'] != item['process']['pid']
+                   or type(item['wait_status']) is not int for item in cleanup['descendants'])):
+        raise ValueError('Original model tree lacks confirmed waits and complete cleanup')
+    result = {'model': {'state': 'reaped', 'sha256': hashlib.sha256(raw).hexdigest(), 'observation': cleanup},
+              'MCP': {'state': 'not_requested'}}
+    if intent['authority']['mode'] == 'task-mcp':
+        scope_raw = native_sources.artifact(storage, run_id + '.scope.json', task_mcp.MAX_SCOPE_BYTES, confirm_durable=durable)
+        scope_sha = hashlib.sha256(scope_raw).hexdigest()
+        result['MCP'] = {'state': 'closed', 'scope_sha256': scope_sha}
+        for phase in ('preflight', 'native'):
+            audit = native_sources.artifact(storage, run_id + '.mcp-' + phase + '.jsonl', 1_000_000, confirm_durable=durable)
+            result['MCP'][phase] = task_mcp.verify_cleanup(audit, scope_sha)
+    return result
+
+
+def _analysis_preparation_cleanup(state, run_id, attempt):
+    folder = state.root / 'runs' / (run_id + '.preparation-cleanup')
+    raw = native_sources.artifact(folder, 'record.json', native_sources.PACKET_BYTES, confirm_durable=True)
+    cleanup = parse_json(raw.decode('utf-8'), 'Original preparation cleanup', finite=True, bounded=True)
+    if (cleanup['kind'] != 'composition-preparation-cleanup' or cleanup['owner'] != attempt['owner']
+            or cleanup['remaining_children'] != [] or not isinstance(cleanup['descendants'], list)
+            or any(item['process'] is None or item['wait_pid'] != item['process']['pid']
+                   or type(item['wait_status']) is not int for item in cleanup['descendants'])):
+        raise ValueError('Original preparation tree lacks complete cleanup')
+    return {'state': 'not_started', 'preparation_sha256': hashlib.sha256(raw).hexdigest(), 'observation': cleanup}
+
+
+def inspect_cycle_analysis(state: State, project_id: str, run_id: str, *, authority: dict | None = None) -> dict:
+    """Confirm the same original receipt; never admit, run, or recover an effect."""
+    native_sources.session_id(run_id, 'Analysis run ID')
     state.project(project_id)
-    with state.connect() as db:
-        row = db.execute("SELECT document FROM agent_runs WHERE project=? AND id=?", (project_id, run_id)).fetchone()
-    if row is None:
-        raise ValueError("Unknown agent run in this project")
-    document = parse_json(row[0], "Agent run record", finite=True, bounded=True)
-    if not isinstance(document, dict) or document.get("id") != run_id or document.get("project") != project_id:
-        raise ValueError("Saved agent run differs from its selected project or run ID")
-    return document
+    if authority is None:
+        authority = native_sources.record(state, project_id, run_id)['cycle_analysis']
+    slot = authority['slot']
+    folder = cycle_analysis_path(state.root, slot['authorization_sha256'], slot['ordinal'], slot['phase'])
+    observed = {'schema_version': 1, 'kind': 'training-cycle-analysis-receipt', 'slot': slot, 'run_id': run_id,
+                'intent_sha256': None, 'attempt_sha256': None, 'outcome': 'needs_reconciliation',
+                'result_sha256': None, 'cleanup': {'model': {'state': 'unknown'}, 'MCP': {'state': 'unknown'}},
+                'receipt_sha256': None}
+    try:
+        intent = native_sources.packet(folder, 'intent.json', confirm_durable=True)
+        attempt = native_sources.packet(folder, 'attempt.json', confirm_durable=True)
+        observed.update(intent_sha256=native_sources.sha(intent), attempt_sha256=native_sources.sha(attempt))
+        if (intent['project'] != project_id or intent['run_id'] != run_id or intent['authority'] != authority
+                or attempt['intent_sha256'] != observed['intent_sha256']):
+            raise ValueError('Analysis opportunity differs from its original intent/attempt')
+        if (folder / 'interrupted').exists() or (folder / 'interrupted').is_symlink():
+            raise ValueError('Original parent stopped during final analysis receipt synchronization')
+        final = native_sources.packet(folder / 'final', confirm_durable=True)
+        receipt = final['receipt']
+        if (final['receipt_sha256'] != native_sources.sha(receipt) or receipt['slot'] != slot
+                or receipt['run_id'] != run_id or receipt['intent_sha256'] != observed['intent_sha256']
+                or receipt['attempt_sha256'] != observed['attempt_sha256']):
+            raise ValueError('Analysis receipt differs from its original opportunity')
+        if receipt['outcome'] == 'provisional':
+            confirmation = native_sources.packet(folder / 'confirmation', confirm_durable=True)
+            if (confirmation['schema_version'] != 1 or confirmation['kind'] != 'training-cycle-analysis-confirmation'
+                    or confirmation['run_id'] != run_id or confirmation['receipt_sha256'] != final['receipt_sha256']
+                    or confirmation['intent_sha256'] != observed['intent_sha256']
+                    or confirmation['attempt_sha256'] != observed['attempt_sha256']
+                    or confirmation['operation_sha256'] != native_sources.sha(authority['operation'])
+                    or confirmation['owner'] != attempt['owner'] or confirmation['boot_id'] != attempt['boot_id']
+                    or type(confirmation['confirmed_ns']) is not int or confirmation['confirmed_ns'] < attempt['started_ns']
+                    or type(confirmation['remaining_seconds']) not in (int, float)
+                    or not 0 < confirmation['remaining_seconds'] <= authority['maximum_seconds']
+                    or confirmation['confirmed_ns'] - attempt['started_ns'] >= authority['maximum_seconds'] * 1_000_000_000):
+                raise ValueError('Analysis has no original owner confirmation within its fixed allowance')
+            origin = authority['preparation']
+            path = Path(origin['path'])
+            raw_origin = native_sources.artifact(path.parent, path.name, origin['bytes'], confirm_durable=True)
+            preparation = parse_json(raw_origin.decode('utf-8'), 'Original slot preparation', finite=True, bounded=True)
+            if (hashlib.sha256(raw_origin).hexdigest() != origin['sha256'] or len(raw_origin) != origin['bytes']
+                    or preparation['kind'] != 'training-cycle-analysis-preparation'
+                    or preparation['authorization_sha256'] != slot['authorization_sha256']
+                    or preparation['ordinal'] != slot['ordinal'] or preparation['phase'] != slot['phase']
+                    or preparation['operation_id'] != authority['operation']['identity']['operation_id']
+                    or preparation['boot_id'] != confirmation['boot_id']
+                    or type(preparation['started_ns']) is not int or preparation['started_ns'] > attempt['started_ns']
+                    or confirmation['confirmed_ns'] - preparation['started_ns'] >= authority['maximum_seconds'] * 1_000_000_000
+                    or confirmation['remaining_seconds'] > authority['maximum_seconds'] -
+                    (confirmation['confirmed_ns'] - preparation['started_ns']) / 1_000_000_000):
+                raise ValueError('Analysis confirmation lost its immutable slot preparation origin')
+            saved = workflow_definitions.inspect_input(state.root / 'runs' / (run_id + '.input'), material=True)
+            _analysis_identity(saved, authority)
+            _confirm_analysis_input(saved)
+            raw = native_sources.artifact(state.root / 'runs' / run_id, 'result.json', 8_388_608, confirm_durable=True)
+            if hashlib.sha256(raw).hexdigest() != receipt['result_sha256']:
+                raise ValueError('Analysis result changed from the original receipt')
+            agents.validate_result(parse_json(raw.decode('utf-8'), 'Analysis result', finite=True, bounded=True),
+                                   agents.result_schema(['response'], final['role'] == 'reviewer'))
+            prompt = native_sources.artifact(state.root / 'runs' / (run_id + '.protocol'), 'prompt.txt',
+                               saved['request']['prompt_bytes'], confirm_durable=True)
+            if prompt != saved['prompt'].encode('utf-8'):
+                raise ValueError('Analysis original prompt differs from its complete snapshot')
+            if (_analysis_cleanup(state, intent, attempt, durable=True) != receipt['cleanup']
+                    or receipt['cleanup']['model']['observation']['returncode'] != 0):
+                raise ValueError('Analysis cleanup differs from its original receipt')
+        return {**receipt, 'receipt_sha256': final['receipt_sha256'],
+                'receipt': {'path': str(folder / 'final' / 'record.json'),
+                            'sha256': hashlib.sha256(native_sources.encode(final)).hexdigest()}}
+    except (OSError, ValueError, KeyError, TypeError, RecursionError) as error:
+        return {**observed, 'error': str(error)}
 
 
-def _artifact(directory: Path, name: str, byte_limit: int, *, confirm_durable: bool = False) -> bytes:
-    if is_link(directory) or not directory.is_dir():
-        raise ValueError("Run artifacts require an ordinary directory")
-    path = directory / name
-    details = path.stat()
-    if is_link(path) or not stat.S_ISREG(details.st_mode):
-        raise ValueError("Run artifact requires an ordinary file: " + name)
-    directory_identity = _directory_identity(directory) if confirm_durable else None
-    stream = (os.fdopen(os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK), 'rb')
-              if confirm_durable else path.open('rb'))
-    with stream:
-        if confirm_durable:
-            before = os.fstat(stream.fileno())
-            def stamp(value):
-                return value.st_dev, value.st_ino, value.st_size, value.st_mtime_ns, value.st_ctime_ns
-            if not stat.S_ISREG(before.st_mode) or stamp(before) != stamp(details):
-                raise ValueError('Run artifact changed before durable confirmation')
-        raw = stream.read(min(byte_limit + 1, details.st_size + 1))
-        if len(raw) > byte_limit:
-            raise ValueError(f"Complete run artifact exceeds its byte limit: {name} > {byte_limit}")
-        if confirm_durable:
-            os.fsync(stream.fileno())
-            _sync_directory_chain(directory)
-            stream.seek(0)
-            if stream.read(byte_limit + 1) != raw:
-                raise ValueError('Run artifact bytes changed during durable confirmation')
-            if (stamp(before) != stamp(os.fstat(stream.fileno()))
-                    or stamp(before) != stamp(path.stat(follow_symlinks=False))
-                    or directory_identity != _directory_identity(directory)):
-                raise ValueError('Run artifact identity changed during durable confirmation')
-    return raw
+def _reserve_analysis(state, project_id, prepared, authority, run_id, chain, folder, stop_requested):
+    import ergora.training.cycles as training_cycles
+    import ergora.training.execution_protocol as training_execution_protocol
+    slot = authority['slot']
+    reservation = nullcontext()
+    if slot['ordinal'] >= 0:
+        plan, authorization = training_execution_protocol.resolve_cycle_snapshot(authority['operation'])
+        execution = authorization['execution']
+        experiment = plan['definition']['candidates'][slot['ordinal']]['experiment_id']
+        submission = Path(execution['state_directory']) / 'ergora' / 'training-submissions'
+        native_sources.directory_identity(submission)
+        reservation = file_lock(submission / (experiment + '.lock'), blocking=False)
+    # The original submission lock precedes our single-slot lock. A skip and
+    # an analyst opportunity can never both win their last admission.
+    with reservation, file_lock(folder.with_suffix('.lock'), blocking=False):
+        if folder.exists() or folder.is_symlink():
+            return None
+        if slot['ordinal'] >= 0:
+            training_execution_protocol.require_not_skipped(execution, experiment)
+        training_cycles.validate_analysis_authority(state, project_id, authority, prepared=prepared)
+        if stop_requested() or training_cycles.analysis_authority_remaining(authority) <= 0:
+            raise ValueError('Original analysis parent stopped before durable reservation')
+        contracts.validate(authority['maximum_seconds'], {'type': 'integer', 'minimum': 1, 'maximum': 3600}, 'Analysis cap')
+        intent = {'schema_version': 1, 'kind': 'training-cycle-analysis-intent', 'project': project_id,
+                  'run_id': run_id, 'authority': authority, 'ancestors': chain}
+        boot, ticks = budget_clock._clock()
+        attempt = {'schema_version': 1, 'kind': 'training-cycle-analysis-attempt',
+                   'intent_sha256': native_sources.sha(intent), 'owner': processes.identity(os.getpid()),
+                   'boot_id': boot, 'started_ns': ticks}
+        _publish_session_packet(folder, {'intent.json': native_sources.encode(intent), 'attempt.json': native_sources.encode(attempt)})
+        return intent, attempt
+
+
+def run_cycle_analysis(state: State, project_id: str, prepared_input: Path, authority: dict, *, stop_requested) -> dict:
+    """One trusted controller opportunity, using its existing operation and clock."""
+    import ergora.training.cycles as training_cycles
+
+    slot = authority['slot']
+    folder = cycle_analysis_path(state.root, slot['authorization_sha256'], slot['ordinal'], slot['phase'])
+    if folder.exists() or folder.is_symlink():
+        return inspect_cycle_analysis(state, project_id, authority['fixed_run_id'], authority=authority)
+    prepared = workflow_definitions.inspect_input(prepared_input, material=True)
+    authority = training_cycles.validate_analysis_authority(state, project_id, authority, prepared=prepared)
+    run_id, leaf, chain = _analysis_identity(prepared, authority)
+    slot = authority['slot']
+    folder = cycle_analysis_path(state.root, slot['authorization_sha256'], slot['ordinal'], slot['phase'])
+    storage = state.root / 'runs'
+    storage.mkdir(parents=True, exist_ok=True)
+    if folder.exists() or folder.is_symlink():
+        return inspect_cycle_analysis(state, project_id, run_id, authority=authority)
+    try:
+        reserved = _reserve_analysis(state, project_id, prepared, authority, run_id, chain, folder, stop_requested)
+    except BlockingIOError:
+        reserved = None
+    if reserved is None:
+        return inspect_cycle_analysis(state, project_id, run_id, authority=authority)
+    intent, attempt = reserved
+    stopped = False
+
+    def remaining():
+        actual_boot, actual_ticks = budget_clock._clock()
+        if actual_boot != attempt['boot_id'] or actual_ticks < attempt['started_ns']:
+            raise ValueError('Analysis original attempt clock changed')
+        return min(training_cycles.analysis_authority_remaining(authority),
+                   authority['maximum_seconds'] - (actual_ticks - attempt['started_ns']) / 1_000_000_000)
+
+    def should_stop():
+        nonlocal stopped
+        if not stopped:
+            try:
+                stopped = bool(stop_requested() or remaining() <= 0)
+                if not stopped:
+                    training_cycles.validate_analysis_authority(state, project_id, authority, prepared=prepared)
+            except (OSError, ValueError, KeyError, TypeError):
+                stopped = True
+        return stopped
+
+    receipt = {'schema_version': 1, 'kind': 'training-cycle-analysis-receipt', 'slot': slot,
+               'run_id': run_id, 'intent_sha256': native_sources.sha(intent), 'attempt_sha256': native_sources.sha(attempt),
+               'outcome': 'needs_reconciliation', 'result_sha256': None,
+               'cleanup': {'model': {'state': 'unknown'}, 'MCP': {'state': 'unknown'}}}
+    try:
+        if should_stop():
+            raise ValueError('Original parent stopped after analysis reservation')
+        document = _admission(state, project_id, prepared, backend=None, model=None,
+            reason='frozen controller analyst', mode=authority['mode'], codex_config=None, binding_override=slot['binding'])
+        document.update(id=run_id, cycle_analysis=authority, formal_execution_authorized=False)
+        run = _run_prepared(state, prepared, document, authority['maximum_seconds'], mode=authority['mode'],
+            codex_config=None, result_schema=None, env=None, codex_bin='codex', supervised=True,
+            stop_requested=should_stop, remaining=remaining, record_lifecycle=True)
+        if run['status'] != 'succeeded':
+            receipt['error'] = run.get('error', run['status'])
+            if run.get('invocation_entered'):
+                receipt.update(cleanup=_analysis_cleanup(state, intent, attempt, durable=True), outcome='failed')
+            elif authority['mode'] == 'text-only' and run['status'] != 'unknown':
+                receipt.update(outcome='failed', cleanup={
+                    'model': _analysis_preparation_cleanup(state, run_id, attempt), 'MCP': {'state': 'not_requested'}})
+        else:
+            cleanup = _analysis_cleanup(state, intent, attempt, durable=True)
+            raw = native_sources.artifact(storage / run_id, 'result.json', 8_388_608, confirm_durable=True)
+            if hashlib.sha256(raw).hexdigest() != run['result_sha256'] or should_stop():
+                raise ValueError('Analysis result lost its original identity or parent allowance')
+            receipt.update(outcome='provisional', result_sha256=run['result_sha256'], cleanup=cleanup)
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        receipt['error'] = str(error)
+    final = {'receipt': receipt, 'receipt_sha256': native_sources.sha(receipt), 'role': leaf['role']}
+    _publish_session_packet(folder / 'final', {'record.json': native_sources.encode(final)})
+    if receipt['outcome'] == 'provisional':
+        try:
+            if should_stop():
+                raise ValueError('Original parent stopped during final receipt synchronization')
+            boot, ticks = budget_clock._clock()
+            allowance = remaining()
+            confirmation = {'schema_version': 1, 'kind': 'training-cycle-analysis-confirmation',
+                'run_id': run_id, 'receipt_sha256': final['receipt_sha256'],
+                'intent_sha256': native_sources.sha(intent), 'attempt_sha256': native_sources.sha(attempt),
+                'operation_sha256': native_sources.sha(authority['operation']), 'owner': attempt['owner'],
+                'boot_id': boot, 'confirmed_ns': ticks, 'remaining_seconds': allowance}
+            _publish_session_packet(folder / 'confirmation', {'record.json': native_sources.encode(confirmation)})
+            if should_stop():
+                raise ValueError('Original parent stopped during confirmation synchronization')
+        except (OSError, ValueError, KeyError, TypeError) as error:
+            _publish_session_packet(folder / 'interrupted', {'record.json': native_sources.encode({
+                'run_id': run_id, 'receipt_sha256': final['receipt_sha256'], 'reason': str(error)})})
+    return inspect_cycle_analysis(state, project_id, run_id, authority=authority)
+
+
+
+
 
 
 def inspect_run(state: State, project_id: str, run_id: str, *, max_result_bytes: int = 8_388_608) -> dict:
     """Observe original composition material without current admission or redispatch."""
     contracts.validate(run_id, {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"}, "Run ID")
     contracts.validate(max_result_bytes, {"type": "integer", "minimum": 1}, "Result byte limit")
-    document = _record(state, project_id, run_id)
+    document = native_sources.record(state, project_id, run_id)
     if document.get("kind") != "composition-agent-run":
         raise ValueError("Select an original composition agent run")
     storage = state.root / "runs"
@@ -357,7 +646,7 @@ def inspect_run(state: State, project_id: str, run_id: str, *, max_result_bytes:
     try:
         request = document.get("input_request")
         contracts.validate(request, contracts.COMPOSITION_INPUT, "Original input request")
-        raw = _artifact(storage / (run_id + ".protocol"), "prompt.txt", request["prompt_bytes"])
+        raw = native_sources.artifact(storage / (run_id + ".protocol"), "prompt.txt", request["prompt_bytes"])
         digest = hashlib.sha256(raw).hexdigest()
         if (len(raw) != request["prompt_bytes"] or digest != request["prompt_sha256"]
                 or digest != document.get("prompt_sha256")):
@@ -372,7 +661,7 @@ def inspect_run(state: State, project_id: str, run_id: str, *, max_result_bytes:
         observed["result"]["error"] = "No original structured result identity was recorded"
     else:
         try:
-            raw = _artifact(storage / run_id, "result.json", max_result_bytes)
+            raw = native_sources.artifact(storage / run_id, "result.json", max_result_bytes)
             digest = hashlib.sha256(raw).hexdigest()
             if digest != document["result_sha256"]:
                 raise ValueError("Structured result differs from its original run SHA256")
@@ -385,7 +674,7 @@ def inspect_run(state: State, project_id: str, run_id: str, *, max_result_bytes:
 
 def output(state: State, project_id: str, run_id: str, *, native_history: bool = False,
            offset: int = 0, limit: int = 65_536, revision: str | None = None) -> dict:
-    document = _record(state, project_id, run_id)
+    document = native_sources.record(state, project_id, run_id)
     if document.get('kind') == 'native-agent-run':
         document = _observe_session_run(state, document)
     streams = {}
@@ -402,9 +691,9 @@ def output(state: State, project_id: str, run_id: str, *, native_history: bool =
         result['result'] = {'available': False, 'reason': 'No complete original result identity was recorded'}
         if document.get('result_sha256') is not None:
             try:
-                request = _session_packet(_session_folder(state, run_id), 'request.json')
+                request = native_sources.packet(native_sources.turn_folder(state, run_id), 'request.json')
                 name = 'result.json' if request['schema'] is not None else 'result.txt'
-                raw = _artifact(state.root / 'runs' / run_id, name, 8_388_608)
+                raw = native_sources.artifact(state.root / 'runs' / run_id, name, 8_388_608)
                 if hashlib.sha256(raw).hexdigest() != document['result_sha256']:
                     raise ValueError('Final message differs from its original result SHA256')
                 result['result'] = {'available': True, 'text': raw.decode('utf-8'), 'bytes': len(raw),
@@ -451,34 +740,17 @@ class SessionRejected(ValueError):
         self.intent_id = intent_id
 
 
-def _session_id(value, label='Session ID'):
-    contracts.validate(value, {'type': 'string', 'pattern': '^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$'}, label)
-    return value
 
 
-def _session_encode(value):
-    raw = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(',', ':'), allow_nan=False).encode('utf-8')
-    if len(raw) > _SESSION_PACKET_BYTES:
-        raise ValueError(f'Complete encoded session packet exceeds {_SESSION_PACKET_BYTES} bytes; it was not truncated')
-    return raw
 
 
-def _session_sha(value):
-    return hashlib.sha256(_session_encode(value)).hexdigest()
 
 
-def _sync_directory_chain(directory):
-    for parent in (directory, *directory.parents):
-        descriptor = os.open(parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
-        try:
-            os.fsync(descriptor)
-        finally:
-            os.close(descriptor)
 
 
 def _publish_session_packet(destination, values):
-    if any(len(raw) > _SESSION_PACKET_BYTES for raw in values.values()):
-        raise ValueError(f'Complete encoded session packet exceeds {_SESSION_PACKET_BYTES} bytes')
+    if any(len(raw) > native_sources.PACKET_BYTES for raw in values.values()):
+        raise ValueError(f'Complete encoded session packet exceeds {native_sources.PACKET_BYTES} bytes')
     destination.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     staged = Path(tempfile.mkdtemp(prefix='.session-', dir=destination.parent))
     try:
@@ -489,78 +761,114 @@ def _publish_session_packet(destination, values):
                 stream.write(raw)
                 stream.flush()
                 os.fsync(stream.fileno())
-        _sync_directory_chain(staged)
+        native_sources.sync_directory_chain(staged)
         publish_directory(staged, destination)
         for name, raw in values.items():
-            if _artifact(destination, name, len(raw), confirm_durable=True) != raw:
+            if native_sources.artifact(destination, name, len(raw), confirm_durable=True) != raw:
                 raise ValueError('Session packet changed after durable publication')
     finally:
         if staged.exists():
             shutil.rmtree(staged)
 
 
-def _session_packet(directory, name='record.json', *, confirm_durable=False):
-    return parse_json(_artifact(directory, name, _SESSION_PACKET_BYTES, confirm_durable=confirm_durable).decode('utf-8'),
-                      'Native session packet', finite=True, bounded=True)
 
 
-def _session_folder(state, ident):
-    return state.root / 'runs' / (_session_id(ident) + '.session-turn')
 
 
-def _root_folder(state, ident):
-    return state.root / 'runs' / (_session_id(ident) + '.session')
 
 
-def _find_run(state, project, ident):
-    with state.connect() as db:
-        row = db.execute('SELECT document FROM agent_runs WHERE project=? AND id=?', (project, ident)).fetchone()
-    return None if row is None else parse_json(row[0], 'Native session run', finite=True, bounded=True)
 
 
-def _observe_session_run(state, document):
-    folder = _session_folder(state, document['id'])
-    request = _session_packet(folder, 'request.json')
-    if (_session_sha(request) != document['request_sha256'] or request['run_id'] != document['id']
+def _observe_session_run(state, document, *, full_preview=False):
+    folder = native_sources.turn_folder(state, document['id'])
+    request = native_sources.packet(folder, 'request.json')
+    if (native_sources.sha(request) != document['request_sha256'] or request['run_id'] != document['id']
             or request['project'] != document['project'] or request['session'] != document['session']):
         raise ValueError('Session run differs from its original immutable request')
     stop_request = None
     if (folder / 'stop').exists():
-        stop_request = _session_packet(folder / 'stop')
+        stop_request = native_sources.packet(folder / 'stop')
         if (stop_request.get('run_id') != document['id'] or stop_request.get('project') != document['project']
                 or stop_request.get('session') != document['session']['id']
                 or stop_request.get('request_sha256') != document['request_sha256']):
             raise ValueError('Saved stop request differs from its original turn')
     if (folder / 'final').exists():
         try:
-            final = _session_packet(folder / 'final', confirm_durable=True)
+            final = native_sources.packet(folder / 'final', confirm_durable=True)
         except (OSError, ValueError) as error:
-            return dict(document, status='unknown', execution_stopped=False, stop_request=stop_request,
-                        error='Final packet durability is unconfirmed: ' + str(error))
+            unavailable = dict(document, status='unknown', execution_stopped=False, stop_request=stop_request,
+                               error='Final packet durability is unconfirmed: ' + str(error))
+            suggestion = _correction_observation(state, request, unavailable, include_preview=full_preview)
+            return {**unavailable, **({'correction_suggestion': suggestion} if suggestion is not None else {})}
         if final['request_sha256'] != document['request_sha256'] or final['session'] != document['session']:
             raise ValueError('Session final differs from the selected request')
         if final.get('status') == 'succeeded':
-            raw = _artifact(state.root / 'runs' / document['id'],
+            raw = native_sources.artifact(state.root / 'runs' / document['id'],
                             'result.json' if request['schema'] is not None else 'result.txt', 8_388_608)
             if hashlib.sha256(raw).hexdigest() != final['result_sha256']:
                 raise ValueError('Session result differs from its original complete bytes')
-        return {**final, 'stop_request': stop_request}
+        suggestion = _correction_observation(state, request, final, include_preview=full_preview)
+        return {**final, 'stop_request': stop_request,
+                **({'correction_suggestion': suggestion} if suggestion is not None else {})}
     observed = dict(document, status='unknown', execution_stopped=False, stop_request=stop_request)
     try:
-        owner = _session_packet(folder / 'owner')
+        owner = native_sources.packet(folder / 'owner')
         if owner['request_sha256'] == document['request_sha256'] and processes.identity(owner['identity']['pid']) == owner['identity']:
             observed['status'] = 'running'
             observed['owner'] = owner['identity']
     except (FileNotFoundError, ProcessLookupError, ValueError):
         pass
-    return observed
+    suggestion = _correction_observation(state, request, observed, include_preview=full_preview)
+    return {**observed, **({'correction_suggestion': suggestion} if suggestion is not None else {})}
+
+
+def _correction_observation(state, request, document, *, include_preview=False):
+    """Only project already-issued learning material; reads never complete it."""
+    reference = request.get('correction_suggestion')
+    if reference is None:
+        try:
+            policy = _read_session_context(state, document).get('correction_suggestions')
+        except (OSError, ValueError, KeyError, TypeError):
+            return None
+        if policy is None:
+            return None
+        return {'enabled': policy['enabled'], 'available': False, 'status': 'unavailable', 'preview': None,
+                'can_apply': False, 'proposal_id': None,
+                'reason': 'Complete correction material could not fit this original turn; manual workflow remains available'}
+    base = {**reference, 'preview': None, 'can_apply': False}
+    if not reference.get('available') or not reference.get('proposal_id'):
+        return {**base, 'status': 'unavailable'}
+    if document.get('status') != 'succeeded' or document.get('execution_stopped') is not True:
+        return {**base, 'available': False, 'status': 'unknown',
+                'reason': 'Observe the original native outcome and cleanup; no learning work is redispatched'}
+    try:
+        observed = document_corrections.inspect_proposal(state, request['project'], reference['proposal_id'], include_preview=include_preview)
+        return {**base, **observed,
+                'available': observed['status'] not in ('unavailable', 'unknown', 'prepared')}
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        return {**base, 'available': False, 'status': 'unavailable', 'reason': str(error)}
+
+
+def _correction_policy(project, binding, template):
+    enabled = project.get('correction_suggestions_enabled', True) is True
+    policy = {'enabled': enabled, 'available': enabled, 'reason': None, 'target': 'AGENTS.md'}
+    if not enabled:
+        policy.update(available=False, reason='Default project correction suggestions are disabled')
+    elif template is not None:
+        policy.update(available=False, reason='Structured template results retain their original contract; use the manual document workflow')
+    else:
+        try:
+            components.validate_agent_minimum(binding, {'model': 'gpt-6.1-sol', 'reasoning_effort': 'high'})
+        except ValueError as error:
+            policy.update(available=False, reason='Document-proposal model minimum is unavailable: ' + str(error))
+    return policy
 
 
 def _read_session_context(state, root):
-    folder = _root_folder(state, root['session']['id']) / 'context'
+    folder = native_sources.session_folder(state, root['session']['id']) / 'context'
     if inventory_tree(folder)[0] != root['context_digest']:
         raise ValueError('Frozen session context or resources changed')
-    return _session_packet(folder, 'context.json')
+    return native_sources.packet(folder, 'context.json')
 
 
 def _validate_session_authority(state, context):
@@ -583,7 +891,7 @@ def _validate_session_authority(state, context):
 
 
 def _session_turns(state, project, ident):
-    _session_id(ident)
+    native_sources.session_id(ident)
     with state.connect() as db:
         rows = db.execute("SELECT document FROM agent_runs WHERE project=? AND json_extract(document,'$.session.id')=? ORDER BY rowid LIMIT ?",
                           (project, ident, _MAX_SESSION_TURNS + 1)).fetchall()
@@ -627,7 +935,7 @@ def sessions(state: State, project_id: str, *, after: int = 0, limit: int = 20, 
     contracts.validate(limit, {'type': 'integer', 'minimum': 1, 'maximum': 100}, 'Session limit')
     predicate, parameters = '', [project_id]
     if intent_id is not None:
-        _session_id(intent_id, 'Birth intent')
+        native_sources.session_id(intent_id, 'Birth intent')
         predicate = " AND json_extract(document,'$.submitted.intent_id')=?"
         parameters.append(intent_id)
     with state.connect() as db:
@@ -655,7 +963,7 @@ def _session_prompt(prompt, timeout):
 def _start_session(state, project_id, role, prompt, timeout, skill_names, recall, template,
                    intent, revision, codex_config):
     try:
-        _session_id(intent, 'Session intent')
+        native_sources.session_id(intent, 'Session intent')
         _session_prompt(prompt, timeout)
         if sys.platform != 'linux':
             raise ValueError('Persistent native sessions require Linux/WSL2')
@@ -665,20 +973,20 @@ def _start_session(state, project_id, role, prompt, timeout, skill_names, recall
     submitted = {'role': role, 'prompt': prompt, 'timeout': timeout, 'skills': skill_names or [], 'recall': recall,
                  'template': template, 'expected_revision': revision,
                  'codex_config': str(codex_config) if codex_config is not None else None, 'intent_id': intent}
-    existing = _find_run(state, project_id, ident)
+    existing = native_sources.find_run(state, project_id, ident)
     if existing is not None:
         if existing['submitted'] != submitted:
             raise ValueError('Session intent was already consumed by a different request')
         return _observe_session_run(state, existing)
     state.root.joinpath('runs').mkdir(exist_ok=True, mode=0o700)
     with file_lock(state.root / 'runs' / (ident + '.session.lock'), blocking=False) as lock:
-        if _find_run(state, project_id, ident) is not None:
+        if native_sources.find_run(state, project_id, ident) is not None:
             return _start_session(state, project_id, role, prompt, timeout, skill_names, recall, template, intent, revision, codex_config)
         project = state.project(project_id)
         if revision != project['revision']:
             raise SessionRejected('Session start requires the current project revision', intent)
         clock = budget_clock.authorize(timeout)
-        folder = _root_folder(state, ident)
+        folder = native_sources.session_folder(state, ident)
         folder.mkdir(mode=0o700)
         home = folder / 'native-home'
         home.mkdir(mode=0o700)
@@ -692,10 +1000,24 @@ def _start_session(state, project_id, role, prompt, timeout, skill_names, recall
             inference = adapter.session_configuration(Path(project['repo']))
             requested = context['binding']
             context.update(binding=inference['binding'], requested_binding=requested, inference=inference,
-                           repo=project['repo'], repo_identity=_directory_identity(Path(project['repo'])),
-                           native_home=str(home), native_home_identity=_directory_identity(home), grant=None,
+                           repo=project['repo'], repo_identity=native_sources.directory_identity(Path(project['repo'])),
+                           native_home=str(home), native_home_identity=native_sources.directory_identity(home), grant=None,
                            sandbox=inference['sandbox'])
-            (staged / 'context.json').write_bytes(_session_encode(context))
+            policy = _correction_policy(project, inference['binding'], template)
+            if policy is not None:
+                context['correction_suggestions'] = policy
+            context_file = staged / 'context.json'
+            try:
+                context_file.write_bytes(native_sources.encode(context))
+                inventory_tree(staged)
+            except ValueError:
+                if 'correction_suggestions' not in context:
+                    raise
+                # Optional policy must not reduce the original native material
+                # range. Absence is observed as unavailable, never backfilled.
+                context.pop('correction_suggestions')
+                context_file.write_bytes(native_sources.encode(context))
+                inventory_tree(staged)
             # Verify the whole frozen package before publishing any context.
             digest = inventory_tree(staged)[0]
             for path in staged.rglob('*'):
@@ -703,10 +1025,10 @@ def _start_session(state, project_id, role, prompt, timeout, skill_names, recall
                     with path.open('rb') as stream:
                         os.fsync(stream.fileno())
             for path in sorted((p for p in staged.rglob('*') if p.is_dir()), key=lambda p: len(p.parts), reverse=True):
-                _sync_directory_chain(path)
-            _sync_directory_chain(staged)
+                native_sources.sync_directory_chain(path)
+            native_sources.sync_directory_chain(staged)
             publish_directory(staged, folder / 'context')
-            _sync_directory_chain(folder / 'context')
+            native_sources.sync_directory_chain(folder / 'context')
             if inventory_tree(folder / 'context')[0] != digest:
                 raise ValueError('Session context changed during publication')
         except (OSError, ValueError) as error:
@@ -720,23 +1042,18 @@ def _start_session(state, project_id, role, prompt, timeout, skill_names, recall
                                      context, digest, submitted, lock)
 
 
-def _directory_identity(path):
-    details = path.stat(follow_symlinks=False)
-    if is_link(path) or not stat.S_ISDIR(details.st_mode):
-        raise ValueError('Session requires an ordinary directory')
-    return [details.st_dev, details.st_ino]
 
 
 def continue_session(state: State, project_id: str, session_id: str, parent_run_id: str, prompt: str, *,
                      expected_revision: int, intent_id: str, timeout: int = 300) -> dict:
-    _session_id(session_id)
-    _session_id(parent_run_id, 'Parent run')
-    _session_id(intent_id, 'Turn intent')
+    native_sources.session_id(session_id)
+    native_sources.session_id(parent_run_id, 'Parent run')
+    native_sources.session_id(intent_id, 'Turn intent')
     _session_prompt(prompt, timeout)
     ident = uuid.uuid5(uuid.NAMESPACE_URL, 'ergora:native-turn:' + session_id + ':' + intent_id).hex
     submitted = {'parent_run': parent_run_id, 'prompt': prompt, 'expected_revision': expected_revision,
                  'timeout': timeout, 'intent_id': intent_id}
-    existing = _find_run(state, project_id, ident)
+    existing = native_sources.find_run(state, project_id, ident)
     if existing is not None:
         if existing['submitted'] != submitted or existing['session']['id'] != session_id:
             raise ValueError('Turn intent was already consumed by a different request')
@@ -764,14 +1081,44 @@ def _reserve_session_turn(state, project, root, parent, ident, ordinal, prompt, 
     if len(full_prompt.encode('utf-8')) > 10_000_000:
         raise ValueError('Complete session prompt exceeds 10 MB; it was not truncated')
     session = {'id': root, 'parent_run': parent['id'] if parent else None, 'ordinal': ordinal}
+    original_prompt = full_prompt
+    policy = context.get('correction_suggestions')
+    correction = None
+    task = None
+    if policy is not None:
+        correction = {**policy, 'proposal_id': None}
+        if policy['available']:
+            try:
+                task = document_corrections.prepare_native(state, project, ident, session, submitted,
+                    context['project_revision'], clock, path=policy['target'])
+                proposed_prompt = full_prompt + '\n\n' + document_corrections.native_prompt(task)
+                if len(proposed_prompt.encode('utf-8')) > 10_000_000:
+                    raise ValueError('Complete suggestion material cannot fit the original native prompt allowance')
+                full_prompt = proposed_prompt
+                correction.update(proposal_id=task['proposal_id'], request_sha256=task['request_sha256'])
+            except document_corrections.NativePreparationConflict:
+                raise
+            except (OSError, ValueError, KeyError, TypeError) as error:
+                correction.update(available=False, reason=str(error))
+                task = None
     request = {'run_id': ident, 'project': project, 'session': session, 'submitted': submitted,
                'context_digest': digest, 'prompt': full_prompt, 'schema': context['schema'],
                'clock': clock, 'timeout': timeout, 'native_id': parent['native_session']['id'] if parent else None}
+    if correction is not None:
+        request['correction_suggestion'] = correction
     try:
-        encoded_request = _session_encode(request)
+        try:
+            encoded_request = native_sources.encode(request)
+        except ValueError:
+            if correction is None:
+                raise
+            request.pop('correction_suggestion')
+            request['prompt'] = full_prompt = original_prompt
+            task = None
+            encoded_request = native_sources.encode(request)
     except ValueError as error:
         raise SessionRejected(str(error), submitted['intent_id']) from error
-    folder = _session_folder(state, ident)
+    folder = native_sources.turn_folder(state, ident)
     _publish_session_packet(folder, {'request.json': encoded_request})
     document = {'id': ident, 'project': project, 'kind': 'native-agent-run', 'role': context['role'],
                 'binding': context['binding'], 'project_revision': context['project_revision'],
@@ -780,9 +1127,11 @@ def _reserve_session_turn(state, project, root, parent, ident, ordinal, prompt, 
                 'prompt_sha256': hashlib.sha256(full_prompt.encode()).hexdigest(),
                 'started': now(), 'status': 'reserved', 'formal_execution_authorized': False}
     _store(state, document)
+    if task is not None:
+        document_corrections.bind_native(state, project, task['proposal_id'], ident)
     if budget_clock.remaining(clock, timeout) <= 0:
         return _observe_session_run(state, document)
-    _publish_session_packet(folder / 'attempt', {'record.json': _session_encode({'request_sha256': document['request_sha256']})})
+    _publish_session_packet(folder / 'attempt', {'record.json': native_sources.encode({'request_sha256': document['request_sha256']})})
     environment = dict(os.environ)
     source = str(IMPORT_ROOT)
     environment['PYTHONPATH'] = source + (os.pathsep + environment['PYTHONPATH'] if environment.get('PYTHONPATH') else '')
@@ -793,7 +1142,7 @@ def _reserve_session_turn(state, project, root, parent, ident, ordinal, prompt, 
                                  env=environment, pass_fds=(lock.fileno(),), start_new_session=True)
     except OSError as error:
         failed = dict(document, status='failed', error=str(error), execution_stopped=True, finished=now())
-        _publish_session_packet(folder / 'final', {'record.json': _session_encode(failed)})
+        _publish_session_packet(folder / 'final', {'record.json': native_sources.encode(failed)})
         _store(state, failed)
         return failed
     notified = False
@@ -810,26 +1159,26 @@ def _reserve_session_turn(state, project, root, parent, ident, ordinal, prompt, 
                     pass
         except KeyboardInterrupt:
             stop_session(state, project, root, ident, intent_id='caller-interrupted')
-    return _observe_session_run(state, document)
+    return _observe_session_run(state, document, full_preview=True)
 
 
 def stop_session(state: State, project_id: str, session_id: str, run_id: str, *, intent_id: str) -> dict:
-    _session_id(intent_id, 'Stop intent')
-    document = _record(state, project_id, _session_id(run_id))
-    if document.get('session', {}).get('id') != _session_id(session_id):
+    native_sources.session_id(intent_id, 'Stop intent')
+    document = native_sources.record(state, project_id, native_sources.session_id(run_id))
+    if document.get('session', {}).get('id') != native_sources.session_id(session_id):
         raise ValueError('Stop must select this project and session turn')
-    folder = _session_folder(state, run_id)
+    folder = native_sources.turn_folder(state, run_id)
     stop = {'project': project_id, 'session': session_id, 'run_id': run_id,
             'request_sha256': document['request_sha256'], 'intent_id': intent_id}
     if (folder / 'stop').exists():
-        if _session_packet(folder / 'stop') != stop:
+        if native_sources.packet(folder / 'stop') != stop:
             raise ValueError('The original stop request is already recorded')
-        _sync_directory_chain(folder / 'stop')
+        native_sources.sync_directory_chain(folder / 'stop')
     else:
-        _publish_session_packet(folder / 'stop', {'record.json': _session_encode(stop)})
+        _publish_session_packet(folder / 'stop', {'record.json': native_sources.encode(stop)})
     notification = 'unconfirmed'
     try:
-        owner = _session_packet(folder / 'owner')
+        owner = native_sources.packet(folder / 'owner')
         if owner['request_sha256'] != document['request_sha256']:
             raise ValueError('Turn owner differs from the stopped request')
         processes.notify_identity(owner['identity'], signal.SIGTERM)
@@ -845,7 +1194,7 @@ def session_main():
     home, ident, inherited = sys.argv[1:]
     state = State(Path(home))
     fd = int(inherited)
-    document = _find_run(state, _session_packet(_session_folder(state, ident), 'request.json')['project'], ident)
+    document = native_sources.find_run(state, native_sources.packet(native_sources.turn_folder(state, ident), 'request.json')['project'], ident)
     if document is None:
         raise ValueError('Session turn has no original reservation')
     root = document['session']['id']
@@ -854,12 +1203,12 @@ def session_main():
         raise ValueError('Session turn lacks its original inherited lifecycle lock')
     import fcntl
     fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-    folder = _session_folder(state, ident)
-    request = _session_packet(folder, 'request.json')
-    if (_session_sha(request) != document['request_sha256']
-            or _session_packet(folder / 'attempt')['request_sha256'] != document['request_sha256']):
+    folder = native_sources.turn_folder(state, ident)
+    request = native_sources.packet(folder, 'request.json')
+    if (native_sources.sha(request) != document['request_sha256']
+            or native_sources.packet(folder / 'attempt')['request_sha256'] != document['request_sha256']):
         raise ValueError('Session effect differs from its consumed attempt')
-    _publish_session_packet(folder / 'owner', {'record.json': _session_encode({
+    _publish_session_packet(folder / 'owner', {'record.json': native_sources.encode({
         'identity': processes.identity(os.getpid()), 'request_sha256': document['request_sha256']})})
     stopping = False
     expired = False
@@ -913,16 +1262,26 @@ def session_main():
                         raise ValueError('Native output archive contains a non-ordinary file')
                     descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
                     try:
-                        os.fsync(descriptor)
+                        native_sources.sync_descriptor(descriptor)
                     finally:
                         os.close(descriptor)
-                _sync_directory_chain(output)
+                native_sources.sync_directory_chain(output)
             if document.get('result_sha256') is not None:
                 name = 'result.json' if request['schema'] is not None else 'result.txt'
-                if hashlib.sha256(_artifact(state.root / 'runs' / ident, name, 8_388_608)).hexdigest() != document['result_sha256']:
+                if hashlib.sha256(native_sources.artifact(state.root / 'runs' / ident, name, 8_388_608)).hexdigest() != document['result_sha256']:
                     raise ValueError('Durable result readback differs from the original result')
         except (OSError, ValueError) as error:
             document.update(status='unknown', error='Native artifacts lack durable confirmation: ' + str(error))
     document['finished'] = now()
-    _publish_session_packet(folder / 'final', {'record.json': _session_encode(document)})
+    _publish_session_packet(folder / 'final', {'record.json': native_sources.encode(document)})
     _store(state, document)
+    correction = request.get('correction_suggestion', {})
+    if (correction.get('available') and correction.get('proposal_id')
+            and document['status'] == 'succeeded' and document['execution_stopped'] is True):
+        try:
+            document_corrections.complete_native(state, document['project'], correction['proposal_id'], ident,
+                remaining=lambda: -1 if should_stop() else budget_clock.remaining(request['clock'], request['timeout']))
+        except (OSError, ValueError, KeyError, TypeError):
+            # Original native final/result remain authoritative. A missing
+            # learning completion is only observed as unavailable/unknown.
+            pass

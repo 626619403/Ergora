@@ -90,6 +90,23 @@ Choose a stable, unique intent for each explicit operation. List and inspect pag
 
 The same HTTP operations are `GET /api/projects/ID/agent-sessions` (optional `intent_id`, `after`, `limit`), `GET /api/projects/ID/agent-sessions/SESSION_ID`, and POST `.../continue` or `.../stop`. A continue body contains only `parent_run_id`, `prompt`, `expected_revision`, `intent_id` and optional `timeout`. A stop body contains `run_id` and `intent_id`. Starting a persistent session uses the existing `POST .../agent-runs` with `session_intent`, `expected_revision` and a one-time `codex_config` source. Mutations retain the same-origin and `X-Ergora-Request: 1` contract. Existing single-use run/output history remains readable.
 
+New eligible plain-text native sessions suggest reusable corrections by default. The console shows the effective project preference, whether it comes from the default or an explicit setting, and each original turn's actual availability or unsupported reason. Suggestions use the existing project `AGENTS.md` and the original model turn; template and six-stage outputs retain their own contracts and use the [manual document-correction workflow](../improvement/retrospectives.md). Native workspace permissions still apply; this feature does not isolate arbitrary file writes or grant approval for other document changes.
+
+To opt out for new sessions, save the preference in the session console, or run:
+
+```bash
+ergora project config my-project
+ergora project correction-suggestions my-project --enabled false --revision CURRENT_REVISION
+```
+
+Saving changes the project revision. Reload the project and start a new session; earlier sessions retain their original revision and cannot continue under changed configuration. `PUT /api/projects/ID/correction-suggestions` accepts exactly `enabled` (a JSON boolean) and `revision` (the current integer revision). The effective configuration reports `correction_suggestions.enabled` and `correction_suggestions.source` (`default` or `project`).
+
+When the original reply contains a valid suggestion, the console immediately shows the project, source, target, lesson, applicability, complete before/after text, full diff and exact scope. **Apply exact project change** submits one explicit confirmation of that preview. **Use only for this task / dismiss** withdraws it without changing the target. A model's approval text cannot substitute for this operator action. A missing, malformed, stale or unsupported suggestion shows its actual reason and creates no follow-up model call.
+
+`GET /api/projects/ID/document-corrections/PROPOSAL_ID` reads lightweight original status and the candidate digest, with no preview body. `GET .../preview?candidate_digest=SHA256` reads the exact sealed preview only when the supplied digest matches. Completed native POST replies already include the full preview; opening an older turn fetches it automatically once for the selected project, control directory, selection generation and candidate digest. Subsequent status reads reuse that immutable body while refreshing current availability and decision status. The body cache never grants apply authority.
+
+POST `.../apply` accepts exactly `revision`, `candidate_digest`, `base_sha256`, `scope_sha256` and the JSON boolean `confirm`; it resolves and verifies the original preview on the host. POST `.../withdraw` accepts only a nonempty `reason`. After a lost decision reply, retain that proposal ID and read its lightweight original status. The console keeps the pending decision in this tab and disables resending it. GET, refresh and status reads never prepare a proposal, invoke a model, apply a change or repair an unknown result.
+
 Pages and CLI share persistent business state. Refresh before saving after revision conflicts. An Agent call's `succeeded` is not formal-task acceptance or review approval. The default reference executor retains its original configuration. Explicitly enable bridging when selected role tools should affect formal tasks; see [Agent selection and formal execution](../agents/backends.md).
 
 ## Remote access, recovery and maintenance

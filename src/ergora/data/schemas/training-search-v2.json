@@ -1,0 +1,749 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ergora.dev/schemas/training-search-v2.json",
+  "title": "Finite dual-stage training search preparation request",
+  "$ref": "#/$defs/request",
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "commit": {
+      "type": "string",
+      "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+    },
+    "identifier": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"
+    },
+    "nonempty_string": {
+      "type": "string",
+      "minLength": 1
+    },
+    "string_list": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/nonempty_string"
+      }
+    },
+    "path": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 32,
+      "items": {
+        "$ref": "#/$defs/nonempty_string"
+      }
+    },
+    "scalar": {
+      "type": [
+        "null",
+        "boolean",
+        "number",
+        "string"
+      ]
+    },
+    "experiment_template": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "baseline_id",
+        "track",
+        "contract_approved",
+        "owner",
+        "author",
+        "baseline_commit",
+        "candidate_commit",
+        "workload_fingerprint",
+        "environment_fingerprint",
+        "dataset_manifest_sha256",
+        "initial_checkpoint_sha256",
+        "base_config_sha256",
+        "validation_contract_sha256",
+        "comparison_tool_sha256",
+        "allowed_changes",
+        "checks_required",
+        "quality_required",
+        "baseline_reference"
+      ],
+      "properties": {
+        "schema_version": {
+          "type": "integer",
+          "const": 1
+        },
+        "baseline_id": {
+          "$ref": "#/$defs/identifier"
+        },
+        "track": {
+          "const": "E"
+        },
+        "contract_approved": {
+          "type": "boolean",
+          "const": true
+        },
+        "owner": {
+          "$ref": "#/$defs/nonempty_string"
+        },
+        "author": {
+          "$ref": "#/$defs/nonempty_string"
+        },
+        "baseline_commit": {
+          "$ref": "#/$defs/commit"
+        },
+        "candidate_commit": {
+          "$ref": "#/$defs/commit"
+        },
+        "workload_fingerprint": {
+          "$ref": "#/$defs/sha256"
+        },
+        "environment_fingerprint": {
+          "$ref": "#/$defs/sha256"
+        },
+        "dataset_manifest_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "initial_checkpoint_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "base_config_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "validation_contract_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "comparison_tool_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "allowed_changes": {
+          "$ref": "#/$defs/string_list"
+        },
+        "checks_required": {
+          "$ref": "#/$defs/string_list"
+        },
+        "quality_required": {
+          "type": "boolean"
+        },
+        "notes": {
+          "type": "string"
+        },
+        "baseline_reference": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "experiment_id",
+            "evidence_sha256",
+            "reference_sha256"
+          ],
+          "properties": {
+            "experiment_id": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"
+            },
+            "evidence_sha256": {
+              "$ref": "#/$defs/sha256"
+            },
+            "reference_sha256": {
+              "$ref": "#/$defs/sha256"
+            }
+          }
+        }
+      }
+    },
+    "runner": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runner_template_id",
+        "max_run_seconds"
+      ],
+      "properties": {
+        "runner_template_id": {
+          "$ref": "#/$defs/identifier"
+        },
+        "max_run_seconds": {
+          "type": "integer",
+          "minimum": 60,
+          "maximum": 86400
+        }
+      }
+    },
+    "baseline_configuration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "format",
+        "utf8",
+        "sha256"
+      ],
+      "properties": {
+        "format": {
+          "const": "json-v1"
+        },
+        "utf8": {
+          "type": "string"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "mutable": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "change_type",
+        "allowed_change"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/path"
+        },
+        "change_type": {
+          "enum": [
+            "batch_size",
+            "batch_organization",
+            "execution_parameter",
+            "library_selection"
+          ]
+        },
+        "allowed_change": {
+          "$ref": "#/$defs/nonempty_string"
+        }
+      }
+    },
+    "configuration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "format",
+        "template",
+        "schema",
+        "mutable"
+      ],
+      "properties": {
+        "format": {
+          "const": "json-v1"
+        },
+        "template": {
+          "type": "object"
+        },
+        "schema": {
+          "type": "object"
+        },
+        "mutable": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/mutable"
+          }
+        }
+      }
+    },
+    "dimension": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "path",
+        "values"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"
+        },
+        "path": {
+          "$ref": "#/$defs/path"
+        },
+        "values": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4096,
+          "items": {
+            "$ref": "#/$defs/scalar"
+          }
+        }
+      }
+    },
+    "selection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "algorithm",
+        "seed",
+        "max_trials"
+      ],
+      "properties": {
+        "algorithm": {
+          "enum": [
+            "ordered_grid_v1",
+            "seeded_without_replacement_v1"
+          ]
+        },
+        "seed": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "max_trials": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 32
+        }
+      }
+    },
+    "family_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "family_error_budget"
+      ],
+      "properties": {
+        "version": {
+          "const": "fixed_family_v1"
+        },
+        "family_error_budget": {
+          "type": "string",
+          "pattern": "^0\\.[0-9]*[1-9]$"
+        }
+      }
+    },
+    "statistics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "min_pairs",
+        "bootstrap_resamples",
+        "seed"
+      ],
+      "properties": {
+        "min_pairs": {
+          "type": "integer",
+          "minimum": 4
+        },
+        "bootstrap_resamples": {
+          "type": "integer",
+          "minimum": 1000
+        },
+        "seed": {
+          "type": "integer"
+        }
+      }
+    },
+    "thresholds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "min_saved_seconds_at_normalization",
+        "min_speedup_percent",
+        "mode"
+      ],
+      "properties": {
+        "min_saved_seconds_at_normalization": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "min_speedup_percent": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "mode": {
+          "enum": [
+            "all",
+            "any"
+          ]
+        }
+      }
+    },
+    "measurement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "normalization_source_samples",
+        "statistics",
+        "thresholds"
+      ],
+      "properties": {
+        "normalization_source_samples": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "statistics": {
+          "$ref": "#/$defs/statistics"
+        },
+        "thresholds": {
+          "$ref": "#/$defs/thresholds"
+        }
+      }
+    },
+    "budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "wall_seconds",
+        "cleanup_seconds",
+        "control_timeout_seconds"
+      ],
+      "properties": {
+        "wall_seconds": {
+          "type": "integer",
+          "minimum": 2
+        },
+        "cleanup_seconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "control_timeout_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 60
+        }
+      }
+    },
+    "unchanged_source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind"
+      ],
+      "properties": {
+        "kind": {
+          "const": "unchanged_baseline_v1"
+        }
+      }
+    },
+    "exported_source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "task_id",
+        "run_id",
+        "creation_sha256",
+        "request_sha256",
+        "profile_sha256",
+        "export_intent_sha256"
+      ],
+      "properties": {
+        "kind": {
+          "const": "exported_six_stage_v1"
+        },
+        "task_id": {
+          "$ref": "#/$defs/identifier"
+        },
+        "run_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "creation_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "request_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "profile_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "export_intent_sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "kind",
+        "search_id",
+        "experiment_template",
+        "runner",
+        "baseline_configuration",
+        "configuration",
+        "dimensions",
+        "selection",
+        "family_policy",
+        "measurement",
+        "budget",
+        "candidate_source",
+        "screen_policy",
+        "profile_policy",
+        "preparation_materials"
+      ],
+      "properties": {
+        "schema_version": {
+          "type": "integer",
+          "const": 2
+        },
+        "kind": {
+          "const": "training-search-request"
+        },
+        "search_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,39}$"
+        },
+        "experiment_template": {
+          "$ref": "#/$defs/experiment_template"
+        },
+        "runner": {
+          "$ref": "#/$defs/runner"
+        },
+        "baseline_configuration": {
+          "$ref": "#/$defs/baseline_configuration"
+        },
+        "configuration": {
+          "$ref": "#/$defs/configuration"
+        },
+        "dimensions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "items": {
+            "$ref": "#/$defs/dimension"
+          }
+        },
+        "selection": {
+          "$ref": "#/$defs/selection"
+        },
+        "family_policy": {
+          "$ref": "#/$defs/family_policy"
+        },
+        "measurement": {
+          "$ref": "#/$defs/measurement"
+        },
+        "budget": {
+          "$ref": "#/$defs/budget"
+        },
+        "candidate_source": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/unchanged_source"
+            },
+            {
+              "$ref": "#/$defs/exported_source"
+            }
+          ]
+        },
+        "screen_policy": {
+          "$ref": "#/$defs/screen_policy"
+        },
+        "profile_policy": {
+          "$ref": "#/$defs/profile_policy"
+        },
+        "preparation_materials": {
+          "$ref": "#/$defs/preparation_materials"
+        },
+        "cpu_execution_contract": {
+          "type": "object"
+        }
+      }
+    },
+    "screen_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scheme",
+        "requested_tier",
+        "input_plan",
+        "window",
+        "checks",
+        "resources",
+        "screening"
+      ],
+      "properties": {
+        "scheme": {
+          "type": "string",
+          "minLength": 1
+        },
+        "requested_tier": {
+          "const": "screened"
+        },
+        "input_plan": {
+          "type": "object"
+        },
+        "window": {
+          "type": "object"
+        },
+        "checks": {
+          "type": "array"
+        },
+        "resources": {
+          "type": "array"
+        },
+        "screening": {
+          "type": "object"
+        }
+      }
+    },
+    "profile_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocol",
+        "tool",
+        "reader",
+        "source_operation",
+        "phases",
+        "ranks",
+        "window",
+        "captures",
+        "maximum_seconds",
+        "max_raw_bytes",
+        "max_derived_bytes",
+        "required"
+      ],
+      "properties": {
+        "protocol": {
+          "const": "training-profile-v1"
+        },
+        "tool": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reader": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_operation": {
+          "type": "string",
+          "minLength": 1
+        },
+        "phases": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "baseline",
+              "screen"
+            ]
+          }
+        },
+        "ranks": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "window": {
+          "type": "object"
+        },
+        "captures": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 32
+        },
+        "maximum_seconds": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 86400
+        },
+        "max_raw_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 16777216
+        },
+        "max_derived_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1048576
+        },
+        "required": {
+          "type": "boolean"
+        }
+      }
+    },
+    "artifact_selector": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "job_id",
+        "name"
+      ],
+      "properties": {
+        "job_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "description": "Pin a declared output of the original producer; all of its required stage outputs are consumed."
+    },
+    "preparation_materials": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "packet",
+        "task_id",
+        "run_id",
+        "artifacts"
+      ],
+      "properties": {
+        "packet": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "path",
+            "sha256"
+          ],
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sha256": {
+              "$ref": "#/$defs/sha256"
+            }
+          }
+        },
+        "task_id": {
+          "$ref": "#/$defs/identifier"
+        },
+        "run_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "artifacts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "flow_map",
+            "inventory",
+            "plan"
+          ],
+          "properties": {
+            "flow_map": {
+              "$ref": "#/$defs/artifact_selector"
+            },
+            "inventory": {
+              "$ref": "#/$defs/artifact_selector"
+            },
+            "plan": {
+              "$ref": "#/$defs/artifact_selector"
+            }
+          }
+        }
+      }
+    }
+  }
+}

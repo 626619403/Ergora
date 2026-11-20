@@ -1,5 +1,6 @@
 """One training intent's budget, native creation gate and independent deadline owner."""
 
+import ergora.training.runtime.evidence as execution_evidence
 import asyncio
 from contextlib import contextmanager
 from dataclasses import asdict
@@ -81,8 +82,29 @@ async def check_cycle_predecessors(plan, admission, ready, binding, client, rema
     try:
         async with asyncio.timeout(remaining()):
             active()
-            originals = protocol.authenticate_cycle_binding(binding, plan, admission, ready)
+            originals = execution_evidence.authenticate_cycle_binding(binding, plan, admission, ready)
             selection = protocol.round_selection(plan, authorization)
+            if plan['definition']['execution_scope'] == protocol.D_SCOPE:
+                for value in originals:
+                    if value is None:
+                        continue
+                    observation, original, execution = value
+                    active()
+                    request = execution['records']['request']
+                    runtime = await observe_submission(client, original, run_id=request['run_id'], timeout=remaining())
+                    if (runtime is None or runtime['workflow_id'] != request['workflow_id'] or
+                            runtime['run_id'] != request['run_id'] or runtime['terminal'] is not True or
+                            runtime['phase'] != observation['native']['state']):
+                        raise ValueError('Previous typed screen lost its original fixed terminal runtime')
+                    native = await adapter.poll_job(Job(Binding(**original['observation']['experiment']['spec']['binding']),
+                        request['job_id']), timeout=min(20, remaining()))
+                    if native.state != observation['native']['state'] or native.job.job_id != request['job_id']:
+                        raise ValueError('Previous typed screen lost its original native result')
+                    active()
+                await lookup_controller(client, admission.controller_intent(), binding['controller'], timeout=remaining())
+                execution_evidence.authenticate_cycle_binding(binding, plan, admission, ready)
+                active()
+                return None
             for position, (saved, value, original, _) in enumerate(originals):
                 active()
                 ordinal = value['identity']['ordinal']
@@ -122,7 +144,7 @@ async def check_cycle_predecessors(plan, admission, ready, binding, client, rema
                     raise ValueError('Immediately previous round is no longer authenticated accepted')
             await lookup_controller(client, admission.controller_intent(), binding['controller'], timeout=remaining())
             # Blocking archive reads and RPCs cannot leave a stale local admission.
-            protocol.authenticate_cycle_binding(binding, plan, admission, ready)
+            execution_evidence.authenticate_cycle_binding(binding, plan, admission, ready)
             active()
             return originals[0][0] if originals else None
     finally:
@@ -341,11 +363,9 @@ class BudgetedStart:
         state = State(Path(self.intent['control_home']))
         directory = training_cycles._directory(state.root, self.intent['project'], self.binding['cycle_id'])
         plan, authorization, ready = training_cycles._load(state.root, self.intent['project'], self.binding['cycle_id'], directory)
-        if authorization['schema_version'] in (3, 4):
-            training_execution_protocol.authenticate_cycle_candidate(
+        if authorization['schema_version'] == 5:
+            execution_evidence.authenticate_cycle_candidate(
                 self.intent, plan, training_execution_protocol.CycleAdmission(directory, authorization), ready)
-        elif authorization['schema_version'] == 2:
-            training_execution_protocol.CycleAdmission(directory, authorization).bind(self.intent, plan)
         elif 'controller' in self.binding:
             raise ValueError('Manual authorization cannot acquire a controller binding')
         selected = next((item for item in plan['admissions']
@@ -357,6 +377,7 @@ class BudgetedStart:
                 or authorization['project_revision'] != self.intent['project_revision']
                 or selected is None or self.operation.sha(selected['observation']) != self.operation.sha(self.intent['observation'])):
             raise ValueError('Original training budget differs from its complete start intent, source or admission')
+        training_execution_protocol.validate_cpu_contract_authority(plan, authorization, self.operation.ident)
         return state, plan, authorization, ready
 
     @contextmanager
@@ -384,7 +405,7 @@ class BudgetedStart:
                 budget_clock.remaining(authorization['clock'], plan['definition']['budget']['wall_seconds'],
                     plan['definition']['budget']['cleanup_seconds']))
             origin = self.operation.payload.get('cycle_operation')
-            if authorization['schema_version'] in (3, 4) and origin is not None:
+            if authorization['schema_version'] == 5 and origin is not None:
                 return min(timeout, training_execution_protocol.cycle_operation_remaining(origin))
             return timeout
 
@@ -396,7 +417,7 @@ class BudgetedStart:
                 from perf_temporal.connection import connect
 
                 client = await connect()
-            if authorization['schema_version'] in (3, 4):
+            if authorization['schema_version'] == 5:
                 origin = self.operation.payload.get('cycle_operation')
                 context = origin.get('activity_context') if origin is not None else None
                 if context is not None and client.namespace != context['service_namespace']:
@@ -459,6 +480,14 @@ class BudgetedStart:
             environment['PYTHONPATH'] = os.pathsep.join(map(str, (
                 IMPORT_ROOT, installation / 'local', installation / 'upstream/platform',
                 installation / 'upstream/temporal', installation / 'upstream')))
+            from ergora.training.materials import cpu_contract
+
+            contract = cpu_contract(self.intent['observation']['experiment']['manifest'])
+            if contract is not None:
+                payload['cpu_parent_ref'] = training_execution_protocol.publish_cpu_process_context(contract, 'parent',
+                    {'intent_sha256': self.identity['intent_sha256'], 'authorization_sha256': self.identity['authorization_sha256']},
+                    observation / 'cpu-parent.json', self.folder)
+                self.require_active()
             with (observation / 'stdout.json').open('xb') as stdout, (observation / 'stderr.txt').open('xb') as stderr:
                 child = subprocess.Popen([sys.executable, '-P', '-c',
                     'from ergora.training.runtime.worker import budget_main;budget_main()'], stdin=subprocess.PIPE,
@@ -488,12 +517,13 @@ class BudgetedStart:
     def _start_remaining(self, payload: dict) -> float:
         """The root and final SDK gate consume the same original prepare request."""
         source = training_execution_protocol.cycle_start_source(payload)
+        plan, _ = training_execution_protocol.resolve_cycle_snapshot(source)
         identity, context = payload['identity'], payload['start_context']
         if (context['controller'] != self.binding.get('controller')
                 or identity['control_home'] != self.intent['control_home']
                 or identity['project'] != self.intent['project'] or identity['cycle_id'] != self.binding['cycle_id']
                 or identity['authorization_sha256'] != self.identity['authorization_sha256']
-                or source['snapshot']['candidates'][identity['ordinal']]['experiment_id'] != self.operation.ident):
+                or plan['definition']['candidates'][identity['ordinal']]['experiment_id'] != self.operation.ident):
             raise ValueError('Controller start differs from its complete original prepare call')
         self.require_active(owner=identity['mode'] == 'dispatch-candidate')
         if _process_identity(identity['parent']['pid']) != identity['parent']:
@@ -525,9 +555,16 @@ class BudgetedStart:
         if len(json.dumps(result, ensure_ascii=False, allow_nan=False).encode('utf-8')) > 32_768:
             raise training_cycles._CycleCapacityError(
                 'Complete controller root material exceeds 32 KiB; its start intent is already occupied')
-        observation = self.path('launches/' + self.intent['operation_id'])
-        observation.mkdir(parents=True, mode=0o700)
-        training_execution_protocol.sync_directories(observation, self.operation.root)
+        # Consume the original root opportunity under the same submission lock
+        # as skip. The existing budget namespace is permanent even on lost reply.
+        with file_lock(self.operation.path('.lock'), blocking=False):
+            training_execution_protocol.require_not_skipped(self.intent['execution'], self.operation.ident)
+            self._start_remaining(payload)
+            observation = self.path('launches/' + self.intent['operation_id'])
+            observation.mkdir(parents=True, mode=0o700)
+            training_execution_protocol.sync_directories(observation, self.operation.root)
+            training_execution_protocol.require_not_skipped(self.intent['execution'], self.operation.ident)
+            self._start_remaining(payload)
         return result
 
     def observe(self) -> dict:
@@ -575,12 +612,22 @@ class BudgetedStart:
             raise ValueError('Original budget fence changed during durable publication')
         return {'sha256': hashlib.sha256(raw).hexdigest(), 'durable_at': now()}
 
-    def context(self) -> dict:
+    def _source_context(self) -> dict:
         _, plan, authorization, _ = self.source()
         published = registrations.published_project(self.intent['control_home'], self.intent['project'],
             authorization['registration']['operation_id'], authorization['registration']['intent_sha256'])
         return {'intent': self.intent, 'authorization': authorization, 'policy': plan['definition']['budget'],
                 'project': plan['project'], 'published_project': published}
+
+    def context(self) -> dict:
+        context = self._source_context()
+        owner = self.owner_record()
+        if 'cpu_context' in owner:
+            context['cpu_context'] = owner['cpu_context']
+        training_execution_protocol.validate_owner_context(context, owner)
+        training_execution_protocol.validate_cpu_budget_context(context, expected_budget={
+            name: owner[name] for name in ('pid', 'start_ticks', 'boot_id')})
+        return context
 
     @staticmethod
     def remaining(context: dict, *, cleanup: bool = False) -> float:
@@ -620,7 +667,33 @@ class BudgetedStart:
             if self.path('owner.json').exists():
                 raise ValueError('Original training budget owner cannot be restarted')
             self.require_active()
-            context = self.context()
+            context = self._source_context()
+            from ergora.training.materials import cpu_contract, validate_cpu_context_observation
+
+            contract = cpu_contract(self.intent['observation']['experiment']['manifest'])
+            if contract is not None:
+                binding = {'intent_sha256': self.identity['intent_sha256'], 'authorization_sha256': self.identity['authorization_sha256']}
+                if root_operation is not None:
+                    original = root_operation['identity']
+                    parent_path = Path(original['control_home']) / 'operations/training-cycles' / original['operation_id'] / 'cpu-budget-parent.json'
+                    raw = training_execution_protocol.read_raw(parent_path, training_execution_protocol.ARTIFACT_LIMIT)
+                    parent_ref = {'path': str(parent_path), 'sha256': hashlib.sha256(raw).hexdigest(), 'bytes': len(raw)}
+                    cycle_ref = training_execution_protocol.cycle_cpu_context(root_operation)
+                    parent_identity = original['parent']
+                else:
+                    parent_ref = self.operation.payload['cpu_parent_ref']
+                    cycle_ref = None
+                    parent_identity = _process_identity(os.getppid())
+                parent_frame = training_execution_protocol.read_trial_reference(parent_ref)
+                validate_cpu_context_observation(parent_frame, contract=contract, role='parent', binding=binding,
+                    expected_subject=parent_identity, require_complete=False)
+                if os.getppid() != parent_identity['pid'] or _process_identity(parent_identity['pid']) != parent_identity:
+                    raise ValueError('Typed CPU budget lost its original actual spawn parent')
+                budget_ref = training_execution_protocol.publish_cpu_process_context(contract, 'budget', binding,
+                    self.path('cpu-context.json'), self.folder)
+                context['cpu_context'] = {'parent': parent_ref, 'budget': budget_ref, 'cycle': cycle_ref}
+                training_execution_protocol.validate_cpu_budget_context(context, expected_budget=_process_identity(os.getpid()))
+                self.require_active()
             self.cancelled = False
 
             def cancel(signum, frame):
@@ -634,9 +707,12 @@ class BudgetedStart:
                 capability = training_execution_protocol.source_capability(Path(self.intent['execution']['installation']), ready)
                 if root_operation is not None:
                     self._start_remaining(root_operation)
-                training_cycles._record(self.path('owner.json'), {**self.identity, 'schema_version': 2,
+                owner = {**self.identity, 'schema_version': 2,
                     **_process_identity(os.getpid()), 'context_sha256': self.operation.sha(context),
-                    'execution_capability': capability})
+                    'execution_capability': capability}
+                if 'cpu_context' in context:
+                    owner['cpu_context'] = context['cpu_context']
+                training_cycles._record(self.path('owner.json'), owner)
             self.phase_observations = []
             from ergora.training.runtime.execution import Execution
 
@@ -654,10 +730,11 @@ class BudgetedStart:
             return {**final, 'publication': publication}
 
     def validate_cached(self, context: dict) -> None:
+        owner = self.owner_record()
         if (self.operation.sha(context['intent']) != self.identity['intent_sha256']
-                or self.operation.sha(context) != self.owner_record()['context_sha256']
                 or not self.owner_alive()):
             raise ValueError('Supervised training cleanup has no matching original live owner')
+        training_execution_protocol.validate_owner_context(context, owner)
         budget_clock.validate(context['authorization']['clock'], context['policy']['wall_seconds'])
 
     def experiment(self):
@@ -741,6 +818,8 @@ class BudgetedStart:
         if mode == 'admission':
             from ergora.training.runtime.execution import Execution
 
+            training_execution_protocol.validate_cpu_budget_context(context, expected_budget={
+                name: self.owner_record()[name] for name in ('pid', 'start_ticks', 'boot_id')})
             return await Execution(self.operation, self).admit(context)
         raise ValueError('Unsupported training budget helper phase')
 
@@ -753,20 +832,21 @@ def _controller_owner(request: dict, *, operation_factory, required_schema_versi
     source = decode_record(protocol.read_raw(Path(payload['control_home']) / 'operations/training-cycles'
         / request['origin_operation_id'] / 'request.json', 32_768))
     protocol.cycle_start_source(source)
+    plan, authorization = protocol.resolve_cycle_snapshot(source)
     identity = source['identity']
     if (identity['mode'] != 'prepare-candidate' or identity['parent'] != request['parent']
             or source['bootstrap'] != request['window'] or identity['control_home'] != payload['control_home']
             or identity['project'] != payload['project']['id']
-            or payload['project']['registration']['definition']['execution'] != source['snapshot']['authorization']['execution']
-            or payload['timeout'] != source['snapshot']['policy']['control_timeout_seconds']
-            or source['snapshot']['candidates'][identity['ordinal']]['experiment_id'] != payload['experiment_id']
+            or payload['project']['registration']['definition']['execution'] != authorization['execution']
+            or payload['timeout'] != source['snapshot']['budget']['policy']['control_timeout_seconds']
+            or plan['definition']['candidates'][identity['ordinal']]['experiment_id'] != payload['experiment_id']
             or os.getppid() != request['parent']['pid']
             or processes.identity(request['parent']['pid']) != request['parent']
             or protocol.cycle_operation_remaining(source) <= 0):
         raise ValueError('Controller root lost its complete original prepare request, parent or window')
-    if required_schema_versions is not None and source['snapshot']['authorization']['schema_version'] not in required_schema_versions:
+    if required_schema_versions is not None and authorization['schema_version'] not in required_schema_versions:
         raise ValueError('Dedicated controller root requires its original schema3 authorization')
-    _select_cycle_project(source['snapshot']['authorization'], payload['project'])
+    _select_cycle_project(authorization, payload['project'])
     operation = operation_factory(payload)
     intent = operation.load()
     if (intent is None or operation.sha(intent) != payload['intent_sha256']

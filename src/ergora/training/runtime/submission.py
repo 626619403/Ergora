@@ -4,6 +4,7 @@ import asyncio
 from contextlib import nullcontext, redirect_stdout
 from dataclasses import asdict
 import io
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -16,8 +17,11 @@ from ergora.training.runtime.context import _TrainingProject
 from ergora.training.runtime.status import MEMO_KEY as _MEMO_KEY
 import ergora.training.runtime.budget as budgets
 import ergora.training.cycles as training_cycles
+import ergora.training.execution_protocol as protocol
+import ergora.training.runtime.evidence as execution_evidence
 from ergora.storage.state import file_lock
 from ergora.training.configuration import validate_runner
+from ergora.training.materials import decode_record
 
 
 _INTENT_LIMIT = 16 * 1_048_576
@@ -51,7 +55,121 @@ class _Submission(_TrainingProject):
         return _training_records({'project': self.project['id'], 'repo': self.project['repo'],
                                   'experiment_id': self.ident})
 
+    def skipped(self, decision: dict) -> dict:
+        path = protocol.skip_decision_path(self.execution, self.ident)
+        raw = protocol.read_raw(path, protocol.ARTIFACT_LIMIT)
+        protocol._match(decode_record(raw), decision, 'Original skip decision raw bytes')
+        return {'status': 'skipped_known_failure', 'decision': decision,
+                'decision_ref': {'path': str(path), 'sha256': hashlib.sha256(raw).hexdigest(), 'bytes': len(raw)}}
+
+    def skip_absence(self, authorization: dict, ordinal: int) -> dict:
+        """Inspect the original effect namespaces while submission and registry are locked."""
+        from ergora.agents.runs import cycle_analysis_path
+        from ergora.storage.assets import is_link
+
+        paths = [self.path('.' + suffix) for suffix in
+                 ('attempt.json', 'result.json', 'rejection.json', 'budget')]
+        paths.extend(self.adapter.safe_file(self.root, relative) for relative in
+                     ('training/jobs/' + self.ident, 'training/fences/' + self.ident + '.json',
+                      'training/negative-results/' + self.ident + '.json'))
+        paths.append(cycle_analysis_path(self.payload['control_home'], authorization['sha256'], ordinal, phase='screen'))
+        allowed = {self.ident + suffix for suffix in ('.lock', '.intent.json', '.skip.json')}
+        # A partial or unrecognized same-ID record cannot certify absence. A
+        # pending publication has no trustworthy identity until it completes.
+        for path in self.path('.lock').parent.iterdir():
+            if ((path.name.startswith(self.ident + '.') and path.name not in allowed)
+                    or path.name.startswith('.pending-')):
+                paths.append(path)
+        absent = []
+        for path in sorted(set(paths)):
+            for parent in path.parents:
+                try:
+                    linked = is_link(parent)
+                except FileNotFoundError:
+                    continue
+                if linked or not parent.is_dir():
+                    raise ValueError('Known failure skip requires original ordinary effect directories')
+            try:
+                path.lstat()
+            except FileNotFoundError:
+                absent.append(str(path))
+            else:
+                raise ValueError('Known failure skip requires no prior or unresolved effect opportunity: ' + str(path))
+        return {'experiment_id': self.ident, 'absent': absent}
+
+    def skip(self, plan: dict, authorization: dict, ordinal: int, historical: dict) -> dict:
+        """Permanently consume an unborn screen without starting a native or model run."""
+        from agent_platform.training import TRAINING, registry_lock
+        from ergora.storage.state import State
+
+        if TRAINING != self.root / 'training':
+            raise ValueError('Skip registry differs from the registered native state directory')
+        directory = Path(authorization['control_home']) / 'training-cycles' / authorization['project'] / authorization['cycle_id']
+        admission = protocol.CycleAdmission(directory, authorization)
+        source = self.payload.get('cycle_operation')
+        if source is None:
+            raise ValueError('Known failure skip requires its authenticated original controller operation')
+        origin = protocol.cycle_start_source(source)
+        if (origin['identity']['ordinal'] != ordinal
+                or origin['identity']['input_sha256'] != authorization['input_sha256']):
+            raise ValueError('Known failure skip differs from its original controller operation')
+        binding = {'cycle_id': authorization['cycle_id'], 'authorization_sha256': authorization['sha256'],
+                   'task_queue': protocol.BUDGET_TASK_QUEUE, 'controller': origin['start_context']['controller']}
+        lock = self.path('.lock')
+        lock.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        self.adapter.safe_file(self.root, 'training/registry.lock')
+        with file_lock(lock, blocking=False), registry_lock():
+            existing = execution_evidence.read_skip_decision(self.execution, self.ident,
+                plan=plan, authorization=authorization, ordinal=ordinal)
+            if existing is not None:
+                protocol._match(existing['historical'], historical, 'Original skip historical sources')
+                return self.skipped(existing)
+            with admission.permission() as parent:
+                original_plan, original_authorization = protocol.resolve_cycle_snapshot(origin)
+                if original_plan != plan or original_authorization != authorization:
+                    raise ValueError('Known failure skip changed its original complete controller records')
+                state = State(Path(authorization['control_home']))
+                def active():
+                    expected_parent = origin['identity']['parent']
+                    protocol._match(protocol.processes.identity(expected_parent['pid']), expected_parent,
+                                    'Original skip operation parent')
+                    self.registration()
+                    training_cycles._controller_ready(state, admission)
+                    original_plan, original_authorization, ready = training_cycles._load(
+                        state.root, authorization['project'], authorization['cycle_id'], directory)
+                    protocol._match(original_plan, plan, 'Original skip cycle input')
+                    protocol._match(original_authorization, authorization, 'Original skip authorization')
+                    execution_evidence.authenticate_cycle_binding(binding, plan, admission, ready)
+                    if protocol.cycle_operation_remaining(origin) <= 0:
+                        raise ValueError('Original skip operation window is exhausted')
+                    parent.check()
+                active()
+                intent = self.load()
+                if intent is not None:
+                    protocol._round_candidate_intent(intent, plan, admission, ordinal)
+                observed = self.preflight(intent)
+                protocol._match(observed, plan['admissions'][ordinal]['observation'], 'Current skip admission')
+                absence = self.skip_absence(authorization, ordinal)
+                current_context = protocol.cycle_cpu_context(self.payload['cycle_operation'], capture=True)
+                decision = execution_evidence.make_skip_decision(plan, authorization, ordinal, historical,
+                    absence_sha256=self.sha(absence), current_context=current_context)
+                if decision['experiment_id'] != self.ident:
+                    raise ValueError('Known failure skip selected another experiment')
+                active()
+                protocol.publish(self.path('.skip.json'), decision, self.root)
+                saved = execution_evidence.read_skip_decision(self.execution, self.ident,
+                    plan=plan, authorization=authorization, ordinal=ordinal)
+                protocol._match(saved, decision, 'Durable original skip decision')
+                if protocol.cycle_operation_remaining(origin) <= 0:
+                    raise ValueError('Original skip operation window ended during durable publication')
+                expected_parent = origin['identity']['parent']
+                protocol._match(protocol.processes.identity(expected_parent['pid']), expected_parent,
+                                'Original skip operation parent')
+                parent.check()
+                return self.skipped(saved)
+
     def preflight(self, intent: dict | None = None) -> dict:
+        protocol.require_not_skipped(self.execution, self.ident)
         self.registration()
         observed = self.records()
         item = observed['experiment']
@@ -59,10 +177,22 @@ class _Submission(_TrainingProject):
             raise ValueError('Training submission requires the current matching baseline: ' + item['baseline_error'])
         if item['current_runner'] is None:
             raise ValueError('Training submission requires its current trusted runner')
-        if any(item[name] is not None for name in ('job_request', 'started', 'result', 'fence', 'negative_result')):
+        native_job = self.adapter.safe_file(self.root, 'training/jobs/' + self.ident)
+        if (native_job.exists() or native_job.is_symlink()
+                or any(item[name] is not None for name in ('job_request', 'started', 'result', 'fence', 'negative_result'))):
             raise ValueError('Native job, execution or fence records already exist; do not resubmit this experiment')
         runner = item['current_runner']
         validate_runner(runner)
+        from ergora.training.configuration import validate_execution_sources
+        from ergora.training.materials import cpu_preparation_observation
+        if 'cpu_contract' in item['manifest'].get('execution', {}):
+            validate_execution_sources(item['manifest'], runner)
+            accepted = execution_evidence.read_cpu_preparation_admission(self.root, self.ident, item['manifest'], runner)
+            envelope = cpu_preparation_observation(accepted, self.ident)
+            item['cpu_contract_preparation'] = envelope
+            for name in ('intent_ref', 'admission_ref'):
+                ref = envelope[name]
+                item['files'][ref['path']] = ref['sha256']
         if runner['timeout_seconds'] > item['max_run_seconds']:
             raise ValueError('Trusted runner command or execution walltime is invalid')
         repo = Path(self.project['repo'])
@@ -119,10 +249,13 @@ class _Submission(_TrainingProject):
             return {**self.attempt(intent), 'reason': reason, 'run_id': None}
         raise ValueError('Invalid training submission rejection')
 
-    def status(self, intent: dict | None) -> dict:
+    def status(self, intent: dict | None, *, skip_decision: bool = True) -> dict:
         result = {**self.recovery_context, 'project': self.project['id'], 'project_revision': self.project_revision,
                   'experiment_id': self.ident, 'workflow_id': self.identity['workflow_id'],
                   'run_id': None, 'runtime_status': 'not_queried', 'execution_success': None}
+        decision = execution_evidence.read_skip_decision(self.execution, self.ident) if skip_decision else None
+        if decision is not None:
+            return {**result, **self.skipped(decision)}
         if intent is None:
             if self.recovery is not None:
                 raise ValueError('Original registration recovery requires an existing matching start intent')
@@ -175,7 +308,8 @@ class _Submission(_TrainingProject):
         intent = self.load()
         if self.recovery is not None and intent is None:
             raise ValueError('Original registration fencing requires an existing matching start intent')
-        submitted = self.status(intent) if intent is not None else None
+        # A damaged later veto cannot suppress cleanup of an original attempt.
+        submitted = self.status(intent, skip_decision=False) if intent is not None else None
         observed = intent['observation'] if intent is not None else self.records()
         spec = observed['experiment']['spec']
         if self.payload['manifest_sha256'] != spec['binding']['manifest_sha']:
@@ -255,8 +389,7 @@ class _Submission(_TrainingProject):
                         training_cycles._sync_directory(operation.path('.attempt.json').parent)
                     operation.preflight(intent)
                     if budget is not None:
-                        if ('controller' in budget.binding
-                                and budget.binding['controller']['protocol'] in ('ergora-training-cycle-v2', 'ergora-training-cycle-v3')):
+                        if 'controller' in budget.binding:
                             await budget.check_controller_history(self.client)
                         budget.require_active(owner=True)
                         options['task_queue'] = budget.binding['task_queue']
@@ -317,6 +450,7 @@ class _Submission(_TrainingProject):
         if operation == 'fence':
             return await self.fence()
         if operation == 'check':
+            protocol.require_not_skipped(self.execution, self.ident)
             intent = self.load()
             observed = self.preflight() if intent is None else None
             original = observed if intent is None else intent['observation']
@@ -328,6 +462,15 @@ class _Submission(_TrainingProject):
                     'ready_for_new_start': intent is None, 'read_only': True, 'execution_authorized': False,
                     'runtime_status': 'not_queried', 'observation': observed,
                     'submission': self.status(intent) if intent is not None else None}
+        if operation == 'skip-known-failure':
+            selector = self.payload['skip_decision']
+            cycle_id = self.core.slug(selector['cycle_id'])
+            directory = Path(self.payload['control_home']) / 'training-cycles' / self.project['id'] / cycle_id
+            plan, authorization, _ = training_cycles._load(Path(self.payload['control_home']),
+                self.project['id'], cycle_id, directory)
+            if selector['authorization_sha256'] != authorization['sha256']:
+                raise ValueError('Skip selector differs from the original authorization')
+            return self.skip(plan, authorization, selector['ordinal'], selector['historical'])
         if operation not in ('prepare', 'prepare-resume', 'dispatch', 'resume'):
             raise ValueError('Unsupported training submission operation')
         lock = self.path('.lock')
@@ -335,6 +478,7 @@ class _Submission(_TrainingProject):
         # A short local prepare may run under a DB reservation. Never wait for
         # another operation's remote I/O while holding that reservation.
         with file_lock(lock, blocking=False):
+            protocol.require_not_skipped(self.execution, self.ident)
             intent = self.load()
             if operation == 'prepare':
                 if intent is not None:
@@ -398,9 +542,9 @@ def main() -> None:
 
 
 def cycle_root_main() -> None:
-    """Enter the original schema3 controller owner without loading the SDK worker."""
+    """Enter the current controller owner without loading the SDK worker."""
     request = json.load(sys.stdin)
     if len(json.dumps(request, ensure_ascii=False, allow_nan=False).encode('utf-8')) > 32_768:
         raise ValueError('Complete controller root request exceeds 32 KiB')
-    result = budgets._controller_owner(request, operation_factory=_Submission, required_schema_versions=(3, 4))
+    result = budgets._controller_owner(request, operation_factory=_Submission, required_schema_versions=(5,))
     print(json.dumps(result, ensure_ascii=False, allow_nan=False))

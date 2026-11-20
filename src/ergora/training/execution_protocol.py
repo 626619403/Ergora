@@ -17,7 +17,7 @@ import stat
 import sys
 
 import ergora.native.resources as native_resources
-from ergora._paths import PACKAGE_ROOT
+from ergora._paths import IMPORT_ROOT, PACKAGE_ROOT
 from ergora.runtime import budget_clock
 from ergora.runtime import processes
 from ergora.training.materials import decode_record
@@ -39,10 +39,119 @@ CYCLE_OBSERVATION_MODES = ('inspect', 'inspect-controller-activity', 'reconcile-
 LIMIT = 1_048_576
 ARTIFACT_LIMIT = 10_000_000
 MEASUREMENT_SOURCES = (
-    'training/rounds.py',
-    'training/runtime/evidence.py',
+    '__init__.py',
+    '_paths.py',
+    'agents/__init__.py',
+    'agents/backends.py',
+    'agents/invocation.py',
+    'agents/mcp.py',
+    'agents/native_sources.py',
+    'agents/runs.py',
+    'configuration/__init__.py',
+    'configuration/bindings.py',
+    'configuration/catalog.py',
+    'configuration/projects.py',
+    'configuration/registrations.py',
+    'configuration/validation.py',
+    'data/components.json',
+    'data/native-runtime/training-executor-admission-v3.json',
+    'data/reference-manifest.json',
+    'data/schemas/agent-definition-v1.json',
+    'data/schemas/candidate-review-context-v1.json',
+    'data/schemas/composition-input-v1.json',
+    'data/schemas/composition-manifest-v1.json',
+    'data/schemas/document-correction-proposal-v1.json',
+    'data/schemas/evaluation-manifest-v1.json',
+    'data/schemas/evaluation-result-v1.json',
+    'data/schemas/issue-observation-v1.json',
+    'data/schemas/project-registration-v1.json',
+    'data/schemas/project-registration-v2.json',
+    'data/schemas/retrospective-memory-proposal-v1.json',
+    'data/schemas/retrospective-proposal-v1.json',
+    'data/schemas/retrospective-workflow-proposal-v1.json',
+    'data/schemas/state-backup-v1.json',
+    'data/schemas/task-definition-v1.json',
+    'data/schemas/task-definition-v2.json',
+    'data/schemas/task-definition-v3.json',
+    'data/schemas/task-definition-v8.json',
+    'data/schemas/task-handoff-v1.json',
+    'data/schemas/task-mcp-scope-v1.json',
+    'data/schemas/training-cycle-v2.json',
     'data/schemas/training-rounds-v1.json',
+    'data/schemas/training-search-v2.json',
+    'data/schemas/workflow-definition-v1.json',
+    'data/schemas/workflow-definition-v2.json',
+    'definitions/__init__.py',
+    'definitions/agents.py',
+    'definitions/bundles.py',
+    'definitions/skills.py',
+    'definitions/workflows.py',
+    'development/__init__.py',
+    'development/application.py',
+    'development/budget.py',
+    'development/context.py',
+    'development/dags.py',
+    'development/design.py',
+    'development/envelopes.py',
+    'development/handoff.py',
+    'development/inputs.py',
+    'development/native.py',
+    'development/runtime/__init__.py',
+    'development/runtime/creation.py',
+    'development/runtime/creation_process.py',
+    'development/runtime/evidence.py',
+    'development/runtime/executor.py',
+    'development/runtime/jobs.py',
+    'development/runtime/review_opinions.py',
+    'development/runtime/status.py',
+    'development/runtime/submission.py',
+    'development/runtime/workflows.py',
+    'development/six_stage.py',
+    'improvement/__init__.py',
+    'improvement/document_corrections.py',
+    'improvement/kernel.py',
+    'improvement/memory.py',
+    'improvement/retrospectives.py',
+    'issues/__init__.py',
+    'issues/backends.py',
+    'issues/identity.py',
+    'issues/snapshots.py',
+    'native/__init__.py',
+    'native/commands.py',
+    'native/compiler.py',
+    'native/files.py',
+    'native/history.py',
+    'native/registration.py',
+    'native/resources.py',
+    'runtime/__init__.py',
+    'runtime/budget_clock.py',
+    'runtime/processes.py',
+    'runtime/windows_job.py',
+    'storage/__init__.py',
+    'storage/assets.py',
+    'storage/git.py',
+    'storage/state.py',
+    'training/__init__.py',
+    'training/application.py',
+    'training/configuration.py',
+    'training/cycles.py',
+    'training/execution_protocol.py',
+    'training/materials.py',
+    'training/native.py',
+    'training/rounds.py',
+    'training/runtime/__init__.py',
+    'training/runtime/budget.py',
+    'training/runtime/cancellation.py',
+    'training/runtime/context.py',
+    'training/runtime/evidence.py',
+    'training/runtime/execution.py',
+    'training/runtime/preparation.py',
     'training/runtime/release.py',
+    'training/runtime/setup.py',
+    'training/runtime/status.py',
+    'training/runtime/submission.py',
+    'training/runtime/worker.py',
+    'training/search.py',
 )
 
 
@@ -64,6 +173,211 @@ def _read_cycle_bytes(path: Path, limit: int) -> bytes:
     if len(raw) > limit:
         raise _CycleCapacityError(f'Complete training cycle record exceeds {limit} bytes; nothing was truncated')
     return raw
+
+
+def _cycle_cpu_contract(payload):
+    """Select C from the exact original cycle bytes, without app/native imports."""
+    from ergora.training.materials import cpu_contract, validate_cpu_execution_contract
+
+    identity = payload['identity']
+    ordinal = identity['ordinal']
+    if (identity['mode'] not in ('prepare-candidate', 'request-execution-candidate')
+            or ordinal is None or identity['input_sha256'] is None):
+        return None
+    plan, authorization = resolve_cycle_snapshot(payload)
+    admitted = plan['admissions'][ordinal]['observation']['experiment']
+    contract = cpu_contract(admitted['manifest'])
+    if contract is not None:
+        validate_cpu_execution_contract(contract, runner=admitted['current_runner'])
+        validate_cpu_contract_authority(plan, authorization, admitted['experiment_id'])
+    return contract
+
+
+def publish_cpu_process_context(contract, role, binding, path, root):
+    """Publish one actual owner's original frame using the shared material ABI."""
+    from ergora.training.materials import cpu_context_observation, observation_bytes, publish_material
+
+    if not path.exists():
+        raw = observation_bytes(cpu_context_observation(contract, role, binding), ARTIFACT_LIMIT)
+        path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        publish_material(path, raw, root)
+    raw = read_raw(path, ARTIFACT_LIMIT)
+    return {'path': str(path), 'sha256': hashlib.sha256(raw).hexdigest(), 'bytes': len(raw)}
+
+
+def validate_cpu_budget_context(context, *, expected_budget=None, require_complete=False, reader=None):
+    """Check saved parent→budget observations independently of normal effect consent."""
+    from ergora.training.materials import cpu_contract, validate_cpu_context_observation
+
+    reader = read_trial_reference if reader is None else reader
+    intent = context['intent']
+    contract = cpu_contract(intent['observation']['experiment']['manifest'])
+    material = context.get('cpu_context')
+    if contract is None:
+        if material is not None:
+            raise ValueError('CPU budget material lacks its original typed contract')
+        return None
+    if material is None:
+        raise ValueError('Typed CPU budget lacks its original owned process observations')
+    if require_complete and expected_budget is None:
+        raise ValueError('unsupported: CPU budget matching lacks its original normal owner identity')
+    _exact(material, ('parent', 'budget', 'cycle'), 'Original CPU budget context')
+    binding = {'intent_sha256': CycleAdmission._sha(intent), 'authorization_sha256': context['authorization']['sha256']}
+    parent, budget = (reader(material[role]) for role in ('parent', 'budget'))
+    parent_identity = {name: parent['subject'][name] for name in ('pid', 'start_ticks', 'boot_id')}
+    expected_parent = parent_identity
+    controller = intent['budget'].get('controller')
+    if material['cycle'] is not None:
+        cycle = reader(material['cycle'])
+        operation = cycle['operation']
+        if (controller is None or operation['mode'] != 'prepare-candidate'
+                or operation['ordinal'] != controller['ordinal']
+                or operation['authorization_sha256'] != context['authorization']['sha256']
+                or any(operation[key] != intent[key] for key in ('control_home', 'project'))
+                or operation['cycle_id'] != intent['budget']['cycle_id']):
+            raise ValueError('CPU budget context differs from its original controller birth/ordinal')
+        request = reader(cycle['request_ref'])
+        plan, _ = resolve_cycle_snapshot(request)
+        if plan['definition']['candidates'][operation['ordinal']]['experiment_id'] != intent['experiment_id']:
+            raise ValueError('CPU budget context differs from its original selected experiment')
+        expected_parent = cycle['subjects']['parent']
+    elif controller is not None:
+        raise ValueError('Typed controller CPU budget lacks its original P/S/H admission')
+    parent_stable = validate_cpu_context_observation(parent, contract=contract, role='parent', binding=binding,
+        expected_subject=expected_parent, require_complete=require_complete)
+    budget_stable = validate_cpu_context_observation(budget, contract=contract, role='budget', binding=binding,
+        expected_subject=expected_budget, require_complete=require_complete)
+    if budget['subject']['parent_pid'] != parent_identity['pid']:
+        raise ValueError('CPU budget subject differs from its original actual spawn parent')
+    if require_complete and parent_stable != budget_stable:
+        raise ValueError('CPU placement changed between actual spawn thread and budget root')
+    if material['cycle'] is not None:
+        stable = read_cycle_cpu_context(material['cycle'], contract=contract,
+            require_complete=require_complete, reader=reader)
+        if require_complete and stable != budget_stable:
+            raise ValueError('CPU budget placement changed from its original P/S/H admission')
+    return budget_stable
+
+
+def _cycle_cpu_frame(payload, role, *, capture=False):
+    """Read/publish one original role's bounded frame in its operation namespace."""
+    from ergora.training.materials import cpu_context_observation, publish_material, observation_bytes
+
+    identity = payload['identity']
+    contract = _cycle_cpu_contract(payload)
+    if contract is None:
+        return None
+    path = Path(identity['control_home']) / 'operations/training-cycles' / identity['operation_id'] / ('cpu-' + role + '.json')
+    if capture and not path.exists():
+        if cycle_operation_remaining(payload) <= 0:
+            raise ValueError('Original operation allowance ended before CPU context observation')
+        frame = cpu_context_observation(contract, role, {'operation': identity})
+        raw = observation_bytes(frame, ARTIFACT_LIMIT)
+        path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        publish_material(path, raw, Path(identity['control_home']) / 'operations/training-cycles')
+        if cycle_operation_remaining(payload) <= 0:
+            raise ValueError('Original operation allowance ended during CPU context publication')
+    raw = read_raw(path, ARTIFACT_LIMIT)
+    return {'path': str(path), 'sha256': hashlib.sha256(raw).hexdigest(), 'bytes': len(raw)}
+
+
+def cycle_cpu_context(payload, *, capture=False):
+    """Bind original P/S/H frames; later readers never observe their own subject."""
+    from ergora.training.materials import publish_material, observation_bytes
+
+    contract = _cycle_cpu_contract(payload)
+    if contract is None:
+        return None
+    identity = payload['identity']
+    root = Path(identity['control_home']) / 'operations/training-cycles' / identity['operation_id']
+    path = root / 'cpu-context.json'
+    if capture and not path.exists():
+        supervisor = read_cycle_supervisor(payload, live=True)
+        declared = supervisor.get('cpu_contexts')
+        if declared is None:
+            raise ValueError('Typed CPU helper lacks its original parent/supervisor observations')
+        helper = _cycle_cpu_frame(payload, 'helper', capture=True)
+        request_raw = read_raw(root / 'request.json', _CYCLE_LIMIT)
+        supervisor_raw = read_raw(root / 'supervisor.json', ARTIFACT_LIMIT)
+        value = {'schema_version': 1, 'kind': 'training-cycle-cpu-context', 'operation': identity,
+            'contract_sha256': contract['sha256'],
+            'request_ref': {'path': str(root / 'request.json'), 'sha256': hashlib.sha256(request_raw).hexdigest(), 'bytes': len(request_raw)},
+            'supervisor_ref': {'path': str(root / 'supervisor.json'), 'sha256': hashlib.sha256(supervisor_raw).hexdigest(), 'bytes': len(supervisor_raw)},
+            'environment': _cpu_environment(),
+            'subjects': {'parent': identity['parent'], 'supervisor': supervisor['supervisor'],
+                         'helper': processes.identity(os.getpid())},
+            'frames': {**declared, 'helper': helper}}
+        raw = observation_bytes(value, ARTIFACT_LIMIT)
+        publish_material(path, raw, Path(identity['control_home']) / 'operations/training-cycles')
+    raw = read_raw(path, ARTIFACT_LIMIT)
+    reference = {'path': str(path), 'sha256': hashlib.sha256(raw).hexdigest(), 'bytes': len(raw)}
+    read_cycle_cpu_context(reference, payload=payload, require_complete=False)
+    return reference
+
+
+def read_cycle_cpu_context(reference, *, payload=None, contract=None, require_complete=True, reader=None):
+    """Validate saved role subjects, ownership edges and independent stable facts."""
+    from ergora.training.materials import validate_cpu_context_observation
+
+    reader = read_trial_reference if reader is None else reader
+    value = reader(reference)
+    _exact(value, ('schema_version', 'kind', 'operation', 'contract_sha256', 'request_ref', 'supervisor_ref', 'environment', 'subjects', 'frames'),
+        'Original CPU operation context')
+    identity = value['operation']
+    root = Path(identity['control_home']) / 'operations/training-cycles' / identity['operation_id']
+    if reference['path'] != str(root / 'cpu-context.json'):
+        raise ValueError('CPU context moved outside its original operation namespace')
+    if (value['request_ref']['path'] != str(root / 'request.json')
+            or value['supervisor_ref']['path'] != str(root / 'supervisor.json')):
+        raise ValueError('CPU request/supervisor references moved outside their original owner')
+    original = reader(value['request_ref'])
+    if (value['schema_version'] != 1 or value['kind'] != 'training-cycle-cpu-context'
+            or original['identity'] != identity
+            or payload is not None and original != payload):
+        raise ValueError('CPU context differs from its original operation request')
+    original_contract = _cycle_cpu_contract(original)
+    if contract is not None and original_contract != contract:
+        raise ValueError('CPU context changed its original selected contract')
+    contract = original_contract
+    if contract is None or contract['sha256'] != value['contract_sha256']:
+        raise ValueError('CPU context differs from its original admitted contract')
+    supervisor = _validate_cycle_supervisor(reader(value['supervisor_ref']), original, value['request_ref']['sha256'])
+    _exact(value['subjects'], ('parent', 'supervisor', 'helper'), 'CPU role subjects')
+    _exact(value['frames'], ('parent', 'supervisor', 'helper'), 'CPU role frame references')
+    if (value['subjects']['parent'] != identity['parent'] or value['subjects']['supervisor'] != supervisor['supervisor']
+            or {name: value['frames'][name] for name in ('parent', 'supervisor')} != supervisor.get('cpu_contexts')):
+        raise ValueError('CPU role subjects differ from the original process owners')
+    stable = []
+    for role in ('parent', 'supervisor', 'helper'):
+        frame_ref = value['frames'][role]
+        if frame_ref['path'] != str(root / ('cpu-' + role + '.json')):
+            raise ValueError('CPU role frame moved outside its original owner')
+        frame = reader(frame_ref)
+        normalized = validate_cpu_context_observation(frame, contract=contract, role=role,
+            binding={'operation': identity}, expected_subject=value['subjects'][role], require_complete=require_complete)
+        if role != 'parent' and frame['subject']['parent_pid'] != value['subjects']['parent' if role == 'supervisor' else 'supervisor']['pid']:
+            raise ValueError('CPU context lacks its actual original P/S/H parent edge')
+        stable.append(normalized)
+    if require_complete and (stable[0] != stable[1] or stable[1] != stable[2]):
+        raise ValueError('CPU placement changed across the original P/S/H handoff')
+    return stable[-1]
+
+
+def _cpu_environment():
+    import platform
+
+    if sys.platform != 'linux':
+        raise ValueError('unsupported: known failure reuse has no current CPU platform identity reader')
+    system = os.uname()
+    try:
+        libc = os.confstr('CS_GNU_LIBC_VERSION')
+    except (ValueError, OSError) as error:
+        raise ValueError('unsupported: current CPU C-library identity is unavailable') from error
+    if not libc or not libc.startswith('glibc '):
+        raise ValueError('unsupported: current CPU C-library identity is unavailable')
+    return {'device': 'CPU', 'python': sys.version, 'implementation': platform.python_implementation(),
+        'platform': platform._platform(system.sysname, system.release, system.machine, 'with', libc.replace(' ', '', 1)),
+        'ranks': [0], 'layout': 'single-process', 'dependencies': 'Python standard library'}
 
 
 def cycle_supervisor_main() -> None:
@@ -89,19 +403,38 @@ def cycle_supervisor_main() -> None:
     expected = identity['parent']
     if processes.identity(expected['pid']) != expected or os.getppid() != expected['pid']:
         raise ValueError('Cycle operation lost its original complete parent identity')
+    if payload['snapshot'] is not None and identity['mode'] in (*CYCLE_WORK_MODES, 'reconcile-candidate'):
+        resolve_cycle_snapshot(payload)
     output = Path(identity['control_home']) / 'operations/training-cycles' / identity['operation_id']
     for parent in (output, *output.parents):
         if parent.is_symlink() or parent.exists() and not parent.is_dir():
             raise ValueError('Cycle operation output requires original ordinary directories')
-    output.mkdir(parents=True, mode=0o700)
+    output.mkdir(parents=True, exist_ok=True, mode=0o700)
     with (output / 'supervisor.stderr').open('xb') as stderr:
         os.dup2(stderr.fileno(), sys.stderr.fileno())
     with (output / 'request.json').open('xb') as request:
         request.write(raw)
+        request.flush()
+        os.fsync(request.fileno())
+    sync_directories(output, Path(identity['control_home']) / 'operations/training-cycles')
+    supervisor = {'schema_version': 1, 'kind': 'training-cycle-supervisor', 'identity': identity,
+        'request_sha256': hashlib.sha256(raw).hexdigest(), 'supervisor': processes.identity(os.getpid())}
+    contract = _cycle_cpu_contract(payload)
+    if contract is not None:
+        from ergora.training.materials import validate_cpu_context_observation
+
+        parent_ref = _cycle_cpu_frame(payload, 'parent')
+        validate_cpu_context_observation(read_trial_reference(parent_ref), contract=contract, role='parent',
+            binding={'operation': identity}, expected_subject=expected, require_complete=False)
+        supervisor['cpu_contexts'] = {'parent': parent_ref,
+            'supervisor': _cycle_cpu_frame(payload, 'supervisor', capture=True)}
+    from ergora.training.materials import publish_material
+    publish_material(output / 'supervisor.json', json.dumps(supervisor, ensure_ascii=False, sort_keys=True,
+        separators=(',', ':'), allow_nan=False).encode('utf-8'), Path(identity['control_home']) / 'operations/training-cycles')
 
     def stopped():
         try:
-            return (cancelled or cycle_operation_remaining(payload) <= 0
+            return (cancelled or processes._cancel_requested or cycle_operation_remaining(payload) <= 0
                     or processes.identity(expected['pid']) != expected)
         except (OSError, ValueError):
             return True
@@ -128,7 +461,7 @@ def cycle_supervisor_main() -> None:
     result = processes.run([sys.executable, '-P', '-c',
         'from ergora.training.runtime.worker import cycle_operation_main;cycle_operation_main(False)'],
         Path.cwd(), output / 'helper', 60, raw.decode('utf-8'), dict(os.environ),
-        supervised=True, stop_requested=stopped)
+        supervised=True, stop_requested=stopped, record_lifecycle=True)
     frame('stopped', 'process', result)
     observed = {
         'status': 'unknown', 'reason': 'Original cycle helper did not complete within its allowance',
@@ -141,71 +474,488 @@ def cycle_supervisor_main() -> None:
             observed = {'status': 'capacity_exceeded', 'reason': str(error)}
         else:
             observed = decode_record(stdout)
+            if observed.get('facts', {}).get('measurement', {}).get('measurement_state') == 'trial_completed':
+                _complete_cycle_operation(payload, raw, stdout, result, output, stopped)
             observed['_stdout_ref'] = {'file': 'helper/stdout.txt', 'bytes': len(stdout),
                                        'sha256': hashlib.sha256(stdout).hexdigest()}
     frame('result', 'result', observed)
 
 
-def cycle_workflow_type(protocol: str) -> str:
+def read_cycle_supervisor(payload, *, live=False):
+    """Bind H to the actual original S, separately from its outer SDK parent."""
+    identity = payload['identity']
+    output = Path(identity['control_home']) / 'operations/training-cycles' / identity['operation_id']
+    raw = read_raw(output / 'request.json', 32_768)
+    if decode_record(raw) != payload:
+        raise ValueError('Cycle helper differs from its original retained supervisor request')
+    record = decode_record(read_raw(output / 'supervisor.json'))
+    record = _validate_cycle_supervisor(record, payload, hashlib.sha256(raw).hexdigest())
+    if live and (os.getppid() != record['supervisor']['pid'] or
+            processes.identity(record['supervisor']['pid']) != record['supervisor']):
+        raise ValueError('Original direct cycle supervisor ended; no new helper effect is admitted')
+    return record
+
+
+def _validate_cycle_supervisor(record, payload, request_sha256):
+    """Validate the same original S record from live storage or archived bytes."""
+    identity = payload['identity']
+    _exact(record, ('schema_version', 'kind', 'identity', 'request_sha256', 'supervisor',
+        *(('cpu_contexts',) if 'cpu_contexts' in record else ())), 'Original cycle supervisor')
+    _process(record['supervisor'])
+    if (type(record['schema_version']) is not int or record['schema_version'] != 1 or record['kind'] != 'training-cycle-supervisor' or
+            record['identity'] != identity or record['request_sha256'] != request_sha256 or
+            record['supervisor']['boot_id'] != identity['parent']['boot_id']):
+        raise ValueError('Cycle helper lost its original complete direct supervisor identity')
+    return record
+
+
+def _complete_cycle_operation(payload, request_raw, stdout_raw, process, output, stopped):
+    """Only the original S can observe the successful real H wait and subtree reap."""
+    observed = decode_record(stdout_raw)
+    measurement = observed['facts']['measurement']
+    validate_trial_verdict(measurement['trial'])
+    pin, entry = measurement['prefix'], measurement['acceptance']
+    validate_trial_prefix(pin)
+    validate_trial_entry(entry)
+    report = read_trial_reference({key: pin[key] for key in ('path', 'sha256', 'bytes')})
+    if (process != {'status': 'succeeded', 'returncode': 0, 'output': str(output / 'helper')}
+            or observed.get('status') != 'observed' or measurement['continuation_ready'] is not True
+            or measurement['index_state'] != 'durable' or report['trials'][-1] != entry
+            or measurement.get('trial') != trial_verdict(entry)):
+        raise ValueError('Original S cannot confirm a partial or unsuccessful typed helper operation')
+    cleanup_path = output / 'helper/process-cleanup.json'
+    cleanup_raw = read_raw(cleanup_path, ARTIFACT_LIMIT)
+    cleanup = decode_record(cleanup_raw)
+    if (cleanup['owner'] != processes.identity(os.getpid()) or cleanup['model_waited'] is not True
+            or cleanup['returncode'] != 0 or cleanup['remaining_children'] != [] or cleanup['model'] is None
+            or any(item['wait_pid'] != item['process']['pid'] or type(item['wait_status']) is not int
+                   for item in cleanup['descendants'])):
+        raise ValueError('Original S has no complete actual H and descendant reap proof')
+    plan, authorization = resolve_cycle_snapshot(payload)
+    if plan['definition']['execution_scope'] != D_SCOPE or authorization['controller']['execution_scope'] != D_SCOPE:
+        raise ValueError('Typed bounded completion cannot acquire a full controller scope')
+    supervisor = read_cycle_supervisor(payload)
+    if supervisor['supervisor'] != cleanup['owner']:
+        raise ValueError('Completion was not published by the original S resource owner')
+    supervisor_raw = read_raw(output / 'supervisor.json')
+    links = [report['baseline_analysis']]
+    if entry['kind'] == 'executed':
+        links.append({key: entry['diagnostics'][key] for key in ('packet', 'analysis')})
+    analyses = []
+    for link in links:
+        wrapped = read_trial_reference(link['analysis'])
+        receipt = wrapped['receipt']
+        phase, ordinal = receipt['slot']['phase'], receipt['slot']['ordinal']
+        authority = decode_record(read_raw(Path(link['analysis']['path']).parent.parent / 'intent.json', ARTIFACT_LIMIT))['authority']
+        own = authority['operation']['identity']['operation_id'] == payload['identity']['operation_id']
+        attempt = decode_record(read_raw(Path(link['analysis']['path']).parent.parent / 'attempt.json', ARTIFACT_LIMIT))
+        if own and attempt['owner'] != cleanup['model']:
+            raise ValueError('Original S did not reap the H that owned this analyst opportunity')
+        _analysis_receipt(link['analysis'], plan, authorization, ordinal, phase,
+            CycleAdmission._sha(read_trial_reference(link['packet'])),
+            provisional_operation_id=payload['identity']['operation_id'] if own else None)
+        analyses.append(link['analysis'])
+    from ergora.training.materials import confirm_file
+    for path, original_raw in ((output / 'request.json', request_raw), (output / 'helper/stdout.txt', stdout_raw), (cleanup_path, cleanup_raw)):
+        confirm_file(path, original_raw, Path(authorization['control_home']) / 'operations/training-cycles')
+    if stopped():
+        raise ValueError('Original S observed helper completion outside its original parent/window')
+    boot, ticks = budget_clock._clock()
+    proof = {'schema_version': 1, 'kind': 'training-cycle-operation-completion',
+        'identity': payload['identity'], 'request_sha256': hashlib.sha256(request_raw).hexdigest(),
+        'helper_stdout': {'path': str(output / 'helper/stdout.txt'), 'bytes': len(stdout_raw),
+                          'sha256': hashlib.sha256(stdout_raw).hexdigest()},
+        'process': process, 'cleanup': {'path': str(cleanup_path), 'bytes': len(cleanup_raw),
+            'sha256': hashlib.sha256(cleanup_raw).hexdigest()}, 'prefix': pin, 'analyses': analyses,
+        'owner': processes.identity(os.getpid()), 'boot_id': boot, 'observed_complete_ns': ticks,
+        'supervisor': {'path': str(output / 'supervisor.json'), 'sha256': hashlib.sha256(supervisor_raw).hexdigest(), 'bytes': len(supervisor_raw)}}
+    # This record persists an already observed normal child completion, not a new
+    # effect or a claim that a later directory fsync finished before this stamp.
+    from ergora.training.materials import publish_material
+    publish_material(output / 'completion.json', json.dumps(proof, ensure_ascii=False, sort_keys=True,
+        separators=(',', ':'), allow_nan=False).encode('utf-8'), Path(authorization['control_home']) / 'operations/training-cycles')
+    validate_cycle_operation_completion(payload['identity']['operation_id'], authorization)
+
+
+def validate_cycle_operation_completion(operation_id, authorization, *, receipt_ref=None):
+    if not isinstance(operation_id, str) or re.fullmatch('[a-f0-9]{32}', operation_id) is None:
+        raise ValueError('Original S completion requires its complete operation ID')
+    output = Path(authorization['control_home']) / 'operations/training-cycles' / operation_id
+    raw = read_raw(output / 'completion.json', ARTIFACT_LIMIT)
+    proof = decode_record(raw)
+    _exact(proof, ('schema_version', 'kind', 'identity', 'request_sha256', 'helper_stdout', 'process',
+        'cleanup', 'prefix', 'analyses', 'owner', 'boot_id', 'observed_complete_ns', 'supervisor'), 'Original S completion')
+    request_raw = read_raw(output / 'request.json', 32_768)
+    source = decode_record(request_raw)
+    validate_cycle_operation(source)
+    cleanup = read_trial_reference(proof['cleanup'])
+    supervisor = read_cycle_supervisor(source)
+    if (read_trial_reference(proof['supervisor']) != supervisor or supervisor['supervisor'] != proof['owner'] or
+            proof['supervisor']['path'] != str(output / 'supervisor.json')):
+        raise ValueError('Original S completion changed its direct-supervisor resource identity')
+    helper_raw = read_raw(output / 'helper/stdout.txt', 32_768)
+    helper = decode_record(helper_raw)
+    measurement = helper.get('facts', {}).get('measurement', {})
+    _, original_authorization = resolve_cycle_snapshot(source)
+    window, policy, clock = source['bootstrap'], source['snapshot']['budget']['policy'], authorization['clock']
+    if (type(proof['schema_version']) is not int or proof['schema_version'] != 1 or proof['kind'] != 'training-cycle-operation-completion'
+            or original_authorization != authorization or source['identity'] != proof['identity']
+            or proof['identity']['operation_id'] != operation_id or proof['request_sha256'] != hashlib.sha256(request_raw).hexdigest()
+            or proof['helper_stdout'] != {'path': str(output / 'helper/stdout.txt'), 'bytes': len(helper_raw),
+                'sha256': hashlib.sha256(helper_raw).hexdigest()}
+            or Path(proof['cleanup']['path']) != output / 'helper/process-cleanup.json'
+            or cleanup['owner'] != proof['owner'] or cleanup['model_waited'] is not True
+            or cleanup['remaining_children'] != [] or cleanup['returncode'] != 0
+            or proof['process'] != {'status': 'succeeded', 'returncode': 0, 'output': str(output / 'helper')}
+            or proof['boot_id'] != clock['boot_id'] or type(proof['observed_complete_ns']) is not int
+            or not window['started_ns'] <= proof['observed_complete_ns'] < window['deadline_ns']
+            or proof['observed_complete_ns'] >= clock['boottime_ns'] + (policy['wall_seconds'] - policy['cleanup_seconds']) * 1_000_000_000
+            or helper.get('status') != 'observed' or measurement.get('measurement_state') != 'trial_completed'
+            or measurement.get('continuation_ready') is not True or proof['prefix'] != measurement.get('prefix')
+            or receipt_ref is not None and receipt_ref not in proof['analyses']):
+        raise ValueError('Original S completion lacks its actual in-budget typed child and cleanup facts')
+    _process(proof['owner'])
+    _process(cleanup['model'])
+    if (cleanup.get('kind') != 'supervised-process-cleanup' or cleanup['owner']['boot_id'] != proof['boot_id'] or
+            any(item.get('process') is None or item['wait_pid'] != item['process']['pid'] or
+                type(item['wait_status']) is not int for item in cleanup['descendants'])):
+        raise ValueError('Original S actual H/descendant identity or wait proof is incomplete')
+    report = read_trial_reference({key: proof['prefix'][key] for key in ('path', 'sha256', 'bytes')})
+    entry = report['trials'][-1]
+    if measurement.get('trial') != trial_verdict(entry):
+        raise ValueError('Original S completion changed the original typed trial verdict')
+    expected_links = [report['baseline_analysis']['analysis']]
+    if entry['kind'] == 'executed':
+        expected_links.append(entry['diagnostics']['analysis'])
+    if proof['analyses'] != expected_links:
+        raise ValueError('Original S completion omitted or changed a fixed analyst opportunity')
+    for analysis_ref in proof['analyses']:
+        opportunity = Path(analysis_ref['path']).parent.parent
+        intent = decode_record(read_raw(opportunity / 'intent.json', ARTIFACT_LIMIT))
+        authority = intent['authority']
+        if authority['operation']['identity']['operation_id'] == operation_id:
+            attempt = decode_record(read_raw(opportunity / 'attempt.json', ARTIFACT_LIMIT))
+            confirmation = decode_record(read_raw(opportunity / 'confirmation/record.json', ARTIFACT_LIMIT))
+            if (attempt['owner'] != cleanup['model'] or confirmation['confirmed_ns'] > proof['observed_complete_ns']):
+                raise ValueError('Original S reaped a different analyst H or confirmed it before its phase result')
+    # Durable recovery confirms the exact existing raw proof, never replaces it.
+    descriptor = _fd(output / 'completion.json')
     try:
-        return {'ergora-training-cycle-v1': 'TrainingCycleWorkflow',
-                'ergora-training-cycle-v2': 'TrainingCycleWorkflowV2',
-                'ergora-training-cycle-v3': 'TrainingCycleWorkflowV3'}[protocol]
-    except KeyError as error:
-        raise ValueError('Unsupported training cycle protocol') from error
+        before = os.fstat(descriptor)
+        os.fsync(descriptor)
+        sync_directories(output, Path(authorization['control_home']) / 'operations/training-cycles')
+        after = (output / 'completion.json').stat(follow_symlinks=False)
+        if (before.st_dev, before.st_ino) != (after.st_dev, after.st_ino) or read_raw(output / 'completion.json', ARTIFACT_LIMIT) != raw:
+            raise ValueError('Original S completion changed during same-inode durability confirmation')
+    finally:
+        os.close(descriptor)
+    return proof
+
+
+def cycle_workflow_type(protocol: str) -> str:
+    if protocol != 'ergora-training-cycle-v3':
+        raise ValueError('Historical controller runtime is unavailable for current execution')
+    return 'TrainingCycleWorkflowV3'
 
 
 GATE_SOURCES = (
-    'training/execution_protocol.py',
-    'training/runtime/execution.py',
-    'training/runtime/submission.py',
-    'training/runtime/context.py',
-    'training/runtime/status.py',
-    'training/runtime/cancellation.py',
-    'native/history.py',
-    'training/runtime/budget.py',
-    'training/runtime/worker.py',
-    'training/application.py',
-    'native/resources.py',
-    'native/commands.py',
-    'native/registration.py',
-    'native/compiler.py',
-    'native/files.py',
-    'development/native.py',
-    'training/native.py',
-    'training/cycles.py',
-    'configuration/registrations.py',
-    'data/schemas/training-cycle-v1.json',
-    'data/schemas/project-registration-v1.json',
-    'definitions/bundles.py',
-    'configuration/validation.py',
-    'storage/assets.py',
-    'storage/state.py',
-    'runtime/budget_clock.py',
-    'runtime/processes.py',
-    'development/runtime/creation_process.py',
     '__init__.py',
-    'data/reference-manifest.json',
-    'training/configuration.py',
-    'training/materials.py',
-    'training/runtime/setup.py',
-    'training/runtime/preparation.py',
-    'training/runtime/evidence.py',
-    'data/native-runtime/training-executor-admission-v3.json',
     '_paths.py',
     'agents/__init__.py',
+    'agents/backends.py',
+    'agents/invocation.py',
+    'agents/mcp.py',
+    'agents/native_sources.py',
+    'agents/runs.py',
     'configuration/__init__.py',
+    'configuration/bindings.py',
+    'configuration/catalog.py',
+    'configuration/projects.py',
+    'configuration/registrations.py',
+    'configuration/validation.py',
+    'data/components.json',
+    'data/native-runtime/training-executor-admission-v3.json',
+    'data/reference-manifest.json',
+    'data/schemas/agent-definition-v1.json',
+    'data/schemas/candidate-review-context-v1.json',
+    'data/schemas/composition-input-v1.json',
+    'data/schemas/composition-manifest-v1.json',
+    'data/schemas/document-correction-proposal-v1.json',
+    'data/schemas/evaluation-manifest-v1.json',
+    'data/schemas/evaluation-result-v1.json',
+    'data/schemas/issue-observation-v1.json',
+    'data/schemas/project-registration-v1.json',
+    'data/schemas/project-registration-v2.json',
+    'data/schemas/retrospective-memory-proposal-v1.json',
+    'data/schemas/retrospective-proposal-v1.json',
+    'data/schemas/retrospective-workflow-proposal-v1.json',
+    'data/schemas/state-backup-v1.json',
+    'data/schemas/task-definition-v1.json',
+    'data/schemas/task-definition-v2.json',
+    'data/schemas/task-definition-v3.json',
+    'data/schemas/task-definition-v8.json',
+    'data/schemas/task-handoff-v1.json',
+    'data/schemas/task-mcp-scope-v1.json',
+    'data/schemas/training-cycle-v2.json',
+    'data/schemas/training-rounds-v1.json',
+    'data/schemas/training-search-v2.json',
+    'data/schemas/workflow-definition-v1.json',
+    'data/schemas/workflow-definition-v2.json',
     'definitions/__init__.py',
+    'definitions/agents.py',
+    'definitions/bundles.py',
+    'definitions/skills.py',
+    'definitions/workflows.py',
     'development/__init__.py',
+    'development/application.py',
+    'development/budget.py',
+    'development/context.py',
+    'development/dags.py',
+    'development/design.py',
+    'development/envelopes.py',
+    'development/handoff.py',
+    'development/inputs.py',
+    'development/native.py',
     'development/runtime/__init__.py',
+    'development/runtime/creation.py',
+    'development/runtime/creation_process.py',
+    'development/runtime/evidence.py',
+    'development/runtime/executor.py',
+    'development/runtime/jobs.py',
+    'development/runtime/review_opinions.py',
+    'development/runtime/status.py',
+    'development/runtime/submission.py',
+    'development/runtime/workflows.py',
+    'development/six_stage.py',
     'improvement/__init__.py',
+    'improvement/document_corrections.py',
+    'improvement/kernel.py',
+    'improvement/memory.py',
+    'improvement/retrospectives.py',
     'issues/__init__.py',
+    'issues/backends.py',
+    'issues/identity.py',
+    'issues/snapshots.py',
     'native/__init__.py',
+    'native/commands.py',
+    'native/compiler.py',
+    'native/files.py',
+    'native/history.py',
+    'native/registration.py',
+    'native/resources.py',
     'runtime/__init__.py',
+    'runtime/budget_clock.py',
+    'runtime/processes.py',
+    'runtime/windows_job.py',
     'storage/__init__.py',
+    'storage/assets.py',
+    'storage/git.py',
+    'storage/state.py',
     'training/__init__.py',
+    'training/application.py',
+    'training/configuration.py',
+    'training/cycles.py',
+    'training/execution_protocol.py',
+    'training/materials.py',
+    'training/native.py',
+    'training/rounds.py',
     'training/runtime/__init__.py',
+    'training/runtime/budget.py',
+    'training/runtime/cancellation.py',
+    'training/runtime/context.py',
+    'training/runtime/evidence.py',
+    'training/runtime/execution.py',
+    'training/runtime/preparation.py',
+    'training/runtime/setup.py',
+    'training/runtime/status.py',
+    'training/runtime/submission.py',
+    'training/runtime/worker.py',
+    'training/search.py',
 )
+
+
+TRIAL_PROTOCOL = 'ergora-training-trial-v1'
+D_SCOPE = 'bounded-screen-profile-skip'
+FULL_SCOPE = 'ordered-selected-native-once'
+
+
+def _cpu_material_role(material, *, role, ordinal, manifest, manifest_sha256, runner):
+    """Bind a role to complete original C/A/confirmation bytes, without live reads."""
+    from ergora.training.materials import cpu_contract, decode_record, validate_cpu_preparation_admission, validate_preparation_intent
+
+    contract = cpu_contract(manifest)
+    if contract is None:
+        if material is not None:
+            raise ValueError('CPU admission material is present without its original manifest contract')
+        return None
+    if material is None:
+        raise ValueError('Typed CPU selection lacks its complete original preparation admission')
+    _exact(material, ('contract', 'contract_sha256', 'preview_sha256', 'intent_sha256',
+        'intent_ref', 'admission_ref', 'intent_utf8', 'admission_utf8'), 'Original CPU preparation material')
+    intent_raw, admission_raw = (material[name].encode('utf-8') for name in ('intent_utf8', 'admission_utf8'))
+    for raw, key in ((intent_raw, 'intent_ref'), (admission_raw, 'admission_ref')):
+        reference = material[key]
+        _exact(reference, ('path', 'sha256', 'bytes'), 'Original CPU preparation raw reference')
+        if not isinstance(reference['path'], str) or not reference['path']:
+            raise ValueError('CPU preparation raw reference lacks its original location')
+        if len(raw) != reference['bytes'] or hashlib.sha256(raw).hexdigest() != reference['sha256']:
+            raise ValueError('CPU original preparation raw material differs from its recorded reference')
+    intent, admission = decode_record(intent_raw), decode_record(admission_raw)
+    preparation = validate_preparation_intent(intent)
+    if (material['preview_sha256'] != preparation['preview_sha256']
+            or material['intent_sha256'] != preparation['intent_sha256']):
+        raise ValueError('CPU material changed its confirmed preview or saved intent identity')
+    raw_manifest = preparation['body']['files']['training/manifests/' + manifest['experiment_id'] + '.json'].encode('utf-8')
+    checked = validate_cpu_preparation_admission(admission, intent, raw_manifest, runner)
+    if (checked != contract or material['contract'] != contract or material['contract_sha256'] != contract['sha256']
+            or decode_record(raw_manifest) != manifest or hashlib.sha256(raw_manifest).hexdigest() != manifest_sha256):
+        raise ValueError('CPU preparation material changed its exact original manifest/source/contract')
+    return {'role': role, 'ordinal': ordinal, 'experiment_id': manifest['experiment_id'],
+        'manifest_sha256': manifest_sha256, 'contract_sha256': contract['sha256'],
+        'admission_sha256': hashlib.sha256(admission_raw).hexdigest(),
+        'intent_sha256': preparation['intent_sha256'], 'confirmed_preview_sha256': preparation['preview_sha256']}
+
+
+def cpu_contract_roles(plan):
+    """Derive immutable role bindings; prepared full and baseline grant no D effect."""
+    from ergora.training.materials import decode_record, validate_preparation_intent
+
+    roles = []
+    bounded = plan['definition'].get('execution_scope', FULL_SCOPE) == D_SCOPE
+    pairs = plan['stage_admissions'] if bounded else [{'selected': item} for item in plan['admissions']]
+    for ordinal, pair in enumerate(pairs):
+        _exact(pair, ('screen', 'full') if bounded else ('selected',), 'Original CPU stage role collection')
+        for role, selected in sorted(pair.items()):
+            item = selected['observation']['experiment']
+            material = item.get('cpu_contract_preparation')
+            binding = _cpu_material_role(material, role=role, ordinal=ordinal, manifest=item['manifest'],
+                manifest_sha256=selected['manifest_sha256'], runner=item['current_runner'])
+            if binding is not None:
+                binding['operations'] = (['screen', 'profile', 'skip'] if role == 'screen' else
+                                         [] if role == 'full' else [item['manifest']['execution']['operation']])
+                roles.append(binding)
+    baseline = plan.get('cpu_contract_baseline')
+    if baseline is not None:
+        intent = validate_preparation_intent(decode_record(baseline['intent_utf8'].encode('utf-8')))
+        body = intent['body']
+        ident = body['request']['experiment']['experiment_id']
+        raw_manifest = body['files']['training/manifests/' + ident + '.json'].encode('utf-8')
+        manifest = decode_record(raw_manifest)
+        role = _cpu_material_role(baseline, role='baseline-reference', ordinal=-1, manifest=manifest,
+            manifest_sha256=hashlib.sha256(raw_manifest).hexdigest(), runner=body['sources']['runner']['document'])
+        selector = plan['admissions'][0]['observation']['experiment']['manifest']['baseline_reference']
+        if role is None or selector['experiment_id'] != ident:
+            raise ValueError('CPU baseline role differs from the original frozen reference')
+        role['operations'] = []
+        roles.insert(0, role)
+    return roles
+
+
+def validate_cpu_contract_authority(plan, authorization, experiment_id):
+    """Consume exact role bindings while preserving normal effect/clock checks."""
+    from ergora.training.materials import cpu_contract
+
+    roles = cpu_contract_roles(plan)
+    admitted = authorization.get('cpu_contracts')
+    if roles:
+        if admitted is None or admitted['roles'] != roles:
+            raise ValueError('CPU role collection differs from the original birth admission')
+    elif admitted is not None:
+        raise ValueError('CPU authority is present without its original admitted material')
+    selected = next((item for item in plan['admissions'] if item['experiment_id'] == experiment_id), None)
+    if selected is None:
+        raise ValueError('CPU operation is outside the original selected execution roles')
+    contract = cpu_contract(selected['observation']['experiment']['manifest'])
+    if contract is not None:
+        role = next((item for item in roles if item['experiment_id'] == experiment_id), None)
+        if role is None or not role['operations'] or role['contract_sha256'] != contract['sha256']:
+            raise ValueError('Prepared CPU material does not authorize this selected operation')
+    return contract
+
+
+def skip_decision_path(execution: dict, experiment_id: str) -> Path:
+    """The original submission owner is the sole publisher of this veto."""
+    if (not isinstance(experiment_id, str) or
+            re.fullmatch('[A-Za-z0-9][A-Za-z0-9_-]{0,79}', experiment_id) is None):
+        raise ValueError('Skip decision requires its complete original experiment ID')
+    root = Path(execution['state_directory'])
+    if not root.is_absolute() or '..' in root.parts:
+        raise ValueError('Skip decision requires the original absolute native state directory')
+    return root / 'ergora/training-submissions' / (experiment_id + '.skip.json')
+
+
+def _trial_reference_path(ref):
+    """Validate saved reference fields without dereferencing their original location."""
+    _exact(ref, ('path', 'sha256', 'bytes'), 'Trial raw reference')
+    _digest(ref['sha256'])
+    if not isinstance(ref['path'], str):
+        raise ValueError('Trial reference requires its original absolute path')
+    path = Path(ref['path'])
+    if (not path.is_absolute() or '..' in path.parts or type(ref['bytes']) is not int
+            or not 0 < ref['bytes'] <= ARTIFACT_LIMIT):
+        raise ValueError('Trial reference requires an absolute original path and complete length')
+    return path
+
+
+def _cpu_context_references(value):
+    _exact(value, ('parent', 'budget', 'cycle'), 'Original CPU budget references')
+    for role in ('parent', 'budget', 'cycle'):
+        if role != 'cycle' or value[role] is not None:
+            _trial_reference_path(value[role])
+
+
+def read_trial_reference(ref: dict) -> dict:
+    """Read complete immutable JSON bytes without State, SDK, or runtime dispatch."""
+    path = _trial_reference_path(ref)
+    raw = read_raw(path, ARTIFACT_LIMIT)
+    if len(raw) != ref['bytes'] or hashlib.sha256(raw).hexdigest() != ref['sha256']:
+        raise ValueError('Trial original raw bytes changed')
+    return decode_record(raw)
+
+
+def trial_failure_fingerprint(manifest: dict, runner: dict, screen_policy: dict, *, actual_identity: dict) -> str:
+    """Project semantic and execution identity, excluding incidental experiment IDs."""
+    execution = manifest['execution']
+    if execution['operation'] != 'training-screen-v1':
+        raise ValueError('Known failure reuse requires a typed screen contract')
+    plan = {key: value for key, value in execution['plan'].items()
+            if key != 'verification_experiment_id'}
+    source = runner['configuration_readback']['source']
+    fields = (*ROUND_COMMON, 'candidate_commit', 'candidate_config_sha256', 'allowed_changes', 'track')
+    if not isinstance(actual_identity, dict) or not actual_identity:
+        raise ValueError('Known failure reuse requires authenticated actual input/environment/window evidence')
+    return CycleAdmission._sha({'actual': actual_identity, 'manifest': {name: manifest.get(name) for name in fields},
+        'source': source, 'screen_plan': plan, 'screen_policy': screen_policy,
+        'runner': {name: runner[name] for name in ('command', 'timeout_seconds', 'configuration_readback')}})
+
+
+
+
+
+
+
+
+
+
+
+
+def require_not_skipped(execution, experiment_id):
+    # Presence is an irreversible veto even when its contents are damaged. A
+    # launcher must never turn a corrupt or unresolved decision into absence.
+    path = skip_decision_path(execution, experiment_id)
+    for parent in (path.parent, *path.parent.parents):
+        try:
+            meta = parent.lstat()
+        except FileNotFoundError:
+            continue
+        if stat.S_ISLNK(meta.st_mode) or not stat.S_ISDIR(meta.st_mode) or (
+                os.name == 'nt' and getattr(meta, 'st_file_attributes', 0) & 0x400):
+            raise ValueError('Skip decision namespace is damaged or unresolved')
+    try:
+        path.lstat()
+    except FileNotFoundError:
+        return
+    raise ValueError('Known failure skip decision is visible; no new effect is admitted')
 
 
 ROUND_COVERAGE = {'records': 'saved-observations', 'artifacts': 'index-only', 'runtime_status': 'not_queried',
@@ -297,7 +1047,8 @@ def round_selection(plan: dict, authorization: dict) -> dict:
     manifest = plan['admissions'][0]['observation']['experiment']['manifest']
     return {'count': len(plan['admissions']),
         'common_sha256': CycleAdmission._sha({key: manifest.get(key) for key in ROUND_COMMON}),
-        'measurement_sources_sha256': CycleAdmission._sha(authorization['measurement_sources'])}
+        'measurement_sources_sha256': CycleAdmission._sha(authorization['measurement_sources']),
+        **({'execution_scope': D_SCOPE} if plan['definition']['execution_scope'] == D_SCOPE else {})}
 
 
 def round_report_binding(saved, plan, ordinal, previous):
@@ -427,9 +1178,12 @@ def _exact(value, keys, label):
 
 
 def _match(actual, expected, label):
-    from dev_platform.contracts import canonical_sha
-
-    if canonical_sha(actual) != canonical_sha(expected):
+    # The native identity is finite, sorted, compact UTF-8 JSON. Compare those
+    # exact canonical bytes here so offline/application readers need no native
+    # import; stored identity hashes retain their original owners and formats.
+    actual_raw = json.dumps(actual, ensure_ascii=False, sort_keys=True, separators=(',', ':'), allow_nan=False).encode('utf-8')
+    expected_raw = json.dumps(expected, ensure_ascii=False, sort_keys=True, separators=(',', ':'), allow_nan=False).encode('utf-8')
+    if actual_raw != expected_raw:
         raise ValueError(label + ' differs from its complete original identity')
 
 
@@ -449,17 +1203,446 @@ def validate_budget_binding(value):
     if 'controller' in value:
         controller = value['controller']
         version = controller.get('protocol') if isinstance(controller, dict) else None
-        _exact(controller, ('protocol', 'workflow_id', 'run_id', 'intent_sha256', 'ordinal',
-                           *(('predecessor',) if version in ('ergora-training-cycle-v2', 'ergora-training-cycle-v3') else ())), 'Controller binding')
-        if (version not in ('ergora-training-cycle-v1', 'ergora-training-cycle-v2', 'ergora-training-cycle-v3')
+        _exact(controller, ('protocol', 'workflow_id', 'run_id', 'intent_sha256', 'ordinal', 'predecessor'), 'Controller binding')
+        if (version != 'ergora-training-cycle-v3'
                 or not isinstance(controller['workflow_id'], str) or not controller['workflow_id']
                 or not isinstance(controller['run_id'], str) or not 1 <= len(controller['run_id']) <= 128
                 or controller['run_id'].strip() != controller['run_id']
                 or type(controller['ordinal']) is not int or not 0 <= controller['ordinal'] < 32):
             raise ValueError('Controller binding requires its original fixed run and selected ordinal')
         _digest(controller['intent_sha256'])
-        if version in ('ergora-training-cycle-v2', 'ergora-training-cycle-v3'):
-            validate_round_predecessor(controller['predecessor'], controller['ordinal'])
+        validate_round_predecessor(controller['predecessor'], controller['ordinal'])
+
+
+def validate_trial_entry(value):
+    _exact(value, ('ordinal', 'variant_id', 'stage_map_sha256', 'kind', 'predecessor_sha256',
+        'sources', 'observation', 'diagnostics', 'sha256'), 'Bounded trial entry')
+    if (type(value['ordinal']) is not int or not 0 <= value['ordinal'] < 32 or
+            value['kind'] not in ('executed', 'skipped_known_failure')):
+        raise ValueError('Bounded trial has no complete typed kind and ordinal')
+    for key in ('variant_id', 'stage_map_sha256', 'sha256'):
+        _digest(value[key])
+    if value['predecessor_sha256'] is not None:
+        _digest(value['predecessor_sha256'])
+    if CycleAdmission._sha({key: item for key, item in value.items() if key != 'sha256'}) != value['sha256']:
+        raise ValueError('Trial entry differs from its complete canonical SHA256')
+    if value['kind'] == 'skipped_known_failure':
+        _exact(value['sources'], ('decision', 'historical'), 'Skipped trial sources')
+        if value['observation'] is not None or value['diagnostics'] is not None:
+            raise ValueError('A skipped trial cannot claim current result, profile or analyst effects')
+    else:
+        _exact(value['sources'], ('operation', 'intent_sha256', 'workflow_id', 'run_id',
+            'native_binding', 'job_id', 'managed', 'cleanup'), 'Executed trial sources')
+        _exact(value['sources']['managed'], ('request', 'launch', 'attempt', 'ack', 'stopped'), 'Executed managed sources')
+        for digest in (value['sources']['intent_sha256'], *value['sources']['managed'].values()):
+            _digest(digest)
+        _exact(value['diagnostics'], ('profile', 'packet', 'analysis', 'baseline_analysis'), 'Executed diagnostics')
+    return value
+
+
+def validate_trial_prefix(value):
+    _exact(value, ('path', 'sha256', 'bytes', 'trials', 'last_trial_sha256'), 'Bounded trial prefix')
+    _digest(value['sha256'])
+    _digest(value['last_trial_sha256'])
+    if (not isinstance(value['path'], str) or not Path(value['path']).is_absolute()
+            or '..' in Path(value['path']).parts or type(value['bytes']) is not int
+            or not 0 < value['bytes'] <= ARTIFACT_LIMIT or type(value['trials']) is not int
+            or not 1 <= value['trials'] <= 32):
+        raise ValueError('Bounded prefix requires its complete original path, bytes and logical count')
+
+
+def trial_pin(path, raw, report):
+    return {'path': str(path), 'sha256': hashlib.sha256(raw).hexdigest(), 'bytes': len(raw),
+        'trials': len(report['trials']), 'last_trial_sha256': report['trials'][-1]['sha256']}
+
+
+def trial_verdict(entry):
+    validate_trial_entry(entry)
+    if entry['kind'] == 'skipped_known_failure':
+        return {'kind': entry['kind'], 'state': None, 'performance_state': None, 'decision': None}
+    observation = read_trial_reference(entry['observation'])
+    return {'kind': 'executed', 'state': observation['native']['state'],
+        'performance_state': observation['screen']['performance_state'], 'decision': observation['screen']['decision']}
+
+
+def validate_trial_verdict(value):
+    _exact(value, ('kind', 'state', 'performance_state', 'decision'), 'Typed trial verdict')
+    if value['kind'] == 'skipped_known_failure':
+        if any(value[key] is not None for key in ('state', 'performance_state', 'decision')):
+            raise ValueError('A skipped trial cannot claim a current screen verdict')
+        return
+    allowed = {'promising': 'promising', 'no_gain': 'stop_direction', 'below_noise': 'stop_direction', 'unavailable': 'inconclusive'}
+    if (value['kind'] != 'executed' or value['state'] not in ('SCREEN_COMPLETED', 'SCREEN_REJECTED')
+            or value['state'] == 'SCREEN_COMPLETED' and (value['performance_state'] not in allowed or allowed[value['performance_state']] != value['decision'])
+            or value['state'] == 'SCREEN_REJECTED' and (value['performance_state'], value['decision']) != ('unavailable', 'rejected')):
+        raise ValueError('Trial verdict is outside complete typed screen continuation')
+
+
+def _analysis_receipt(ref, plan, authorization, ordinal, phase, packet_sha256, *, provisional_operation_id=None):
+    wrapped = read_trial_reference(ref)
+    _exact(wrapped, ('receipt', 'receipt_sha256', 'role'), 'Original analyst owner record')
+    receipt = wrapped.get('receipt')
+    if not isinstance(receipt, dict):
+        raise ValueError('Trial analysis has no original durable owner receipt')
+    _exact(receipt, ('schema_version', 'kind', 'slot', 'run_id', 'intent_sha256', 'attempt_sha256',
+        'outcome', 'result_sha256', 'cleanup'), 'Original provisional analyst receipt')
+    leaf = next(item for item in plan['analyst']['composition']['instances'] if item['path'] == plan['analyst']['instance'])
+    if (type(receipt['schema_version']) is not int or receipt['schema_version'] != 1 or
+            receipt['kind'] != 'training-cycle-analysis-receipt' or wrapped['role'] != leaf['role']):
+        raise ValueError('Original analyst receipt changed its actual frozen role or protocol')
+    expected = {'authorization_sha256': authorization['sha256'], 'ordinal': ordinal, 'phase': phase,
+        'packet_sha256': packet_sha256, 'definition_digest': plan['analyst']['definition_digest'],
+        'binding': plan['analyst']['binding']}
+    _match(receipt['slot'], expected, 'Fixed original analyst opportunity')
+    if receipt.get('outcome') != 'provisional' or receipt['run_id'] != CycleAdmission._sha(expected)[:32]:
+        raise ValueError('Trial analysis result or actual process/MCP cleanup is unconfirmed')
+    if wrapped.get('receipt_sha256') != CycleAdmission._sha(receipt):
+        raise ValueError('Analyst receipt canonical identity changed')
+    storage = Path(authorization['control_home']) / 'runs'
+    key = {'authorization_sha256': authorization['sha256'], 'ordinal': ordinal, 'phase': phase}
+    folder = storage / ('.cycle-analysis-' + CycleAdmission._sha(key))
+    if Path(ref['path']) != folder / 'final/record.json':
+        raise ValueError('Analyst receipt moved outside its original opportunity')
+    try:
+        (folder / 'interrupted').lstat()
+    except FileNotFoundError:
+        pass
+    else:
+        raise ValueError('Original analyst opportunity has an irreversible interrupted veto')
+    intent = decode_record(read_raw(folder / 'intent.json', ARTIFACT_LIMIT))
+    attempt = decode_record(read_raw(folder / 'attempt.json', ARTIFACT_LIMIT))
+    authority = intent['authority']
+    preparation = read_trial_reference(authority['preparation'])
+    confirmation = decode_record(read_raw(folder / 'confirmation/record.json', ARTIFACT_LIMIT))
+    _exact(confirmation, ('schema_version', 'kind', 'run_id', 'receipt_sha256', 'intent_sha256', 'attempt_sha256',
+        'operation_sha256', 'owner', 'boot_id', 'confirmed_ns', 'remaining_seconds'), 'Original analyst confirmation')
+    if (confirmation['schema_version'] != 1 or confirmation['kind'] != 'training-cycle-analysis-confirmation' or
+            confirmation['run_id'] != receipt['run_id'] or confirmation['receipt_sha256'] != wrapped['receipt_sha256'] or
+            confirmation['intent_sha256'] != receipt['intent_sha256'] or confirmation['attempt_sha256'] != receipt['attempt_sha256'] or
+            confirmation['operation_sha256'] != CycleAdmission._sha(authority['operation']) or confirmation['owner'] != attempt['owner'] or
+            confirmation['boot_id'] != attempt['boot_id'] or confirmation['boot_id'] != preparation['boot_id'] or
+            type(confirmation['confirmed_ns']) is not int or confirmation['confirmed_ns'] < attempt['started_ns'] or
+            confirmation['confirmed_ns'] < preparation['started_ns'] or
+            confirmation['confirmed_ns'] - preparation['started_ns'] >= authority['maximum_seconds'] * 1_000_000_000 or
+            confirmation['confirmed_ns'] >= authority['operation']['bootstrap']['deadline_ns'] or
+            type(confirmation['remaining_seconds']) not in (int, float) or not math.isfinite(confirmation['remaining_seconds']) or
+            confirmation['remaining_seconds'] <= 0):
+        raise ValueError('Analyst completion lacks its original post-durability budget/cleanup confirmation')
+    if (CycleAdmission._sha(intent) != receipt['intent_sha256'] or
+            CycleAdmission._sha(attempt) != receipt['attempt_sha256'] or
+            attempt['intent_sha256'] != receipt['intent_sha256'] or authority['slot'] != expected or
+            intent['project'] != authorization['project'] or intent['run_id'] != receipt['run_id']):
+        raise ValueError('Analyst receipt lost its complete original durable attempt')
+    from ergora.storage.assets import inventory_tree
+    source = storage / (receipt['run_id'] + '.input')
+    if inventory_tree(source, max_directories=1000, max_depth=48)[0] != authority['input_digest']:
+        raise ValueError('Analyst complete original input tree changed')
+    request = decode_record(read_raw(source / 'request.json', ARTIFACT_LIMIT))
+    if (decode_record(read_raw(source / 'composition.json', ARTIFACT_LIMIT)) != plan['analyst']['composition'] or
+            request['instance'] != plan['analyst']['instance'] or request['preview_sha256'] != authority['composition_preview_sha256'] or
+            request['prompt_sha256'] != authority['prompt_sha256'] or request['task_sha256'] != packet_sha256 or
+            hashlib.sha256(read_raw(source / 'task.txt', ARTIFACT_LIMIT)).hexdigest() != packet_sha256 or
+            read_raw(source / 'prompt.txt', ARTIFACT_LIMIT) != read_raw(storage / (receipt['run_id'] + '.protocol') / 'prompt.txt', ARTIFACT_LIMIT)):
+        raise ValueError('Analyst original packet, prompt or complete definition chain changed')
+    if hashlib.sha256(read_raw(storage / receipt['run_id'] / 'result.json', ARTIFACT_LIMIT)).hexdigest() != receipt['result_sha256']:
+        raise ValueError('Analyst original result changed')
+    model = receipt['cleanup']['model']
+    raw_cleanup = read_raw(storage / receipt['run_id'] / 'process-cleanup.json', ARTIFACT_LIMIT)
+    cleanup = decode_record(raw_cleanup)
+    if (model['state'] != 'reaped' or model['sha256'] != hashlib.sha256(raw_cleanup).hexdigest()
+            or cleanup != model['observation'] or cleanup['owner'] != attempt['owner']
+            or cleanup['model_waited'] is not True or cleanup['remaining_children'] != [] or cleanup['returncode'] != 0
+            or any(item['process'] is None or item['wait_pid'] != item['process']['pid']
+                or type(item['wait_status']) is not int for item in cleanup['descendants'])):
+        raise ValueError('Analyst original model tree has no actual complete wait/reap proof')
+    mcp = receipt['cleanup']['MCP']
+    if authority['mode'] == 'text-only':
+        if mcp != {'state': 'not_requested'}:
+            raise ValueError('Text-only analysis has unexpected MCP effects')
+    else:
+        scope_raw = read_raw(storage / (receipt['run_id'] + '.scope.json'), ARTIFACT_LIMIT)
+        scope_sha = hashlib.sha256(scope_raw).hexdigest()
+        if mcp['state'] != 'closed' or mcp['scope_sha256'] != scope_sha:
+            raise ValueError('Analyst original MCP scope changed')
+        for phase_name in ('preflight', 'native'):
+            raw_audit = read_raw(storage / (receipt['run_id'] + '.mcp-' + phase_name + '.jsonl'), LIMIT)
+            events = [decode_record(line) for line in raw_audit.splitlines()]
+            starts = [event for event in events if event.get('event') == 'started']
+            if (len(starts) != 1 or not events or events[-1].get('event') != 'closed' or
+                    any(event.get('scope_sha256') != scope_sha or event.get('pid') != starts[0]['pid'] for event in events)):
+                raise ValueError('Analyst MCP original lifecycle is incomplete')
+            expected_mcp = {'state': 'closed', 'process': starts[0]['identity'], 'audit_sha256': hashlib.sha256(raw_audit).hexdigest()}
+            _match(mcp[phase_name], expected_mcp, 'Analyst actual MCP lifecycle')
+            try:
+                current_mcp = processes.identity(expected_mcp['process']['pid'])
+            except (OSError, ValueError):
+                current_mcp = None
+            if current_mcp == expected_mcp['process']:
+                raise ValueError('Original analyst MCP process is still alive')
+    operation_id = authority['operation']['identity']['operation_id']
+    if provisional_operation_id != operation_id:
+        validate_cycle_operation_completion(operation_id, authorization, receipt_ref=ref)
+    return receipt
+
+
+
+
+
+
+def remaining_trial_effects(plan, authorization, directory, completed, *, ready):
+    """Observe original uncompleted opportunity namespaces, without a new state owner."""
+    from ergora.training.materials import relative
+
+    count = len(plan['admissions'])
+    result = {'state': 'quiescent', 'checked_from_ordinal': completed, 'unresolved': [],
+        'controller_delivery': 'unknown', 'admission_state': 'unknown'}
+
+    def unresolved(ordinal, kind):
+        result['state'] = 'unresolved'
+        result['unresolved'].append({'ordinal': ordinal, 'kind': kind})
+
+    def present(path):
+        for parent in path.parents:
+            try:
+                ancestor = parent.lstat()
+            except FileNotFoundError:
+                continue
+            if not stat.S_ISDIR(ancestor.st_mode) or getattr(ancestor, 'st_file_attributes', 0) & 0x400:
+                raise ValueError('Uncompleted opportunity root is not an ordinary directory')
+        try:
+            details = path.lstat()
+        except FileNotFoundError:
+            return False
+        if stat.S_ISLNK(details.st_mode) or getattr(details, 'st_file_attributes', 0) & 0x400:
+            raise ValueError('Uncompleted opportunity namespace is symlinked or reparsed')
+        return True
+
+    try:
+        if type(completed) is not int or not 0 <= completed <= count:
+            raise ValueError('Local progress has no complete original ordinal boundary')
+        directory = Path(directory)
+        admission = CycleAdmission(directory, authorization)
+        delivery = admission.submission()
+        result['controller_delivery'] = delivery['status']
+        has_lock = present(directory / 'controller/admission.lock')
+        if has_lock:
+            if read_raw(directory / 'controller/admission.lock', LIMIT):
+                raise ValueError('Original controller admission lock is damaged')
+            result['admission_state'] = 'established'
+        elif not ready and delivery['status'] == 'not_prepared':
+            result['admission_state'] = 'not_admitted'
+        else:
+            unresolved(None, 'missing_original_admission_lock')
+        if completed < count and delivery['status'] in ('unknown', 'rejected'):
+            unresolved(None, 'unresolved_controller_delivery')
+        execution = authorization['execution']
+        state_root = Path(execution['state_directory'])
+        submission_root = state_root / 'ergora/training-submissions'
+        for parent in (submission_root, *submission_root.parents):
+            if present(parent) and not parent.is_dir():
+                raise ValueError('Original opportunity root is not an ordinary directory')
+        if completed == 0:
+            key = {'authorization_sha256': authorization['sha256'], 'ordinal': -1, 'phase': 'baseline'}
+            if (present(Path(authorization['control_home']) / 'runs' / ('.cycle-analysis-' + CycleAdmission._sha(key)))
+                    or present(directory / 'controller/analysis/baseline--1')):
+                unresolved(-1, 'unconfirmed_baseline_analysis')
+        for ordinal in range(completed, count):
+            selected = plan['admissions'][ordinal]
+            ident = relative(selected['experiment_id'])
+            if '/' in ident:
+                raise ValueError('Local progress requires a portable original experiment ID')
+            for path in submission_root.glob(ident + '.*'):
+                if path.name == ident + '.lock':
+                    if read_raw(path, LIMIT):
+                        unresolved(ordinal, 'damaged_submission_lock')
+                elif path.name == ident + '.intent.json':
+                    intent = decode_record(read_raw(path, 16 * LIMIT))
+                    expected = {'schema_version': 1, 'operation': 'start', 'control_home': authorization['control_home'],
+                        'project': authorization['project'], 'repo': plan['project']['repo'], 'execution': execution,
+                        'registration_sha256': plan['project']['registration']['sha256'], 'experiment_id': ident,
+                        'workflow_id': 'perf-experiment/' + ident, 'project_revision': authorization['project_revision'],
+                        'operation_id': intent.get('operation_id'), 'observation': selected['observation'], 'budget': intent.get('budget')}
+                    _match(intent, expected, 'Original static unsubmitted intent')
+                    if (type(intent['schema_version']) is not int or not isinstance(intent['operation_id'], str)
+                            or re.fullmatch('[a-f0-9]{32}', intent['operation_id']) is None):
+                        raise ValueError('Original static intent is incomplete')
+                    validate_budget_binding(intent['budget'])
+                    if (intent['budget']['authorization_sha256'] != authorization['sha256']
+                            or intent['budget']['cycle_id'] != authorization['cycle_id']
+                            or intent['budget']['controller']['ordinal'] != ordinal):
+                        raise ValueError('Original static intent changed its born controller selection')
+                else:
+                    # Attempts, replies, rejections, budget-root reservations,
+                    # skips without their complete prefix, and unknown records
+                    # all require original-identity reconciliation.
+                    unresolved(ordinal, 'consumed_submission_opportunity')
+            if present(state_root / 'training/jobs' / ident):
+                unresolved(ordinal, 'uncompleted_native_job')
+            if present(state_root / 'training/fences' / (ident + '.json')):
+                unresolved(ordinal, 'uncompleted_native_fence')
+            key = {'authorization_sha256': authorization['sha256'], 'ordinal': ordinal, 'phase': 'screen'}
+            if (present(Path(authorization['control_home']) / 'runs' / ('.cycle-analysis-' + CycleAdmission._sha(key)))
+                    or present(directory / 'controller/analysis' / ('screen-' + str(ordinal)))):
+                unresolved(ordinal, 'unconfirmed_screen_analysis')
+            if present(directory / 'controller/trials' / str(ordinal)):
+                unresolved(ordinal, 'unconfirmed_trial_collection')
+        return result
+    except (OSError, ValueError, KeyError, TypeError, RecursionError) as error:
+        unresolved(None, 'unavailable_or_corrupt_original_record')
+        result['reason'] = str(error)
+        return result
+
+
+def read_trial_progress(plan, authorization, directory):
+    """Read saved S/H facts without State, SDK or loading the native installation.
+
+    Effect admission separately revalidates full current native/oracle evidence.
+    This projection authenticates saved bytes, fixed runs and original S waits.
+    """
+    count = len(plan['admissions'])
+    result = {'status': 'not_started', 'selection_count': count, 'sequence_trials': 0, 'executed_trials': 0,
+        'skipped_trials': 0, 'promising_count': 0, 'verified_gain_count': 0, 'full_accepted_count': 0,
+        'prefix': None, 'reason': None, 'coverage': {'records': 'saved-authenticated-local-prefix',
+            'runtime_status': 'not_queried', 'current_native_oracle_revalidation': False,
+            'execution_authorized': False, 'full_quality_approved': False, 'promotion_approved': False}}
+    root = Path(directory) / 'controller/trials'
+    try:
+        root.lstat()
+    except FileNotFoundError:
+        return result
+    try:
+        from ergora.storage.assets import is_link
+        if is_link(root) or not root.is_dir():
+            raise ValueError('Saved trial index requires an ordinary original directory')
+        if any(not item.name.isdecimal() or int(item.name) >= count for item in root.iterdir()):
+            raise ValueError('Saved trial index contains an undeclared logical ordinal')
+        _frozen_cycle_materials(plan, Path(directory))
+        previous = []
+        for ordinal in range(count):
+            path = root / str(ordinal) / 'trials.json'
+            try:
+                raw = read_raw(path, ARTIFACT_LIMIT)
+            except FileNotFoundError:
+                if (root / str(ordinal)).exists():
+                    result.update(status='in_progress', reason='Original trial collection has no confirmed complete prefix')
+                break
+            report = decode_record(raw)
+            _exact(report, ('schema_version', 'kind', 'authorization_sha256', 'stage_map_sha256',
+                'source_operation_id', 'baseline_analysis', 'trials'), 'Saved bounded prefix')
+            if (type(report['schema_version']) is not int or report['schema_version'] != 1 or report['kind'] != 'training-cycle-trial-prefix'
+                    or report['authorization_sha256'] != authorization['sha256']
+                    or report['stage_map_sha256'] != CycleAdmission._sha(plan['stage_map'])
+                    or len(report['trials']) != ordinal + 1):
+                raise ValueError('Saved bounded prefix differs from the complete original selection')
+            _match(report['trials'][:-1], previous, 'Saved original trial prefix')
+            entry = validate_trial_entry(report['trials'][-1])
+            stage = plan['stage_map'][ordinal]
+            if (entry['ordinal'] != ordinal or entry['variant_id'] != stage['variant_id']
+                    or entry['stage_map_sha256'] != report['stage_map_sha256']
+                    or entry['predecessor_sha256'] != (previous[-1]['sha256'] if previous else None)):
+                raise ValueError('Saved trial changed its original ordinal, stage or predecessor')
+            proof = validate_cycle_operation_completion(report['source_operation_id'], authorization)
+            pin = trial_pin(path, raw, report)
+            _match(proof['prefix'], pin, 'Saved original S-confirmed prefix')
+            baseline = report['baseline_analysis']
+            _analysis_receipt(baseline['analysis'], plan, authorization, -1, 'baseline',
+                CycleAdmission._sha(read_trial_reference(baseline['packet'])))
+            verdict = trial_verdict(entry)
+            validate_trial_verdict(verdict)
+            if entry['kind'] == 'skipped_known_failure':
+                decision = read_trial_reference(entry['sources']['decision'])
+                if (decision['authorization_sha256'] != authorization['sha256'] or decision['ordinal'] != ordinal
+                        or decision['experiment_id'] != plan['admissions'][ordinal]['experiment_id']
+                        or decision['manifest_sha256'] != plan['admissions'][ordinal]['manifest_sha256']
+                        or decision['variant_id'] != stage['variant_id'] or decision['stage_map_sha256'] != report['stage_map_sha256']
+                        or decision['sha256'] != CycleAdmission._sha({key: value for key, value in decision.items() if key != 'sha256'})):
+                    raise ValueError('Saved skipped trial lost its authoritative original decision')
+                path_decision = skip_decision_path(authorization['execution'], decision['experiment_id'])
+                if read_raw(path_decision, ARTIFACT_LIMIT) != read_raw(Path(entry['sources']['decision']['path']), ARTIFACT_LIMIT):
+                    raise ValueError('Saved skip decision differs from its original ingress veto')
+                for reference in entry['sources']['historical'].values():
+                    read_trial_reference(reference)
+                result['skipped_trials'] += 1
+            else:
+                observation = read_trial_reference(entry['observation'])
+                _match(observation['experiment'], plan['admissions'][ordinal]['observation']['experiment'], 'Saved original screen input')
+                execution = read_trial_reference(entry['sources']['cleanup'])
+                if (not all(execution.get(key) is True for key in ('durable_stop_confirmed', 'executor_stop_confirmed', 'reap_record_observed'))
+                        or execution['record_sha256'] != entry['sources']['managed']):
+                    raise ValueError('Saved trial has no complete original managed cleanup')
+                for path_raw, expected_sha in execution['raw_sha256'].items():
+                    actual_path = Path(path_raw)
+                    if not actual_path.is_relative_to(Path(authorization['execution']['state_directory'])):
+                        raise ValueError('Saved execution inventory escaped its original native root')
+                    if hashlib.sha256(read_raw(actual_path, 16 * LIMIT)).hexdigest() != expected_sha:
+                        raise ValueError('Saved original managed execution raw changed')
+                for reference in observation['screen']['artifacts']:
+                    from ergora.training.materials import relative
+                    artifact = Path(authorization['execution']['state_directory']) / 'training/jobs' / plan['admissions'][ordinal]['experiment_id'] / 'run-output' / relative(reference['path'])
+                    artifact_raw = read_raw(artifact, 16 * LIMIT)
+                    if len(artifact_raw) != reference['bytes'] or hashlib.sha256(artifact_raw).hexdigest() != reference['sha256']:
+                        raise ValueError('Saved original screen/profile artifact changed')
+                packet = read_trial_reference(entry['diagnostics']['packet'])
+                _analysis_receipt(entry['diagnostics']['analysis'], plan, authorization, ordinal, 'screen', CycleAdmission._sha(packet))
+                read_trial_reference(entry['diagnostics']['profile'])
+                result['executed_trials'] += 1
+                result['promising_count'] += int(verdict['state'] == 'SCREEN_COMPLETED' and verdict['performance_state'] == 'promising')
+            result.update(sequence_trials=ordinal + 1, prefix=pin, status='in_progress')
+            previous = report['trials']
+        if result['sequence_trials'] == count:
+            result.update(status='screen_search_completed', reason=None)
+        return result
+    except (OSError, ValueError, KeyError, TypeError, RecursionError) as error:
+        return {**result, 'status': 'needs_reconciliation', 'reason': str(error)}
+
+
+def validate_search_stop_projection(value, original):
+    """Validate only a read-only local search summary, never a remote stop grant."""
+    _exact(value, ('status', 'selection_count', 'sequence_trials', 'executed_trials', 'skipped_trials',
+        'promising_count', 'verified_gain_count', 'full_accepted_count', 'prefix', 'reason', 'coverage',
+        'local_effects', 'local_stop', 'termination', 'source_operation_id', 'authorization_sha256', 'input_sha256'),
+        'Local search stop projection')
+    if (value['authorization_sha256'] != original['authorization_sha256'] or value['input_sha256'] != original['input_sha256']
+            or not isinstance(value['source_operation_id'], str) or re.fullmatch('[a-f0-9]{32}', value['source_operation_id']) is None):
+        raise ValueError('Search stop projection changed the original birth or source operation')
+    counts = ('selection_count', 'sequence_trials', 'executed_trials', 'skipped_trials', 'promising_count',
+        'verified_gain_count', 'full_accepted_count')
+    if (any(type(value[key]) is not int or value[key] < 0 for key in counts)
+            or not 1 <= value['selection_count'] <= 32 or value['sequence_trials'] > value['selection_count']
+            or value['executed_trials'] + value['skipped_trials'] != value['sequence_trials']
+            or value['promising_count'] > value['executed_trials']
+            or value['verified_gain_count'] != 0 or value['full_accepted_count'] != 0):
+        raise ValueError('Search stop projection changed the bounded screen-only counts')
+    if value['sequence_trials']:
+        validate_trial_prefix(value['prefix'])
+        if value['prefix']['trials'] != value['sequence_trials']:
+            raise ValueError('Search stop projection changed its confirmed complete prefix count')
+    elif value['prefix'] is not None:
+        raise ValueError('Empty local progress cannot claim a trial prefix')
+    if (value['status'] not in ('not_started', 'in_progress', 'partial', 'needs_reconciliation', 'screen_search_completed')
+            or value['termination'] not in (None, 'stop', 'budget')
+            or value['local_effects']['state'] not in ('quiescent', 'unresolved')):
+        raise ValueError('Search stop projection has no typed local termination state')
+    coverage = value['coverage']
+    if (coverage['runtime_status'] != 'not_queried' or coverage['execution_authorized'] is not False
+            or coverage['full_quality_approved'] is not False or coverage['promotion_approved'] is not False
+            or coverage['remote_controller_status'] != 'not_queried' or coverage['controller_cancellation_confirmed'] is not None
+            or coverage['executor_stop_confirmed'] is not None and coverage['executor_stop_confirmed'] is not True):
+        raise ValueError('A local search projection cannot assert remote cancellation, full quality or execution')
+    local_stop = value['local_stop']
+    _exact(local_stop, ('stop_visible', 'identity_matches', 'stop_durable', 'admission_drained'), 'Local search veto facts')
+    if any(item is not None and type(item) is not bool for item in local_stop.values()):
+        raise ValueError('Local search veto/drain observations must remain typed')
+    if value['status'] == 'partial':
+        if value['local_effects']['state'] != 'quiescent' or value['local_effects']['unresolved'] or value['termination'] is None:
+            raise ValueError('Unresolved original effects cannot become a known partial search')
+        if value['termination'] == 'stop' and not (all(local_stop[key] is True for key in
+                ('stop_visible', 'identity_matches', 'stop_durable')) and (local_stop['admission_drained'] is True
+                    or value['local_effects']['admission_state'] == 'not_admitted')):
+            raise ValueError('Known partial stop requires its actual durable local veto/drain or non-admission')
+    if value['status'] == 'screen_search_completed' and value['sequence_trials'] != value['selection_count']:
+        raise ValueError('An incomplete local prefix cannot be a completed search')
+    return value
 
 
 def validate_round_prefix(value: dict) -> None:
@@ -531,6 +1714,12 @@ def validate_round_predecessor(value, ordinal: int) -> None:
             raise ValueError('First selected candidate cannot acquire a predecessor')
         return
     _exact(value, ('prefix', 'acceptance'), 'Cycle predecessor')
+    if value['acceptance'].get('kind') in ('executed', 'skipped_known_failure'):
+        validate_trial_prefix(value['prefix'])
+        validate_trial_entry(value['acceptance'])
+        if value['prefix']['trials'] != ordinal or value['acceptance']['ordinal'] != ordinal - 1:
+            raise ValueError('Bounded predecessor differs from its complete logical count')
+        return
     validate_round_prefix(value['prefix'])
     validate_round_acceptance(value['acceptance'])
     if value['prefix']['rounds'] != ordinal or value['acceptance']['candidate']['ordinal'] != ordinal - 1:
@@ -734,94 +1923,64 @@ class PhaseFrames:
             self.problem = 'Incomplete training phase frame exceeds its complete response capacity'
 
 
-CYCLE_ACTIVITY_NAMES = {action: 'ergora.training_cycle.' + action + '.v1'
-                        for action in ('inspect', 'start', 'reconcile', 'stop')}
-CYCLE_ACTIVITY_NAMES.update({action: 'ergora.training_cycle.' + action + '.v2'
-                            for action in ('request-execution-or-observe', 'observe-candidate')})
-CYCLE_TASK_QUEUE = 'ergora-training-cycle-v1'
-CYCLE_STOP_TASK_QUEUE = 'ergora-training-cycle-stop-v1'
-
-
-CYCLE_ACTIVITY_NAMES_V3 = {action: 'ergora.training_cycle.' + action + '.v3' for action in (
+CYCLE_ACTIVITY_NAMES = {action: 'ergora.training_cycle.' + action + '.v4' for action in (
     'start', 'reconcile', 'request-execution-or-observe', 'observe-candidate',
     'collect-round', 'reconcile-round', 'stop')}
-CYCLE_TASK_QUEUE_V2 = 'ergora-training-cycle-v2'
-CYCLE_STOP_TASK_QUEUE_V2 = 'ergora-training-cycle-stop-v2'
-CYCLE_ACTIVITY_NAMES_V4 = {action: 'ergora.training_cycle.' + action + '.v4' for action in CYCLE_ACTIVITY_NAMES_V3}
 CYCLE_TASK_QUEUE_V3 = 'ergora-training-cycle-v3'
 CYCLE_STOP_TASK_QUEUE_V3 = 'ergora-training-cycle-stop-v3'
 
 
-def cycle_activity_names(program_version: int = 1) -> dict:
-    if type(program_version) is not int or program_version not in (1, 2, 3):
-        raise ValueError('Unsupported training cycle program version')
-    return {1: CYCLE_ACTIVITY_NAMES, 2: CYCLE_ACTIVITY_NAMES_V3, 3: CYCLE_ACTIVITY_NAMES_V4}[program_version]
+def cycle_activity_names() -> dict:
+    return CYCLE_ACTIVITY_NAMES
 
 
 def validate_cycle_activity_request(value: dict, action: str) -> None:
     workflow_input = value.get('workflow_input') if isinstance(value, dict) else None
-    _exact(workflow_input, ('protocol', 'control_home', 'project', 'cycle_id',
-                           'input_sha256', 'authorization_sha256'), 'Cycle workflow input')
-    version2 = workflow_input['protocol'] in ('ergora-training-cycle-v2', 'ergora-training-cycle-v3')
-    names = cycle_activity_names(3 if workflow_input['protocol'] == 'ergora-training-cycle-v3' else 2 if version2 else 1)
-    if workflow_input['protocol'] not in ('ergora-training-cycle-v1', 'ergora-training-cycle-v2', 'ergora-training-cycle-v3') or action not in names:
+    _exact(workflow_input, ('protocol', 'control_home', 'project', 'cycle_id', 'input_sha256', 'authorization_sha256'), 'Cycle workflow input')
+    names = cycle_activity_names()
+    if workflow_input['protocol'] != 'ergora-training-cycle-v3' or action not in names:
         raise ValueError('Unsupported cycle workflow protocol or action')
-    ordinary = action != 'stop' and action != 'inspect'
-    fields = ('workflow_input', *(('ordinal', 'predecessor') if version2 and ordinary else
-        ('ordinal',) if ordinary else ('reason',) if action == 'stop' else ()))
+    ordinary = action != 'stop'
+    fields = ('workflow_input', *(('ordinal', 'predecessor') if ordinary else ('reason',)))
     _exact(value, fields, 'Cycle activity request')
     home = workflow_input['control_home']
     if not isinstance(home, str) or not Path(home).is_absolute() or '..' in Path(home).parts:
         raise ValueError('Cycle activity requires the original absolute control directory')
     for name, maximum in (('project', 63), ('cycle_id', 79)):
-        if not isinstance(workflow_input[name], str) or re.fullmatch(
-                '[A-Za-z0-9][A-Za-z0-9_-]{0,' + str(maximum) + '}', workflow_input[name]) is None:
+        if not isinstance(workflow_input[name], str) or re.fullmatch('[A-Za-z0-9][A-Za-z0-9_-]{0,' + str(maximum) + '}', workflow_input[name]) is None:
             raise ValueError('Cycle activity requires its original portable identity')
     for name in ('input_sha256', 'authorization_sha256'):
         _digest(workflow_input[name])
     if ordinary and (type(value['ordinal']) is not int or not 0 <= value['ordinal'] < 32):
         raise ValueError('Cycle activity requires its original ordinal')
-    if not version2 and action in ('request-execution-or-observe', 'observe-candidate') and value['ordinal'] != 0:
-        raise ValueError('successor_not_enabled')
-    if version2 and ordinary:
+    if ordinary:
         validate_round_predecessor(value['predecessor'], value['ordinal'])
     if action == 'stop' and (not isinstance(value['reason'], str) or not value['reason'].strip()):
         raise ValueError('Cycle stop requires a nonempty reason')
 
 
-def validate_cycle_activity_context(value: dict, *, measurement_action: str | None = None) -> None:
+def validate_cycle_activity_context(value: dict, *, measurement_action: str | None=None) -> None:
     _exact(value, ('workflow_input', 'activity_source', 'service_namespace'), 'Cycle activity context')
     original = value['workflow_input']
-    _exact(original, ('protocol', 'control_home', 'project', 'cycle_id',
-                      'input_sha256', 'authorization_sha256'), 'Cycle workflow input')
-    version2 = original['protocol'] in ('ergora-training-cycle-v2', 'ergora-training-cycle-v3')
+    _exact(original, ('protocol', 'control_home', 'project', 'cycle_id', 'input_sha256', 'authorization_sha256'), 'Cycle workflow input')
     source = value['activity_source']
-    _exact(source, ('workflow_id', 'workflow_run_id', 'workflow_type', 'workflow_namespace',
-                    'namespace', 'activity_id', 'activity_type', 'task_queue', 'attempt'), 'SDK activity source')
-    if any(not isinstance(source[name], str) or not source[name].strip() for name in source if name != 'attempt'):
+    _exact(source, ('workflow_id', 'workflow_run_id', 'workflow_type', 'workflow_namespace', 'namespace', 'activity_id', 'activity_type', 'task_queue', 'attempt'), 'SDK activity source')
+    if any((not isinstance(source[name], str) or not source[name].strip() for name in source if name != 'attempt')):
         raise ValueError('SDK activity requires complete Workflow source information')
-    names = cycle_activity_names(3 if original['protocol'] == 'ergora-training-cycle-v3' else 2 if version2 else 1)
+    names = cycle_activity_names()
     action = next((key for key, name in names.items() if name == source['activity_type']), None)
-    retried_collect = (measurement_action == 'reconcile-round' and action == 'collect-round'
-                       and type(source['attempt']) is int and source['attempt'] > 1)
-    if action is None or measurement_action is not None and action != measurement_action and not retried_collect:
+    retried_collect = measurement_action == 'reconcile-round' and action == 'collect-round' and (type(source['attempt']) is int) and (source['attempt'] > 1)
+    if action is None or (measurement_action is not None and action != measurement_action and (not retried_collect)):
         raise ValueError('SDK activity differs from its registered action')
     request = {'workflow_input': original}
     if action == 'stop':
         request['reason'] = 'validate-source'
-    elif action != 'inspect':
+    else:
         request['ordinal'] = 0
-        if version2:
-            request['predecessor'] = None
+        request['predecessor'] = None
     validate_cycle_activity_request(request, action)
-    queue = ((CYCLE_STOP_TASK_QUEUE_V3 if action == 'stop' else CYCLE_TASK_QUEUE_V3)
-             if original['protocol'] == 'ergora-training-cycle-v3' else (CYCLE_STOP_TASK_QUEUE_V2 if action == 'stop' else CYCLE_TASK_QUEUE_V2) if version2 else
-             (CYCLE_STOP_TASK_QUEUE if action == 'stop' else CYCLE_TASK_QUEUE))
-    if (source['workflow_type'] != cycle_workflow_type(original['protocol']) or source['task_queue'] != queue
-            or not isinstance(value['service_namespace'], str) or not value['service_namespace']
-            or source['namespace'] != value['service_namespace']
-            or source['workflow_namespace'] != value['service_namespace']
-            or type(source['attempt']) is not int or source['attempt'] < 1):
+    queue = CYCLE_STOP_TASK_QUEUE_V3 if action == 'stop' else CYCLE_TASK_QUEUE_V3
+    if source['workflow_type'] != cycle_workflow_type(original['protocol']) or source['task_queue'] != queue or (not isinstance(value['service_namespace'], str)) or (not value['service_namespace']) or (source['namespace'] != value['service_namespace']) or (source['workflow_namespace'] != value['service_namespace']) or (type(source['attempt']) is not int) or (source['attempt'] < 1):
         raise ValueError('SDK activity type, queue, namespace or attempt differs')
 
 
@@ -830,60 +1989,33 @@ def validate_cycle_operation(payload: dict) -> None:
     if not isinstance(payload, dict) or not isinstance(payload.get('identity'), dict):
         raise ValueError('Cycle operation requires its complete identity')
     measurement = payload['identity'].get('mode') in CYCLE_MEASUREMENT_MODES
-    version2 = payload['identity'].get('protocol') in ('ergora-training-cycle-operation-v2', 'ergora-training-cycle-operation-v3')
-    declared = payload['identity'].get('protocol') == 'ergora-training-cycle-operation-v3'
-    input_protocol = 'ergora-training-cycle-v3' if declared else 'ergora-training-cycle-v2' if version2 else 'ergora-training-cycle-v1'
+    input_protocol = 'ergora-training-cycle-v3'
     candidate = payload['identity'].get('mode') in (*CYCLE_CANDIDATE_MODES, *CYCLE_MEASUREMENT_MODES)
-    _exact(payload, ('identity', 'snapshot', 'bootstrap', 'reason', *(('start_context',) if candidate else ()),
-                     *(('activity_context',) if 'activity_context' in payload else ())),
-           'Cycle operation')
+    _exact(payload, ('identity', 'snapshot', 'bootstrap', 'reason', *(('start_context',) if candidate else ()), *(('activity_context',) if 'activity_context' in payload else ())), 'Cycle operation')
     identity = payload['identity']
     if 'activity_context' in payload:
-        validate_cycle_activity_context(payload['activity_context'],
-            measurement_action=payload['identity']['mode'] if measurement else None)
+        validate_cycle_activity_context(payload['activity_context'], measurement_action=payload['identity']['mode'] if measurement else None)
         original = payload['activity_context']['workflow_input']
         if original['protocol'] != input_protocol:
             raise ValueError('Cycle operation protocol differs from its SDK activity source')
-        if any(identity.get(key) != original[key] for key in
-               ('control_home', 'project', 'cycle_id', 'authorization_sha256', *(('input_sha256',) if version2 and payload['snapshot'] is not None else ()))):
+        if any((identity.get(key) != original[key] for key in ('control_home', 'project', 'cycle_id', 'authorization_sha256', *(('input_sha256',) if payload['snapshot'] is not None else ())))):
             raise ValueError('Cycle operation differs from its SDK activity identity')
     if 'activity_context' in payload:
         source = payload['activity_context']['activity_source']
         mode = identity.get('mode')
-        names = cycle_activity_names(3 if declared else 2 if version2 else 1)
+        names = cycle_activity_names()
         stop_modes = ('stop-writer', 'notify-owner', 'drain', 'observe-execution')
-        if (mode in stop_modes and source['activity_type'] != names['stop']
-                or mode in CYCLE_START_MODES and source['activity_type'] != names['start']
-                or mode == 'reconcile-candidate' and source['activity_type'] not in
-                    (names['start'], names['reconcile'])
-                or mode == 'request-execution-candidate' and source['activity_type'] !=
-                    names['request-execution-or-observe']
-                or mode == 'observe-candidate' and source['activity_type'] not in
-                    (names['request-execution-or-observe'], names['observe-candidate'],
-                     *((names['start'], names['reconcile']) if version2 else ()))
-                or mode == 'collect-round' and source['activity_type'] != names['collect-round']
-                or mode == 'reconcile-round' and source['activity_type'] not in (
-                    names['collect-round'], names['reconcile-round'])
-                or mode == 'reconcile-round' and source['activity_type'] == names['collect-round']
-                    and source['attempt'] == 1
-                or mode in ('inspect', 'prepare-controller', 'submit-controller', 'reconcile-controller')):
+        if mode in stop_modes and source['activity_type'] != names['stop'] or (mode in CYCLE_START_MODES and source['activity_type'] != names['start']) or (mode == 'reconcile-candidate' and source['activity_type'] not in (names['start'], names['reconcile'])) or (mode == 'request-execution-candidate' and source['activity_type'] != names['request-execution-or-observe']) or (mode == 'observe-candidate' and source['activity_type'] not in (names['request-execution-or-observe'], names['observe-candidate'], *(names['start'], names['reconcile']))) or (mode == 'collect-round' and source['activity_type'] != names['collect-round']) or (mode == 'reconcile-round' and source['activity_type'] not in (names['collect-round'], names['reconcile-round'])) or (mode == 'reconcile-round' and source['activity_type'] == names['collect-round'] and (source['attempt'] == 1)) or (mode in ('inspect', 'prepare-controller', 'submit-controller', 'reconcile-controller')):
             raise ValueError('Cycle operation mode differs from its SDK activity action')
     if identity.get('mode') == 'inspect-controller-activity' and 'activity_context' not in payload:
         raise ValueError('SDK cold inspection requires its actual activity context')
     if identity.get('mode') in (*CYCLE_EXECUTION_MODES, *CYCLE_MEASUREMENT_MODES) and 'activity_context' not in payload:
         raise ValueError('Candidate execution observation requires its actual SDK activity context')
-    _exact(identity, ('protocol', 'operation_id', 'mode', 'control_home', 'project', 'cycle_id',
-        'input_sha256', 'authorization_sha256', 'ordinal', 'parent'), 'Cycle operation identity')
-    if (identity['protocol'] not in ('ergora-training-cycle-operation-v1', 'ergora-training-cycle-operation-v2', 'ergora-training-cycle-operation-v3')
-            or measurement and not version2
-            or not isinstance(identity['operation_id'], str)
-            or re.fullmatch('[a-f0-9]{32}', identity['operation_id']) is None
-            or identity['mode'] not in ('inspect', 'inspect-controller-activity', 'prepare-controller', 'submit-controller', 'reconcile-controller',
-                'stop-writer', 'notify-owner', 'drain', 'observe-execution', *CYCLE_CANDIDATE_MODES, *CYCLE_MEASUREMENT_MODES)):
+    _exact(identity, ('protocol', 'operation_id', 'mode', 'control_home', 'project', 'cycle_id', 'input_sha256', 'authorization_sha256', 'ordinal', 'parent'), 'Cycle operation identity')
+    if identity['protocol'] != 'ergora-training-cycle-operation-v3' or not isinstance(identity['operation_id'], str) or re.fullmatch('[a-f0-9]{32}', identity['operation_id']) is None or (identity['mode'] not in ('inspect', 'inspect-controller-activity', 'prepare-controller', 'submit-controller', 'reconcile-controller', 'stop-writer', 'notify-owner', 'drain', 'observe-execution', *CYCLE_CANDIDATE_MODES, *CYCLE_MEASUREMENT_MODES)):
         raise ValueError('Unsupported cycle operation or observation identity')
     for name, maximum in (('project', 63), ('cycle_id', 79)):
-        if not isinstance(identity[name], str) or re.fullmatch(
-                '[A-Za-z0-9][A-Za-z0-9_-]{0,' + str(maximum) + '}', identity[name]) is None:
+        if not isinstance(identity[name], str) or re.fullmatch('[A-Za-z0-9][A-Za-z0-9_-]{0,' + str(maximum) + '}', identity[name]) is None:
             raise ValueError('Cycle operation requires portable original project and cycle IDs')
     home = identity['control_home']
     if not isinstance(home, str) or not Path(home).is_absolute() or '..' in Path(home).parts:
@@ -894,8 +2026,9 @@ def validate_cycle_operation(payload: dict) -> None:
     if identity['mode'] in ('notify-owner', 'observe-execution', *CYCLE_CANDIDATE_MODES, *CYCLE_MEASUREMENT_MODES):
         if type(ordinal) is not int or not 0 <= ordinal < 32:
             raise ValueError('Cycle target requires its original selected ordinal')
-        if not version2 and identity['mode'] in CYCLE_EXECUTION_MODES and ordinal != 0:
-            raise ValueError('successor_not_enabled')
+    elif identity['mode'] == 'inspect-controller-activity' and ordinal is not None:
+        if type(ordinal) is not int or not 0 <= ordinal < 32:
+            raise ValueError('SDK readonly inspection requires its selected logical ordinal')
     elif ordinal is not None:
         raise ValueError('This cycle operation has no selected ordinal')
     if payload['reason'] is not None and (not isinstance(payload['reason'], str) or not payload['reason'].strip()):
@@ -907,85 +2040,39 @@ def validate_cycle_operation(payload: dict) -> None:
             raise ValueError('Cold cycle inspection cannot assume an unverified input or snapshot')
         bootstrap = payload['bootstrap']
         _exact(bootstrap, ('boot_id', 'started_ns', 'deadline_ns'), 'Cycle observation deadline')
-        if (bootstrap['boot_id'] != identity['parent']['boot_id']
-                or type(bootstrap['started_ns']) is not int or bootstrap['started_ns'] < 0
-                or type(bootstrap['deadline_ns']) is not int
-                or bootstrap['deadline_ns'] - bootstrap['started_ns'] < 1_000_000_000
-                or not declared and bootstrap['deadline_ns'] - bootstrap['started_ns'] > 60_000_000_000):
-            raise ValueError('Cold inspection requires its original boot origin and deadline' if declared
-                else 'Cold inspection requires one fixed 1 to 60 second observation deadline')
-        if declared:
-            boot, ticks = budget_clock._clock()
-            if (boot != bootstrap['boot_id'] or ticks < bootstrap['started_ns']
-                    or bootstrap['deadline_ns'] > ticks + 10_000_000_000):
-                raise ValueError('Readonly inspection exceeds ten remaining seconds or lost its original boot origin')
+        if bootstrap['boot_id'] != identity['parent']['boot_id'] or type(bootstrap['started_ns']) is not int or bootstrap['started_ns'] < 0 or (type(bootstrap['deadline_ns']) is not int) or (bootstrap['deadline_ns'] - bootstrap['started_ns'] < 1000000000):
+            raise ValueError('Cold inspection requires its original boot origin and deadline')
+        boot, ticks = budget_clock._clock()
+        if boot != bootstrap['boot_id'] or ticks < bootstrap['started_ns'] or bootstrap['deadline_ns'] > ticks + 10000000000:
+            raise ValueError('Readonly inspection exceeds ten remaining seconds or lost its original boot origin')
         return
     _digest(identity['input_sha256'])
-    if not declared and identity['mode'] not in (*CYCLE_WORK_MODES, *CYCLE_OBSERVATION_MODES) and payload['bootstrap'] is not None:
-        raise ValueError('Verified cycle operations must use the original total allowance')
     snapshot = payload['snapshot']
-    _exact(snapshot, ('authorization', 'policy', 'candidates'), 'Original cycle snapshot')
-    authorization, policy = snapshot['authorization'], snapshot['policy']
-    if (not isinstance(authorization, dict) or type(authorization.get('schema_version')) is not int
-            or authorization['schema_version'] != (4 if declared else 3 if version2 else 2)
-            or authorization.get('sha256') != identity['authorization_sha256']
-            or CycleAdmission._sha({k: v for k, v in authorization.items() if k != 'sha256'}) != authorization['sha256']
-            or any(authorization.get(key) != identity[key] for key in
-                ('control_home', 'project', 'cycle_id', 'input_sha256'))):
-        raise ValueError('Cycle operation differs from the complete original authorization')
-    _exact(policy, ('wall_seconds', 'cleanup_seconds', 'control_timeout_seconds'), 'Original cycle policy')
-    if (type(policy['wall_seconds']) is not int or type(policy['cleanup_seconds']) is not int
-            or not 1 <= policy['cleanup_seconds'] < policy['wall_seconds']
-            or type(policy['control_timeout_seconds']) is not int or not 1 <= policy['control_timeout_seconds'] <= 60):
-        raise ValueError('Cycle operation has an invalid original budget policy')
-    _exact(authorization.get('clock'), budget_clock.FIELDS, 'Original cycle clock')
-    budget_clock.validate(authorization['clock'], policy['wall_seconds'])
+    clock, policy = _validate_cycle_snapshot(snapshot, identity)
     if identity['mode'] in CYCLE_WORK_MODES:
         window = payload['bootstrap']
         _exact(window, ('boot_id', 'started_ns', 'deadline_ns'), 'Original cycle operation window')
-        if (window['boot_id'] != identity['parent']['boot_id'] or window['boot_id'] != authorization['clock']['boot_id']
-                or type(window['started_ns']) is not int or window['started_ns'] < authorization['clock']['boottime_ns']
-                or type(window['deadline_ns']) is not int
-                or window['deadline_ns'] - window['started_ns'] > policy['control_timeout_seconds'] * 1_000_000_000
-                or window['deadline_ns'] > authorization['clock']['boottime_ns']
-                    + (policy['wall_seconds'] - policy['cleanup_seconds']) * 1_000_000_000):
+        if window['boot_id'] != identity['parent']['boot_id'] or window['boot_id'] != clock['boot_id'] or type(window['started_ns']) is not int or (window['started_ns'] < clock['boottime_ns']) or (type(window['deadline_ns']) is not int) or (window['deadline_ns'] - window['started_ns'] > policy['control_timeout_seconds'] * 1000000000) or (window['deadline_ns'] > clock['boottime_ns'] + (policy['wall_seconds'] - policy['cleanup_seconds']) * 1000000000):
             raise ValueError('Ordinary cycle window exceeds its original compute or control allowance')
     if identity['mode'] in ('reconcile-controller', 'reconcile-candidate'):
         window = payload['bootstrap']
         _exact(window, ('boot_id', 'started_ns', 'deadline_ns'), 'Cycle reconciliation deadline')
-        if (window['boot_id'] != identity['parent']['boot_id']
-                or type(window['started_ns']) is not int or window['started_ns'] < 0
-                or type(window['deadline_ns']) is not int
-                or not 1_000_000_000 <= window['deadline_ns'] - window['started_ns'] <= 60_000_000_000):
+        if window['boot_id'] != identity['parent']['boot_id'] or type(window['started_ns']) is not int or window['started_ns'] < 0 or (type(window['deadline_ns']) is not int) or (not 1000000000 <= window['deadline_ns'] - window['started_ns'] <= 60000000000):
             raise ValueError('Reconciliation requires one fixed 1 to 60 second observation deadline')
-    if declared and identity['mode'] not in (*CYCLE_WORK_MODES, *CYCLE_OBSERVATION_MODES):
+    if identity['mode'] not in (*CYCLE_WORK_MODES, *CYCLE_OBSERVATION_MODES):
         window = payload['bootstrap']
         _exact(window, ('boot_id', 'started_ns', 'deadline_ns'), 'Original SDK stop window')
-        if (window['boot_id'] != identity['parent']['boot_id'] or window['boot_id'] != authorization['clock']['boot_id']
-                or type(window['started_ns']) is not int or window['started_ns'] < authorization['clock']['boottime_ns']
-                or type(window['deadline_ns']) is not int
-                or window['deadline_ns'] > authorization['clock']['boottime_ns'] + policy['wall_seconds'] * 1_000_000_000):
+        if window['boot_id'] != identity['parent']['boot_id'] or window['boot_id'] != clock['boot_id'] or type(window['started_ns']) is not int or (window['started_ns'] < clock['boottime_ns']) or (type(window['deadline_ns']) is not int) or (window['deadline_ns'] > clock['boottime_ns'] + policy['wall_seconds'] * 1000000000):
             raise ValueError('Cycle stop exceeds its original total or lost its original SDK window')
-    candidates = snapshot['candidates']
-    if not isinstance(candidates, list) or not 1 <= len(candidates) <= 32 or ordinal is not None and ordinal >= len(candidates):
-        raise ValueError('Cycle operation has no complete ordered candidate index')
     if candidate:
         context = payload['start_context']
-        fields = {'prepare-candidate': ('controller',), 'reconcile-candidate': ('controller',),
-            'request-execution-candidate': ('controller',), 'observe-candidate': ('controller',),
-            'collect-round': ('controller',), 'reconcile-round': ('controller',),
-            'confirm-candidate': ('controller', 'origin_operation_id', 'intent_sha256', 'root_process'),
-            'dispatch-candidate': ('controller', 'origin_operation_id', 'intent_sha256', 'owner')}
+        fields = {'prepare-candidate': ('controller',), 'reconcile-candidate': ('controller',), 'request-execution-candidate': ('controller',), 'observe-candidate': ('controller',), 'collect-round': ('controller',), 'reconcile-round': ('controller',), 'confirm-candidate': ('controller', 'origin_operation_id', 'intent_sha256', 'root_process'), 'dispatch-candidate': ('controller', 'origin_operation_id', 'intent_sha256', 'owner')}
         _exact(context, fields[identity['mode']], 'Original candidate start context')
-        validate_budget_binding({'cycle_id': identity['cycle_id'],
-            'authorization_sha256': identity['authorization_sha256'], 'task_queue': BUDGET_TASK_QUEUE,
-            'controller': context['controller']})
-        if (context['controller']['ordinal'] != ordinal
-                or context['controller']['protocol'] != input_protocol):
+        validate_budget_binding({'cycle_id': identity['cycle_id'], 'authorization_sha256': identity['authorization_sha256'], 'task_queue': BUDGET_TASK_QUEUE, 'controller': context['controller']})
+        if context['controller']['ordinal'] != ordinal or context['controller']['protocol'] != input_protocol:
             raise ValueError('Candidate start differs from its original controller ordinal')
         if identity['mode'] in ('confirm-candidate', 'dispatch-candidate'):
-            if (not isinstance(context['origin_operation_id'], str)
-                    or re.fullmatch('[a-f0-9]{32}', context['origin_operation_id']) is None):
+            if not isinstance(context['origin_operation_id'], str) or re.fullmatch('[a-f0-9]{32}', context['origin_operation_id']) is None:
                 raise ValueError('Candidate start requires its original prepare operation')
             _digest(context['intent_sha256'])
             if identity['mode'] == 'confirm-candidate':
@@ -1009,9 +2096,9 @@ def cycle_operation_remaining(payload: dict) -> float:
             return window
     snapshot = payload['snapshot']
     if mode in CYCLE_WORK_MODES:
-        return min(window, budget_clock.remaining(snapshot['authorization']['clock'],
-            snapshot['policy']['wall_seconds'], snapshot['policy']['cleanup_seconds']))
-    return min(window, budget_clock.remaining(snapshot['authorization']['clock'], snapshot['policy']['wall_seconds']))
+        return min(window, budget_clock.remaining(snapshot['budget']['clock'],
+            snapshot['budget']['policy']['wall_seconds'], snapshot['budget']['policy']['cleanup_seconds']))
+    return min(window, budget_clock.remaining(snapshot['budget']['clock'], snapshot['budget']['policy']['wall_seconds']))
 
 
 def cycle_start_source(payload: dict) -> dict:
@@ -1047,6 +2134,7 @@ def cycle_execution_source(payload: dict, intent: dict) -> None:
     source = decode_record(read_raw(Path(identity['control_home']) / 'operations/training-cycles'
                              / identity['operation_id'] / 'request.json', 32_768))
     _match(payload, source, 'Complete execution operation source')
+    plan, _ = resolve_cycle_snapshot(source)
     binding = intent['budget']
     if (any(identity[key] != value for key, value in {
             'control_home': intent['control_home'], 'project': intent['project'],
@@ -1054,7 +2142,7 @@ def cycle_execution_source(payload: dict, intent: dict) -> None:
             or payload['start_context']['controller'] != binding.get('controller')
             or any(payload['activity_context']['activity_source'][key] != binding['controller'][target]
                    for key, target in (('workflow_id', 'workflow_id'), ('workflow_run_id', 'run_id')))
-            or payload['snapshot']['candidates'][identity['ordinal']]['experiment_id'] != intent['experiment_id']
+            or plan['definition']['candidates'][identity['ordinal']]['experiment_id'] != intent['experiment_id']
             or payload['activity_context']['workflow_input']['input_sha256'] != identity['input_sha256']
             or processes.identity(identity['parent']['pid']) != identity['parent']):
         raise ValueError('Execution request lost its original controller, candidate or live parent source')
@@ -1185,13 +2273,32 @@ def owner_record(value: dict) -> dict:
     version = value.get('schema_version')
     if type(version) is not int or version not in (1, 2):
         raise ValueError('Unsupported original budget owner schema')
-    _exact(value, (*common, 'execution_capability') if version == 2 else common, 'Budget owner')
+    fields = (*common, 'execution_capability', *(('cpu_context',) if 'cpu_context' in value else ())) if version == 2 else common
+    _exact(value, fields, 'Budget owner')
     for name in ('intent_sha256', 'authorization_sha256', 'context_sha256'):
         _digest(value[name])
     _process({key: value[key] for key in ('pid', 'start_ticks', 'boot_id')})
     if version == 2 and value['execution_capability'] is not None:
         _capability(value['execution_capability'])
+    if 'cpu_context' in value:
+        _cpu_context_references(value['cpu_context'])
     return value
+
+
+def validate_owner_context(context, owner):
+    """Bind current consumers to the same original owner and its saved CPU refs."""
+    from ergora.training.materials import cpu_contract
+
+    owner_record(owner)
+    contract = cpu_contract(context['intent']['observation']['experiment']['manifest'])
+    if contract is not None:
+        if 'cpu_context' not in owner or 'cpu_context' not in context:
+            raise ValueError('Typed CPU owner lacks its original persisted context references')
+        _match(context['cpu_context'], owner['cpu_context'], 'Original owner CPU context references')
+    elif 'cpu_context' in owner or 'cpu_context' in context:
+        raise ValueError('CPU owner context is present without its original typed contract')
+    if CycleAdmission._sha(context) != owner['context_sha256']:
+        raise ValueError('Complete execution context differs from the original owner')
 
 
 def owner_active(path: Path, expected: dict) -> bool:
@@ -1243,6 +2350,17 @@ def validate_sources(capability: dict) -> None:
     for name, expected in capability['gate_sources'].items():
         if hashlib.sha256(read_raw(PACKAGE_ROOT / name)).hexdigest() != expected:
             raise ValueError('Original execution gate source changed: ' + name)
+    _validate_source_payload(capability)
+    for name, expected in capability['gate_sources'].items():
+        if hashlib.sha256(read_raw(PACKAGE_ROOT / name)).hexdigest() != expected:
+            raise ValueError('Original execution gate source changed: ' + name)
+    if not Path(capability['native_python']).is_file():
+        raise ValueError('Original native interpreter is unavailable')
+
+
+def _validate_source_payload(capability):
+    """Check only the static selected native/reference payload; return no authority."""
+    _current_capability(capability)
     native_resources.verify()
     installation = native_resources.validate_installation(Path(capability['installation']), training=True)
     raw = read_raw(installation / 'ergora-native-runtime.json', 65_536)
@@ -1250,9 +2368,6 @@ def validate_sources(capability: dict) -> None:
     if (declared['protocol_id'] != capability['admission_protocol']
             or hashlib.sha256(raw).hexdigest() != capability['descriptor_sha256']):
         raise ValueError('Original native execution descriptor changed')
-    for name, expected in capability['gate_sources'].items():
-        if hashlib.sha256(read_raw(PACKAGE_ROOT / name)).hexdigest() != expected:
-            raise ValueError('Original execution gate source changed: ' + name)
     if not Path(capability['native_python']).is_file():
         raise ValueError('Original native interpreter is unavailable')
 
@@ -1291,7 +2406,7 @@ class CycleAdmission:
     """
 
     def __init__(self, directory: Path, authorization: dict):
-        if type(authorization['schema_version']) is not int or authorization['schema_version'] not in (2, 3, 4):
+        if type(authorization['schema_version']) is not int or authorization['schema_version'] != 5:
             raise ValueError('Controller admission requires explicit birth-time consent')
         self.directory, self.authorization = directory, authorization
         self.folder = directory / 'controller'
@@ -1441,13 +2556,19 @@ class CycleAdmission:
         authorization = self.authorization
         if (binding['cycle_id'] != authorization['cycle_id']
                 or binding['authorization_sha256'] != authorization['sha256']
-                or controller['protocol'] != {2: 'ergora-training-cycle-v1', 3: 'ergora-training-cycle-v2', 4: 'ergora-training-cycle-v3'}[authorization['schema_version']]
+                or controller['protocol'] != 'ergora-training-cycle-v3'
                 or controller['protocol'] != parent['protocol']
                 or controller['workflow_id'] != parent['workflow_id']
                 or controller['intent_sha256'] != expected['intent_sha256']
                 or controller['ordinal'] >= len(plan['admissions'])):
             raise ValueError('Controller binding differs from its original authorization or selected position')
+        _frozen_cycle_materials(plan, self.directory)
+        _frozen_stage_sources(plan)
         selected = plan['admissions'][controller['ordinal']]
+        expected_operation = 'training-screen-v1' if authorization['controller']['execution_scope'] == D_SCOPE else 'full-verify'
+        if (authorization['controller']['execution_scope'] != plan['definition']['execution_scope'] or
+                selected['observation']['experiment']['manifest']['execution']['operation'] != expected_operation):
+            raise ValueError('Controller birth cannot acquire a different prepared stage execution scope')
         return parent, selected
 
     def bind(self, intent, plan):
@@ -1529,7 +2650,18 @@ class CycleAdmission:
     def request_stop(self, reason):
         """Publish the veto before fsync; never repair or replace an existing path."""
         self._authorization()
-        self.validate_lock()
+        try:
+            self.validate_lock()
+        except FileNotFoundError as error:
+            # Live birth checks can fail before the admission lock is born.
+            # A genuine null intent still permits a veto, never an execution
+            # permit or a synthesized lock/drain observation.
+            if error.filename != str(self.lock) or self.controller_intent() is not None:
+                raise
+            self.folder.mkdir(mode=0o700, exist_ok=True)
+            details = self.folder.lstat()
+            if not stat.S_ISDIR(details.st_mode) or getattr(details, 'st_file_attributes', 0) & 0x400:
+                raise ValueError('Controller stop requires an ordinary original directory')
         try:
             self.stop.lstat()
         except FileNotFoundError:
@@ -1740,29 +2872,82 @@ def _round_sources(authorization, ready, owner):
     _exact(sources, MEASUREMENT_SOURCES, 'Original measurement sources')
     for name, expected in sources.items():
         _digest(expected)
-        if hashlib.sha256(read_raw(PACKAGE_ROOT / name, ARTIFACT_LIMIT)).hexdigest() != expected:
-            raise ValueError('Original round measurement source bytes changed: ' + name)
     if owner is not None:
         capability = owner.get('execution_capability')
         if (capability is None or capability['cycle_ready_sha256'] != CycleAdmission._sha(ready)
                 or capability['installation'] != authorization['execution']['installation']):
             raise ValueError('Round candidate has no original ready-bound selected capability')
-        validate_sources(capability)
-    else:
-        # Authorization pins only the four measurement sources. The original
-        # complete source/manifest capability is born later, in the immutable owner.
-        installation = native_resources.validate_installation(Path(authorization['execution']['installation']), training=True)
-        read_raw(installation / 'ergora-native-runtime.json')
-        native_resources.verify()
+        _current_capability(capability)
+        combined = {name: (expected, ARTIFACT_LIMIT) for name, expected in sources.items()}
+        for name, expected in capability['gate_sources'].items():
+            if name in combined and combined[name][0] != expected:
+                raise ValueError('Overlapping measurement/gate source declarations conflict: ' + name)
+            combined[name] = (expected, LIMIT)
+        for name, (expected, limit) in combined.items():
+            if hashlib.sha256(read_raw(PACKAGE_ROOT / name, limit)).hexdigest() != expected:
+                raise ValueError('Original round source bytes changed: ' + name)
+        _validate_source_payload(capability)
+        for name, (expected, limit) in combined.items():
+            if hashlib.sha256(read_raw(PACKAGE_ROOT / name, limit)).hexdigest() != expected:
+                raise ValueError('Original round source changed during verification: ' + name)
+        if not Path(capability['native_python']).is_file():
+            raise ValueError('Original native interpreter is unavailable')
+        return
+    for name, expected in sources.items():
+        if hashlib.sha256(read_raw(PACKAGE_ROOT / name, ARTIFACT_LIMIT)).hexdigest() != expected:
+            raise ValueError('Original round measurement source bytes changed: ' + name)
+    # The capability is born later, in the immutable owner.
+    installation = native_resources.validate_installation(Path(authorization['execution']['installation']), training=True)
+    read_raw(installation / 'ergora-native-runtime.json')
+    native_resources.verify()
     for name, expected in sources.items():
         if hashlib.sha256(read_raw(PACKAGE_ROOT / name, ARTIFACT_LIMIT)).hexdigest() != expected:
             raise ValueError('Original round measurement source changed during verification: ' + name)
 
 
+def _frozen_stage_sources(plan):
+    """Authenticate both actual prepared stages at every current effect boundary."""
+    if plan['definition']['execution_scope'] != D_SCOPE:
+        return
+    from ergora.training.materials import relative, preparation_preview_body
+    execution = plan['project']['registration']['definition']['execution']
+    state_root, config_root = Path(execution['state_directory']), Path(execution['config_directory'])
+    for ordinal, choice in enumerate(plan['search']['plan']['choices']):
+        for name in ('screen', 'full'):
+            stage = choice['stages'][name]
+            reference = plan['preparation_sources'][ordinal][name]
+            expected_path = state_root / 'ergora/training-preparations' / (stage['experiment_id'] + '.intent.json')
+            if reference['path'] != str(expected_path):
+                raise ValueError('Stage preparation intent moved outside its original native identity')
+            original = read_trial_reference(reference)
+            _match(preparation_preview_body(original), stage['native_plan'], 'Complete original native stage preparation preview')
+            for path, text in stage['native_plan']['files'].items():
+                raw = read_raw(state_root / relative(path), 16 * LIMIT)
+                if raw != text.encode('utf-8'):
+                    raise ValueError('Original prepared stage file changed: ' + path)
+            admitted = plan['stage_admissions'][ordinal][name]['observation']
+            for path, expected_sha in {**admitted['baseline_files'], **admitted['experiment']['files']}.items():
+                prefix, path_relative = path.split('/', 1)
+                root = state_root if prefix == 'state' else config_root if prefix == 'config' else None
+                if root is None or hashlib.sha256(read_raw(root / relative(path_relative), 16 * LIMIT)).hexdigest() != expected_sha:
+                    raise ValueError('Original prepared stage source inventory changed: ' + path)
+
+
+def _frozen_cycle_materials(plan, directory):
+    if plan['definition']['execution_scope'] != D_SCOPE:
+        return
+    from ergora.storage.assets import inventory_tree
+    observed = {}
+    for name in ('search', 'analyst'):
+        _, files, _ = inventory_tree(directory / name, max_directories=1000, max_depth=48)
+        observed.update({name + '/' + key: item for key, item in files.items()})
+    _match(observed, plan['material_files'], 'Complete frozen search and analyst material')
+
+
 def _round_authority(plan, admission, ready):
     """Read the exact original authorization, plan, ready and compute window."""
     authorization, sha = admission.authorization, admission._sha
-    if type(authorization['schema_version']) is not int or authorization['schema_version'] not in (3, 4):
+    if type(authorization['schema_version']) is not int or authorization['schema_version'] != 5:
         raise ValueError('Complete round authentication requires the original schema3 authorization')
     if sha({key: value for key, value in authorization.items() if key != 'sha256'}) != authorization['sha256']:
         raise ValueError('Complete round authorization changed its original canonical SHA256')
@@ -1770,6 +2955,7 @@ def _round_authority(plan, admission, ready):
     raw_plan = read_raw(admission.directory / 'cycle.json', ARTIFACT_LIMIT)
     if hashlib.sha256(raw_plan).hexdigest() != authorization['input_sha256'] or decode_record(raw_plan) != plan:
         raise ValueError('Complete original cycle input changed')
+    _frozen_cycle_materials(plan, admission.directory)
     project, policy = plan['project'], plan['definition']['budget']
     if (plan['control_home'] != authorization['control_home'] or project['id'] != authorization['project']
             or project['revision'] != authorization['project_revision']
@@ -1831,9 +3017,8 @@ def _round_predecessors(plan, admission, ready, controller, active):
         validate_cycle_operation(source)
         reply = decode_record(read_raw(source_path / 'helper/stdout.txt', 32_768))
         selection = round_selection(plan, authorization)
-        expected_snapshot = {'authorization': authorization, 'policy': policy, 'candidates': [
-            {'ordinal': number, 'experiment_id': item['experiment_id'], 'manifest_sha256': item['manifest_sha256']}
-            for number, item in enumerate(plan['definition']['candidates'])]}
+        _, original_authorization = resolve_cycle_snapshot(source)
+        expected_snapshot = _cycle_snapshot(admission.directory, plan, authorization)
         measurement = {'measurement_state': 'accepted', 'index_state': 'durable', 'continuation_ready': True,
                        'prefix': pin, 'acceptance': acceptance}
         expected_reply = {'status': 'observed', 'facts': {
@@ -1841,6 +3026,7 @@ def _round_predecessors(plan, admission, ready, controller, active):
         _match(reply, expected_reply, 'Complete original accepted helper projection')
         if (value['identity'] != source['identity'] or value['identity']['ordinal'] != index
                 or value['activity_context'] != source['activity_context'] or source['snapshot'] != expected_snapshot
+                or original_authorization != authorization
                 or value['prefix'] != pin or value['selection'] != selection
                 or value['predecessor'] != original['budget']['controller']['predecessor']
                 or source['start_context']['controller'] != original['budget']['controller']
@@ -1884,118 +3070,10 @@ def _round_predecessors(plan, admission, ready, controller, active):
     return result
 
 
-def authenticate_cycle_binding(binding: dict, plan: dict, admission: CycleAdmission, ready: dict) -> list:
-    """Authenticate a real selected binding without inventing a future intent."""
-    authorization, project = admission.authorization, plan['project']
-    raw_plan, active = _round_authority(plan, admission, ready)
-    _, selected = admission._bound_selection(binding, plan)
-    current = ExecutionRecords(project, selected['experiment_id'], authorization['control_home'])
-    for name, expected in project['registration']['files'].items():
-        _match(current.document(current.adapter.safe_file(current.config, name)), expected, 'Original registered document')
-    _round_sources(authorization, ready, None)
-    result = _round_predecessors(plan, admission, ready, binding['controller'], active)
-    admission._bound_selection(binding, plan)
-    _match(decode_record(read_raw(admission.directory / 'ready.json')), ready, 'Original cycle ready')
-    if read_raw(admission.directory / 'cycle.json', ARTIFACT_LIMIT) != raw_plan:
-        raise ValueError('Original complete cycle input changed during authentication')
-    _round_sources(authorization, ready, None)
-    active()
-    return result
 
 
-def authenticate_cycle_candidate(intent: dict, plan: dict, admission: CycleAdmission, ready: dict) -> list:
-    """Authenticate the complete current intent, owner and all predecessors.
-
-    The H additionally checks live archive and runtime eligibility. This pure
-    boundary remains independent of State, schemas and the SDK.
-    """
-    authorization, sha, project = admission.authorization, admission._sha, plan['project']
-    raw_plan, active = _round_authority(plan, admission, ready)
-    validate_budget_binding(intent['budget'])
-    admission.bind(intent, plan)
-    controller = intent['budget']['controller']
-    ordinal = controller['ordinal']
-    _round_candidate_intent(intent, plan, admission, ordinal)
-    current = ExecutionRecords(project, intent['experiment_id'], authorization['control_home'])
-    current_owner = current.document(current.budget / 'owner.json', optional=True)
-    intent_path = current.budget.parent / (current.ident + '.intent.json')
-    actual_intent = current.document(intent_path, optional=current_owner is None, limit=16 * LIMIT)
-    if actual_intent is not None:
-        _match(actual_intent, intent, 'Complete original current candidate intent')
-    if current_owner is not None:
-        owner_record(current_owner)
-        if (current_owner['intent_sha256'] != sha(intent)
-                or current_owner['authorization_sha256'] != authorization['sha256']):
-            raise ValueError('Round candidate owner differs from its original intent or authorization')
-    for name, expected in project['registration']['files'].items():
-        _match(current.document(current.adapter.safe_file(current.config, name)), expected, 'Original registered document')
-
-    active()
-    _round_sources(authorization, ready, current_owner)
-    result = _round_predecessors(plan, admission, ready, controller, active)
-    _match(current.document(current.budget / 'owner.json', optional=True), current_owner, 'Original round candidate owner')
-    _match(decode_record(read_raw(admission.directory / 'ready.json')), ready, 'Original cycle ready')
-    if read_raw(admission.directory / 'cycle.json', ARTIFACT_LIMIT) != raw_plan:
-        raise ValueError('Original complete cycle input changed during authentication')
-    _round_sources(authorization, ready, current_owner)
-    _match(current.document(intent_path, optional=actual_intent is None, limit=16 * LIMIT), actual_intent,
-           'Complete original current candidate intent')
-    active()
-    return result
 
 
-def validate_context(context: dict, chain: ExecutionRecords, *, live=True) -> CycleAdmission | None:
-    """Rebind the complete birth context and its original sources, without State."""
-    _exact(context, ('intent', 'authorization', 'policy', 'project', 'published_project'), 'Cached execution context')
-    owner = chain.owner
-    _match(context['intent'], chain.intent, 'Complete cached intent')
-    if chain.sha(context) != owner['context_sha256']:
-        raise ValueError('Complete execution context differs from the original owner')
-    authorization, policy, intent = (context[name] for name in ('authorization', 'policy', 'intent'))
-    if (authorization['sha256'] != chain.sha({key: value for key, value in authorization.items() if key != 'sha256'})
-            or authorization['sha256'] != owner['authorization_sha256']):
-        raise ValueError('Execution authorization differs from its original complete SHA256')
-    cycle = Path(intent['control_home']) / 'training-cycles' / intent['project'] / intent['budget']['cycle_id']
-    _match(decode_record(read_raw(cycle / 'authorization.json')), authorization, 'Original cycle authorization')
-    raw = read_raw(cycle / 'cycle.json', ARTIFACT_LIMIT)
-    if hashlib.sha256(raw).hexdigest() != authorization['input_sha256']:
-        raise ValueError('Original complete cycle input changed')
-    plan = decode_record(raw)
-    validate_budget_binding(intent['budget'])
-    if type(authorization['schema_version']) is not int or authorization['schema_version'] not in (1, 2, 3, 4):
-        raise ValueError('Unsupported original execution authorization schema')
-    parent = None
-    if authorization['schema_version'] in (3, 4):
-        parent = CycleAdmission(cycle, authorization)
-        authenticate_cycle_candidate(intent, plan, parent, decode_record(read_raw(cycle / 'ready.json')))
-    elif authorization['schema_version'] == 2:
-        parent = CycleAdmission(cycle, authorization)
-        parent.bind(intent, plan)
-    elif 'controller' in intent['budget']:
-        raise ValueError('Manual authorization cannot acquire a controller binding')
-    _match(plan['definition']['budget'], policy, 'Original complete computation policy')
-    _match(plan['project'], context['project'], 'Original cycle project')
-    ready = decode_record(read_raw(cycle / 'ready.json'))
-    if (chain.sha(ready) != owner['execution_capability']['cycle_ready_sha256']
-            or ready['authorization_sha256'] != authorization['sha256']):
-        raise ValueError('Original cycle ready record changed')
-    budget_clock.validate(authorization['clock'], policy['wall_seconds'])
-    registration = context['published_project']['registration']
-    for name, expected in registration['files'].items():
-        _match(chain.document(chain.adapter.safe_file(chain.config, name)), expected, 'Original registered document')
-    observed = intent['observation']
-    for name, expected in {**observed['baseline_files'], **observed['experiment']['files']}.items():
-        prefix, relative = name.split('/', 1)
-        root = chain.root if prefix == 'state' else chain.config if prefix == 'config' else None
-        if root is None or hashlib.sha256(read_raw(chain.adapter.safe_file(root, relative))).hexdigest() != expected:
-            raise ValueError('Original experiment source changed: ' + name)
-    validate_sources(owner['execution_capability'])
-    if live and (not owner_active(chain.budget / 'owner.json', owner)
-            or budget_clock.remaining(authorization['clock'], policy['wall_seconds'], policy['cleanup_seconds']) <= 0):
-        raise ValueError('Original execution owner or computation budget is no longer active')
-    if live and parent is not None:
-        parent.check()
-    return parent
 
 
 def record_stopped(context: dict, phase: dict, process: dict) -> dict:
@@ -2045,24 +3123,20 @@ class _CycleOperation:
             if type(inspection_timeout) is not int or not 1 <= inspection_timeout <= 60:
                 raise ValueError('Cold inspection timeout must be 1 to 60 seconds')
             boot, ticks = budget_clock._clock()
+            seconds = min(10, inspection_timeout) if mode in ('inspect', 'inspect-controller-activity') else inspection_timeout
             bootstrap = {'boot_id': boot, 'started_ns': ticks,
-                         'deadline_ns': ticks + inspection_timeout * 1_000_000_000}
+                         'deadline_ns': ticks + seconds * 1_000_000_000}
         elif mode in ('prepare-controller', 'submit-controller', 'prepare-candidate', *CYCLE_MEASUREMENT_MODES) and window is None:
-            policy, clock = snapshot['policy'], snapshot['authorization']['clock']
+            policy, clock = snapshot['budget']['policy'], snapshot['budget']['clock']
             boot, ticks = budget_clock._clock()
             seconds = min(policy['control_timeout_seconds'], budget_clock.remaining(
                 clock, policy['wall_seconds'], policy['cleanup_seconds']))
             bootstrap = {'boot_id': boot, 'started_ns': ticks,
                 'deadline_ns': min(ticks + int(seconds * 1_000_000_000), clock['boottime_ns']
                     + (policy['wall_seconds'] - policy['cleanup_seconds']) * 1_000_000_000)}
-        version2 = (snapshot is not None and snapshot['authorization']['schema_version'] in (3, 4) or
-            activity_context is not None and activity_context['workflow_input']['protocol'] in ('ergora-training-cycle-v2', 'ergora-training-cycle-v3'))
-        declared = (snapshot is not None and snapshot['authorization']['schema_version'] == 4 or
-            activity_context is not None and activity_context['workflow_input']['protocol'] == 'ergora-training-cycle-v3')
-        self.identity = {'protocol': ('ergora-training-cycle-operation-v3' if declared else 'ergora-training-cycle-operation-v2' if version2
-            else 'ergora-training-cycle-operation-v1'), 'operation_id': uuid.uuid4().hex,
+        self.identity = {'protocol': 'ergora-training-cycle-operation-v3', 'operation_id': uuid.uuid4().hex,
             'mode': mode, 'control_home': str(home), 'project': project, 'cycle_id': cycle_id,
-            'input_sha256': snapshot['authorization']['input_sha256'] if snapshot is not None else None,
+            'input_sha256': snapshot['plan_ref']['sha256'] if snapshot is not None else None,
             'authorization_sha256': authorization_sha256, 'ordinal': ordinal, 'parent': processes.identity(os.getpid())}
         self.payload = {'identity': self.identity, 'snapshot': snapshot, 'bootstrap': bootstrap, 'reason': reason}
         if start_context is not None:
@@ -2070,9 +3144,9 @@ class _CycleOperation:
         if activity_context is not None:
             self.payload['activity_context'] = activity_context
         validate_cycle_operation(self.payload)
-        self.encoded = json.dumps(self.payload, ensure_ascii=False, allow_nan=False, separators=(',', ':')).encode('utf-8')
+        self.encoded = _cycle_wire_bytes(self.payload)
         self.capacity_rejected = len(self.encoded) > _CYCLE_LIMIT
-        if self.capacity_rejected and (not version2 or snapshot is None or bootstrap is None):
+        if self.capacity_rejected and (snapshot is None or bootstrap is None):
             logging.error('Complete unsent cycle operation request: %s', self.payload)
             raise _CycleCapacityError('Complete cycle operation request exceeds 32 KiB; nothing was truncated')
         self.output = home / 'operations/training-cycles' / self.identity['operation_id']
@@ -2146,6 +3220,10 @@ class _CycleOperation:
     async def _run(self) -> dict:
         if self.stopping or self.expired():
             return self.observation({'status': 'unknown', 'reason': 'Original cycle operation allowance is exhausted'})
+        if not self.capacity_rejected:
+            _cycle_cpu_frame(self.payload, 'parent', capture=True)
+            if self.stopping or self.expired():
+                return self.observation({'status': 'unknown', 'reason': 'Original allowance ended during CPU parent observation'})
         self.spawning = asyncio.create_task(asyncio.create_subprocess_exec(sys.executable, '-P', '-c',
             ('from ergora.training.runtime.worker import cycle_request_retention_main;cycle_request_retention_main()'
              if self.capacity_rejected else
@@ -2270,8 +3348,8 @@ class _CycleOperation:
 
 def _request_retention_envelope(payload: dict, size: int) -> dict:
     # These are original supervision inputs, never a replacement authorization.
-    policy = payload['snapshot']['policy']
-    clock = payload['snapshot']['authorization']['clock']
+    policy = payload['snapshot']['budget']['policy']
+    clock = payload['snapshot']['budget']['clock']
     window = payload['bootstrap']
     return {'protocol': _REQUEST_RETENTION_PROTOCOL, 'identity': payload['identity'], 'bytes': size,
         'bootstrap': window, 'budget': {'clock': {key: clock[key] for key in budget_clock.FIELDS},
@@ -2281,8 +3359,171 @@ def _request_retention_envelope(payload: dict, size: int) -> dict:
 
 
 
-def _cycle_snapshot(plan: dict, authorization: dict) -> dict:
-    return {'authorization': authorization, 'policy': plan['definition']['budget'],
-        'candidates': [{'ordinal': index, 'experiment_id': item['experiment_id'],
-                        'manifest_sha256': item['manifest_sha256']}
-                       for index, item in enumerate(plan['definition']['candidates'])]}
+def _validate_cycle_snapshot(snapshot: dict, identity: dict) -> tuple[dict, dict]:
+    _exact(snapshot, ('plan_ref', 'authorization_ref', 'budget', 'candidate_count'), 'Original cycle snapshot')
+    for name, limit in (('plan_ref', ARTIFACT_LIMIT), ('authorization_ref', LIMIT)):
+        reference = snapshot[name]
+        _exact(reference, ('bytes', 'sha256'), 'Original cycle raw reference')
+        if type(reference['bytes']) is not int or not 0 < reference['bytes'] <= limit:
+            raise ValueError('Cycle operation has an invalid original raw record size')
+        _digest(reference['sha256'])
+    if snapshot['plan_ref']['sha256'] != identity['input_sha256']:
+        raise ValueError('Cycle operation differs from its original raw plan identity')
+    _exact(snapshot['budget'], ('clock', 'policy'), 'Original cycle budget')
+    clock, policy = snapshot['budget']['clock'], snapshot['budget']['policy']
+    _exact(policy, ('wall_seconds', 'cleanup_seconds', 'control_timeout_seconds'), 'Original cycle policy')
+    if type(policy['wall_seconds']) is not int or type(policy['cleanup_seconds']) is not int or (not 1 <= policy['cleanup_seconds'] < policy['wall_seconds']) or (type(policy['control_timeout_seconds']) is not int) or (not 1 <= policy['control_timeout_seconds'] <= 60):
+        raise ValueError('Cycle operation has an invalid original budget policy')
+    _exact(clock, budget_clock.FIELDS, 'Original cycle clock')
+    budget_clock.validate(clock, policy['wall_seconds'])
+    count = snapshot['candidate_count']
+    if type(count) is not int or not 1 <= count <= 32 or (identity['ordinal'] is not None and (type(identity['ordinal']) is not int or not 0 <= identity['ordinal'] < count)):
+        raise ValueError('Cycle operation has no complete ordered candidate index')
+    return clock, policy
+
+
+def _cycle_directory(identity: dict) -> Path:
+    home = identity['control_home']
+    if not isinstance(home, str) or not Path(home).is_absolute() or '..' in Path(home).parts:
+        raise ValueError('Cycle references require their original absolute control directory')
+    for name, maximum in (('project', 63), ('cycle_id', 79)):
+        if (not isinstance(identity[name], str)
+                or re.fullmatch('[A-Za-z0-9][A-Za-z0-9_-]{0,' + str(maximum) + '}', identity[name]) is None):
+            raise ValueError('Cycle references require their original portable project and cycle IDs')
+    return Path(home) / 'training-cycles' / identity['project'] / identity['cycle_id']
+
+
+def _cycle_reference(raw: bytes) -> dict:
+    return {'bytes': len(raw), 'sha256': hashlib.sha256(raw).hexdigest()}
+
+
+def _cycle_authorization(payload: dict) -> dict:
+    """Retain the original bounded authorization/stop gate without reading a plan."""
+    identity, snapshot = payload['identity'], payload['snapshot']
+    raw = _read_cycle_bytes(_cycle_directory(identity) / 'authorization.json', LIMIT)
+    if _cycle_reference(raw) != snapshot['authorization_ref']:
+        raise ValueError('Cycle authorization differs from its complete original raw reference')
+    authorization = decode_record(raw)
+    if (type(authorization.get('schema_version')) is not int or authorization['schema_version'] != 5
+            or authorization.get('kind') != 'training-cycle-authorization'
+            or authorization.get('sha256') != identity['authorization_sha256']
+            or CycleAdmission._sha({key: value for key, value in authorization.items() if key != 'sha256'})
+                != identity['authorization_sha256']
+            or any(authorization.get(key) != identity[key] for key in
+                   ('control_home', 'project', 'cycle_id', 'input_sha256'))
+            or authorization.get('clock') != snapshot['budget']['clock']):
+        raise ValueError('Cycle operation differs from its original canonical authorization or clock')
+    return authorization
+
+
+def _cycle_snapshot_bytes(plan: dict, authorization: dict, plan_raw: bytes, authorization_raw: bytes) -> dict:
+    if (decode_record(plan_raw) != plan or decode_record(authorization_raw) != authorization
+            or len(plan_raw) > ARTIFACT_LIMIT or len(authorization_raw) > LIMIT
+            or hashlib.sha256(plan_raw).hexdigest() != authorization['input_sha256']
+            or plan.get('kind') != 'training-cycle-plan'
+            or type(plan.get('schema_version')) is not int or plan['schema_version'] != 2
+            or authorization.get('kind') != 'training-cycle-authorization'
+            or type(authorization.get('schema_version')) is not int or authorization['schema_version'] != 5
+            or authorization['sha256'] != CycleAdmission._sha({key: value for key, value in authorization.items() if key != 'sha256'})
+            or plan['control_home'] != authorization['control_home']
+            or plan['project']['id'] != authorization['project']
+            or plan['project']['revision'] != authorization['project_revision']
+            or plan['project']['registration']['definition']['execution'] != authorization['execution']
+            or authorization['controller']['protocol'] != 'ergora-training-cycle-v3'
+            or plan['definition']['execution_scope'] != authorization['controller']['execution_scope']):
+        raise ValueError('Cycle snapshot requires the complete original current plan and authorization')
+    count = len(plan['definition']['candidates'])
+    if not 1 <= count <= 32:
+        raise ValueError('Cycle snapshot requires its complete original ordered selection')
+    return {'plan_ref': _cycle_reference(plan_raw), 'authorization_ref': _cycle_reference(authorization_raw),
+        'budget': {'clock': authorization['clock'], 'policy': plan['definition']['budget']},
+        'candidate_count': count}
+
+
+def _cycle_snapshot(directory: Path, plan: dict, authorization: dict) -> dict:
+    """Declare actual original bytes; decoded objects cannot invent raw references."""
+    if directory != _cycle_directory(authorization):
+        raise ValueError('Cycle snapshot moved outside its fixed original directory')
+    return _cycle_snapshot_bytes(plan, authorization,
+        _read_cycle_bytes(directory / 'cycle.json', ARTIFACT_LIMIT),
+        _read_cycle_bytes(directory / 'authorization.json', LIMIT))
+
+
+def resolve_cycle_snapshot(payload: dict) -> tuple[dict, dict]:
+    """Verify immutable originals at a business/source gate, never in parent polling."""
+    identity, snapshot = payload['identity'], payload['snapshot']
+    _validate_cycle_snapshot(snapshot, identity)
+    authorization = _cycle_authorization(payload)
+    directory = _cycle_directory(identity)
+    plan_raw = _read_cycle_bytes(directory / 'cycle.json', ARTIFACT_LIMIT)
+    if _cycle_reference(plan_raw) != snapshot['plan_ref'] or snapshot['plan_ref']['sha256'] != identity['input_sha256']:
+        raise ValueError('Cycle plan differs from its complete original raw reference')
+    plan = decode_record(plan_raw)
+    if (plan['control_home'] != identity['control_home'] or plan['project']['id'] != identity['project']
+            or plan['project']['revision'] != authorization['project_revision']
+            or plan['project']['registration']['definition']['execution'] != authorization['execution']
+            or plan.get('kind') != 'training-cycle-plan'
+            or type(plan.get('schema_version')) is not int or plan['schema_version'] != 2
+            or plan['definition']['execution_scope'] != authorization['controller']['execution_scope']
+            or authorization['controller']['protocol'] != 'ergora-training-cycle-v3'
+            or snapshot['budget']['policy'] != plan['definition']['budget']
+            or type(snapshot['candidate_count']) is not int
+            or snapshot['candidate_count'] != len(plan['definition']['candidates'])
+            or not 1 <= snapshot['candidate_count'] <= 32
+            or identity['ordinal'] is not None and not 0 <= identity['ordinal'] < snapshot['candidate_count']):
+        raise ValueError('Cycle declaration differs from its original plan, budget or selection')
+    return plan, authorization
+
+
+def _cycle_wire_bytes(value: dict) -> bytes:
+    return json.dumps(value, ensure_ascii=False, allow_nan=False, separators=(',', ':')).encode('utf-8')
+
+
+def admit_cycle_capacity(plan: dict, home: str, project: str, cycle_id: str, plan_bytes: int) -> dict:
+    """Reject known impossible bulk before birth; future SDK/operator values stay guarded.
+
+    Empty future clock/process/context values are lower bounds, not sampled facts
+    or valid grants. Digests have their exact width; unknown byte counts use their
+    minimum width so only definite impossibility is rejected before the clock.
+    Exact later requests, frames, SDK metadata and root offers remain authoritative.
+    """
+    digest = '0' * 64
+    snapshot = {'plan_ref': {'bytes': plan_bytes, 'sha256': digest},
+        'authorization_ref': {'bytes': 1, 'sha256': digest},
+        'budget': {'clock': {}, 'policy': plan['definition']['budget']},
+        'candidate_count': len(plan['definition']['candidates'])}
+    identity = {'protocol': 'ergora-training-cycle-operation-v3', 'operation_id': '0' * 32,
+        'mode': 'submit-controller', 'control_home': home, 'project': project, 'cycle_id': cycle_id,
+        'input_sha256': digest, 'authorization_sha256': digest, 'ordinal': None, 'parent': {}}
+    request = {'identity': identity, 'snapshot': snapshot, 'bootstrap': {}, 'reason': None}
+    workflow_input = {'protocol': 'ergora-training-cycle-v3', 'control_home': home, 'project': project,
+        'cycle_id': cycle_id, 'input_sha256': digest, 'authorization_sha256': digest}
+    shapes = {'request': request,
+        'cold-result': {**identity, 'event': 'result', 'result': {'status': 'inspected', 'snapshot': snapshot}},
+        'candidate-request': {**request, 'start_context': {'controller': {}}, 'activity_context': {
+            'workflow_input': workflow_input, 'activity_source': {}, 'service_namespace': ''}},
+        'activity-result': {'workflow_input': workflow_input, 'inspection': {}, 'operations': []}}
+    shapes['confirmation-request'] = {**shapes['candidate-request'], 'start_context': {
+        'controller': {}, 'origin_operation_id': '0' * 32, 'intent_sha256': digest, 'root_process': {}}}
+    shapes['stop-request'] = {**request, 'identity': {**identity, 'mode': 'stop-writer'}, 'reason': ''}
+    record = {'operation_id': '0' * 32, 'mode': 'observe-execution', 'ordinal': 0,
+        'operation_stopped': True, 'supervisor_returncode': 0, 'result': {}}
+    shapes['stop-activity-result'] = {'workflow_input': workflow_input, 'inspection': {},
+        'operations': [{**record, 'ordinal': ordinal, 'mode': mode} for ordinal in range(snapshot['candidate_count'])
+            for mode in ('notify-owner', 'observe-execution')]
+            + [{**record, 'ordinal': None, 'mode': mode} for mode in ('stop-writer', 'drain')]}
+    sizes = {name: len(_cycle_wire_bytes(value)) for name, value in shapes.items()}
+    execution = plan['project']['registration']['definition']['execution']
+    installation = Path(execution['installation'])
+    environment = {'PYTHONPATH': os.pathsep.join(map(str, (IMPORT_ROOT, installation / 'local',
+        installation / 'upstream/platform', installation / 'upstream/temporal', installation / 'upstream'))),
+        'AGENTFLOW_CONFIG_DIR': execution['config_directory'], 'AGENTFLOW_STATE_DIR': execution['state_directory']}
+    roots = [{'protocol': 'ergora-training-cycle-root-v1', 'origin_operation_id': '0' * 32, 'parent': {}, 'window': {},
+        'submission': {'project': plan['project'], 'control_home': home, 'experiment_id': candidate['experiment_id'],
+            'timeout': plan['definition']['budget']['control_timeout_seconds'], 'intent_sha256': digest,
+            'mode': 'controller-owner'}} for candidate in plan['definition']['candidates']]
+    sizes['root-request'] = max(len(_cycle_wire_bytes(root)) for root in roots)
+    sizes['root-launch'] = max(len(_cycle_wire_bytes({'request': root, 'environment': environment})) for root in roots)
+    if any(size > _CYCLE_LIMIT for size in sizes.values()):
+        raise _CycleCapacityError('Known complete controller input cannot fit its 32 KiB request/result/root boundary')
+    return sizes

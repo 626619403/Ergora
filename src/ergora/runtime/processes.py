@@ -128,28 +128,54 @@ def prepare_supervised() -> None:
 _adopt_children = prepare_supervised
 
 
-def _reap_children() -> None:
+def _process_stamp(pid: int) -> dict:
+    fields = Path('/proc/' + str(pid) + '/stat').read_text().rsplit(')', 1)[1].split()
+    return {'pid': pid, 'start_ticks': fields[19],
+            'boot_id': Path('/proc/sys/kernel/random/boot_id').read_text().strip()}
+
+
+def _reap_children() -> list[dict]:
     children = Path(f"/proc/{os.getpid()}/task/{os.getpid()}/children")
+    waited = []
     while True:
         pids = [int(value) for value in children.read_text(encoding="utf-8").split()]
         if not pids:
-            return
+            return waited
+        observed = {}
         for pid in pids:
             try:
+                observed[pid] = _process_stamp(pid)
                 os.kill(pid, signal.SIGKILL)
-            except ProcessLookupError:
+            except (FileNotFoundError, ProcessLookupError):
                 pass
         for pid in pids:
             try:
-                os.waitpid(pid, 0)
+                actual, status = os.waitpid(pid, 0)
+                waited.append({'process': observed.get(pid), 'wait_pid': actual, 'wait_status': status})
             except ChildProcessError:
-                pass
+                waited.append({'process': observed.get(pid), 'wait_pid': None, 'wait_status': None})
+
+
+def _record_cleanup(output: Path, value: dict) -> None:
+    with (output / 'process-cleanup.json').open('xb') as stream:
+        stream.write(json.dumps(value, sort_keys=True, separators=(',', ':')).encode('utf-8'))
+        stream.flush()
+        os.fsync(stream.fileno())
+    descriptor = os.open(output, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
 
 
 def run(argv: list[str], cwd: Path, output: Path, timeout: int, stdin: str = "",
         env: dict | None = None, *, supervised: bool = False, lock_fd: int | None = None,
-        command_record: Path | None = None, stop_requested: Callable[[], bool] | None = None) -> dict:
-    should_stop = stop_requested or (lambda: _cancel_requested)
+        command_record: Path | None = None, stop_requested: Callable[[], bool] | None = None,
+        record_lifecycle: bool = False) -> dict:
+    if record_lifecycle and not supervised:
+        raise ValueError('Durable subtree receipts require the original supervised process owner')
+    def should_stop():
+        return _cancel_requested or (stop_requested is not None and stop_requested())
     output.mkdir(parents=True, exist_ok=False, mode=0o700)
     (output / "stdin.txt").write_text(stdin, encoding="utf-8", newline="\n")
     if os.name == "nt":
@@ -163,6 +189,8 @@ def run(argv: list[str], cwd: Path, output: Path, timeout: int, stdin: str = "",
     status = "succeeded"
     if supervised:
         _adopt_children()
+    owner = identity(os.getpid()) if record_lifecycle else None
+    model = None
     with ((output / "stdout.txt").open("w", encoding="utf-8") as stdout,
           (output / "stderr.txt").open("w", encoding="utf-8") as stderr,
           (output / "stdin.txt").open("rb") as recorded_input):
@@ -173,6 +201,8 @@ def run(argv: list[str], cwd: Path, output: Path, timeout: int, stdin: str = "",
                     argv, cwd=cwd, env=env, stdin=recorded_input, stdout=stdout, stderr=stderr,
                     text=True, start_new_session=not supervised,
                     pass_fds=() if lock_fd is None else (lock_fd,), encoding="utf-8")
+                if record_lifecycle:
+                    model = _process_stamp(process.pid)
                 try:
                     if supervised:
                         # TERM only requests cancellation, including during final cleanup.
@@ -200,7 +230,13 @@ def run(argv: list[str], cwd: Path, output: Path, timeout: int, stdin: str = "",
                     pass
                 process.wait()
             if supervised:
-                _reap_children()
+                descendants = _reap_children()
+                if record_lifecycle:
+                    _record_cleanup(output, {'schema_version': 1, 'kind': 'supervised-process-cleanup',
+                        'owner': owner, 'model': model, 'model_waited': process is not None,
+                        'returncode': process.returncode if process is not None else None,
+                        'descendants': descendants, 'remaining_children':
+                        Path(f'/proc/{os.getpid()}/task/{os.getpid()}/children').read_text().split()})
     code = process.returncode if process is not None else None
     if supervised and should_stop():
         status = "cancelled"

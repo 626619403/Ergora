@@ -18,6 +18,7 @@ import ergora.definitions.agents as agent_definitions
 import ergora.agents.runs as agent_runs
 import ergora.definitions.bundles as definition_bundles
 import ergora.development.drafts as drafts
+import ergora.improvement.document_corrections as document_corrections
 import ergora.improvement.evaluation as evaluation
 import ergora.development.handoff as handoff
 import ergora.issues.application as issues
@@ -147,6 +148,23 @@ class BindingPayload(Payload):
 
 class RevisionPayload(Payload):
     revision: int
+
+
+class CorrectionSuggestionsPayload(Payload):
+    enabled: bool = Field(strict=True)
+    revision: int = Field(strict=True, ge=1)
+
+
+class DocumentCorrectionApplyPayload(Payload):
+    revision: int = Field(strict=True, ge=1)
+    candidate_digest: str = Field(strict=True, pattern=r"^[a-f0-9]{64}$")
+    base_sha256: str = Field(strict=True, pattern=r"^[a-f0-9]{64}$")
+    scope_sha256: str = Field(strict=True, pattern=r"^[a-f0-9]{64}$")
+    confirm: bool = Field(strict=True)
+
+
+class DocumentCorrectionWithdrawPayload(Payload):
+    reason: str = Field(strict=True, min_length=1, max_length=65536, pattern=r"\S")
 
 
 class DefinitionImportPayload(Payload):
@@ -695,6 +713,32 @@ def create_app(home: Path | None = None) -> FastAPI:
     def project_configuration(project_id: str):
         return projects.effective_configuration(state.project(project_id))
 
+    @application.put("/api/projects/{project_id}/correction-suggestions")
+    def set_correction_suggestions(project_id: str, body: CorrectionSuggestionsPayload):
+        return projects.set_correction_suggestions(state, project_id, body.enabled, body.revision)
+
+    @application.get("/api/projects/{project_id}/document-corrections/{proposal_id}")
+    def inspect_document_correction(project_id: str, proposal_id: str):
+        return document_corrections.inspect_proposal(state, project_id, proposal_id)
+
+    @application.get("/api/projects/{project_id}/document-corrections/{proposal_id}/preview")
+    def document_correction_preview(project_id: str, proposal_id: str,
+                                    candidate_digest: Annotated[str, Query(pattern=r"^[a-f0-9]{64}$")]):
+        preview = document_corrections.get_preview(state, project_id, proposal_id)
+        if preview['candidate_digest'] != candidate_digest:
+            raise ValueError('Document preview differs from the selected candidate digest')
+        return preview
+
+    @application.post("/api/projects/{project_id}/document-corrections/{proposal_id}/apply")
+    def apply_document_correction(project_id: str, proposal_id: str, body: DocumentCorrectionApplyPayload):
+        preview = document_corrections.get_preview(state, project_id, proposal_id)
+        return document_corrections.apply(state, project_id, preview, **body.model_dump())
+
+    @application.post("/api/projects/{project_id}/document-corrections/{proposal_id}/withdraw")
+    def withdraw_document_correction(project_id: str, proposal_id: str, body: DocumentCorrectionWithdrawPayload):
+        preview = document_corrections.get_preview(state, project_id, proposal_id)
+        return document_corrections.withdraw(state, project_id, preview, reason=body.reason)
+
     @application.post("/api/projects/{project_id}/doctor")
     def probe_tools(project_id: str, body: DoctorPayload):
         return tools.doctor(state, project_id, probe=True, timeout=body.timeout)
@@ -706,6 +750,12 @@ def create_app(home: Path | None = None) -> FastAPI:
     @application.get("/api/projects/{project_id}/training")
     def training_experiments(project_id: str, limit: int = 50, after: str | None = None):
         return training.inspect(state, project_id, limit=limit, after=after)
+
+    @application.get("/api/projects/{project_id}/training-cycles/{cycle_id}")
+    def training_cycle_status(project_id: str, cycle_id: str, authorization_sha256: str | None = None):
+        import ergora.training.cycles as training_cycles
+
+        return training_cycles.status(state, project_id, cycle_id, authorization_sha256=authorization_sha256)
 
     @application.post("/api/projects/{project_id}/training/baseline-preview")
     def training_baseline_preview(project_id: str, body: TrainingBaselinePreviewPayload):

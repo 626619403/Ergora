@@ -115,7 +115,7 @@ class Service:
         return StartWorkflowExecutionResponse(run_id=run_id)
 
     async def describe_workflow_execution(self, request, **kwargs):
-        if request.execution.workflow_id.startswith(('ergora-training-cycle/', 'ergora-training-cycle-v2/', 'ergora-training-cycle-v3/')):
+        if request.execution.workflow_id.startswith('ergora-training-cycle-v3/'):
             from training_controller_service import Service as ControllerService
 
             return await ControllerService().describe_workflow_execution(request, **kwargs)
@@ -137,7 +137,7 @@ class Service:
             type=WorkflowType(name='ExperimentWorkflow'), status=WorkflowExecutionStatus.RUNNING, memo=original.memo))
 
     async def get_workflow_execution_history(self, request, **kwargs):
-        if request.execution.workflow_id.startswith(('ergora-training-cycle/', 'ergora-training-cycle-v2/', 'ergora-training-cycle-v3/')):
+        if request.execution.workflow_id.startswith('ergora-training-cycle-v3/'):
             from training_controller_service import Service as ControllerService
 
             return await ControllerService().get_workflow_execution_history(request, **kwargs)
@@ -176,8 +176,8 @@ if scenario in ('fence-observed-receipt', 'fence-observed-rejection') and payloa
 
     original_status = _Submission.status
 
-    def status_then_complete(operation, intent):
-        observed = original_status(operation, intent)
+    def status_then_complete(operation, intent, **options):
+        observed = original_status(operation, intent, **options)
         if observed['status'] == 'prepared':
             if scenario == 'fence-observed-receipt':
                 operation.core.write(operation.path('.attempt.json'), operation.attempt(intent))
