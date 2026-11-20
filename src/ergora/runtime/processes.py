@@ -64,14 +64,16 @@ def resolve_program(program: str, cwd: Path) -> str:
     return resolved
 
 
-def _run_windows(argv, cwd, output, timeout, stdin, env):
+def _run_windows(argv, cwd, output, timeout, stdin, env, deadline=None):
     from ergora.runtime.windows_job import Job
 
     environment = dict(os.environ if env is None else env, PYTHONUTF8="1", PYTHONIOENCODING="utf-8")
-    request = json.dumps({"argv": argv, "stdin": stdin}, ensure_ascii=False)
+    request = json.dumps({"argv": argv, "stdin": stdin, "deadline_monotonic": deadline}, ensure_ascii=False)
     status = "succeeded"
     with (output / "stdout.txt").open("w", encoding="utf-8") as stdout, (output / "stderr.txt").open("w", encoding="utf-8") as stderr:
         with Job() as job:
+            if deadline is not None and time.monotonic() >= deadline:
+                return {"status": "timed_out", "returncode": None, "output": str(output)}
             process = subprocess.Popen([sys.executable, "-m", "ergora.runtime.processes", "--windows-child"],
                                        cwd=cwd, env=environment, stdin=subprocess.PIPE, stdout=stdout,
                                        stderr=stderr, text=True, encoding="utf-8",
@@ -79,17 +81,23 @@ def _run_windows(argv, cwd, output, timeout, stdin, env):
             try:
                 # Our child waits for stdin. No user program runs before assignment.
                 job.assign(process.pid)
-                deadline = time.monotonic() + timeout
+                wait_deadline = deadline if deadline is not None else time.monotonic() + timeout
                 payload = request
                 while True:
+                    remaining = wait_deadline - time.monotonic()
+                    if remaining <= 0:
+                        status = "timed_out"
+                        break
                     try:
                         # Windows native waits can defer Python signal handlers.
                         # Return to Python regularly so Ctrl+C can close the job.
-                        process.communicate(payload, timeout=min(.2, max(0, deadline - time.monotonic())))
+                        process.communicate(payload, timeout=min(.2, remaining))
+                        if deadline is not None and time.monotonic() >= deadline:
+                            status = "timed_out"
                         break
                     except subprocess.TimeoutExpired:
                         payload = None  # communicate must receive stdin only once.
-                        if time.monotonic() >= deadline:
+                        if time.monotonic() >= wait_deadline:
                             status = "timed_out"
                             break
                     except KeyboardInterrupt:
@@ -168,12 +176,16 @@ def _record_cleanup(output: Path, value: dict) -> None:
         os.close(descriptor)
 
 
-def run(argv: list[str], cwd: Path, output: Path, timeout: int, stdin: str = "",
+def run(argv: list[str], cwd: Path, output: Path, timeout: float, stdin: str = "",
         env: dict | None = None, *, supervised: bool = False, lock_fd: int | None = None,
         command_record: Path | None = None, stop_requested: Callable[[], bool] | None = None,
-        record_lifecycle: bool = False) -> dict:
+        record_lifecycle: bool = False, deadline: float | None = None) -> dict:
     if record_lifecycle and not supervised:
         raise ValueError('Durable subtree receipts require the original supervised process owner')
+    if deadline is not None:
+        if supervised:
+            raise ValueError('Supervised processes require their original stop owner, not an ordinary deadline')
+        deadline = min(deadline, time.monotonic() + timeout)
     def should_stop():
         return _cancel_requested or (stop_requested is not None and stop_requested())
     output.mkdir(parents=True, exist_ok=False, mode=0o700)
@@ -185,7 +197,7 @@ def run(argv: list[str], cwd: Path, output: Path, timeout: int, stdin: str = "",
     if command_record is not None:
         command_record.write_text(json.dumps(argv), encoding="utf-8", newline="\n")
     if os.name == "nt":
-        return _run_windows(argv, cwd, output, timeout, stdin, env)
+        return _run_windows(argv, cwd, output, timeout, stdin, env, deadline)
     status = "succeeded"
     if supervised:
         _adopt_children()
@@ -196,7 +208,9 @@ def run(argv: list[str], cwd: Path, output: Path, timeout: int, stdin: str = "",
           (output / "stdin.txt").open("rb") as recorded_input):
         process = None
         try:
-            if not (supervised and should_stop()):
+            if deadline is not None and time.monotonic() >= deadline:
+                status = "timed_out"
+            elif not (supervised and should_stop()):
                 process = subprocess.Popen(
                     argv, cwd=cwd, env=env, stdin=recorded_input, stdout=stdout, stderr=stderr,
                     text=True, start_new_session=not supervised,
@@ -213,7 +227,11 @@ def run(argv: list[str], cwd: Path, output: Path, timeout: int, stdin: str = "",
                             except subprocess.TimeoutExpired:
                                 pass
                     else:
-                        process.wait(timeout=timeout)
+                        remaining = timeout if deadline is None else deadline - time.monotonic()
+                        if remaining <= 0:
+                            status = "timed_out"
+                        else:
+                            process.wait(timeout=remaining)
                 except subprocess.TimeoutExpired:
                     status = "timed_out"
                 except KeyboardInterrupt:
@@ -250,4 +268,8 @@ if __name__ == "__main__":
         raise SystemExit("This entry point is the Windows command gate")
     request = json.load(sys.stdin)
     # Binary input preserves the prompt's exact UTF-8 bytes, including mixed LF/CRLF.
-    raise SystemExit(subprocess.run(request["argv"], input=request["stdin"].encode("utf-8")).returncode)
+    payload = request["stdin"].encode("utf-8")
+    deadline = request["deadline_monotonic"]
+    if deadline is not None and time.monotonic() >= deadline:
+        raise SystemExit("Windows command deadline expired before admission")
+    raise SystemExit(subprocess.run(request["argv"], input=payload).returncode)

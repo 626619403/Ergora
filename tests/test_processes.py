@@ -1,3 +1,4 @@
+import ast
 import hashlib
 import json
 import os
@@ -5,6 +6,7 @@ from pathlib import Path
 import subprocess
 import sys
 import time
+from types import SimpleNamespace
 
 import pytest
 
@@ -90,7 +92,7 @@ def test_powershell_utf8_bom_inputs_roundtrip(tmp_path, capsys):
     assert skill_assets.get(state, 'demo', imported['digest'])['name'] == 'bom-skill'
 
 
-@pytest.mark.parametrize('finish', ['normal', 'timeout'])
+@pytest.mark.parametrize('finish', ['normal', 'timeout', 'deadline'])
 def test_command_completion_stops_descendants(tmp_path, finish):
     ready, late = tmp_path / 'ready', tmp_path / 'late'
     child = f'import time;from pathlib import Path;Path({str(ready)!r}).touch();time.sleep(4);Path({str(late)!r}).touch()'
@@ -98,13 +100,134 @@ def test_command_completion_stops_descendants(tmp_path, finish):
         'import subprocess,sys,time;from pathlib import Path;'
         f'subprocess.Popen([sys.executable,"-c",{child!r}]);\n'
         f'while not Path({str(ready)!r}).exists():time.sleep(.01)\n'
-        + ('time.sleep(20)' if finish == 'timeout' else '')
+        + ('time.sleep(20)' if finish != 'normal' else '')
     )
-    result = processes.run([sys.executable, '-c', code], tmp_path, tmp_path / 'output', 2 if finish == 'timeout' else 10)
+    limits = {'deadline': time.monotonic() + 2} if finish == 'deadline' else {}
+    result = processes.run([sys.executable, '-c', code], tmp_path, tmp_path / 'output',
+                           2 if finish == 'timeout' else 10, **limits)
     assert ready.exists(), 'The real descendant must start before completion/timeout'
-    assert result['status'] == ('timed_out' if finish == 'timeout' else 'succeeded')
+    assert result['status'] == ('succeeded' if finish == 'normal' else 'timed_out')
     time.sleep(4.2)
     assert not late.exists()
+
+
+@pytest.mark.parametrize('setup_seconds', [.5, 1])
+def test_absolute_deadline_covers_setup_and_post_spawn_wait(tmp_path, monkeypatch, setup_seconds):
+    clock = [10.0]
+    monkeypatch.setattr(processes, 'time', SimpleNamespace(monotonic=lambda: clock[0]))
+    write = Path.write_text
+
+    def write_input(path, *args, **kwargs):
+        result = write(path, *args, **kwargs)
+        if path.name == 'stdin.txt':
+            clock[0] += setup_seconds
+        return result
+
+    monkeypatch.setattr(Path, 'write_text', write_input)
+    waits, killed = [], []
+
+    class Process:
+        pid = 123
+        returncode = 0
+
+        def __init__(self, *args, **kwargs):
+            assert clock[0] < 11, 'Expired command must never reach Popen'
+            clock[0] += .25
+
+        def wait(self, timeout=None):
+            waits.append(timeout)
+            return self.returncode
+
+    monkeypatch.setattr(processes.subprocess, 'Popen', Process)
+    monkeypatch.setattr(processes.os, 'killpg', lambda *args: killed.append(args), raising=False)
+    if os.name == 'nt':
+        pytest.skip('POSIX Popen/wait owner; the Windows command gate is tested separately')
+    result = processes.run(['fixture'], tmp_path, tmp_path / 'output', 10, deadline=11)
+    assert result['status'] == ('succeeded' if setup_seconds < 1 else 'timed_out')
+    assert result['returncode'] == (0 if setup_seconds < 1 else None)
+    assert waits == ([.25, None] if setup_seconds < 1 else [])
+    assert len(killed) == (1 if setup_seconds < 1 else 0)
+
+
+@pytest.mark.parametrize('setup_seconds,assignment_seconds,completion_seconds,returncode', [
+    (0, .1, 0, 0), (1, 0, 0, 0), (0, 1, 0, 0), (0, .1, .5, 41), (0, .1, 0, 41)])
+def test_windows_deadline_is_not_renewed_at_the_command_gate(
+        tmp_path, monkeypatch, setup_seconds, assignment_seconds, completion_seconds, returncode):
+    clock = [10.0]
+    monkeypatch.setattr(processes, 'time', SimpleNamespace(monotonic=lambda: clock[0]))
+    released, closed = [], []
+
+    class Job:
+        def __enter__(self):
+            clock[0] += setup_seconds
+            return self
+
+        def __exit__(self, *args):
+            closed.append(True)
+
+        def assign(self, pid):
+            clock[0] += assignment_seconds
+
+    class Process:
+        pid = 123
+
+        def __init__(self):
+            assert clock[0] < 10.5, 'Expired gate must never reach Popen'
+            self.returncode = returncode
+
+        def communicate(self, payload=None, timeout=None):
+            if payload is not None:
+                released.append((json.loads(payload), timeout))
+                clock[0] += completion_seconds
+            else:
+                assert closed, 'The original job must close before final pipe collection'
+
+    monkeypatch.setitem(sys.modules, 'ergora.runtime.windows_job', SimpleNamespace(Job=Job))
+    monkeypatch.setattr(processes.subprocess, 'Popen', lambda *args, **kwargs: Process())
+    monkeypatch.setattr(processes.subprocess, 'CREATE_NEW_PROCESS_GROUP', 512, raising=False)
+    output = tmp_path / 'output'
+    output.mkdir()
+    result = processes._run_windows(['fixture'], tmp_path, output, 10, 'input', None, deadline=10.5)
+    expected = 'timed_out' if setup_seconds + assignment_seconds + completion_seconds >= .5 else 'failed' if returncode else 'succeeded'
+    assert result['status'] == expected
+    assert len(released) == (1 if setup_seconds + assignment_seconds < .5 else 0)
+    if released:
+        assert released[0][0] == {'argv': ['fixture'], 'stdin': 'input', 'deadline_monotonic': 10.5}
+        assert 0 < released[0][1] <= .2
+    assert closed == [True]
+
+
+@pytest.mark.parametrize('read_seconds,encode_seconds,deadline,admitted', [
+    (.1, .1, 10.5, True), (.6, 0, 10.5, False), (0, .6, 10.5, False), (.6, .6, None, True)])
+def test_windows_child_admission_checks_after_complete_input_preparation(read_seconds, encode_seconds, deadline, admitted):
+    # Execute the exact entry branch on this host, without claiming native Windows.
+    entry = ast.parse(Path(processes.__file__).read_text(encoding='utf-8')).body[-1]
+    clock, launches = [10.0], []
+
+    class Input(str):
+        def encode(self, encoding):
+            clock[0] += encode_seconds
+            return super().encode(encoding)
+
+    def read_request(stream):
+        clock[0] += read_seconds
+        return {'argv': ['fixture'], 'stdin': Input('input\r\n漢字'), 'deadline_monotonic': deadline}
+
+    def launch(argv, **kwargs):
+        launches.append((clock[0], argv, kwargs['input']))
+        return SimpleNamespace(returncode=0)
+
+    namespace = {'__name__': '__main__', 'os': SimpleNamespace(name='nt'),
+                 'sys': SimpleNamespace(argv=['processes.py', '--windows-child'], stdin=None),
+                 'json': SimpleNamespace(load=read_request), 'subprocess': SimpleNamespace(run=launch),
+                 'time': SimpleNamespace(monotonic=lambda: clock[0])}
+    with pytest.raises(SystemExit):
+        exec(compile(ast.Module(body=[entry], type_ignores=[]), processes.__file__, 'exec'), namespace)
+    assert len(launches) == int(admitted)
+    if launches:
+        actual_time, argv, payload = launches[0]
+        assert deadline is None or actual_time < deadline
+        assert argv == ['fixture'] and payload == 'input\r\n漢字'.encode('utf-8')
 
 
 def test_cross_process_file_lock_exclusion_and_recovery(tmp_path):

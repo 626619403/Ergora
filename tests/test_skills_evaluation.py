@@ -6,6 +6,7 @@ import shutil
 import subprocess
 import sys
 import time
+from types import SimpleNamespace
 
 import pytest
 
@@ -356,6 +357,130 @@ print(json.dumps({"skill":request["candidate"]["skill"].replace("BASELINE","IMPR
     assert math.isclose(result["reported_cost"], .5)
     runs = [evaluation.get(state, "demo", rid) for rid in result["evaluations"]]
     assert runs[-1]["status"] == "budget_exhausted" and len(runs[-1]["cases"]) == 1
+
+
+def test_real_gepa_evaluator_receives_shrinking_budgets_without_future_call_grants(skill_project, monkeypatch):
+    pytest.importorskip("gepa")
+    state, repo, source, baseline, suite = skill_project
+    scorer = repo / "budget-scorer.py"
+    scorer.write_text('''import json,sys,pathlib
+request=json.load(sys.stdin)
+text=pathlib.Path(request["skill_dir"],"SKILL.md").read_text()
+print(json.dumps({"score":.9 if "IMPROVED" in text else .5,"cost":.1,"passed":True,"feedback":json.dumps(request["budget"])}))
+''')
+    proposer = repo / "budget-proposer.py"
+    proposer.write_text('''import json,sys
+request=json.load(sys.stdin)
+print(json.dumps({"skill":request["candidate"]["skill"].replace("BASELINE","IMPROVED"),"cost":0}))
+''')
+    manifest = {k: v for k, v in suite["manifest"].items() if k not in ("file_sha256", "path_bindings")}
+    manifest.update(evaluator_argv=[sys.executable, str(scorer)], evaluator_files=[str(scorer)], timeout_seconds=60)
+    manifest["cases"].append({"id": "validation-two", "split": "validation", "input": {}})
+    bounded = evaluation.register(state, "demo", manifest)
+    projects.bind(state, "demo", "optimizer", {"tool": "gepa", "proposer_argv": [sys.executable, str(proposer)]}, 1)
+    clock = [time.monotonic()]
+    started = clock[0]
+    for owner in (optimization, evaluation, optimization.processes):
+        monkeypatch.setattr(owner, "time", SimpleNamespace(monotonic=lambda: clock[0]))
+    run = optimization.processes.run
+    budgets = []
+
+    def advance(argv, cwd, output, timeout, stdin="", **kwargs):
+        if output.parent.name == "cases":
+            budgets.append(json.loads(stdin)["budget"])
+        outcome = run(argv, cwd, output, timeout, stdin, **kwargs)
+        clock[0] += 1
+        return outcome
+
+    monkeypatch.setattr(optimization.processes, "run", advance)
+    result = optimization.optimize(state, "demo", baseline["digest"], bounded["digest"], "Expose effective limits", 6, 1, 20)
+    assert result["status"] == "succeeded", result
+    assert result["metric_calls"] == 6 and result["proposals"] == 1
+    runs = [evaluation.get(state, "demo", run_id) for run_id in result["evaluations"]]
+    received = [json.loads(case["feedback"]) for record in runs for case in record["cases"]]
+    assert received == budgets
+    assert all(budget["deadline_monotonic"] == started + 20 for budget in budgets)
+    assert [budget["remaining_seconds"] for budget in budgets] == [20, 19, 18, 16, 15, 14]
+    assert [budget["remaining_batch_calls"] for budget in budgets] == [2, 1, 1, 1, 2, 1]
+    assert [budget["unreserved_metric_calls"] for budget in budgets] == [4, 4, 3, 2, 0, 0]
+    assert all(math.isclose(budget["remaining_reported_cost"], 1 - index * .1) for index, budget in enumerate(budgets))
+    assert skill_assets.versions(state, "demo")["active"][0]["digest"] == baseline["digest"]
+
+
+def test_real_gepa_retains_batch_reservation_when_setup_exhausts_deadline(skill_project, monkeypatch):
+    pytest.importorskip("gepa")
+    state, repo, source, baseline, suite = skill_project
+    projects.bind(state, "demo", "optimizer", {"tool": "gepa", "proposer_argv": [sys.executable, "-c", "print('{}')"]}, 1)
+    manifest = {k: v for k, v in suite["manifest"].items() if k not in ("file_sha256", "path_bindings")}
+    manifest["cases"].append({"id": "validation-two", "split": "validation", "input": {}})
+    bounded = evaluation.register(state, "demo", manifest)
+    clock = [time.monotonic()]
+    for owner in (optimization, evaluation, optimization.processes):
+        monkeypatch.setattr(owner, "time", SimpleNamespace(monotonic=lambda: clock[0]))
+    write = Path.write_text
+
+    def expire(path, *args, **kwargs):
+        result = write(path, *args, **kwargs)
+        if path.name == "stdin.txt":
+            clock[0] += 20
+        return result
+
+    monkeypatch.setattr(Path, "write_text", expire)
+    monkeypatch.setattr(optimization.processes.subprocess, "Popen", lambda *args, **kwargs: pytest.fail("Expired evaluator was dispatched"))
+    result = optimization.optimize(state, "demo", baseline["digest"], bounded["digest"], "Keep reserved attempts consumed", 6, 1, 20)
+    assert result["status"] == "timed_out", result
+    assert result["metric_calls"] == 2 and result["proposals"] == 0
+    record = evaluation.get(State(state.root), "demo", result["evaluations"][0])
+    assert record["status"] == "timed_out" and len(record["cases"]) == 1
+    assert record["cases"][0]["returncode"] is None
+    assert optimization.listing(state, "demo")[0]["metric_calls"] == 2
+
+
+@pytest.mark.parametrize("expire_during_setup", [False, True])
+def test_real_gepa_proposer_keeps_fractional_remaining_time(skill_project, monkeypatch, expire_during_setup):
+    pytest.importorskip("gepa")
+    state, repo, source, baseline, suite = skill_project
+    proposer = repo / "fractional-proposer.py"
+    proposer.write_text('''import json,sys,pathlib
+request=json.load(sys.stdin)
+pathlib.Path("proposal-dispatched").touch()
+print(json.dumps({"skill":request["candidate"]["skill"].replace("BASELINE","IMPROVED"),"cost":0}))
+''')
+    projects.bind(state, "demo", "optimizer", {"tool": "gepa", "proposer_argv": [sys.executable, str(proposer)]}, 1)
+    clock = [time.monotonic()]
+    started = clock[0]
+    for owner in (optimization, evaluation, optimization.processes):
+        monkeypatch.setattr(owner, "time", SimpleNamespace(monotonic=lambda: clock[0]))
+    run = optimization.processes.run
+    proposals = []
+    evaluated = 0
+    write = Path.write_text
+
+    def expire(path, *args, **kwargs):
+        result = write(path, *args, **kwargs)
+        if expire_during_setup and path.name == "stdin.txt" and path.parent.name.startswith("proposal-"):
+            clock[0] = started + 20
+        return result
+
+    monkeypatch.setattr(Path, "write_text", expire)
+
+    def advance(argv, cwd, output, timeout, stdin="", **kwargs):
+        nonlocal evaluated
+        if output.name.startswith("proposal-"):
+            proposals.append((timeout, kwargs.get("deadline")))
+        outcome = run(argv, cwd, output, timeout, stdin, **kwargs)
+        if output.parent.name == "cases":
+            evaluated += 1
+            if evaluated == 2:
+                clock[0] = started + 19.75
+        return outcome
+
+    monkeypatch.setattr(optimization.processes, "run", advance)
+    result = optimization.optimize(state, "demo", baseline["digest"], suite["digest"], "Keep fractional tail", 4, 1, 20)
+    assert result["status"] == ("timed_out" if expire_during_setup else "succeeded"), result
+    assert proposals == [(.25, started + 20)]
+    assert (repo / "proposal-dispatched").exists() is not expire_during_setup
+    assert result["metric_calls"] == (2 if expire_during_setup else 4) and result["proposals"] == 1
 
 
 def test_undeclared_scorer_symlink_retarget_invalidates_suite(skill_project):
