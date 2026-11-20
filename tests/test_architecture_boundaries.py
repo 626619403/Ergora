@@ -77,6 +77,7 @@ def test_control_plane_import_graph_is_acyclic(local_dependencies):
     ("ergora.development.envelopes", {
         "ergora.configuration.catalog", "ergora.development.dags", "ergora.issues.identity",
         "ergora.development.budget", "ergora.development.six_stage",
+        "ergora.development", "ergora.development.verification", "ergora.training.materials",
     }),
     ("ergora.development.handoff", {
         "ergora._paths", "ergora.configuration", "ergora.configuration.validation",
@@ -84,6 +85,9 @@ def test_control_plane_import_graph_is_acyclic(local_dependencies):
     }),
     ("ergora.runtime.windows_job", set()),
     ("ergora.runtime.processes", {"ergora.runtime.windows_job"}),
+    ("ergora.development.verification", {
+        "ergora.storage.assets", "ergora.storage.git", "ergora.training.materials",
+    }),
 ])
 def test_foundations_do_not_depend_on_application_modules(local_dependencies, module_imports, module, allowed):
     assert local_dependencies[module] <= allowed, (module, local_dependencies[module] - allowed)
@@ -91,7 +95,7 @@ def test_foundations_do_not_depend_on_application_modules(local_dependencies, mo
         "ergora._paths", "ergora.configuration.catalog", "ergora.development.dags",
         "ergora.development.envelopes", "ergora.issues.identity", "ergora.runtime.budget_clock",
         "ergora.development.budget", "ergora.development.six_stage", "ergora.storage.git",
-        "ergora.training.materials", "ergora.storage.assets",
+        "ergora.development.verification", "ergora.training.materials", "ergora.storage.assets",
     }:
         external_roots = {name.split(".")[0] for name in module_imports[module]
                           if name.split(".")[0] != "ergora"}
