@@ -893,9 +893,16 @@ def _validate_cpu_fd_provenance(value, raw, *, require_complete=True):
     if len(record) != 2 or not record[1].startswith('cgroup2 ') or record[0].split()[3] != '/':
         raise ValueError('unsupported: CPU selected mount is not the actual full cgroup2 root')
     meta(value['root'], _CGROUP2_MAGIC)
+    def device_numbers(device):
+        # Interpret the saved Linux dev_t, including the original UINT32_MAX sentinel.
+        if device > 0xffffffffffffffff:
+            raise OverflowError('int too big to convert')
+        major = ((device >> 8) & 0xfff) | ((device >> 32) & 0xfffff000)
+        minor = (device & 0xff) | ((device >> 12) & 0xffffff00)
+        return ':'.join(str(-1 if number == 0xffffffff else number) for number in (major, minor))
     if (value['root']['mount_id'] != int(record[0].split()[0]) or value['selected_mount'] not in value['mountinfo'].splitlines()
             or not stat.S_ISDIR(value['root']['mode'])
-            or record[0].split()[2] != str(os.major(value['root']['device'])) + ':' + str(os.minor(value['root']['device']))):
+            or record[0].split()[2] != device_numbers(value['root']['device'])):
         raise ValueError('unsupported: CPU opened root differs from its original selected mount record')
     if len(value['ancestors']) != len(raw['limits']):
         raise ValueError('unsupported: CPU actual subject ancestor walk is incomplete')

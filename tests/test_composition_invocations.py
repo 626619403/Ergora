@@ -94,6 +94,8 @@ def prepared(tmp_path):
 
 @pytest.fixture
 def cycle_analysis_case(prepared, tmp_path, monkeypatch):
+    if sys.platform != 'linux':
+        pytest.skip('Original cycle analysis requires Linux/WSL2 budget clocks, durable records and process identity')
     from ergora.runtime import budget_clock
     import ergora.training.cycles as training_cycles
     state, _, original = prepared(binding={'tool': 'codex', 'model': 'gpt-6.1-sol', 'reasoning_effort': 'max'})
