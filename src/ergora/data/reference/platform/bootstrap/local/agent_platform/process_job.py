@@ -15,7 +15,6 @@ import time
 import tomllib
 
 from .core import CONFIG, STATE, UPSTREAM, environment, git, read, require, write
-from .sandbox import process_deadline
 
 
 def child_environment(model: str | None) -> dict[str, str]:
@@ -330,7 +329,10 @@ def run(folder: Path) -> None:
         started = time.time()
         log_path = output / 'execution.log'
         try:
-            cutoff = process_deadline(request.get('deadline'), request.get('binding'))
+            cutoff = None
+            if request.get('deadline') is not None or request.get('binding') is not None:
+                from .sandbox import process_deadline
+                cutoff = process_deadline(request.get('deadline'), request.get('binding'))
             fence = Path(request['fence']) if request['fence'] else None
             require(fence is None or not fence.exists(), 'Cancelled before process start')
             checkout = Path(request['checkout'])
