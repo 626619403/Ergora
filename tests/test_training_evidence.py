@@ -1352,8 +1352,9 @@ def positive_mock_fd_snapshot(f1_cpu_snapshot):
     import ergora.training.materials as m
     original, snapshot = f1_cpu_snapshot
     raw = deepcopy(original)
+    # Saved Linux dev_t values: major zero, minors 25 (cgroup), 4 (nsfs), 5 (proc).
     def meta(fs, inode, mode, mount=27, device=None):
-        return {'device': os.makedev(0, 25) if device is None else device, 'inode': inode,
+        return {'device': 25 if device is None else device, 'inode': inode,
                 'mode': mode, 'filesystem': fs, 'mount_id': mount}
     root = meta(m._CGROUP2_MAGIC, 1, stat.S_IFDIR | 0o755)
     subject = {'pid': 100, 'tid': 101, 'start_ticks': 10, 'thread_start_ticks': 12,
@@ -1373,12 +1374,12 @@ def positive_mock_fd_snapshot(f1_cpu_snapshot):
         rows.append({'relative': item['relative'], 'node': {**root, 'inode': index + 1}, 'files': files,
             'file_identities': {name: None if value is None else meta(m._CGROUP2_MAGIC, 1000 + index * 20 + ordinal, stat.S_IFREG | 0o644)
                                 for ordinal, (name, value) in enumerate(files.items())}})
-    target = meta(m._NSFS_MAGIC, m._INITIAL_CGROUP_INODE, stat.S_IFREG | 0o444, 2, os.makedev(0, 4))
-    entry = meta(m._PROC_MAGIC, 5, stat.S_IFLNK | 0o777, 1, os.makedev(0, 5))
+    target = meta(m._NSFS_MAGIC, m._INITIAL_CGROUP_INODE, stat.S_IFREG | 0o444, 2, 4)
+    entry = meta(m._PROC_MAGIC, 5, stat.S_IFLNK | 0o777, 1, 5)
     proof = {'contract': m._CPU_KERNEL_CONTRACT, 'kernel': {'sysname': 'Linux', 'nodename': 'mock', 'release': '5.15-pure', 'version': '#pure', 'machine': 'x86_64'},
-        'proc_root': meta(m._PROC_MAGIC, 1, stat.S_IFDIR | 0o555, 1, os.makedev(0, 5)),
-        'thread_directory': meta(m._PROC_MAGIC, 3, stat.S_IFDIR | 0o555, 1, os.makedev(0, 5)),
-        'leader_directory': meta(m._PROC_MAGIC, 2, stat.S_IFDIR | 0o555, 1, os.makedev(0, 5)),
+        'proc_root': meta(m._PROC_MAGIC, 1, stat.S_IFDIR | 0o555, 1, 5),
+        'thread_directory': meta(m._PROC_MAGIC, 3, stat.S_IFDIR | 0o555, 1, 5),
+        'leader_directory': meta(m._PROC_MAGIC, 2, stat.S_IFDIR | 0o555, 1, 5),
         'namespace_entry': entry, 'namespace_target': target, 'namespace_type': m._CGROUP_NS_TYPE,
         'namespace_link': 'cgroup:[' + str(m._INITIAL_CGROUP_INODE) + ']', 'subject': subject, 'subject_raw': subject_raw(subject),
         'membership': raw['cgroup_membership'], 'mountinfo': raw['cgroup_mount'], 'selected_mount': raw['cgroup_mount'],
@@ -1389,7 +1390,7 @@ def positive_mock_fd_snapshot(f1_cpu_snapshot):
     contents = {'thread/stat': proof['subject_raw']['thread_stat'], 'thread/status': proof['subject_raw']['thread_status'],
         'leader/stat': proof['subject_raw']['leader_stat'], 'thread/cgroup': proof['membership'],
         'thread/mountinfo': proof['mountinfo'], 'proc/sys/kernel/random/boot_id': raw['boot_id']}
-    proof['proc_files'] = {key: [{'identity': meta(m._PROC_MAGIC, 50 + index, stat.S_IFREG | 0o444, 1, os.makedev(0, 5)),
+    proof['proc_files'] = {key: [{'identity': meta(m._PROC_MAGIC, 50 + index, stat.S_IFREG | 0o444, 1, 5),
         'sha256': hashlib.sha256(value.encode()).hexdigest(), 'bytes': len(value.encode())} for _ in range(2)]
         for index, (key, value) in enumerate(contents.items())}
     raw['allocation_provenance'] = proof
@@ -1423,6 +1424,44 @@ def test_positive_initial_root_omits_nonroot_cgroup_type(positive_mock_fd_snapsh
         raw['allocation_provenance'][key][0]['files']['cgroup.type'] = None
         raw['allocation_provenance'][key][0]['file_identities']['cgroup.type'] = None
     assert m.validate_cpu_execution_identity(snapshot(raw))['allocation_objects'][0]['relative'] == '/'
+
+
+def test_positive_saved_linux_device_numbers_preserve_mount_binding_and_bounds(positive_mock_fd_snapshot):
+    import ergora.training.materials as m
+    original, snapshot, _ = positive_mock_fd_snapshot
+    def saved(device, numbers):
+        raw = deepcopy(original)
+        proof = raw['allocation_provenance']
+        for key in ('root', 'root_after'):
+            proof[key]['device'] = device
+        for key in ('ancestors', 'ancestors_after'):
+            for row in proof[key]:
+                row['node']['device'] = device
+                for identity in row['file_identities'].values():
+                    if identity is not None:
+                        identity['device'] = device
+        mount = raw['cgroup_mount'].replace('0:25', numbers)
+        raw['cgroup_mount'] = mount
+        for key in ('selected_mount', 'mountinfo', 'mountinfo_after'):
+            proof[key] = mount
+        for record in proof['proc_files']['thread/mountinfo']:
+            record.update(sha256=hashlib.sha256(mount.encode()).hexdigest(), bytes=len(mount.encode()))
+        return raw
+    # Original Linux helper results, including each UINT32_MAX sentinel; no host helper is required.
+    for device, numbers in ((17592187092992, '4096:256'), (18446726481524555520, '-1:0'),
+                            (17592184996095, '0:-1'), (18446744073709551615, '-1:-1')):
+        observed = m.validate_cpu_execution_identity(snapshot(saved(device, numbers)))
+        assert all(item['device'] == device for item in observed['allocation_objects'])
+        different = numbers.replace('-1', '4294967295') if '-1' in numbers else '4096:257'
+        with pytest.raises(ValueError, match='opened root differs'):
+            m.validate_cpu_execution_identity(snapshot(saved(device, different)))
+    for device in (True, -1, 25.0, '25'):
+        with pytest.raises(ValueError, match='FD filesystem/type identity'):
+            m.validate_cpu_execution_identity(snapshot(saved(device, '0:25')))
+    overflow = saved(1 << 64, '0:25')
+    assert m._validate_cpu_fd_provenance(overflow['allocation_provenance'], overflow, require_complete=False)
+    with pytest.raises(OverflowError, match='int too big to convert'):
+        m.validate_cpu_execution_identity(snapshot(overflow))
 
 
 @pytest.mark.parametrize('corruption', ['noninitial', 'wrong-proc', 'wrong-ioctl', 'overmount', 'persistent-path-object', 'subject'])
@@ -1478,6 +1517,7 @@ def test_positive_window_qualifies_both_original_endpoints(positive_mock_fd_snap
         m.validate_cpu_window_identity(value, **kwargs)
 
 
+@pytest.mark.skipif(sys.platform != 'linux', reason='Current cgroup path reopening uses Linux O_DIRECTORY/O_NOFOLLOW')
 def test_positive_endpoint_reopens_current_path_instead_of_pinned_old_nodes():
     """Pure fake kernfs: same membership text, deleted old leaf held open, new leaf."""
     import stat
@@ -1504,6 +1544,7 @@ def test_positive_endpoint_reopens_current_path_instead_of_pinned_old_nodes():
 
 
 @pytest.mark.parametrize('overmount', ['cgroup', 'mountinfo', 'stat', 'status', 'leader-stat', 'fdinfo', 'statx-error', 'statx-missing-mask'])
+@pytest.mark.skipif(sys.platform != 'linux', reason='Original proc FD mount probes use Linux fcntl/nsfs/statx')
 def test_positive_proc_files_bind_actual_kernel_mount_before_read(monkeypatch, overmount):
     """Pure genuine-proc bind-mount model; forged fdinfo cannot bless another file."""
     import ctypes
