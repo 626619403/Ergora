@@ -738,6 +738,43 @@ def test_cycle_candidate_root_survives_short_calls_and_normal_loop_shutdown(
                 contender.root.wait(timeout=5)
 
 
+@pytest.mark.skipif(sys.platform != 'linux', reason='Original submission contention requires Linux flock')
+@pytest.mark.parametrize('controller_admission', [{'control_timeout_seconds': 30}], indirect=True)
+def test_cycle_prepare_keeps_its_created_offer_during_duplicate_submission_contention(
+        cycle_candidate, cycle_selection, cycle_operation_fault, service):
+    import asyncio
+    from ergora.storage.state import file_lock
+
+    markers = cycle_operation_fault('candidate-prepare-return')
+    operation = cycle_candidate()
+    prefix = cycle_selection[2] / 'ergora/training-submissions'
+
+    async def prepare():
+        task = asyncio.create_task(operation.preparation.run())
+        while (not (markers / 'candidate-prepared').exists() and not task.done()
+               and not operation.preparation.expired()):
+            await asyncio.sleep(.01)
+        assert (markers / 'candidate-prepared').exists(), task.result() if task.done() else 'Prepare did not return'
+        # Actual native prepare has released its DB reservation and alpha.lock.
+        # A duplicate holds that same original lock while the creator returns.
+        with file_lock(prefix / 'alpha.lock', blocking=False):
+            (markers / 'candidate-prepare-release').touch()
+            return await task
+
+    result = asyncio.run(prepare())
+    assert result['status'] == 'new_offer', result
+    assert result['launch']['request']['origin_operation_id'] == operation.preparation.identity['operation_id']
+    assert operation.spawning is None
+    original = (prefix / 'alpha.intent.json').read_bytes()
+    observed = asyncio.run(cycle_candidate().preparation.run())
+    assert observed['status'] == 'observed' and 'launch' not in observed
+    assert (prefix / 'alpha.intent.json').read_bytes() == original
+    assert not (prefix / 'alpha.attempt.json').exists()
+    assert not (prefix / 'alpha.budget/owner.json').exists()
+    assert not (cycle_selection[2] / 'training/jobs/alpha').exists()
+    assert not service[1].exists() or json.loads(service[1].read_bytes())['starts'] == 0
+
+
 
 @pytest.mark.parametrize('installation', ['managed'], indirect=True)
 @pytest.mark.parametrize('controller_admission', [{'control_timeout_seconds': 30}], indirect=True)
@@ -1134,7 +1171,6 @@ print('complete original binding verified without site packages')
 @pytest.mark.parametrize('case', ['not-found', 'closed', 'run', 'memo', 'type', 'queue', 'input', 'accepted'])
 def test_controller_fixed_history_gates_the_one_original_start(
         controller_admission, cycle_selection, cycle_candidate, service, monkeypatch, case):
-    import ergora.training.cycles as training_cycles
     from ergora.runtime import processes
     import signal
 
@@ -1149,22 +1185,29 @@ def test_controller_fixed_history_gates_the_one_original_start(
         if case != 'accepted':
             monkeypatch.setenv('ERGORA_TEST_TRAINING_CONTROLLER_CASE', case)
         result = run_cycle_candidate(cycle_candidate)
-        original = intent_path.read_bytes()
         if case != 'accepted':
             reason = ('Original controller run is not found' if case == 'not-found' else
                       'Original controller run, running state or complete intent memo differs' if case in ('closed', 'run', 'memo') else
                       'Original controller type, queue or started input' if case in ('type', 'queue') else
                       'Original controller complete started input or intent memo differs')
             assert result['status'] == 'unknown' and reason in result['reason'], result
-            assert not attempt_path.exists() and not (runtime / 'training/jobs/alpha').exists()
-            with pytest.raises(ValueError, match='complete original start call'):
-                training.resume_start(state, 'demo', 'alpha', 1, training_cycles._sha(json.loads(original)))
+            assert 'launch' not in result
+            assert not intent_path.exists() and not attempt_path.exists()
+            assert not owner_path.parent.exists() and not (runtime / 'training/jobs/alpha').exists()
+            repeated = run_cycle_candidate(cycle_candidate)
+            assert repeated['status'] == 'unknown' and reason in repeated['reason'], repeated
+            assert 'launch' not in repeated
+            assert not intent_path.exists() and not attempt_path.exists()
+            assert not owner_path.parent.exists() and not (runtime / 'training/jobs/alpha').exists()
+            recorded = json.loads(service[1].read_bytes()) if service[1].exists() else {'starts': 0}
+            assert recorded['starts'] == 0
+            return
         else:
+            original = intent_path.read_bytes()
             submitted = result['submission']
             assert submitted['status'] == 'submitted' and submitted['budget']['controller'] == binding['controller']
             assert attempt_path.exists() and json.loads(service[1].read_bytes())['starts'] == 1
-        # A later call observes even a live owner without an attempt. It never
-        # reuses the lost offer to try a corrected history or another SDK send.
+        # Accepted history repeats as an observation of its one original start.
         repeated = run_cycle_candidate(cycle_candidate)
         assert repeated['status'] == 'observed' and 'launch' not in repeated
         assert intent_path.read_bytes() == original
@@ -1226,13 +1269,12 @@ def test_controller_worker_rechecks_stop_inside_original_registry_lock(
     binding = save_controller_binding(admission)
     monkeypatch.setenv('ERGORA_TEST_TRAINING_CONTROLLER', str(admission.folder))
     selector = {key: value for key, value in binding.items() if key != 'task_queue'}
-    marker = admission.folder / 'parent-history-observed'
+    marker = admission.folder / 'native-registry-attempt'
     try:
         assert run_cycle_candidate(cycle_candidate)['submission']['status'] == 'submitted'
-        marker.unlink()
         with ThreadPoolExecutor(max_workers=1) as pool:
             with file_lock(runtime / 'training/registry.lock'):
-                future = pool.submit(native_budget_create, definition, 'alpha', managed=True)
+                future = pool.submit(native_budget_create, definition, 'alpha', managed=True, registry_marker=marker)
                 until = time.monotonic() + 6
                 while not marker.exists() and time.monotonic() < until:
                     time.sleep(.02)
@@ -2396,6 +2438,7 @@ def test_controller_original_type_is_authenticated_read_only(controller_admissio
     assert not (admission.folder / 'attempt.json').exists()
 
 
+@pytest.mark.skipif(sys.platform != 'linux', reason='Original analysis clocks and supervising process identity require Linux/WSL2')
 def test_analysis_remaining_observes_time_after_original_stop_io(tmp_path, monkeypatch):
     """A slow original stop/source read must not return a cached positive cap."""
     from ergora.runtime import budget_clock
@@ -2443,6 +2486,7 @@ def test_cycle_helper_denies_effect_after_actual_direct_supervisor_dies(tmp_path
     assert observed['waited'] and all(item['wait_pid'] is not None for item in observed['waited'])
 
 
+@pytest.mark.skipif(sys.platform != 'linux', reason='Original analysis clocks and supervising process identity require Linux/WSL2')
 def test_analysis_tail_readback_cannot_advance_after_original_slot_cap(tmp_path, monkeypatch):
     """The H caller must recheck its own cap after the final original-run reader."""
     from contextlib import nullcontext
@@ -2716,8 +2760,6 @@ def test_workflow_stop_consumes_known_local_partial_without_inventing_remote_sto
 @pytest.mark.parametrize('change', ['model', 'affinity', 'window'])
 def test_unqualified_cpu_observations_reject_reuse_and_isolation_ports_remain_separate(f1_cpu_snapshot, tmp_path, monkeypatch, change):
     """Strict reuse is unavailable; nonqualifying ports test dataflow only, never support."""
-    import os
-    import platform
     from types import SimpleNamespace
     import ergora.training.materials as materials
     import ergora.training.runtime.evidence as evidence
@@ -2734,9 +2776,8 @@ def test_unqualified_cpu_observations_reject_reuse_and_isolation_ports_remain_se
     current_snapshot = snapshot(current_raw)
     baseline, screen = {}, {}
     source = {'repo': '/original/source', 'commit': 'a' * 40, 'inventory_sha256': 'b' * 64, 'entrypoint': 'driver.py'}
-    system = os.uname()
-    environment = {'device': 'CPU', 'python': sys.version, 'implementation': platform.python_implementation(),
-        'platform': platform._platform(system.sysname, system.release, system.machine, 'with', os.confstr('CS_GNU_LIBC_VERSION').replace(' ', '', 1)),
+    environment = {'device': 'CPU', 'python': 'Original CPython 3.12 data', 'implementation': 'CPython',
+        'platform': 'Linux-original-x86_64-with-glibc2.39',
         'ranks': [0], 'layout': 'single-process', 'dependencies': 'Python standard library'}
     for phase, target in (('baseline', baseline), ('screen', screen)):
         request = {'binding': {'experiment_id': 'original-' + phase}, 'native_request_sha256': 'c' * 64,
@@ -3244,7 +3285,8 @@ def test_source_phase_standalone_context_rechecks_after_original_experiment_read
     (cycle / 'cycle.json').write_bytes(raw_plan)
     (cycle / 'authorization.json').write_text(json.dumps(authorization))
     (cycle / 'ready.json').write_text(json.dumps(ready))
-    owner = {'context_sha256': protocol.CycleAdmission._sha(context), 'authorization_sha256': authorization['sha256'],
+    owner = {'schema_version': 2, 'intent_sha256': protocol.CycleAdmission._sha(intent),
+        'context_sha256': protocol.CycleAdmission._sha(context), 'authorization_sha256': authorization['sha256'],
         'execution_capability': f.capability, 'pid': 123, 'start_ticks': '456', 'boot_id': 'b' * 36}
     chain = SimpleNamespace(owner=owner, intent=intent, sha=protocol.CycleAdmission._sha,
         root=state_root, config=tmp_path / 'config', adapter=SimpleNamespace(safe_file=lambda root, name: root / name))
@@ -3347,6 +3389,8 @@ def test_cpu_preparation_clock_port_serializes_original_publisher_and_never_repa
 @pytest.fixture
 def original_owner_context_ports(tmp_path, monkeypatch, request):
     """Static input ports for the real owner and public request; no creation APIs."""
+    if sys.platform != 'linux':
+        pytest.skip('Original budget owner synchronization and locks require Linux/WSL2')
     import asyncio
     from datetime import datetime, timedelta, timezone
     from types import ModuleType, SimpleNamespace
@@ -3909,6 +3953,7 @@ def test_cycle_reference_public32_complete_originals_and_control_envelopes(
     from types import SimpleNamespace
     from temporalio.api.common.v1 import Payloads
     from temporalio.converter import DataConverter
+    from ergora.storage.state import file_lock
     import ergora.training.cycles as cycles
     import ergora.training.execution_protocol as protocol
     import ergora.training.runtime.worker as worker
@@ -4058,7 +4103,8 @@ def test_cycle_reference_public32_complete_originals_and_control_envelopes(
     budget = budgets.BudgetedStart(operation, intent)
     monkeypatch.setattr(budget, 'require_active', lambda **kwargs: f.calls.append('temporary-source-port'))
     monkeypatch.setattr(budgets, '_process_identity', lambda pid: deepcopy(f.parent))
-    launch = budget.launch_context(prepared.payload)
+    with file_lock(operation.path('.lock'), blocking=False):
+        launch = budget.launch_context(prepared.payload)
     protocol.validate_cycle_root_request(launch['request'])
     sizes['root-launch'] = len(json.dumps(launch, ensure_ascii=False, allow_nan=False).encode())
     sizes['root-request'] = len(protocol._cycle_wire_bytes(launch['request']))

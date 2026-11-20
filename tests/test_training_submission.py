@@ -677,7 +677,7 @@ def cycle_selection(prepared, request):
     return state, definition, runtime, prefix, write, request
 
 
-def native_budget_create(definition, experiment_id, *, managed):
+def native_budget_create(definition, experiment_id, *, managed, registry_marker=None):
     installation = Path(definition['execution']['installation'])
     environment = dict(os.environ, AGENTFLOW_CONFIG_DIR=definition['execution']['config_directory'],
                        AGENTFLOW_STATE_DIR=definition['execution']['state_directory'])
@@ -694,6 +694,17 @@ async def run():
     await adapter.create_job_if_absent(experiment,manifest)
 asyncio.run(run())
 '''
+    if registry_marker is not None:
+        program = ('''from contextlib import contextmanager
+from pathlib import Path
+from agent_platform import training as native_training
+original_registry_lock = native_training.registry_lock
+@contextmanager
+def observed_registry_lock():
+''' + f'    Path({str(registry_marker)!r}).touch()\n' + '''    with original_registry_lock() as held:
+        yield held
+native_training.registry_lock = observed_registry_lock
+''' + program)
     if os.environ.get('ERGORA_TEST_TRAINING_CONTROLLER'):
         program = (f'import sys;sys.path.insert(0,{str(Path(__file__).parent / "fixtures")!r})\n'
                    'from perf_temporal import connection\n'
@@ -2642,6 +2653,7 @@ def test_submission_read_racing_with_conflict_publication_keeps_valid_checkpoint
     operation.project = {'id': 'demo', 'revision': 1}
     operation.project_revision = operation.project['revision']
     operation.recovery_context = {}
+    operation.execution = {'state_directory': str(tmp_path)}
     operation.ident = 'alpha'
     operation.identity = {'workflow_id': 'perf-experiment/alpha'}
     operation.sha = lambda value: hashlib.sha256(json.dumps(value, sort_keys=True).encode()).hexdigest()
@@ -2884,9 +2896,14 @@ def test_cycle_exhausted_compute_never_spawns_preparation_but_retains_stop_reser
     assert result['status'] == 'unknown' and operation.process is None
     assert not (admission.folder / 'intent.json').exists()
     monkeypatch.setattr(asyncio, 'create_subprocess_exec', spawn)
+    clock, policy = snapshot['budget']['clock'], snapshot['budget']['policy']
+    boot, ticks = training_cycles.budget_clock._clock()
+    window = {'boot_id': boot, 'started_ns': ticks,
+              'deadline_ns': clock['boottime_ns'] + policy['wall_seconds'] * 1_000_000_000}
     stopping = worker._CycleOperation(state.root, 'demo', 'controller', authorized['authorization_sha256'],
-        'stop-writer', snapshot=snapshot, reason='Stop after computation, inside its original cleanup reserve')
-    assert stopping.payload['bootstrap'] is None
+        'stop-writer', snapshot=snapshot, reason='Stop after computation, inside its original cleanup reserve',
+        window=window)
+    assert stopping.payload['bootstrap'] == window
     stopped = asyncio.run(stopping.run())
     assert stopped['status'] == 'observed' and stopped['stop_durable'] is True
     assert not (admission.folder / 'attempt.json').exists()
@@ -2981,39 +2998,41 @@ def test_cycle_stop_notifies_peer_while_writer_and_other_target_reads_block(
 
     state, _, _, authorized, admission = controller_admission
     runtime = cycle_selection[2]
-    binding = save_controller_binding(admission)
+    save_controller_binding(admission)
     monkeypatch.setenv('ERGORA_TEST_TRAINING_CONTROLLER', str(admission.folder))
     owners = []
     try:
-        for ordinal, selected in enumerate(cycle_selection[-1]['candidates']):
-            service[0]('accepted', record_path=service[1].with_name(selected['experiment_id'] + '-service.json'))
-            selector = {key: deepcopy(value) for key, value in binding.items() if key != 'task_queue'}
-            selector['controller']['ordinal'] = ordinal
-            cycle_operation_fault('candidate')
-            submitted = run_cycle_candidate(cycle_candidate, ordinal)['submission']
-            assert submitted['status'] == 'submitted'
-            owners.append(json.loads((runtime / ('ergora/training-submissions/' + selected['experiment_id'] + '.budget/owner.json')).read_bytes()))
+        selected = cycle_selection[-1]['candidates'][0]
+        service[0]('accepted', record_path=service[1].with_name(selected['experiment_id'] + '-service.json'))
+        cycle_operation_fault('candidate')
+        submitted = run_cycle_candidate(cycle_candidate)['submission']
+        assert submitted['status'] == 'submitted'
+        owners.append(json.loads((runtime / 'ergora/training-submissions/alpha.budget/owner.json').read_bytes()))
+        assert not list(runtime.glob('ergora/training-submissions/beta.*'))
         markers = cycle_operation_fault('blocked-stop')
         with ThreadPoolExecutor(max_workers=1) as pool:
             future = pool.submit(asyncio.run, stop_live_controller(
                 state.root, 'demo', 'controller', authorized['authorization_sha256'], reason='Stop this original cycle'))
             policy = cycle_selection[-1]['budget']
             until = time.monotonic() + policy['wall_seconds']
-            while not (markers / 'beta-notified').exists() and time.monotonic() < until:
+            while not (markers / 'alpha-notified').exists() and time.monotonic() < until:
                 time.sleep(.02)
-            delivered = json.loads((markers / 'beta-notified').read_bytes())
-            assert delivered['target'] == {key: owners[1][key] for key in ('pid', 'start_ticks', 'boot_id')}
-            for name in ('stop-writer', 'alpha-owner-reader'):
+            delivered = json.loads((markers / 'alpha-notified').read_bytes())
+            assert delivered['target'] == {key: owners[0][key] for key in ('pid', 'start_ticks', 'boot_id')}
+            for name in ('stop-writer', 'beta-target-reader'):
                 assert recorded_process_is_active(json.loads((markers / name).read_bytes()))
             result = future.result(timeout=policy['wall_seconds'] + 15)
         branches = {(item['mode'], item['ordinal']): item for item in result['operations']}
-        assert branches['notify-owner', 1]['status'] == 'notified'
-        assert branches['notify-owner', 1]['executor_stop_confirmed'] is None
-        assert branches['stop-writer', None]['status'] == branches['notify-owner', 0]['status'] == 'unknown'
+        assert branches['notify-owner', 0]['status'] == 'notified'
+        assert branches['notify-owner', 0]['executor_stop_confirmed'] is None
+        assert branches['stop-writer', None]['status'] == branches['notify-owner', 1]['status'] == 'unknown'
+        assert set(branches) == {('stop-writer', None), ('drain', None), ('notify-owner', 0),
+                                 ('notify-owner', 1), ('observe-execution', 0), ('observe-execution', 1)}
         assert all(item['operation_stopped'] is True for item in result['operations'])
+        assert not list(runtime.glob('ergora/training-submissions/beta.*'))
         assert not any(recorded_process_is_active(owner) for owner in owners)
         assert not any(recorded_process_is_active(json.loads((markers / name).read_bytes()))
-                       for name in ('stop-writer', 'alpha-owner-reader'))
+                       for name in ('stop-writer', 'beta-target-reader'))
     finally:
         for owner in owners:
             try:
@@ -3059,6 +3078,10 @@ def test_cycle_notification_rejects_foreign_identity_without_current_installatio
             authorized['authorization_sha256'], 'inspect').run())
         assert inspection['status'] == 'inspected'
         snapshot = inspection['snapshot']
+        clock, policy = snapshot['budget']['clock'], snapshot['budget']['policy']
+        boot, ticks = training_cycles.budget_clock._clock()
+        window = {'boot_id': boot, 'started_ns': ticks,
+                  'deadline_ns': clock['boottime_ns'] + policy['wall_seconds'] * 1_000_000_000}
         installation.rename(moved)
         for mismatch in ('controller', 'pid'):
             if mismatch == 'controller':
@@ -3068,13 +3091,13 @@ def test_cycle_notification_rejects_foreign_identity_without_current_installatio
             else:
                 owner_path.write_text(json.dumps({**owner, 'start_ticks': str(int(owner['start_ticks']) + 1)}))
             rejected = asyncio.run(_CycleOperation(state.root, 'demo', 'controller',
-                authorized['authorization_sha256'], 'notify-owner', snapshot=snapshot, ordinal=0).run())
+                authorized['authorization_sha256'], 'notify-owner', snapshot=snapshot, ordinal=0, window=window).run())
             assert rejected['status'] == 'unknown' and rejected['operation_stopped'] is True
             assert recorded_process_is_active(owner)
             intent_path.write_bytes(original_intent)
             owner_path.write_bytes(original_owner)
         notified = asyncio.run(_CycleOperation(state.root, 'demo', 'controller',
-            authorized['authorization_sha256'], 'notify-owner', snapshot=snapshot, ordinal=0).run())
+            authorized['authorization_sha256'], 'notify-owner', snapshot=snapshot, ordinal=0, window=window).run())
         assert notified['status'] == 'notified' and notified['executor_stop_confirmed'] is None
         target.wait(timeout=5)
         assert not recorded_process_is_active(owner)
@@ -3287,7 +3310,8 @@ def cycle_sdk_activity(controller_dispatch, request):
     options = getattr(request, 'param', False)
     dispatch_parent = isinstance(options, dict) and options.get('dispatch_parent', False)
     if not dispatch_parent and not (isinstance(options, dict) and options.get('unacknowledged', False)):
-        save_controller_binding(admission)
+        submitted = asyncio.run(operation('accepted').run())
+        assert submitted['status'] == 'submitted' and admission.submission()['run_id'] == DispatchService.run_id
     else:
         submitted = asyncio.run(operation('lost-reply').run())
         assert submitted['status'] == 'unknown' and admission.submission()['attempt_saved']
@@ -3305,7 +3329,7 @@ def cycle_sdk_activity(controller_dispatch, request):
 
         env = ActivityEnvironment()
         env.info = replace(env.info, workflow_id=admission.submission()['workflow_id'],
-            workflow_run_id=admission.submission()['run_id'],
+            workflow_run_id=DispatchService.run_id,
             workflow_type=worker.protocol.cycle_workflow_type(admission.controller_intent()['protocol']),
             workflow_namespace='default', namespace='default',
             activity_type=worker.protocol.cycle_activity_names()[action],
@@ -3638,7 +3662,7 @@ def test_cycle_sdk_retry_only_observes_and_missing_predecessor_never_prepares(cy
     request.update(ordinal=0, predecessor=None)
     result = asyncio.run(environment('start', attempt=2).run(activities['start'], request))
     assert result['status'] == 'observed'
-    assert [item['mode'] for item in result['operations']] == ['reconcile-candidate']
+    assert [item['mode'] for item in result['operations']] == ['reconcile-candidate', 'observe-candidate']
     assert not list(state.root.glob('**/alpha.intent.json'))
     assert not list(state.root.glob('**/owner.json'))
 
@@ -3777,7 +3801,7 @@ def test_cycle_v3_stop_completion_keeps_all_66_branches_and_originals(
     completion = asyncio.run(cycle_sdk_completion(activities['stop'], {
         'workflow_input': admission.controller_intent()['workflow_input'], 'reason': 'Stop all original selected candidates'},
         converter=converter, sdk_timeout_seconds=120,
-        task_queue={3: worker.protocol.CYCLE_STOP_TASK_QUEUE_V2, 4: worker.protocol.CYCLE_STOP_TASK_QUEUE_V3}[admission.authorization['schema_version']],
+        task_queue=worker.protocol.CYCLE_STOP_TASK_QUEUE_V3,
         workflow_execution=WorkflowExecution(workflow_id=admission.submission()['workflow_id'],
                                              run_id=admission.submission()['run_id'])))
     (tmp_path / 'completion.pb').write_bytes(completion.SerializeToString())
@@ -3876,15 +3900,20 @@ def test_cycle_sdk_start_hands_off_once_then_duplicate_only_reconciles(
     cycle_operation_fault('candidate')
     try:
         result = asyncio.run(environment('start').run(activities['start'], request))
-        assert result['status'] == 'observed'
+        assert result['status'] == 'unknown'
+        assert result['facts']['submission']['state'] == 'submitted'
+        assert result['facts']['native'] == {'state': 'unconfirmed', 'job_id': None}
+        assert not (runtime / 'training/jobs/alpha').exists()
         assert [item['mode'] for item in result['operations']] == [
-            'prepare-candidate', 'confirm-candidate', 'dispatch-candidate']
+            'prepare-candidate', 'confirm-candidate', 'dispatch-candidate', 'observe-candidate']
         original = runtime / 'ergora/training-submissions/alpha.intent.json'
         attempt = original.with_name('alpha.attempt.json')
         saved = original.read_bytes(), original.stat().st_ino, attempt.read_bytes(), attempt.stat().st_ino
         repeated = asyncio.run(environment('start').run(activities['start'], request))
-        assert [item['mode'] for item in repeated['operations']] == ['reconcile-candidate']
+        assert [item['mode'] for item in repeated['operations']] == ['reconcile-candidate', 'observe-candidate']
         assert (original.read_bytes(), original.stat().st_ino, attempt.read_bytes(), attempt.stat().st_ino) == saved
+        assert json.loads(service[1].read_bytes())['starts'] == 1
+        assert not (runtime / 'training/jobs/alpha').exists()
     finally:
         cycle_operation_fault('candidate')
         asyncio.run(environment('stop').run(activities['stop'], {
@@ -3918,8 +3947,9 @@ def cycle_budget_root(monkeypatch):
 @pytest.mark.parametrize('reply', ['complete', 'lost'])
 @pytest.mark.skipif(sys.platform != 'linux', reason='Execution consumer uses the real original S/H and root')
 def test_cycle_sdk_execution_waits_for_both_queued_then_only_observes_consumed_launch(
-        cycle_sdk_activity, cycle_operation_fault, service, cycle_selection, cycle_budget_root, monkeypatch, reply):
+        cycle_sdk_activity, cycle_operation_fault, service, cycle_selection, cycle_budget_root, monkeypatch, caplog, reply):
     import asyncio
+    from temporalio.exceptions import ApplicationError
 
     state, admission, _, _, activities, environment = cycle_sdk_activity
     runtime = cycle_selection[2]
@@ -3939,7 +3969,11 @@ def test_cycle_sdk_execution_waits_for_both_queued_then_only_observes_consumed_l
         assert cold['facts']['budget']['state'] == 'valid' and cold['facts']['budget']['work_remaining_seconds'] > 0
         assert cold['facts']['candidate']['ordinal'] == 0
         assert cold['facts']['candidate']['current_project_matches'] is True
-        assert invoke('start')['status'] == 'observed'
+        started = invoke('start')
+        assert started['status'] == 'unknown'
+        assert started['facts']['submission']['state'] == 'submitted'
+        assert started['facts']['native'] == {'state': 'unconfirmed', 'job_id': None}
+        assert not job.exists()
         service[0]('submitting', budget_scenario='managed-no-launch')
         early = invoke('observe-candidate')
         assert early['facts']['submission']['state'] == 'submitted'
@@ -3964,15 +3998,52 @@ def test_cycle_sdk_execution_waits_for_both_queued_then_only_observes_consumed_l
         assert retried['facts']['execution']['state'] == 'not_requested'
         assert not (job / 'managed-execution/request.json').exists()
         if reply == 'lost':
-            cycle_operation_fault('post-stopped-request')
-        requested = invoke('request-execution-or-observe')
+            markers = cycle_operation_fault('post-stopped-request')
         if reply == 'complete':
+            requested = invoke('request-execution-or-observe')
             assert requested['facts']['request_outcome'] == 'requested', requested
         else:
-            assert requested['status'] == 'unknown' and requested['facts'] is None
-            operation = requested['operations'][0]
-            stdout = state.root / 'operations/training-cycles' / operation['operation_id'] / 'helper/stdout.txt'
-            assert json.loads(stdout.read_bytes())['facts']['request_outcome'] == 'requested'
+            requested = None
+            original_logs = len(caplog.records)
+            with pytest.raises(ApplicationError) as rejected:
+                requested = invoke('request-execution-or-observe')
+            assert requested is None
+            assert rejected.value.type == 'cycle_activity_request_rejected' and rejected.value.non_retryable
+            assert any(record.exc_info and isinstance(record.exc_info[1], ApplicationError)
+                       and record.exc_info[1].type == 'cycle_activity_request_rejected'
+                       and record.exc_info[1].message == 'Original cycle activity allowance ended'
+                       for record in caplog.records[original_logs:])
+            outputs = [(path.parent, json.loads(path.read_bytes()))
+                       for path in (state.root / 'operations/training-cycles').glob('*/request.json')
+                       if json.loads(path.read_bytes())['identity']['mode'] == 'request-execution-candidate']
+            assert len(outputs) == 1
+            output, original_payload = outputs[0]
+            raw = (output / 'request.json').read_bytes()
+            supervisor = json.loads((output / 'supervisor.json').read_bytes())
+            cleanup = json.loads((output / 'helper/process-cleanup.json').read_bytes())
+            assert supervisor['identity'] == original_payload['identity']
+            assert supervisor['request_sha256'] == hashlib.sha256(raw).hexdigest()
+            assert (output / 'helper/stdin.txt').read_bytes() == raw
+            assert original_payload['activity_context']['workflow_input'] == request['workflow_input']
+            assert original_payload['activity_context']['activity_source']['workflow_run_id'] == admission.submission()['run_id']
+            assert original_payload['snapshot']['budget']['clock'] == admission.authorization['clock']
+            window = original_payload['bootstrap']
+            assert 0 < window['deadline_ns'] - window['started_ns'] <= (
+                cycle_selection[-1]['budget']['control_timeout_seconds'] * 1_000_000_000)
+            assert cleanup['owner'] == supervisor['supervisor']
+            assert cleanup['owner'] == json.loads(markers.joinpath('stopped-result-reader').read_bytes())
+            assert cleanup['model_waited'] is True and cleanup['returncode'] == 0
+            assert cleanup['descendants'] == cleanup['remaining_children'] == []
+            assert not recorded_process_is_active(cleanup['owner'])
+            assert not recorded_process_is_active(cleanup['model'])
+            observed = json.loads((output / 'helper/stdout.txt').read_bytes())
+            assert observed['status'] == 'observed' and observed['facts']['request_outcome'] == 'requested'
+            assert observed['facts']['budget']['boottime_ns'] < window['deadline_ns']
+            managed = job / 'managed-execution'
+            assert observed['execution']['records']['request'] == json.loads((managed / 'request.json').read_bytes())
+            assert observed['execution']['owner'] == json.loads(
+                (runtime / 'ergora/training-submissions/alpha.budget/owner.json').read_bytes())
+            assert all(not (managed / (name + '.json')).exists() for name in ('attempt', 'ack', 'stopped'))
         cycle_operation_fault('candidate')
         saved = job / 'managed-execution/request.json'
         original = saved.read_bytes(), saved.stat().st_ino
@@ -4016,8 +4087,9 @@ def test_cycle_sdk_execution_waits_for_both_queued_then_only_observes_consumed_l
 @pytest.mark.parametrize('fault', ['execution-sync-window', 'execution-source-drift'])
 @pytest.mark.skipif(sys.platform != 'linux', reason='Last synchronous gate uses the real supervised H')
 def test_cycle_sdk_execution_last_sync_gate_keeps_its_window_and_source(
-        cycle_sdk_activity, cycle_operation_fault, service, cycle_selection, cycle_budget_root, monkeypatch, fault):
+        cycle_sdk_activity, cycle_operation_fault, service, cycle_selection, cycle_budget_root, monkeypatch, caplog, fault):
     import asyncio
+    from temporalio.exceptions import ApplicationError
 
     state, admission, _, _, activities, environment = cycle_sdk_activity
     runtime = cycle_selection[2]
@@ -4026,24 +4098,73 @@ def test_cycle_sdk_execution_last_sync_gate_keeps_its_window_and_source(
     service[0]('accepted', budget_scenario='managed-no-launch')
     cycle_operation_fault('candidate')
     try:
-        assert asyncio.run(environment('start').run(activities['start'], request))['status'] == 'observed'
+        started = asyncio.run(environment('start').run(activities['start'], request))
+        assert started['status'] == 'unknown'
+        assert started['facts']['submission']['state'] == 'submitted'
+        assert started['facts']['native'] == {'state': 'unconfirmed', 'job_id': None}
         assert native_budget_create(cycle_selection[1], 'alpha', managed=True).returncode == 0
+        attempt = runtime / 'ergora/training-submissions/alpha.attempt.json'
+        owner = runtime / 'ergora/training-submissions/alpha.budget/owner.json'
+        original_attempt = attempt.read_bytes(), attempt.stat().st_ino
+        original_owner = owner.read_bytes(), owner.stat().st_ino
         markers = cycle_operation_fault(fault)
-        result = asyncio.run(environment('request-execution-or-observe').run(
-            activities['request-execution-or-observe'], request))
-        assert result['status'] == 'unknown'
+        activity_environment = environment('request-execution-or-observe')
+        result = None
         if fault == 'execution-sync-window':
-            assert result['facts'] is None
+            original_logs = len(caplog.records)
+            with pytest.raises(ApplicationError) as rejected:
+                result = asyncio.run(activity_environment.run(activities['request-execution-or-observe'], request))
+            assert result is None
+            assert rejected.value.type == 'cycle_activity_request_rejected' and rejected.value.non_retryable
+            assert any(record.exc_info and isinstance(record.exc_info[1], ApplicationError)
+                       and record.exc_info[1].type == 'cycle_activity_request_rejected'
+                       and record.exc_info[1].message == 'Original cycle activity allowance ended'
+                       for record in caplog.records[original_logs:])
             assert markers.joinpath('execution-sync-blocked').exists()
             assert markers.joinpath('execution-sync-returned').exists()
+            retained = [(path.parent, json.loads(path.read_bytes()))
+                        for path in (state.root / 'operations/training-cycles').glob('*/request.json')
+                        if json.loads(path.read_bytes())['identity']['mode'] == 'request-execution-candidate']
+            assert len(retained) == 1
+            output, original = retained[0]
+            raw = (output / 'request.json').read_bytes()
+            supervisor = json.loads((output / 'supervisor.json').read_bytes())
+            assert supervisor['identity'] == original['identity']
+            assert supervisor['request_sha256'] == hashlib.sha256(raw).hexdigest()
+            assert (output / 'helper/stdin.txt').read_bytes() == raw
+            assert original['activity_context']['workflow_input'] == request['workflow_input']
+            assert original['activity_context']['activity_source'] == {
+                name: getattr(activity_environment.info, name) for name in
+                ('workflow_id', 'workflow_run_id', 'workflow_type', 'workflow_namespace', 'namespace',
+                 'activity_id', 'activity_type', 'task_queue', 'attempt')}
+            assert original['snapshot']['budget']['clock'] == admission.authorization['clock']
+            window = original['bootstrap']
+            assert 0 < window['deadline_ns'] - window['started_ns'] <= (
+                cycle_selection[-1]['budget']['control_timeout_seconds'] * 1_000_000_000)
+            cleanup = json.loads((output / 'helper/process-cleanup.json').read_bytes())
+            assert cleanup['owner'] == supervisor['supervisor']
+            assert cleanup['model'] == json.loads(markers.joinpath('execution-sync-blocked').read_bytes())
+            assert cleanup['model'] == json.loads(markers.joinpath('execution-sync-returned').read_bytes())
+            assert cleanup['model_waited'] is True and cleanup['returncode'] == 0
+            assert cleanup['descendants'] == cleanup['remaining_children'] == []
+            assert not recorded_process_is_active(cleanup['owner'])
+            assert not recorded_process_is_active(cleanup['model'])
         else:
+            result = asyncio.run(activity_environment.run(activities['request-execution-or-observe'], request))
+            assert result['status'] == 'unknown'
             assert markers.joinpath(fault).exists()
-        operation = result['operations'][0]
-        stdout = state.root / 'operations/training-cycles' / operation['operation_id'] / 'helper/stdout.txt'
+            operation = result['operations'][0]
+            output = state.root / 'operations/training-cycles' / operation['operation_id']
+        stdout = output / 'helper/stdout.txt'
         observed = json.loads(stdout.read_bytes())
+        if fault == 'execution-sync-window':
+            assert observed['status'] == 'unknown'
+            assert observed['facts']['budget']['boottime_ns'] > window['deadline_ns']
         assert observed['facts']['request_outcome'] == 'unconfirmed'
         assert observed['facts']['budget']['work_remaining_seconds'] > 0
         assert ('window is exhausted' if fault == 'execution-sync-window' else 'operation source') in observed['problems']['request']
+        assert (attempt.read_bytes(), attempt.stat().st_ino) == original_attempt
+        assert (owner.read_bytes(), owner.stat().st_ino) == original_owner
         assert not (runtime / 'training/jobs/alpha/managed-execution/request.json').exists()
         assert not service[1].with_suffix('.execution-launch').exists()
     finally:
@@ -4084,57 +4205,39 @@ def test_cycle_sdk_dispatch_rechecks_prepare_activity_source_after_attempt_sync(
         wait_budget_stopped(runtime)
 
 
-@pytest.mark.skipif(sys.platform != 'linux', reason='Launch material is prepared by the original supervised Linux H')
-def test_cycle_sdk_launch_capacity_keeps_occupied_intent_without_another_offer(
-        registration, cycle_operation_fault, monkeypatch, request):
-    import asyncio
-    from temporalio.exceptions import ApplicationError
+@pytest.mark.skipif(sys.platform != 'linux', reason='Controller capacity admission uses registered Linux sources')
+def test_cycle_known_launch_capacity_refuses_before_authorization_or_offer(
+        registration, monkeypatch, request, tmp_path):
+    import ergora.training.cycles as training_cycles
+    from ergora.training.execution_protocol import _CycleCapacityError
 
     state, definition = registration
     # This valid check is frozen by the real registration and cycle owners.
     # The compact operation snapshot omits it, while complete launch material
     # must carry the entire registered project, including this check.
     definition['checks']['unused-large-check'] = ['echo', 'x' * 20000]
-    _, _, runtime, _, _, _ = request.getfixturevalue('cycle_selection')
-    service = request.getfixturevalue('service')
+    _, _, runtime, _, _, selection = request.getfixturevalue('cycle_selection')
     assert len(json.dumps(state.project('demo'), ensure_ascii=False).encode()) > 32768
-    state, admission, _, _, activities, environment = request.getfixturevalue('cycle_sdk_activity')
-    monkeypatch.setenv('ERGORA_TEST_TRAINING_CONTROLLER', str(admission.folder))
-    service[0]('accepted')
-    cycle_operation_fault('candidate')
-    activity_request = {'workflow_input': admission.controller_intent()['workflow_input'], 'ordinal': 0, 'predecessor': None}
-    original_authorization = (admission.directory / 'authorization.json').read_bytes()
-    original_ready = (admission.directory / 'ready.json').read_bytes()
-    failure = None
-    try:
-        asyncio.run(environment('start').run(activities['start'], activity_request))
-    except ApplicationError as error:
-        failure = error
-
-    original = runtime / 'ergora/training-submissions/alpha.intent.json'
+    source = tmp_path / 'controller-input'
+    selected = training_cycles.create(state, 'demo', selection, source)
+    original = source / 'cycle.json'
     saved = original.read_bytes(), original.stat().st_ino
-    outputs = state.root / 'operations/training-cycles'
-    preparations = [path.parent for path in outputs.glob('*/request.json')
-                    if json.loads(path.read_bytes())['identity']['mode'] == 'prepare-candidate']
-    assert len(preparations) == 1
-    preparation = preparations[0]
-    assert (preparation / 'request.json').stat().st_size < 32768
-    raw = (preparation / 'helper/stdout.txt').read_bytes()
-    observed = json.loads(raw)
-    assert observed['reason'] == 'Complete controller root material exceeds 32 KiB; its start intent is already occupied'
-    for action, changes in [('start', {}), ('start', {'attempt': 2}), ('reconcile', {})]:
-        repeated = asyncio.run(environment(action, **changes).run(activities[action], activity_request))
-        assert [item['mode'] for item in repeated['operations']] == ['reconcile-candidate']
+    runtime_before = {path: path.read_bytes() for path in runtime.rglob('*') if path.is_file()}
+
+    def forbidden_clock(*args, **kwargs):
+        pytest.fail('Known impossible controller material must be refused before a budget clock is consumed')
+
+    monkeypatch.setattr(training_cycles.budget_clock, 'authorize', forbidden_clock)
+    catalog = state.root / 'training-cycles/demo'
+    for _ in range(2):
+        with pytest.raises(_CycleCapacityError, match='Known complete controller input cannot fit'):
+            training_cycles.authorize_controller(state, 'demo', 'controller', source, selected['sha256'],
+                state.project('demo')['revision'], confirm=True, execute_selected=True)
         assert (original.read_bytes(), original.stat().st_ino) == saved
-    assert (admission.directory / 'authorization.json').read_bytes() == original_authorization
-    assert (admission.directory / 'ready.json').read_bytes() == original_ready
-    assert not original.with_name('alpha.attempt.json').exists()
-    assert not original.with_name('alpha.budget').exists()
-    assert not service[1].exists() or json.loads(service[1].read_bytes())['starts'] == 0
-    assert len([path for path in outputs.glob('*/request.json')
-                if json.loads(path.read_bytes())['identity']['mode'] == 'prepare-candidate']) == 1
-    assert observed['status'] == 'capacity_exceeded'
-    assert failure is not None and failure.type == 'cycle_activity_capacity_exceeded' and failure.non_retryable
+        assert {path: path.read_bytes() for path in runtime.rglob('*') if path.is_file()} == runtime_before
+        assert {path.name for path in catalog.iterdir()} == {'.controller.lock'}
+        assert not (state.root / 'operations/training-cycles').exists()
+        assert not list(runtime.glob('ergora/training-submissions/alpha.*'))
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='SDK activities consume the original supervised Linux H')
@@ -4352,6 +4455,8 @@ def test_cycle_v3_parent_unknown_cannot_hide_final_observation_capacity(
 def test_cycle_sdk_capacity_failure_finishes_peers_and_keeps_original_bytes(
         cycle_sdk_activity, cycle_operation_fault, monkeypatch, fault):
     import asyncio
+    from temporalio.api.common.v1 import Payloads
+    from temporalio.converter import DataConverter
     from temporalio.exceptions import ApplicationError
     import ergora.training.runtime.worker as worker
 
@@ -4364,14 +4469,29 @@ def test_cycle_sdk_capacity_failure_finishes_peers_and_keeps_original_bytes(
     cycle_operation_fault(fault)
     captured = []
     original_stop = worker.stop_live_controller
+    original_operation = worker._CycleOperation
+    operations = []
+
+    def construct(*args, **kwargs):
+        operation = original_operation(*args, **kwargs)
+        operations.append(operation)
+        return operation
+
     async def capture(*args, **kwargs):
         result = await original_stop(*args, **kwargs)
         captured.extend(kwargs['operation_records'])
         return result
+    monkeypatch.setattr(worker, '_CycleOperation', construct)
     monkeypatch.setattr(worker, 'stop_live_controller', capture)
-    reason = 'x' * 30000 if fault == 'operation-request' else 'Explicit cycle stop'
-    request = {'workflow_input': workflow_input, 'reason': reason}
-    assert len(json.dumps(request).encode()) < 32768
+    request = {'workflow_input': workflow_input, 'reason': 'Explicit cycle stop'}
+    converter = DataConverter.default
+    if fault == 'operation-request':
+        request['reason'] = ''
+        for _ in range(3):
+            size = Payloads(payloads=asyncio.run(converter.encode([request]))).ByteSize()
+            request['reason'] = 'x' * (len(request['reason']) + 32767 - size)
+        assert Payloads(payloads=asyncio.run(converter.encode([request]))).ByteSize() == 32767
+    assert Payloads(payloads=asyncio.run(converter.encode([request]))).ByteSize() < 32768
     with pytest.raises(ApplicationError) as failed:
         asyncio.run(environment('stop').run(activities['stop'], request))
     assert failed.value.type == 'cycle_activity_capacity_exceeded' and failed.value.non_retryable
@@ -4381,9 +4501,20 @@ def test_cycle_sdk_capacity_failure_finishes_peers_and_keeps_original_bytes(
     peers = [item for item in branches if item['mode'] != 'stop-writer']
     assert all(item['operation_stopped'] and item['supervisor_returncode'] == 0 for item in peers)
     assert all('ref' in item['result'] for item in peers)
+    for item in peers:
+        ref = item['result']['ref']
+        raw = (state.root / 'operations/training-cycles' / item['operation_id'] / ref['file']).read_bytes()
+        assert (len(raw), hashlib.sha256(raw).hexdigest()) == (ref['bytes'], ref['sha256'])
     if fault == 'operation-request':
         assert writer['result']['inline']['status'] == 'capacity_exceeded'
         assert not writer['operation_stopped'] and writer['supervisor_returncode'] is None
+        operation = next(item for item in operations if item.identity['mode'] == 'stop-writer')
+        raw = operation.encoded
+        assert len(raw) > 32768 and json.loads(raw)['reason'] == request['reason']
+        assert set(json.loads(raw)['snapshot']) == {'plan_ref', 'authorization_ref', 'budget', 'candidate_count'}
+        retained = writer['result']['inline']['request_retention']
+        assert retained['status'] == 'unknown' and retained['waited'] and retained['returncode'] == 1
+        assert 'ref' not in retained and not (operation.output / 'request.json').exists()
     else:
         output = state.root / 'operations/training-cycles' / writer['operation_id']
         raw = (output / 'helper/stdout.txt').read_bytes()
@@ -4504,7 +4635,8 @@ def test_successor_live_predecessor_query_does_not_hold_database_reservation(rou
     accepted = asyncio.run(operation().run())['facts']['measurement']
     template = operation('reconcile-round').payload
     context = deepcopy(template['activity_context'])
-    context['activity_source'].update(activity_id='candidate-1-start', activity_type='ergora.training_cycle.start.v3')
+    context['activity_source'].update(activity_id='candidate-1-start',
+                                     activity_type=worker.protocol.cycle_activity_names()['start'])
     controller = {**template['start_context']['controller'], 'ordinal': 1,
                   'predecessor': {key: accepted[key] for key in ('prefix', 'acceptance')}}
     markers = cycle_operation_fault('round-previous-held')
@@ -4883,7 +5015,7 @@ except ValueError as error:
                             # before consuming a changed manifest. Native's
                             # earlier selected-installation check also vetoes it.
                             refused = native_read(context, without_site=True)
-                            assert 'gate source changed' in refused['rejected']
+                            assert refused['rejected'] == 'Original round source bytes changed: ' + relative
                     finally:
                         path.write_bytes(raw_source)
             assert {path: path.read_bytes() for path in chain.folder.rglob('*') if path.is_file()} == before
@@ -5155,7 +5287,7 @@ def test_round_parent_request_retention_keeps_same_original_encoding(round_candi
     encodings = []
     def encode(value, *args, **kwargs):
         raw = original(value, *args, **kwargs)
-        if isinstance(value, dict) and 'snapshot' in value and value.get('identity', {}).get('protocol') == 'ergora-training-cycle-operation-v2':
+        if isinstance(value, dict) and 'snapshot' in value and value.get('identity', {}).get('protocol') == 'ergora-training-cycle-operation-v3':
             encodings.append(raw.encode('utf-8'))
         return raw
     monkeypatch.setattr(worker.json, 'dumps', encode)
@@ -5166,7 +5298,7 @@ def test_round_parent_request_retention_keeps_same_original_encoding(round_candi
         template = operation().payload
         context = deepcopy(template['activity_context']) if mode == 'observe-candidate' else None
         if context:
-            context['activity_source']['activity_type'] = worker.protocol.CYCLE_ACTIVITY_NAMES_V3['observe-candidate']
+            context['activity_source']['activity_type'] = worker.protocol.cycle_activity_names()['observe-candidate']
         encodings.clear()
         current = worker._CycleOperation(state.root, 'demo', 'controller', admission.authorization['sha256'], mode,
             snapshot=template['snapshot'], ordinal=0 if context else None, reason='原始秘密🧪' * 12000,

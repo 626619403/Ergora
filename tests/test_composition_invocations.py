@@ -430,6 +430,7 @@ def test_cycle_analysis_skip_first_vetoes_durable_attempt_under_original_submiss
     assert not folder.exists() and calls.count('model') == 0
 
 
+@pytest.mark.skipif(sys.platform != 'linux', reason='Original task MCP process identity requires Linux/WSL2')
 def test_task_mcp_closed_audit_cannot_certify_a_still_live_original_process():
     import ergora.agents.mcp as task_mcp
     identity = processes.identity(os.getpid())

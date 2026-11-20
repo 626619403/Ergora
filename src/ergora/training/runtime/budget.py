@@ -534,7 +534,7 @@ class BudgetedStart:
         return remaining
 
     def launch_context(self, payload: dict) -> dict:
-        """Material for the sole prepare winner; this does not launch a process."""
+        """Consume the sole root offer while native prepare holds its submission lock."""
         source = training_execution_protocol.cycle_start_source(payload)
         if (payload['identity']['mode'] != 'prepare-candidate'
                 or source['start_context']['controller'] != self.binding.get('controller')):
@@ -555,16 +555,15 @@ class BudgetedStart:
         if len(json.dumps(result, ensure_ascii=False, allow_nan=False).encode('utf-8')) > 32_768:
             raise training_cycles._CycleCapacityError(
                 'Complete controller root material exceeds 32 KiB; its start intent is already occupied')
-        # Consume the original root opportunity under the same submission lock
-        # as skip. The existing budget namespace is permanent even on lost reply.
-        with file_lock(self.operation.path('.lock'), blocking=False):
-            training_execution_protocol.require_not_skipped(self.intent['execution'], self.operation.ident)
-            self._start_remaining(payload)
-            observation = self.path('launches/' + self.intent['operation_id'])
-            observation.mkdir(parents=True, mode=0o700)
-            training_execution_protocol.sync_directories(observation, self.operation.root)
-            training_execution_protocol.require_not_skipped(self.intent['execution'], self.operation.ident)
-            self._start_remaining(payload)
+        # Native prepare still holds the original submission lock shared with
+        # skip. The existing budget namespace is permanent even on lost reply.
+        training_execution_protocol.require_not_skipped(self.intent['execution'], self.operation.ident)
+        self._start_remaining(payload)
+        observation = self.path('launches/' + self.intent['operation_id'])
+        observation.mkdir(parents=True, mode=0o700)
+        training_execution_protocol.sync_directories(observation, self.operation.root)
+        training_execution_protocol.require_not_skipped(self.intent['execution'], self.operation.ident)
+        self._start_remaining(payload)
         return result
 
     def observe(self) -> dict:
