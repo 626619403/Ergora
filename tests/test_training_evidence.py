@@ -839,6 +839,8 @@ assert not any(name in sys.modules for name in ('yaml','jsonschema','temporalio'
 @pytest.fixture
 def cpu_profile_capture(tmp_path, monkeypatch):
     """Real cProfile/source callback and durable files; managed-chain admission is a leaf."""
+    if sys.platform != 'linux':
+        pytest.skip('Profile capture requires Linux durable publication and SIGALRM sub-caps')
     import runpy
     from types import SimpleNamespace
     import ergora.training.configuration as wrapper

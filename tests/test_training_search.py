@@ -1963,7 +1963,7 @@ def test_prepared_receipt_raw_drift_during_work_never_enters_archive(search_exec
     assert all(observed['records'][name] is not None for name in ('request', 'launch', 'attempt', 'ack', 'stopped'))
     assert len((item['markers'] / 'first-work.jsonl').read_text().splitlines()) == 1
     assert json.loads((job / 'result.json').read_bytes())['state'] == 'FAILED'
-    assert 'Configuration or baseline reference receipt changed during training work' in (job / 'run-output/execution.log').read_text()
+    assert 'Baseline collection changed original raw work or reports' in (job / 'run-output/execution.log').read_text()
     assert not (job / 'gate-report.json').exists()
     assert not (item['prefix'] / 'experiments' / ident / 'accepted-evidence').exists()
     artifacts = json.loads((job / 'run-output/evidence.json').read_bytes())['artifacts']
