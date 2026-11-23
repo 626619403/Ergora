@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "id": "ergora-training-proposal",
-  "version": "4.2.6",
+  "version": "4.2.7",
   "description": "Readonly shared optimization policy and explicit stage handoffs; selected topic descendants inherit complete methods and environment records. Independent leaves require caller-supplied predecessors.",
   "resources": [
     {
@@ -14,7 +14,7 @@
       "id": "ergora-bottleneck-optimization-skill",
       "kind": "skill",
       "path": "skills/ergora-bottleneck-optimization",
-      "digest": "43c2a2a5424f39a655b613d663b9f0bf6532b589e5dc7ea78d8235bf151457c5"
+      "digest": "17daa89222278d401a41c794439f4b39840ee71813ee451f37e31b07dd61c86b"
     },
     {
       "id": "ergora-library-environment-optimization-skill",

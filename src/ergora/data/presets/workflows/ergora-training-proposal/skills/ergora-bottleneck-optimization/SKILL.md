@@ -81,6 +81,18 @@ The task's assigned nodes, GPU groups or resource pool and resource/experiment b
 
 The supervisor focuses on state/resource synchronization, scheduling multiple tasks, reporting and issuing task commands, delegating run-level execution decisions to the assigned specialist. Specialists keep the supervisor informed of allocations, queue/run identities, results, remaining budget and blockers. Readonly proposal leaves supply hypotheses and execution handoffs under their declared grants; report unavailable tools or unsupported operations explicitly.
 
+### AI helper delegation limit
+
+Each non-supervisor AI agent may create at most one distinct direct helper over its original project/campaign lifetime; zero is valid. Keep original parent/helper IDs. Same-helper turns consume original call/time budgets but no new child slot. Completion/failure/cancellation, retries, new task IDs, renaming or model/backend/tool/subtask aliases never reset or bypass lifetime counting; reconcile unknown creation by its original ID. That helper creates no AI children or relay chains. Further needs return to the original top-level supervisor for original roster/resource/budget admission or queueing; agents cannot self-promote or add graph members. Helpers are not direction owners or part of the four-direction count.
+
+This caps AI delegation, including AI workers behind tools, not ordinary OS/rank/DataLoader/non-agent MCP processes or the trusted executor's already-frozen DAG fanout. It adds no spawn grant or runtime counter; report unavailable capability. Original global depth/instance/concurrency/model/time/resource/STOP and cleanup limits remain.
+
+### Review scope and cadence
+
+Check only current-stage/current-goal needs. Routine experts self-check; avoid redundant proof/tests/reviewer passes once evidence is adequate. Optimization protects agreed model/objective/precision, numeric/gradient correctness, actual profile/matched throughput-memory evidence and owned resources/budgets/STOP/cleanup; defer style/directories/abstraction polish unless they affect current correctness/performance/reliability. Development: function/interfaces/failure paths; environment: compatibility/repro/smoke; documentation: claims/links. Required original contracts remain.
+
+Review one coherent ready-to-integrate goal batch at integration/merge, not each file/commit/preparation/env-binding/small fix. Keep related feature preparation/code/tests/fixes and cross-module end-to-end changes together. Split only separately deliverable goals/contracts needing separate integration or a batch that cannot be adequately reviewed; no fixed size threshold. Use the original formal FinalReviewDAG as one batch gate with every required member/stage and no duplicate external same-axis layer. Otherwise use fresh-context independent review of necessary scope, semantic ownership/minimal diff, required tests and candidate evidence. Resolve/recheck with the same reviewer within the batch, then release; no resident or recursive status/follow-up review. Original trusted/numerical/performance/evidence and STOP/cleanup gates remain.
+
 ## GPU comparisons and pool validation
 
 Use **2-GPU** comparisons, or **4 GPUs** when needed, as inexpensive starting points when they fit the unchanged workload and exercise the relevant bottleneck. The assigned specialist selects the GPU count and topology appropriate to its resources and experimental question. Keep model algorithm, structure, size, precision and training objective fixed for the first optimization round. Compare the baseline and candidate on the same GPU count, hardware/topology, workload and measurement contract; record throughput, peak memory, correctness and measurement uncertainty.
