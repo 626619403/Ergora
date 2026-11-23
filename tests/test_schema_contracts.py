@@ -67,6 +67,27 @@ def test_structured_results_keep_strict_fields_and_show_json_pointer():
             contracts.validate({**result, field: value}, contracts.EVALUATION_RESULT, "Evaluator result")
 
 
+def test_unevaluable_result_requires_explicit_cost_and_excludes_scoring():
+    result = {"outcome": "unevaluable", "cost": None, "feedback": "No usable result"}
+    for cost in (None, 0, .25):
+        contracts.validate({**result, "cost": cost}, contracts.EVALUATION_RESULT, "Evaluator result")
+    for invalid in (
+        {"outcome": "unevaluable", "feedback": "No cost field"},
+        {**result, "outcome": "failed"},
+        {**result, "score": 0},
+        {**result, "passed": False},
+        {**result, "upstream_metadata": {}},
+        {**result, "cost": True},
+        {**result, "cost": -1},
+        {**result, "cost": float("nan")},
+        {**result, "cost": float("inf")},
+        {**result, "cost": 10 ** 1000},
+        {"score": 0, "passed": False, "cost": None, "feedback": "Wrong answer"},
+    ):
+        with pytest.raises(ValueError, match="Evaluator result"):
+            contracts.validate(invalid, contracts.EVALUATION_RESULT, "Evaluator result")
+
+
 @pytest.fixture
 def contract_project(tmp_path):
     repo = tmp_path / "repo"

@@ -3,11 +3,27 @@
   "$id": "urn:ergora:evaluation-result:v1",
   "type": "object",
   "properties": {
-    "score": {"type": "number", "minimum": 0, "maximum": 1},
-    "cost": {"type": "number", "minimum": 0},
-    "passed": {"type": "boolean"},
     "feedback": {"type": "string"}
   },
-  "required": ["score", "cost", "passed", "feedback"],
-  "additionalProperties": true
+  "required": ["cost", "feedback"],
+  "if": {
+    "required": ["outcome"],
+    "properties": {"outcome": {"const": "unevaluable"}}
+  },
+  "then": {
+    "properties": {
+      "outcome": {"const": "unevaluable"},
+      "cost": {"type": ["number", "null"], "minimum": 0},
+      "feedback": {}
+    },
+    "additionalProperties": false
+  },
+  "else": {
+    "properties": {
+      "score": {"type": "number", "minimum": 0, "maximum": 1},
+      "cost": {"type": "number", "minimum": 0},
+      "passed": {"type": "boolean"}
+    },
+    "required": ["score", "passed"]
+  }
 }
