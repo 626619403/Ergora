@@ -45,6 +45,54 @@ def test_local_http_boundary_and_packaged_assets(console):
     assert [item["id"] for item in client.get("/api/bootstrap").json()["projects"]] == ["demo", "other"]
 
 
+def test_formal_work_priority_confirms_exact_command_and_reads_the_original(console, monkeypatch):
+    from ergora.development import application as tasks
+
+    client, state, _ = console
+    path = "/api/projects/demo/tasks/task-one/work-priority/owner-one"
+    query = {"run_id": "original-run", "timeout": 7}
+    body = {**query, "revision": 1, "confirm": True, "work_unit_id": "pending-b", "plan_sha256": "a" * 64}
+    calls = []
+    recorded = {"task_id": "task-one", "decision_id": "owner-one", "run_id": "original-run",
+                "work_unit_id": "pending-b", "plan_sha256": "a" * 64, "project_revision": 1}
+
+    def native(project, home, operation, payload, *, timeout):
+        calls.append((project["revision"], home, operation, payload, timeout))
+        if payload["run_id"] != "original-run":
+            raise ValueError("Work priority must pin the original submitted run ID")
+        return {**recorded, "status": "unknown" if operation == "prioritize" else "applied", "attempt_saved": True}
+
+    monkeypatch.setattr(tasks, "_project", lambda store, project: store.project(project))
+    monkeypatch.setattr(tasks.development_native, "task_work_priority", native)
+    assert client.post(path, json=body, headers={"X-Ergora-Request": ""}).status_code == 403
+    assert client.post(path, json=body, headers={"Origin": "https://attacker.example"}).status_code == 403
+    for invalid in ({"revision": "1"}, {"confirm": 1}, {"timeout": True}, {"timeout": 61}, {"run_id": ""},
+                    {"work_unit_id": "bad.unit"}, {"plan_sha256": "bad"}, {"decision_id": "other"}):
+        assert client.post(path, json={**body, **invalid}).status_code == 422
+    assert client.post(path, json={**body, "confirm": False}).status_code == 400
+    assert client.post(path, json={**body, "revision": 2}).status_code == 400
+    assert client.get(path).status_code == 422
+    assert client.get(path, params={**query, "timeout": 0}).status_code == 422
+    assert client.get(path + "!", params=query).status_code == 422
+    assert client.post(path + "!", json=body).status_code == 422
+    assert calls == []
+
+    submitted = client.post(path, json=body)
+    assert submitted.status_code == 200
+    assert submitted.json() == {**recorded, "status": "unknown", "attempt_saved": True}
+    assert projects.bind(state, "demo", "reviewer", {"tool": "codex", "model": "later-model"}, 1)["revision"] == 2
+    assert client.get(path, params={**query, "run_id": "other-run"}).status_code == 400
+    observed = client.get(path, params=query, headers={"X-Ergora-Request": ""})
+    assert observed.status_code == 200
+    assert observed.json() == {**recorded, "status": "applied", "attempt_saved": True}
+    identity = {key: recorded[key] for key in ("task_id", "decision_id", "run_id")}
+    assert calls == [
+        (1, state.root, "prioritize", {**identity, "work_unit_id": "pending-b", "plan_sha256": "a" * 64}, 7),
+        (2, state.root, "inspect", {**identity, "run_id": "other-run"}, 7),
+        (2, state.root, "inspect", identity, 7),
+    ]
+
+
 def test_workflow_revision_impact_is_available_only_on_read_only_routes(console, tmp_path):
     from ergora.definitions import agents, workflows
     from test_workflow_definitions import EXAMPLES, definition, grant, leaf, ref, write_bundle

@@ -18,7 +18,9 @@ This operation first validates the local task's project ownership and spec, then
 
 ## Prioritize a pending work unit
 
-During approved implementation, a supervisor using the registered Linux/WSL2 CLI can prefer a work unit from the original task. Use a task with a recorded `task start` submission. Query the original run and use its `status.work_priority.pending_work_unit_ids`, `plan_sha256` and project revision. The capability requires the current budgeted preparation workflow and a worker that reports `work_priority.available`. Choose a decision ID unique to this request.
+During approved implementation, a supervisor can prefer a work unit from the original task. Use a task with a recorded `task start` submission. Query the original run and use its `status.work_priority.pending_work_unit_ids`, `plan_sha256` and project revision. The capability requires the current Linux/WSL2 budgeted preparation workflow and a worker that reports `work_priority.available`. Choose a decision ID unique to this request.
+
+On the formal task page, select “Read original run” and then “Prioritize a pending work unit.” Choose one of the reported pending units, enter a decision ID and check it. Review the original run, approved Plan digest and project revision before confirming. After an uncertain result, use “Read priority decision by original ID” on the same task. You can open that reader after the run closes and enter an ID recorded through the CLI or API.
 
 ```bash
 ergora task status my-project TASK_ID --run-id RUN_ID
@@ -27,9 +29,11 @@ ergora task prioritize-work my-project TASK_ID UNIT_ID --revision REVISION \
 ergora task work-priority my-project TASK_ID DECISION_ID --run-id RUN_ID
 ```
 
+The same-origin API uses `POST /api/projects/ID/tasks/TASK_ID/work-priority/DECISION_ID` with `X-Ergora-Request: 1` and a JSON body containing `revision`, `run_id`, `plan_sha256`, `work_unit_id`, `confirm: true` and optional `timeout`. Read the original result with `GET /api/projects/ID/tasks/TASK_ID/work-priority/DECISION_ID?run_id=RUN_ID&timeout=20`.
+
 `applied` means the workflow recorded the preference. The unit takes precedence when its original predecessors have succeeded and the original concurrency limits permit dispatch. Other eligible units can start while it waits. A later decision can replace the preference. Each work unit keeps its original inputs, owner and job ID. The same plan approval, budget cutoff, integration, verification and review apply.
 
-The task saves the exact attempt beside its submission records before sending one Temporal Update to the original run. After a lost response, `task work-priority` reads that decision's outcome under the same run and update IDs. Repeating the same decision also only reads that outcome. An unavailable outcome remains `unknown`. A rejection or unavailable worker before the attempt leaves no attempt. An update that races a dispatch, cancellation or cutoff may return a recorded rejection. Use workers that support this Update for all runs on the updated queue throughout execution and recovery.
+The task saves the exact attempt beside its submission records before sending one Temporal Update to the original run. After a lost response, use the read-only Console action, API or `task work-priority` with the original run and decision IDs. A repeated submission for a saved decision reads its outcome. An unavailable outcome remains `unknown`. A rejection or unavailable worker before the attempt leaves no attempt. An update that races a dispatch, cancellation or cutoff may return a recorded rejection. Use workers that support this Update for all runs on the updated queue throughout execution and recovery.
 
 ## Preview a substantive amendment and prepare its successor
 

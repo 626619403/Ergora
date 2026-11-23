@@ -6,7 +6,7 @@ import tempfile
 from pathlib import Path
 from typing import Annotated, Literal
 
-from fastapi import Body, FastAPI, Query, Request
+from fastapi import Body, FastAPI, Path as PathParameter, Query, Request
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
@@ -363,6 +363,14 @@ class TaskRunDecisionPayload(Payload):
 
 class TaskApprovePayload(TaskRunDecisionPayload):
     plan_sha256: str = Field(pattern="^[0-9a-f]{64}$")
+
+
+class TaskWorkPriorityPayload(TaskRunDecisionPayload):
+    plan_sha256: str = Field(pattern="^[0-9a-f]{64}$")
+    work_unit_id: str = Field(pattern="^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$")
+
+
+WorkPriorityDecisionId = Annotated[str, PathParameter(pattern="^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$")]
 
 
 class TaskResumeDecisionPayload(TaskResumeStartPayload):
@@ -1033,6 +1041,19 @@ def create_app(home: Path | None = None) -> FastAPI:
     def resume_formal_task_approval(project_id: str, task_id: str, decision_id: str, body: TaskResumeDecisionPayload):
         return tasks.resume_approve(state, project_id, task_id, decision_id, body.revision,
                                     body.intent_sha256, confirm=body.confirm, timeout=body.timeout)
+
+    @application.get("/api/projects/{project_id}/tasks/{task_id}/work-priority/{decision_id}")
+    def formal_task_work_priority(project_id: str, task_id: str, decision_id: WorkPriorityDecisionId,
+                                  run_id: Annotated[str, Query(min_length=1, max_length=128)],
+                                  timeout: Annotated[int, Query(ge=1, le=60)] = 20):
+        return tasks.work_priority(state, project_id, task_id, decision_id, run_id=run_id, timeout=timeout)
+
+    @application.post("/api/projects/{project_id}/tasks/{task_id}/work-priority/{decision_id}")
+    def prioritize_formal_task_work(project_id: str, task_id: str, decision_id: WorkPriorityDecisionId,
+                                    body: TaskWorkPriorityPayload):
+        return tasks.prioritize_work_unit(state, project_id, task_id, body.work_unit_id, body.revision,
+                                          run_id=body.run_id, plan_sha256=body.plan_sha256, decision_id=decision_id,
+                                          confirm=body.confirm, timeout=body.timeout)
 
     @application.get("/api/projects/{project_id}/tasks/{task_id}/cancellations/{request_id}")
     def formal_task_cancellation(project_id: str, task_id: str, request_id: str):
