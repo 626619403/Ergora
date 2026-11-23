@@ -2,22 +2,22 @@
 
 This example selects five required reviewers for a process/concurrency change with performance implications: the existing structure, correctness and test-value branches, plus performance and resource lifecycle. The bundled `engineering-review` default remains the three core branches. Select specialists with facts before preview/freeze; there is no automatic diff classifier. Dependency, security and measurement are installed options and do not run unless selected. Missing evidence is `blocked`, not automatically `not-applicable`.
 
-The revision uses the existing `ergora-delivery-review@1.2.4` base, digest `653b8dba06e953e60b9d6e30b7f368355bdbd846a0ed63efb096eb1d69d188a2`. It publishes `ergora-selected-engineering-review@1.0.4`, digest `1965dc2752381bdd60bd27d800b1bcd98009d84eebbdda0d6c9ee79b2847024e`. The standard revision contains references only; inherited instructions and Skills remain in their original bundles. Old library objects and frozen tasks retain their identities.
+The revision uses the existing `ergora-delivery-review@1.2.5` base, digest `dbd74724a216ee0e3fe95e496b7eeccd45a707353bcc5415e11662f273f8da1d`. It publishes `ergora-selected-engineering-review@1.0.5`, digest `6abc1cd4dafef647972c0187ea7c25cbb0771054a35dc0b3380943e8145b0412`. The standard revision contains references only; inherited instructions and Skills remain in their original bundles. Old library objects and frozen tasks retain their identities.
 
 From the repository root, use an explicit definition-library home. Every command below uses that same home:
 
 ```bash
 ergora --home ./review-home composition install-preset engineering-review
-ergora --home ./review-home composition revise ergora-delivery-review 1.2.4 \
-  --base-digest 653b8dba06e953e60b9d6e30b7f368355bdbd846a0ed63efb096eb1d69d188a2 \
+ergora --home ./review-home composition revise ergora-delivery-review 1.2.5 \
+  --base-digest dbd74724a216ee0e3fe95e496b7eeccd45a707353bcc5415e11662f273f8da1d \
   --document examples/composition/pr-review-selected/root.revision.example.json
-ergora --home ./review-home composition prepare-manifest ergora-selected-engineering-review 1.0.4 \
+ergora --home ./review-home composition prepare-manifest ergora-selected-engineering-review 1.0.5 \
   --grant examples/composition/pr-review-selected/grant.json --directory ./selected-review-manifest
 ```
 
 Save the returned manifest `digest`. The exact member paths are `root/structure/review`, `root/correctness/review`, `root/test-value/review`, `root/performance` and `root/resource-lifecycle`. They consume the same root task independently and all feed the existing all-join. The grant is readonly: read workspace/definitions, write none, shell false and network none. Performance keeps its existing `gpt-6.1-sol/max` minimum because it also serves planning; the other reviewers require at least `gpt-6.1-sol/high`.
 
-The inherited policy assigns one uninterrupted owner per direction across related tasks and requires at least four active experts from different directions. The five independent members can supply four ready reviewers under the actual concurrency4 ceiling through the formal execution owner. The explicit source loop below remains sequential and does not demonstrate that minimum. Report actual active count and any admission/tool/resource blocker; do not interrupt an active reviewer for unrelated work or count finished calls as active.
+The supervisor retains one owner per direction and aims for 4–8 experts actively doing assigned work. The formal execution owner can run four ready reviewers under the actual concurrency cap. The explicit source loop below runs sequentially. Report actual active count and any blocker.
 
 For an independent PR/MR source, first prepare the complete local or external source as described in [LOCAL_REVIEW](../../../docs/review/materials.md), including requirements, exact base/head/diff-base, all changes and explicit callers/configuration/protocols/check originals. Then prepare and call each leaf explicitly. The following is the full five-member invocation list; replace source/manifest digests and the backend reason with their actual values. Project registration does not collect or fetch source objects.
 

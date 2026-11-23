@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "id": "ergora-refactoring-template",
-  "version": "1.3.5",
+  "version": "1.3.6",
   "description": "Behavior-preserving six-stage refactoring with repository-specific style, module ownership and realistic test-seam guidance.",
   "resources": [
     {
@@ -49,8 +49,8 @@
       "ref": {
         "kind": "workflow",
         "id": "ergora-refactoring-delivery",
-        "version": "1.2.5",
-        "digest": "92f069ebf5fe9958f0976e7dc3a28565f13f4a019556b6d3acf0db376f69a626"
+        "version": "1.2.6",
+        "digest": "6db37f3d73d10f6c0f27d3f84d1dfe5e200bd921263a9f89d0e54bd96d7c2573"
       },
       "depends_on": [],
       "inputs": {

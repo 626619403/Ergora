@@ -119,7 +119,7 @@ ergora task create my-project --definition task-definition.json --revision 1 --p
 
 ```bash
 ergora composition install-preset refactoring
-ergora composition prepare-manifest ergora-refactoring-template 1.3.5 \
+ergora composition prepare-manifest ergora-refactoring-template 1.3.6 \
   --grant examples/composition/refactoring/grant.json \
   --directory ./refactoring-manifest
 ```

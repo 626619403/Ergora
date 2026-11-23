@@ -1,14 +1,14 @@
 {
   "schema_version": 2,
   "id": "ergora-pretraining-review",
-  "version": "1.1.4",
+  "version": "1.1.5",
   "description": "General three-way engineering plus pretraining specialist review, explicit all-join.",
   "resources": [
     {
       "id": "ergora-pretraining-review-instructions",
       "kind": "instructions",
       "path": "instructions.md",
-      "sha256": "e20ec215ccf0e5a764211d2d26c0b52f55d0feb9e304f4a1e5001f53973e53a4"
+      "sha256": "6b2fb77aeee3047551f1f4402dca046580aece98309ced900bf94e54b81c57de"
     },
     {
       "id": "ergora-review-backends-skill",
@@ -47,8 +47,8 @@
       "ref": {
         "kind": "workflow",
         "id": "ergora-delivery-review",
-        "version": "1.2.4",
-        "digest": "653b8dba06e953e60b9d6e30b7f368355bdbd846a0ed63efb096eb1d69d188a2"
+        "version": "1.2.5",
+        "digest": "dbd74724a216ee0e3fe95e496b7eeccd45a707353bcc5415e11662f273f8da1d"
       },
       "depends_on": [],
       "inputs": {
