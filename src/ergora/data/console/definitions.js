@@ -990,8 +990,8 @@ function instancesView(preview, render) {
     (reference) => openDefinition(reference.kind, reference, render));
   const manifest = library.manifest?.preview === preview ? library.manifest : null;
   return panel(
-    "已发布静态组合与完整祖先指令",
-    "图来自下方精确已发布版本，编辑中的新版本及未应用正文不会进入此图。结构父链决定资源继承和权限上限；依赖决定先后，端口决定数据来源。此处尚未调用 Agent。",
+    "仅图预览 · 已发布静态组合与祖先指令",
+    "图使用精确已发布版本。结构父链决定资源继承和权限上限，依赖决定先后，端口决定数据来源。请在任务中选择执行路线并预览其准入。",
     row(badge(`${preview.usage.instances} 个实例`), badge(`${preview.usage.material_bytes} 指令字节`)),
     pre({ root: preview.root, preview_sha256: preview.preview_sha256, pending: preview.pending }),
     previewGraph.element,

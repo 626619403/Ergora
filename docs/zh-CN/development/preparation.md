@@ -78,13 +78,17 @@ ergora composition verify-manifest ./review-requirements-manifest
 Linux／WSL2使用同一schema8，在定义中显式选择native实例和preparation DAG，并填写`budget`，例如`{"wall_seconds":3600,"cleanup_seconds":60,"model_invocations":16}`。清理预留包含在总额内；模型启动槽上限须覆盖所选inventory、plan、work和review全部调用，不等于后端内部API请求或费用。
 
 ```bash
+ergora task preview my-project --definition task-definition.json --revision 1
+# 核对静态路线后再授权准备。
 ergora task prepare my-project --definition task-definition.json --revision 1
 ergora task preparation my-project TASK_ID
 ergora task preview my-project --definition task-definition.json --revision 1
 ergora task create my-project --definition task-definition.json --revision 1 --prepare-sha256 PREPARE_SHA --preview-sha256 PREVIEW_SHA
 ```
 
-首次prepare在读取安装和材料前保存唯一预算。丢回执后读取原TASK_ID，不重开时钟；仅在`status: prepared`后预览和创建，并确认prepare与preview两个原摘要。创建后沿原`task start/submission/resume-start/status/plan/approve`执行；当前worker／executor消费`.composition-v12`队列和`requests-composition-v12`请求根。材料读取、排队、人工批准、恢复、模型／可信命令及收尾均消耗同一期限；重启不续时。已移除的preparation input8–11须由原安装完成、取消或对账，本安装明确报告unsupported。
+授权前预览返回 `status: route-preview`，结果绑定当前定义、项目修订及基础 manifest。它核对所选阶段并报告首个阻塞点，预算尚未开始。准备阶段仍须核对工单来源、追加资料及完整冻结输入。控制台在显示授权操作前调用同一预览。
+
+首次prepare在读取安装和材料前保存唯一预算。丢回执后按原TASK_ID读取，不重开时钟。`status: prepared` 后再次预览可取得创建所需的prepare与preview两个原摘要。创建后沿原`task start/submission/resume-start/status/plan/approve`执行；当前worker／executor消费`.composition-v12`队列和`requests-composition-v12`请求根。材料读取、排队、人工批准、恢复、模型／可信命令及收尾均消耗同一期限；重启不续时。已移除的preparation input8–11须由原安装完成、取消或对账，本安装明确报告unsupported。
 
 `unknown`表示原attempt或清理尚未确认，失败／耗尽不发表可用准备成果。先核原身份与停止证据，不自动重跑body、重发或删除job账本释放名额。工作截止后不再新增工作；总额耗尽仍未确认停止时保留unknown／CANCEL_UNCONFIRMED，晚结果不能发表过期SUCCEEDED。完整状态、HTTP字段、备份与恢复边界见[同源当前预算指南](../../development/preparation.md#prepare-under-a-single-budget-authorization)。
 
@@ -99,7 +103,7 @@ ergora task create my-project --definition task-definition.json --revision 1 --p
 
 其他必需字段见[当前schema8](../../../src/ergora/data/schemas/task-definition-v8.json)。`execution.instance`为`root/development/work`，work unit指向其真实Agent叶；`preparation.inventory/plan`用`{instance, coordinator}`选择各子树，协调者路径追加`/coordinator`。后端覆盖使用完整实际路径，权限不能超过祖先。
 
-沿同一`prepare → preview → create → start`顺序确认原摘要与原计划。祖先只包含该native调用并直接转发task／result；work和review为其直接子模板，inventory／plan可有结构包装。第二native、额外父分支或任意混合外层图未获此合同支持。完整选择与恢复义务见[当前native指南](../../development/preparation.md#invoke-the-six-stages-as-a-subtemplate)。
+按`preview → prepare → preview → create → start`顺序确认原摘要与原计划。祖先只包含该native调用并直接转发task／result；work和review为其直接子模板，inventory／plan可有结构包装。第二native、额外父分支或任意混合外层图未获此合同支持。完整选择与恢复义务见[当前native指南](../../development/preparation.md#invoke-the-six-stages-as-a-subtemplate)。
 
 ## 为正式任务选择项目记忆与活动 Skill
 
@@ -124,7 +128,7 @@ ergora composition prepare-manifest ergora-refactoring-template 1.3.6 \
   --directory ./refactoring-manifest
 ```
 
-示例位于仓库[refactoring目录](../../../examples/composition/refactoring/README.md)；wheel中已含全部Agent和子模板，使用自己的grant时无需examples。将[task.example.json](../../../examples/composition/refactoring/task.example.json)复制成任务定义，填写真实工单、task ID、baseline、manifest路径／摘要及项目内实际模块／caller；同时核完整资料范围、行为不变量、迁移和隔离回退检查。随后沿原`task prepare → preview → create`的双摘要确认与start／计划批准流程。有效JSON或prepare成功只证明合同可装配，行为保持由实际检查和审查证据支持。
+示例位于仓库[refactoring目录](../../../examples/composition/refactoring/README.md)；wheel中已含全部Agent和子模板，使用自己的grant时无需examples。将[task.example.json](../../../examples/composition/refactoring/task.example.json)复制成任务定义，填写真实工单、task ID、baseline、manifest路径／摘要及项目内实际模块／caller；同时核完整资料范围、行为不变量、迁移和隔离回退检查。随后沿原`task preview → prepare → preview → create`的双摘要确认与start／计划批准流程。有效JSON或prepare成功只证明合同可装配，行为保持由实际检查和审查证据支持。
 
 全部内置专家使用Codex gpt-6.1-sol：规划max，跨文件重构xhigh，兼容验证与独立审查high。完整`backend_overrides`须保留满足定义最低线的model／reasoning_effort；writer仍需明确选择current-container。`prefer-distinct`同后端选择须记录`diversity.reason`，`require-distinct`继续拒绝同后端。兼容性工作单元不替代独立最终审查。
 

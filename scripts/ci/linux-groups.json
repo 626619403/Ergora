@@ -73,7 +73,8 @@
       "tests/test_task_plan.py",
       "tests/test_task_submission.py",
       "tests/test_training_cancellation.py",
-      "tests/test_work_agents.py"
+      "tests/test_work_agents.py",
+      "tests/test_work_priority.py"
     ],
     [
       "src/ergora/data/reference/platform/upstream/platform/tests/test_portable.py",

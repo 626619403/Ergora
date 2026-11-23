@@ -13,6 +13,7 @@ import pytest
 
 import ergora.native.resources as native_resources
 import ergora.definitions.agents as agent_definitions
+import ergora.agents.runs as agent_runs
 import ergora.configuration.projects as projects
 import ergora.development.application as tasks
 import ergora.definitions.workflows as workflows
@@ -50,6 +51,10 @@ def test_preview_and_creation_freeze_a_new_envelope_with_the_unchanged_legacy_pr
     before = state.project('demo')
     preview = tasks.preview(state, 'demo', task, 1)
     assert preview == tasks.preview(state, 'demo', task, 1) and state.project('demo') == before
+    assert preview['route_admission'] == {
+        'route': 'formal-review', 'status': 'admitted', 'graph_status': 'valid', 'instance': 'root',
+    }
+    assert preview['runtime_status'] == 'not_queried' and not preview['execution_started_by_operation']
     root = Path(registration['execution']['state_directory'])
     assert not root.exists()
     envelope = preview['files']['task.spec.json']
@@ -83,7 +88,7 @@ def test_preview_and_creation_freeze_a_new_envelope_with_the_unchanged_legacy_pr
 
 
 @pytest.mark.parametrize('output', ['task-forward', 'review-result', 'all-join'])
-def test_single_v3_reviewer_requires_explicit_all_join_at_submission(composed_creation, tmp_path, output):
+def test_single_v3_reviewer_requires_explicit_all_join_for_the_formal_route(composed_creation, tmp_path, output):
     from ergora.development.inputs import execution_input
 
     state, registration, task = composed_creation
@@ -101,13 +106,17 @@ def test_single_v3_reviewer_requires_explicit_all_join_at_submission(composed_cr
     preview = tasks.preview(state, 'demo', task, 1)
     document = preview['files']['task.spec.json']
     assert document['schema_version'] == 3
-    created = tasks.create(state, 'demo', task, 1, preview['preview_sha256'])
-    assert tasks.show(state, 'demo', task['task_id'])['admission_envelope'] == document
-    assert created['composition']['runtime_supported'] is (output == 'all-join')
     selected = execution_input(document)
     if output == 'all-join':
+        assert preview['route_admission']['status'] == 'admitted'
+        created = tasks.create(state, 'demo', task, 1, preview['preview_sha256'])
+        assert tasks.show(state, 'demo', task['task_id'])['admission_envelope'] == document
+        assert created['composition']['runtime_supported'] is True
         selected.require_submission()
     else:
+        assert preview['route_admission']['status'] == 'blocked'
+        with pytest.raises(ValueError, match='explicit all-join'):
+            tasks.create(state, 'demo', task, 1, preview['preview_sha256'])
         with pytest.raises(ValueError, match='explicit all-join'):
             selected.require_submission()
     root = Path(registration['execution']['state_directory'])
@@ -238,8 +247,7 @@ def test_changed_envelope_or_embedded_bytes_cannot_be_read_as_the_original_task(
         tasks.show(state, 'demo', task['task_id'])
 
 
-@pytest.mark.skipif(sys.platform != 'linux', reason='Native formal submission is Linux-only')
-def test_unsupported_composition_is_rejected_before_any_remote_or_dispatch_intent(composed_creation, tmp_path):
+def test_unsupported_composition_is_rejected_before_any_remote_or_dispatch_intent(composed_creation, tmp_path, monkeypatch, capsys):
     state, registration, task = composed_creation
     agent = agent_definitions.library(state.root).get('architecture-reviewer', '1.0.0')
     source = write_bundle(tmp_path / 'multiple-source', definition('multiple-review', [
@@ -248,10 +256,45 @@ def test_unsupported_composition_is_rejected_before_any_remote_or_dispatch_inten
     saved = workflows.prepare_manifest(state.root, 'multiple-review', '1.0.0', grant(), tmp_path / 'multiple-manifest')
     task['composition'].update(manifest=saved['path'], manifest_digest=saved['digest'], backend_overrides={},
                                diversity={'policy': 'allow-same'})
+    project_before = state.project('demo')
+    config = Path(registration['execution']['config_directory'])
+    config_before = _files(config)
     preview = tasks.preview(state, 'demo', task, 1)
-    created = tasks.create(state, 'demo', task, 1, preview['preview_sha256'])
-    assert created['composition']['runtime_supported'] is False
+    admission = preview['route_admission']
+    assert admission == {'route': 'formal-review', 'status': 'blocked', 'graph_status': 'valid', 'instance': 'root',
+        'reason': 'Parallel composition review requires an explicit all-join covering every reviewer leaf'}
+    assert preview['project_revision'] == 1 and preview['runtime_status'] == 'not_queried'
+    assert preview['files']['task.spec.json']['composition']['manifest']['digest'] == saved['digest']
+    assert not preview['execution_started_by_operation']
+    from ergora.interfaces.cli import main
+
+    input_file = tmp_path / 'task.json'
+    input_file.write_text(json.dumps(task), encoding='utf-8')
+    assert main(['--home', str(state.root), 'task', 'preview', 'demo',
+                 '--revision', '1', '--definition', str(input_file)]) == 1
+    assert json.loads(capsys.readouterr().out) == preview
+    with pytest.raises(ValueError, match=r'explicit all-join.*\(root\)'):
+        tasks.create(state, 'demo', task, 1, preview['preview_sha256'])
     root = Path(registration['execution']['state_directory'])
+    assert not root.exists()
+    assert state.project('demo') == project_before and _files(config) == config_before
+    assert workflows.inspect_manifest(Path(saved['path']))['digest'] == saved['digest']
+
+    leaf_input = tmp_path / 'standalone-review'
+    prepared = workflows.prepare_input_from_manifest(Path(saved['path']), 'root/first', b'Review only this input.',
+                                                     leaf_input, 100_000)
+    independent = agent_runs.check_input(state, 'demo', leaf_input, input_digest=prepared['digest'])
+    assert independent['input_request']['instance'] == 'root/first'
+    assert independent['formal_execution_authorized'] is False
+
+    # Read a record created with the previous publisher's behavior.
+    _inject(monkeypatch, "_Creation.require_selected_route = staticmethod(lambda record: None)")
+    created = tasks.create(state, 'demo', task, 1, preview['preview_sha256'])
+    monkeypatch.undo()
+    assert created['composition']['runtime_supported'] is False
+    assert tasks.show(state, 'demo', task['task_id'])['composition']['route_admission'] == admission
+    if sys.platform != 'linux':
+        return
     runtime = Path(registration['execution']['installation']) / '.venv'
     if not runtime.exists():
         runtime.symlink_to(sys.prefix, target_is_directory=True)

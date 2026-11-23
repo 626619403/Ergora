@@ -21,11 +21,14 @@ from ergora.configuration import catalog as components
 from ergora.configuration import validation as contracts
 from ergora.issues import identity as issue_sources
 from ergora.development import budget as reference_budget
+from ergora.development import envelopes as task_envelopes
 from ergora.development import verification
+from ergora.development.dags import RouteBlocked, WorkDelivery
+from ergora.development.envelopes import identity
 from ergora.development.runtime.creation_process import task_preparation
 from ergora.storage.assets import inventory_tree
 from ergora.storage.state import State
-from ergora.development.envelopes import identity
+from ergora.development.six_stage import invocation
 from ergora._paths import DATA_ROOT
 
 
@@ -97,30 +100,33 @@ def _definition(state: State, project: dict, definition: dict, *, working_direct
 def _member(leaf: dict, mode: str, override: dict | None) -> dict:
     """Freeze the actual backend and policy for one formally selected leaf."""
     binding = dict(override['binding'] if override else leaf['backend_request'])
-    agents.validate_binding(leaf['role'], binding, formal=True)
-    components.validate_agent_minimum(binding, leaf.get('invocation_minimum'))
-    backend = agent_backends.for_binding(binding)
-    backend.check_mode(mode)
+    try:
+        agents.validate_binding(leaf['role'], binding, formal=True)
+        components.validate_agent_minimum(binding, leaf.get('invocation_minimum'))
+        backend = agent_backends.for_binding(binding)
+        backend.check_mode(mode)
+    except ValueError as error:
+        raise RouteBlocked(leaf['path'], str(error)) from error
     return {'role': leaf['role'], 'binding': binding, 'requested_binding': leaf['backend_request'],
             'backend_reason': override['reason'] if override else 'definition-selected backend',
             'mode': mode, 'policy': backend.composition_policy(mode)}
 
 
-def _composition(definition: dict, selection: dict) -> dict:
-    option = definition['composition']
+def _composition_manifest(option: dict, *, include_inventory: bool = False) -> dict:
     source = Path(option['manifest']).expanduser().absolute()
-    checked = workflow_definitions.inspect_manifest(source, material=True)
+    checked = workflow_definitions.inspect_manifest(source, material=True, include_inventory=include_inventory)
     if checked['digest'] != option['manifest_digest']:
         raise ValueError('Selected composition manifest digest changed')
-    reference = checked['manifest']['root']
-    graph = workflow_definitions.preview(source / 'assets', reference['id'], reference['version'], checked['manifest']['grant'])
-    if graph != checked['composition']:
-        raise ValueError('Composition manifest changed during formal admission')
+    return checked
+
+
+def _composition_selection(graph: dict, definition: dict, selection: dict) -> dict:
+    option = definition['composition']
     instances = {item['path']: item for item in graph['instances']}
     position = option['review_instance']
     if (position not in instances or instances[position]['kind'] != 'workflow'
             or set(instances[position]['inputs']) != {'task'}):
-        raise ValueError('Select a Workflow instance with a single task input for the review stage')
+        raise RouteBlocked(position, 'Select a Workflow instance with a single task input for the review stage')
     # Expanded input names are relative to the immediate structural parent.
     # The formal review stage supplies only the root task, never sibling results.
     execution = option.get('execution')
@@ -128,19 +134,17 @@ def _composition(definition: dict, selection: dict) -> dict:
     while execution is None:
         origin = ancestor['inputs'][port]
         if ancestor['depends_on'] or 'node' in origin:
-            raise ValueError('Selected review subtree cannot depend on an unexecuted external node')
+            raise RouteBlocked(ancestor['path'], 'Selected review subtree cannot depend on an unexecuted external node')
         port = origin['input']
         if ancestor['parent'] is None:
             if port != 'task':
-                raise ValueError('Selected review subtree must resolve to the root task input')
+                raise RouteBlocked(ancestor['path'], 'Selected review subtree must resolve to the root task input')
             break
         ancestor = instances[ancestor['parent']]
     leaves = {path: item for path, item in instances.items() if item['kind'] == 'agent' and path.startswith(position + '/')}
     work = None
     if execution is not None:
-        from ergora.development.dags import WorkDelivery
-
-        work = WorkDelivery(graph, execution, position, definition['input']['work_units'],
+        work = WorkDelivery(graph, execution, position, definition['input'].get('work_units'),
                             preparation=option.get('preparation'))
     overrides = option.get('backend_overrides', {})
     preparing = {path: leaf for group in work.preparation.values()
@@ -162,9 +166,9 @@ def _composition(definition: dict, selection: dict) -> dict:
     same = []
     for path, leaf in leaves.items():
         if leaf['role'] != 'reviewer':
-            raise ValueError('Formal composition currently selects only reviewer leaves')
+            raise RouteBlocked(path, 'Formal composition currently selects only reviewer leaves')
         if leaf['permissions']['write'] or leaf['permissions']['shell'] or leaf['permissions']['network']:
-            raise ValueError('Formal review composition requires read-only leaves without shell or network tools')
+            raise RouteBlocked(path, 'Formal review composition requires read-only leaves without shell or network tools')
         member = _member(leaf, option['mode'], overrides.get(path))
         if member['binding']['tool'] in implementers:
             same.append(path)
@@ -173,11 +177,31 @@ def _composition(definition: dict, selection: dict) -> dict:
                if graph['schema_version'] == 2 or 'review_protocol' in option else {})}
     if ((graph['schema_version'] == 2 or 'review_protocol' in option)
             and not any(member['review_requirement'] == 'required' for member in members.values())):
-        raise ValueError('Formal review requires at least one required reviewer')
+        raise RouteBlocked(position, 'Formal review requires at least one required reviewer')
     if same and diversity['policy'] == 'require-distinct':
         raise ValueError('Review members require a backend different from the implementer: ' + ', '.join(same))
     if same and diversity['policy'] == 'prefer-distinct' and not diversity.get('reason', '').strip():
         raise ValueError('Same-backend review under prefer-distinct requires an explicit diversity reason')
+    composition = {'root': graph['root'], 'preview_sha256': graph['preview_sha256'],
+            'review_instance': position, 'members': members,
+            **({'review_protocol': option['review_protocol']} if 'review_protocol' in option else {}),
+            **({'execution': {**execution, 'members': work_members}} if work else {}),
+            **({'preparation': {**option['preparation'], 'members': preparation}} if preparing else {}),
+            'diversity': {**diversity, **({'implementer_backends': sorted(implementers)} if work else
+                                        {'implementer_backend': implementer}), 'same_backend_members': same}}
+    if 'native' in option:
+        composition['native'] = invocation(graph, option, definition['task_type'])
+    return composition
+
+
+def _composition(definition: dict, selection: dict) -> dict:
+    checked = _composition_manifest(definition['composition'])
+    source = Path(checked['path'])
+    reference = checked['manifest']['root']
+    graph = workflow_definitions.preview(source / 'assets', reference['id'], reference['version'], checked['manifest']['grant'])
+    if graph != checked['composition']:
+        raise ValueError('Composition manifest changed during formal admission')
+    composition = _composition_selection(graph, definition, selection)
     digest, files, _ = inventory_tree(source, label='Composition manifest', max_directories=1000, max_depth=48)
     snapshot = {'digest': digest, 'files': {}}
     for name, item in files.items():
@@ -188,22 +212,31 @@ def _composition(definition: dict, selection: dict) -> dict:
                                   'executable_bits': item['executable_bits']}
     if digest != checked['digest'] or inventory_tree(source, label='Composition manifest', max_directories=1000, max_depth=48)[0] != digest:
         raise ValueError('Composition manifest changed while freezing its complete tree')
-    composition = {'manifest': snapshot, 'root': graph['root'], 'preview_sha256': graph['preview_sha256'],
-            'review_instance': position, 'members': members,
-            **({'review_protocol': option['review_protocol']} if 'review_protocol' in option else {}),
-            **({'execution': {**execution, 'members': work_members}} if work else {}),
-            **({'preparation': {**option['preparation'], 'members': preparation}} if preparing else {}),
-            'diversity': {**diversity, **({'implementer_backends': sorted(implementers)} if work else
-                                        {'implementer_backend': implementer}), 'same_backend_members': same}}
-    if 'native' in option:
-        from ergora.development.six_stage import invocation
-
-        composition['native'] = invocation(graph, option, definition['task_type'])
-    if 'review_protocol' in option:
-        from ergora.development.envelopes import review_members
-
-        review_members(composition)
+    composition = {'manifest': snapshot, **composition}
+    if 'review_protocol' in composition:
+        task_envelopes.review_members(composition)
     return composition
+
+
+def _preview_native_shape(project: dict, definition: dict) -> dict:
+    option = definition['composition']
+    checked = _composition_manifest(option, include_inventory=True)
+    graph = checked['composition']
+    selection = bindings.development_snapshot(project, projects.effective_configuration(project))
+    try:
+        composition = _composition_selection(graph, definition, selection)
+        reference_budget.call_slots(composition, invocation_cap=definition['budget']['model_invocations'])
+        instances = {item['path']: item for item in graph['instances']}
+        task_envelopes.require_skill_attachment_mode(instances, composition, checked['inventory'].keys())
+    except ValueError as error:
+        admission = task_envelopes.route_admission(option, error)
+    else:
+        admission = task_envelopes.route_admission(option)
+    return {'status': 'route-preview', 'project': project['id'], 'project_revision': project['revision'],
+            'task_id': definition['task_id'], 'definition_sha256': identity(definition),
+            'graph_preview_sha256': graph['preview_sha256'], 'manifest_digest': checked['digest'],
+            'route_admission': admission, 'runtime_status': 'not_queried',
+            'execution_started_by_operation': False}
 
 
 def _digest(value: str, name: str) -> None:
@@ -217,10 +250,11 @@ def _run_id(value: str) -> None:
 
 
 def preview(state: State, project_id: str, definition: dict, expected_revision: int) -> dict:
-    """Compile in temporary storage and return the exact proposed task and bindings."""
+    """Check the selected route or preview the complete frozen task and role bindings."""
     if isinstance(definition, dict) and type(definition.get('schema_version')) is int and definition['schema_version'] == 8:
         project = _budget_project(state, project_id, definition, expected_revision)
-        return creation_process.task_creation(project, state.root, 'preview', {'definition': definition, 'budgeted': True})
+        snapshot = creation_process.task_creation(project, state.root, 'preview', {'definition': definition, 'budgeted': True})
+        return _preview_native_shape(project, definition) if snapshot['status'] == 'not_prepared' else snapshot
     project = _project(state, project_id)
     _revision(project, expected_revision)
     return creation_process.task_creation(project, state.root, 'preview', _definition(state, project, definition))
@@ -563,6 +597,31 @@ def cancellation(state: State, project_id: str, task_id: str, request_id: str) -
     project = _project(state, project_id)
     return development_native.task_cancellation(project, state.root, 'status',
                                        {'task_id': task_id, 'request_id': request_id}, timeout=20)
+
+
+def prioritize_work_unit(state: State, project_id: str, task_id: str, work_unit_id: str, expected_revision: int,
+                         *, run_id: str, plan_sha256: str, decision_id: str, confirm: bool = False, timeout: int = 20) -> dict:
+    """Change the original approved run's preference for one pending work unit."""
+    _run_id(run_id)
+    _digest(plan_sha256, 'Plan')
+    if confirm is not True:
+        raise ValueError('Work priority requires explicit confirmation of the original run and work unit')
+    if type(timeout) is not int or not 1 <= timeout <= 60:
+        raise ValueError('Work priority timeout must be 1–60 seconds')
+    project = _project(state, project_id)
+    _revision(project, expected_revision)
+    return development_native.task_work_priority(project, state.root, 'prioritize',
+        {'task_id': task_id, 'run_id': run_id, 'plan_sha256': plan_sha256, 'decision_id': decision_id,
+         'work_unit_id': work_unit_id}, timeout=timeout)
+
+
+def work_priority(state: State, project_id: str, task_id: str, decision_id: str, *, run_id: str, timeout: int = 20) -> dict:
+    """Read the original decision without sending another Update."""
+    _run_id(run_id)
+    if type(timeout) is not int or not 1 <= timeout <= 60:
+        raise ValueError('Work priority timeout must be 1–60 seconds')
+    return development_native.task_work_priority(_project(state, project_id), state.root, 'inspect',
+        {'task_id': task_id, 'run_id': run_id, 'decision_id': decision_id}, timeout=timeout)
 
 
 def cancel(state: State, project_id: str, task_id: str, request_id: str, expected_revision: int,

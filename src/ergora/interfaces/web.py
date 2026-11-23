@@ -925,9 +925,10 @@ def create_app(home: Path | None = None) -> FastAPI:
     @application.post("/api/projects/{project_id}/tasks/preview")
     def preview_formal_task(project_id: str, body: TaskDefinitionPayload):
         snapshot = tasks.preview(state, project_id, body.definition, body.revision)
-        document = snapshot["files"]["task.spec.json"]
-        if "context" in document:
-            snapshot["selected_context"] = task_envelopes.selected_context(document)
+        if snapshot["status"] == "preview":
+            document = snapshot["files"]["task.spec.json"]
+            if "context" in document:
+                snapshot["selected_context"] = task_envelopes.selected_context(document)
         return snapshot
 
     @application.post("/api/projects/{project_id}/tasks")

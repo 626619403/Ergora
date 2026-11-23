@@ -21,6 +21,9 @@ with workflow.unsafe.imports_passed_through():
     from ergora.development import verification
 
 
+WORK_PRIORITY_UPDATE_ID_PREFIX = 'ergora-work-priority/'
+
+
 class CompositionAdapter(FileAdapter):
     """Publish only a complete v2 admission matching its execution projection."""
 
@@ -349,6 +352,11 @@ class WorkDeliveryWorkflow(ReviewDAGWorkflow):
     envelope_version = 5
     operations = {'dev_submit': task_envelopes.WORK_SUBMIT, 'dev_poll': task_envelopes.WORK_POLL}
 
+    def __init__(self):
+        super().__init__()
+        self._pending_work_units = None
+        self._preferred_work_unit = None
+
     def source_stage(self, path):
         execution = self.admission['composition']['execution']
         units = {member: unit for unit, member in execution['assignments'].items()}
@@ -375,6 +383,7 @@ class WorkDeliveryWorkflow(ReviewDAGWorkflow):
         completed, running, sessions = set(), {}, set()
         concurrency = self.spec['profile']['limits']['max_parallel_units']
         scopes = {key: delivery.work.members[path]['concurrency_scopes'] for key, path in delivery.assignments.items()}
+        self._pending_work_units = remaining
         try:
             while remaining or running:
                 if self.cancel_reason:
@@ -383,7 +392,8 @@ class WorkDeliveryWorkflow(ReviewDAGWorkflow):
                 for key in running:
                     for scope in scopes[key]:
                         used[scope['path']] = used.get(scope['path'], 0) + 1
-                for key in sorted(list(remaining)):
+                preferred = self._preferred_work_unit
+                for key in sorted(remaining, key=lambda key: (key != preferred, key)):
                     unit = remaining[key]
                     if (len(running) >= concurrency or not set(unit['depends_on']) <= completed
                             or any(used.get(scope['path'], 0) >= scope['limit'] for scope in scopes[key])):
@@ -391,6 +401,8 @@ class WorkDeliveryWorkflow(ReviewDAGWorkflow):
                     dependencies = {parent: self.results['work:' + parent] for parent in unit['depends_on']}
                     running[key] = asyncio.create_task(self.stage('work:' + key, unit=unit, dependencies=dependencies))
                     del remaining[key]
+                    if key == preferred:
+                        self._preferred_work_unit = None
                     for scope in scopes[key]:
                         used[scope['path']] = used.get(scope['path'], 0) + 1
                 if not running:
@@ -407,6 +419,8 @@ class WorkDeliveryWorkflow(ReviewDAGWorkflow):
                         sessions.add(session)
                         completed.add(key)
         finally:
+            self._pending_work_units = None
+            self._preferred_work_unit = None
             for task in running.values():
                 task.cancel()
             if running:
@@ -591,6 +605,41 @@ class PreparationDAGWorkflow(StageResultsWorkflow):
             deadline -= timedelta(seconds=instance['policy']['cleanup_seconds'])
         return (deadline - workflow.now()).total_seconds()
 
+    def _work_priority_unavailable(self):
+        if self.cancel_reason:
+            return 'Cancellation or the original work cutoff is in effect'
+        if self.phase != 'IMPLEMENTING' or self._pending_work_units is None or self.approved_plan is None:
+            return 'Work priority is available during approved implementation'
+        if self.remaining() <= 0:
+            return 'Original budget work cutoff reached'
+        if not self._pending_work_units:
+            return 'All original work units have been dispatched'
+        return None
+
+    @workflow.update
+    def prioritize_work_unit(self, command: dict) -> dict:
+        """Change only the next eligible dispatch order in the original work loop."""
+        update = workflow.current_update_info()
+        text_fields = {'decision_id', 'work_unit_id', 'run_id', 'request_sha256', 'admission_sha256', 'plan_sha256'}
+        if (type(command) is not dict or set(command) != text_fields | {'project_revision'}
+                or type(command['project_revision']) is not int or command['project_revision'] < 1
+                or not all(isinstance(command[key], str) and 0 < len(command[key]) <= 128 for key in text_fields)
+                or update is None or update.id != WORK_PRIORITY_UPDATE_ID_PREFIX + command['decision_id']):
+            raise ApplicationError('Invalid work-priority request', type='ContractViolation', non_retryable=True)
+        outcome = {'command_sha256': sha(command)}
+        if (self.spec is None or self.admission is None or command['run_id'] != workflow.info().run_id
+                or command['request_sha256'] != self.spec['request_sha256']
+                or command['admission_sha256'] != self.admission['sha256']
+                or command['plan_sha256'] != self.plan_sha256):
+            return {**outcome, 'status': 'rejected', 'reason': 'Work priority differs from the original run or approved plan'}
+        reason = self._work_priority_unavailable()
+        if reason is not None:
+            return {**outcome, 'status': 'rejected', 'reason': reason}
+        if command['work_unit_id'] not in self._pending_work_units:
+            return {**outcome, 'status': 'rejected', 'reason': 'Work unit is no longer pending in the original queue'}
+        self._preferred_work_unit = command['work_unit_id']
+        return {**outcome, 'status': 'applied'}
+
     @workflow.query
     def status(self) -> dict:
         result = super().status()
@@ -598,6 +647,10 @@ class PreparationDAGWorkflow(StageResultsWorkflow):
             instance = self.admission['budget']['instance']
             result['budget'] = {key: instance[key] for key in ('id', 'sha256', 'authorized_at', 'deadline_at')}
             result['native_invocation'] = self.admission['composition']['native']
+            reason = self._work_priority_unavailable()
+            result['work_priority'] = {'available': reason is None, 'unavailable_reason': reason,
+                'pending_work_unit_ids': sorted(self._pending_work_units or ()),
+                'preferred_work_unit_id': self._preferred_work_unit}
         return result
 
     async def call(self, name, value, result_type=dict):

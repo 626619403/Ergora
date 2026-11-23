@@ -3,7 +3,7 @@ import { node, field, select, button, pre, empty, row, lines, checkbox } from ".
 import { bindingFields } from "./binding-fields.js";
 
 // This editor collects choices; tasks._composition owns formal admission.
-export function taskComposition({ tools, projectId, base, input, active, invalidate, prepare }) {
+export function taskComposition({ tools, projectId, base, input, active, invalidate }) {
   const source = select([
     ["project", "项目角色（原入口）"], ["review", "完整 manifest · 仅组合审查"],
     ["delivery", "完整 manifest · 组合执行与审查"],
@@ -65,7 +65,6 @@ export function taskComposition({ tools, projectId, base, input, active, invalid
     field("总时间（秒）", "wall_seconds", "", "number", { required: true, min: 2, step: 1 }),
     field("清理时间（秒）", "cleanup_seconds", "", "number", { required: true, min: 1, step: 1 }),
     field("模型调用次数上限", "model_invocations", "", "number", { required: true, min: 1, step: 1 }),
-    row(button("准备原生六阶段", prepare)),
   );
   const mode = select([["task-mcp", "固定任务 MCP 资料读取"], ["text-only", "完整文本输入"]], "task-mcp", "review_mode");
   const diversity = select([

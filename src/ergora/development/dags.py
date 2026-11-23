@@ -9,18 +9,26 @@ import json
 from pathlib import PurePosixPath
 
 
+class RouteBlocked(ValueError):
+    """A selected route cannot execute at the identified graph instance."""
+
+    def __init__(self, instance: str, reason: str):
+        super().__init__(f'{reason} ({instance})')
+        self.instance, self.reason = instance, reason
+
+
 def require_root_task(instances: dict, leaf: dict) -> None:
     """A direct stage leaf consumes no unexecuted sibling data or control edge."""
     node, port, visited = leaf, 'task', set()
     while True:
         if (node['path'] in visited or set(node['inputs']) != {port} or node['depends_on']
                 or 'input' not in node['inputs'][port]):
-            raise ValueError('Composition leaf requires a direct root task input')
+            raise RouteBlocked(node['path'], 'Composition leaf requires a direct root task input')
         visited.add(node['path'])
         port = node['inputs'][port]['input']
         if node['parent'] is None:
             if port != 'task':
-                raise ValueError('Composition leaf must resolve to the root task input')
+                raise RouteBlocked(node['path'], 'Composition leaf must resolve to the root task input')
             return
         node = instances[node['parent']]
 
@@ -48,14 +56,14 @@ def preparation_members(graph: dict, selection: dict) -> dict:
         if (coordinator not in dag.members or selected & dag.members.keys()
                 or set(dag.predecessors[coordinator]) != dag.members.keys() - {coordinator}
                 or set(dag.input_ports(coordinator)['sources']) != dag.members.keys() - {coordinator}):
-            raise ValueError('Preparation coordinator must consume every other member of its disjoint stage')
+            raise RouteBlocked(coordinator, 'Preparation coordinator must consume every other member of its disjoint stage')
         if dag.terminal_sources() != dag.members.keys():
-            raise ValueError('Preparation terminal all-join must carry every member and its coordinator')
+            raise RouteBlocked(group['instance'], 'Preparation terminal all-join must carry every member and its coordinator')
         for leaf in dag.members.values():
             for name in paths:
                 wanted = 'workspace' if name == '.' else 'workspace/' + name
                 if not any(wanted == prefix or wanted.startswith(prefix + '/') for prefix in leaf['permissions']['read']):
-                    raise ValueError('Preparation repository paths exceed the leaf read ceiling: ' + name)
+                    raise RouteBlocked(leaf['path'], 'Preparation repository paths exceed the leaf read ceiling: ' + name)
             dag.input_ports(leaf['path'])
         selected.update(dag.members)
         groups[stage] = {'dag': dag, 'coordinator': coordinator}
@@ -99,23 +107,23 @@ class StageDAG:
             raise ValueError('Unsupported stage DAG role: ' + role)
         self._result_kind = kinds[role]
         if selected not in self._instances:
-            raise ValueError('Unknown selected stage subtree: ' + selected)
+            raise RouteBlocked(selected, 'Unknown selected stage subtree')
         root = self._instances[selected]
         if root['kind'] != 'workflow' or set(root['inputs']) != {'task'} or len(root['outputs']) != 1:
-            raise ValueError('Review DAG requires one task input and one terminal output')
+            raise RouteBlocked(selected, 'Review DAG requires one task input and one terminal output')
         self.members = {path: item for path, item in sorted(self._instances.items())
                         if item['kind'] == 'agent' and path.startswith(selected + '/')}
         if not self.members:
-            raise ValueError('Review DAG requires reviewer leaves')
+            raise RouteBlocked(selected, 'Review DAG requires reviewer leaves')
         for leaf in self.members.values():
             if leaf['role'] != role:
-                raise ValueError('Stage DAG leaf has the wrong role: ' + leaf['path'])
+                raise RouteBlocked(leaf['path'], 'Stage DAG leaf has the wrong role')
             if role in ('reviewer', 'inspector', 'planner') and (leaf['permissions']['write']
                     or leaf['permissions']['shell'] or leaf['permissions']['network']):
-                raise ValueError('Stage DAG requires read-only leaves without shell or network')
+                raise RouteBlocked(leaf['path'], 'Stage DAG requires read-only leaves without shell or network')
             if role == 'implementer' and (not leaf['permissions']['write']
                     or not leaf['permissions']['shell'] or leaf['permissions']['network']):
-                raise ValueError('Work DAG requires writable shell-enabled leaves without network origins')
+                raise RouteBlocked(leaf['path'], 'Work DAG requires writable shell-enabled leaves without network origins')
         scopes = {}
         for leaf in self.members.values():
             for scope in leaf['concurrency_scopes']:
@@ -128,16 +136,16 @@ class StageDAG:
         while True:
             origin = node['inputs'][port]
             if set(node['depends_on']) - ({external._selected} if external else set()):
-                raise ValueError('Selected review DAG cannot depend on unexecuted external nodes')
+                raise RouteBlocked(node['path'], 'Selected review DAG cannot depend on unexecuted external nodes')
             if 'input' not in origin:
                 address = self._resolve(node['path'], port, 'input')
                 if external is None or address != external.terminal:
-                    raise ValueError('Stage input must project the selected work terminal or root task')
+                    raise RouteBlocked(node['path'], 'Stage input must project the selected work terminal or root task')
                 break
             port = origin['input']
             if node['parent'] is None:
                 if port != 'task':
-                    raise ValueError('Selected review DAG must resolve to the root task')
+                    raise RouteBlocked(node['path'], 'Selected review DAG must resolve to the root task')
                 break
             node = self._instances[node['parent']]
 
@@ -150,11 +158,11 @@ class StageDAG:
         dependencies = {}
         for path, node in nodes.items():
             if node['kind'] == 'join' and (node['join'] != 'all' or not node['depends_on']):
-                raise ValueError('Review DAG requires nonempty all-joins')
+                raise RouteBlocked(path, 'Review DAG requires nonempty all-joins')
             dependencies[path] = self._activation(path) | (children[path] if node['kind'] == 'workflow' else set())
             for dependency in dependencies[path]:
                 if dependency not in nodes:
-                    raise ValueError('Stage control dependencies must stay inside its selected subtree')
+                    raise RouteBlocked(path, 'Stage control dependencies must stay inside its selected subtree')
         try:
             order = tuple(TopologicalSorter(dependencies).static_order())
         except CycleError as error:
@@ -170,11 +178,11 @@ class StageDAG:
         terminal = self._resolve(selected, output, 'output')
         self.terminal = terminal
         if terminal == 'task' or self._instances[terminal.rsplit('#', 1)[0]]['kind'] != 'join':
-            raise ValueError('Review DAG terminal output must project an explicit all-join')
+            raise RouteBlocked(selected, 'Review DAG terminal output must project an explicit all-join')
         origin = root['outputs'][output]
         if ('node' not in origin
                 or completed[selected + '/' + origin['node']] != self.members.keys()):
-            raise ValueError('Review DAG all-join must cover every reviewer, including serial predecessors')
+            raise RouteBlocked(selected, 'Review DAG all-join must cover every reviewer, including serial predecessors')
 
     def _inside(self, path):
         if path != self._selected and not path.startswith(self._selected + '/'):
@@ -285,16 +293,22 @@ class ReviewDAG(StageDAG):
 class WorkDelivery:
     """Project the original units onto two disjoint stages, never schedule them."""
 
-    def __init__(self, graph: dict, execution: dict, review_instance: str, units: list[dict], *, preparation=None):
+    def __init__(self, graph: dict, execution: dict, review_instance: str, units: list[dict] | None, *, preparation=None):
+        if (not isinstance(units, list) or not units
+                or any(not isinstance(unit, dict) or not isinstance(unit.get('id'), str)
+                       or any(not isinstance(unit.get(key), list) or any(not isinstance(value, str) for value in unit[key])
+                              for key in ('depends_on', 'paths')) for unit in units)):
+            raise RouteBlocked(execution['instance'], 'Work delivery requires original work units with IDs, dependencies and paths')
         self.work = StageDAG(graph, execution['instance'], role='implementer')
         self.review = StageDAG(graph, review_instance, external=self.work)
         self.preparation = preparation_members(graph, preparation) if preparation is not None else {}
         work_paths, review_paths = set(self.work.members), set(self.review.members)
         preparation_paths = {path for group in self.preparation.values() for path in group['dag'].members}
         agents = {item['path'] for item in graph['instances'] if item['kind'] == 'agent'}
-        if (work_paths & review_paths or preparation_paths & (work_paths | review_paths)
-                or work_paths | review_paths | preparation_paths != agents):
-            raise ValueError('Work and review must cover exactly all Agent leaves without overlap')
+        selected = work_paths | review_paths | preparation_paths
+        conflicts = (work_paths & review_paths) | (preparation_paths & (work_paths | review_paths)) | (selected ^ agents)
+        if conflicts:
+            raise RouteBlocked(min(conflicts), 'Work and review must cover exactly all Agent leaves without overlap')
         self.assignments = execution['assignments']
         original = {unit['id']: unit for unit in units}
         if preparation is not None:
@@ -302,10 +316,10 @@ class WorkDelivery:
                 for name in unit['paths']:
                     if not any(prefix == '.' or name == prefix or name.startswith(prefix + '/')
                                for prefix in preparation['repository_paths']):
-                        raise ValueError('Preparation repository paths must cover the original work unit paths')
+                        raise RouteBlocked(execution['instance'], 'Preparation repository paths must cover the original work unit paths: ' + name)
         if (set(self.assignments) != original.keys() or set(self.assignments.values()) != work_paths
                 or len(self.assignments) != len(work_paths)):
-            raise ValueError('Work assignments require exactly one distinct implementer instance per original unit')
+            raise RouteBlocked(execution['instance'], 'Work assignments require exactly one distinct implementer instance per original unit')
         self.units = {path: identity for identity, path in self.assignments.items()}
         try:
             order = tuple(TopologicalSorter({key: set(unit['depends_on']) for key, unit in original.items()}).static_order())
@@ -314,18 +328,18 @@ class WorkDelivery:
         predecessors = {}
         for key in order:
             if key not in original:
-                raise ValueError('Original unit refers to an unknown dependency')
+                raise RouteBlocked(execution['instance'], 'Original unit refers to an unknown dependency: ' + key)
             predecessors[key] = set(original[key]['depends_on'])
             for parent in original[key]['depends_on']:
                 predecessors[key].update(predecessors[parent])
             path = self.assignments[key]
             if {self.assignments[parent] for parent in predecessors[key]} != set(self.work.predecessors[path]):
-                raise ValueError('Static work order differs from original work-unit transitive dependencies')
+                raise RouteBlocked(path, 'Static work order differs from original work-unit transitive dependencies')
             permissions = self.work.members[path]['permissions']
             for name in original[key]['paths']:
                 wanted = 'workspace/' + name
                 if not any(wanted == prefix or wanted.startswith(prefix + '/') for prefix in permissions['write']):
-                    raise ValueError('Complete original unit paths exceed its effective Agent write ceiling: ' + key)
+                    raise RouteBlocked(path, 'Complete original unit paths exceed its effective Agent write ceiling: ' + key)
             self.work.input_ports(path)
         for path in self.review.members:
             self.review.input_ports(path)

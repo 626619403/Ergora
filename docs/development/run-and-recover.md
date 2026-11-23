@@ -16,6 +16,21 @@ This operation first validates the local task's project ownership and spec, then
 
 `terminal: true` means only that the Temporal run is closed. Its outcome may still be CANCEL_UNCONFIRMED, or its phase NEEDS_RECONCILIATION; both require reconciliation under the original ID. This entry point uses the registered reference environment's connection rules (currently local 127.0.0.1:7233/default). The project scheduler binding's address/queue is used only for material-research scheduling. A 1–60-second timeout constrains the network query. The child process receives an additional 5 seconds for startup/reaping; local contract prechecks and installation identity checks are separate. Missing SDKs produce an explicit message. They are not installed automatically, and runtime state is not inferred from local COMPILED or service RUNNING states. Full six-stage execution still uses Linux/WSL2.
 
+## Prioritize a pending work unit
+
+During approved implementation, a supervisor using the registered Linux/WSL2 CLI can prefer a work unit from the original task. Use a task with a recorded `task start` submission. Query the original run and use its `status.work_priority.pending_work_unit_ids`, `plan_sha256` and project revision. The capability requires the current budgeted preparation workflow and a worker that reports `work_priority.available`. Choose a decision ID unique to this request.
+
+```bash
+ergora task status my-project TASK_ID --run-id RUN_ID
+ergora task prioritize-work my-project TASK_ID UNIT_ID --revision REVISION \
+  --run-id RUN_ID --plan-sha256 PLAN_SHA --decision-id DECISION_ID --confirm
+ergora task work-priority my-project TASK_ID DECISION_ID --run-id RUN_ID
+```
+
+`applied` means the workflow recorded the preference. The unit takes precedence when its original predecessors have succeeded and the original concurrency limits permit dispatch. Other eligible units can start while it waits. A later decision can replace the preference. Each work unit keeps its original inputs, owner and job ID. The same plan approval, budget cutoff, integration, verification and review apply.
+
+The task saves the exact attempt beside its submission records before sending one Temporal Update to the original run. After a lost response, `task work-priority` reads that decision's outcome under the same run and update IDs. Repeating the same decision also only reads that outcome. An unavailable outcome remains `unknown`. A rejection or unavailable worker before the attempt leaves no attempt. An update that races a dispatch, cancellation or cutoff may return a recorded rejection. Use workers that support this Update for all runs on the updated queue throughout execution and recovery.
+
 ## Read original-run events in pages
 
 For a task created through the unified entry point with its original submission receipt saved, pin that receipt's run ID and read event metadata:

@@ -80,12 +80,15 @@ def require_remaining(instance: dict, *, cleanup: bool = False) -> float:
     return value
 
 
-def call_slots(composition: dict) -> dict:
+def call_slots(composition: dict, *, invocation_cap: int | None = None) -> dict:
     """Finite model-stage slots; retries/observations do not create new slots."""
     preparation, execution = composition['preparation'], composition['execution']
-    return {**preparation_stages(preparation),
-            **{'work:' + unit: member for unit, member in sorted(execution['assignments'].items())},
-            **{'review:' + member: member for member in sorted(composition['members'])}}
+    slots = {**preparation_stages(preparation),
+             **{'work:' + unit: member for unit, member in sorted(execution['assignments'].items())},
+             **{'review:' + member: member for member in sorted(composition['members'])}}
+    if invocation_cap is not None and len(slots) > invocation_cap:
+        raise ValueError(f'Known model call slots exceed the original invocation cap ({len(slots)} > {invocation_cap})')
+    return slots
 
 
 def validate_contract(contract: dict, composition: dict, spec: dict) -> None:
@@ -94,6 +97,6 @@ def validate_contract(contract: dict, composition: dict, spec: dict) -> None:
     validate(contract['instance'])
     if contract['instance']['scope']['task_id'] != spec['request']['task_id']:
         raise ValueError('Budget belongs to another original task')
-    expected = call_slots(composition)
-    if contract['slots'] != expected or len(expected) > contract['instance']['policy']['model_invocations']:
-        raise ValueError('Known model call slots differ from the budget or exceed its invocation cap')
+    expected = call_slots(composition, invocation_cap=contract['instance']['policy']['model_invocations'])
+    if contract['slots'] != expected:
+        raise ValueError('Known model call slots differ from the budget')

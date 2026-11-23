@@ -685,6 +685,13 @@ def test_cap_and_unsupported_dimensions_fail_before_executable_publication(budge
     assert not _root(registered).exists()
     del definition['budget']['tokens']
     definition['budget']['model_invocations'] = 1
+    preview = tasks.preview(state, 'demo', definition, 1)
+    assert preview['route_admission']['status'] == 'blocked'
+    assert 'Known model call slots exceed' in preview['route_admission']['reason']
+    assert preview['runtime_status'] == 'not_queried'
+    assert tasks.preparation(state, 'demo', definition['task_id'])['status'] == 'not_recorded'
+    assert not _root(registered).exists()
+
     prepared = tasks.prepare(state, 'demo', definition, 1)
     assert prepared['status'] == 'failed' and prepared['outcome']['cleanup_confirmed']
     prefix = _prefix(registered, definition)

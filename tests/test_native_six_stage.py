@@ -243,6 +243,17 @@ def test_native_call_freezes_parent_chain_and_recovers_without_source(native_def
 
     monkeypatch.syspath_prepend(str(native_resources.ROOT / 'platform/upstream/platform'))
     state, registered, definition = native_definition
+    root = Path(registered['execution']['state_directory'])
+    preflight = tasks.preview(state, 'demo', definition, 1)
+    assert preflight['status'] == 'route-preview'
+    assert preflight['route_admission'] == {'route': 'native-six-stage', 'status': 'admitted',
+        'graph_status': 'valid', 'instance': definition['composition']['native']['instance']}
+    assert 'preview_sha256' not in preflight and 'prepare_sha256' not in preflight
+    assert preflight['runtime_status'] == 'not_queried'
+    assert preflight['manifest_digest'] == definition['composition']['manifest_digest']
+    assert preflight['project_revision'] == 1
+    assert tasks.preparation(state, 'demo', definition['task_id'])['status'] == 'not_recorded'
+    assert not root.exists()
     preview, document = _prepared(native_definition)
     selected = execution_input(document)
     assert document['schema_version'] == 12 and selected.task_queue('dev') == 'dev.composition-v12'
@@ -284,6 +295,17 @@ def test_native_call_freezes_parent_chain_and_recovers_without_source(native_def
 @pytest.mark.parametrize('native_definition', ['sibling', 'second-call', 'ignored-output'], indirect=True)
 def test_prepare_refuses_unexecuted_parent_branches(native_definition):
     state, registered, definition = native_definition
+    root = Path(registered['execution']['state_directory'])
+    preflight = tasks.preview(state, 'demo', definition, 1)
+    assert preflight['status'] == 'route-preview'
+    admission = preflight['route_admission']
+    assert admission['status'] == 'blocked' and admission['graph_status'] == 'valid'
+    assert admission['route'] == 'native-six-stage' and admission['instance'].startswith('root')
+    assert any(text in admission['reason'] for text in ('parent must', 'cover exactly'))
+    assert preflight['runtime_status'] == 'not_queried' and 'prepare_sha256' not in preflight
+    assert not root.exists()
+
+    # Explicit authorization continues to use the original supervised owner.
     prepared = tasks.prepare(state, 'demo', definition, 1)
     assert prepared['status'] == 'failed'
     root = Path(registered['execution']['state_directory'])
@@ -293,6 +315,91 @@ def test_prepare_refuses_unexecuted_parent_branches(native_definition):
         tasks.preview(state, 'demo', definition, 1)
     root = Path(registered['execution']['state_directory'])
     assert not (root / 'tasks' / definition['task_id']).exists()
+
+
+@pytest.mark.parametrize('damage', ['missing', 'dangling'])
+def test_preparation_evidence_cannot_be_reported_as_a_fresh_route_preview(native_definition, damage):
+    state, registered, definition = native_definition
+    assert tasks.prepare(state, 'demo', definition, 1)['status'] == 'prepared'
+    prefix = Path(registered['execution']['state_directory']) / 'ergora/task-creations'
+    authorization = prefix / (definition['task_id'] + '.prepare.json')
+    attempt = prefix / (definition['task_id'] + '.prepare-attempt.json')
+    original_attempt = attempt.read_bytes()
+    authorization.unlink()
+    reason = 'evidence exists without its budget authorization'
+    if damage == 'dangling':
+        authorization.symlink_to('missing-original-authorization')
+        reason = 'Symlinks are not accepted'
+
+    with pytest.raises(ValueError, match=reason):
+        tasks.preview(state, 'demo', definition, 1)
+    with pytest.raises(ValueError, match=reason):
+        tasks.preparation(state, 'demo', definition['task_id'])
+    assert attempt.read_bytes() == original_attempt
+    assert not authorization.exists()
+
+
+@pytest.mark.parametrize('retained', ['task directory', 'creation intent', 'creation result'])
+def test_incomplete_restore_cannot_report_an_original_task_as_a_fresh_route(native_definition, tmp_path, retained):
+    state, registered, definition = native_definition
+    preview, document = _prepared(native_definition)
+    created = tasks.create(state, 'demo', definition, 1, preview['preview_sha256'],
+                           prepare_sha256=preview['prepare_sha256'])
+    task_id = definition['task_id']
+    root = Path(registered['execution']['state_directory'])
+    prefix = root / 'ergora/task-creations'
+    creation_evidence = {'task directory': root / 'tasks' / task_id,
+                         'creation intent': prefix / (task_id + '.intent.json'),
+                         'creation result': prefix / (task_id + '.result.json')}
+    parked = tmp_path / 'incomplete-restore'
+    parked.mkdir()
+    hidden = [*prefix.glob(task_id + '.prepare*'),
+              *(path for kind, path in creation_evidence.items() if kind != retained)]
+    for path in hidden:
+        path.rename(parked / path.name)
+
+    with pytest.raises(ValueError, match='task or preparation evidence exists without its budget authorization'):
+        tasks.preview(state, 'demo', definition, 1)
+    assert creation_evidence[retained].exists() and not any(path.exists() for path in hidden)
+    if retained == 'task directory':
+        assert tasks.show(state, 'demo', task_id)['admission_envelope'] == document
+
+    for path in hidden:
+        (parked / path.name).rename(path)
+    assert tasks.resume_create(state, 'demo', task_id, 1, created['intent_sha256']) == created
+
+
+def test_native_route_preview_checks_known_inherited_skill_attachments(selected_context_task, tmp_path):
+    from ergora.development import context as task_context
+
+    state, registered, definition = selected_context_task
+    option = definition['composition']
+    working = tmp_path / 'derived'
+    with task_context.selected_manifest(state, 'demo', option, definition.pop('context'), working) as (derived, _):
+        source = tmp_path / 'base-with-inherited-attachments'
+        shutil.copytree(derived['manifest'], source)
+    option.update(manifest=str(source), manifest_digest=derived['manifest_digest'], mode='text-only')
+
+    preview = tasks.preview(state, 'demo', definition, 1)
+    assert preview['route_admission'] == {'route': 'native-six-stage', 'status': 'blocked', 'graph_status': 'valid',
+        'instance': 'root/development/review/correctness/review',
+        'reason': 'Complete Skill attachments require task-mcp mode'}
+    assert preview['runtime_status'] == 'not_queried'
+    assert tasks.preparation(state, 'demo', definition['task_id'])['status'] == 'not_recorded'
+    assert not Path(registered['execution']['state_directory']).exists()
+
+    option['mode'] = 'task-mcp'
+    assert tasks.preview(state, 'demo', definition, 1)['route_admission']['status'] == 'admitted'
+    assert not Path(registered['execution']['state_directory']).exists()
+
+    option['mode'] = 'text-only'
+    prepared = tasks.prepare(state, 'demo', definition, 1)
+    assert prepared['status'] == 'failed' and prepared['outcome']['cleanup_confirmed']
+    root = Path(registered['execution']['state_directory'])
+    progress = root / 'ergora/task-creations' / (definition['task_id'] + '.prepare-work')
+    stderr = (progress / 'process/stderr.txt').read_text()
+    assert preview['route_admission']['reason'] in stderr and preview['route_admission']['instance'] in stderr
+    assert not (root / 'tasks').exists()
 
 
 def test_native_selection_cannot_claim_root_or_another_stage(native_definition):

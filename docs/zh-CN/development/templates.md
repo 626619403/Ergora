@@ -104,7 +104,7 @@ ergora composition freeze-manifest ergora-governance-template 1.1.6 --grant "$WA
 3. 点击“从当前输入载入工作单元”，将每个unit分配到对应完整路径。治理为`knowledge-map`、`boundary-test`；大型变更为`contract`、`server`、`client`、`integration-tests`，对应`root/work/UNIT_ID`。
 4. 为每个writer显式选择支持的后端、执行边界和覆盖理由。当前可写组合使用Codex，model／effort预填模板值；仍须明确选择“已信任的当前容器 / 用户”，并使用可信Linux环境。该边界允许Agent访问当前用户文件，权限路径检查不提供逐次文件访问的OS隔离。
 5. reviewer沿用gpt-6.1-sol high，覆盖须满足定义最低线；内置专家同后端时记录独立会话理由并选择相应策略。配置认证的shell应与启动Ergora的环境一致，密钥放外部环境或工具认证配置。
-6. 点击“预览冻结合同”，核全部分配、后端／政策、祖先资料、路径与输入，再“确认创建冻结合同”。页面一并冻结盘点、规划、工作和审查成员；漏选准备阶段会明确拒绝。创建只发布合同，不启动模型或任务。
+6. 点击“预览所选执行路线”核对所选阶段。原生六阶段任务须授权准备，再次预览完整冻结结果后确认创建。核对分配、后端与政策、祖先资料、路径和输入。页面一并冻结盘点、规划、工作和审查成员；漏选准备阶段会明确拒绝。创建只发布合同，不启动模型或任务。
 
 同一模板可有多个同职责专家实例；新增／替换专家先发布独立Agent及沿父链更新的精确工作流版本，再重新预览与冻结新任务。图形页面展示已发布图，拖动布局不会修订合同。详细CLI配置见[工作单元协议](../../definitions/workflows/contracts.md#specialist-writers-and-original-work-units)。
 
