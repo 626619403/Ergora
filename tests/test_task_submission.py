@@ -1,6 +1,7 @@
 """One immutable native submission, including interrupted admission and lost replies."""
 
 from concurrent.futures import ThreadPoolExecutor
+from hashlib import sha256
 import json
 from pathlib import Path
 import subprocess
@@ -66,6 +67,18 @@ def _status(creation):
     return tasks.submission(State(creation[0].root), 'demo', creation[2]['task_id'])
 
 
+def _assert_evidence(creation, status):
+    prefix = _root(creation) / 'ergora/task-submissions' / status['task_id']
+    for kind in ('intent', 'attempt', 'result', 'rejection'):
+        path = prefix.with_suffix(f'.{kind}.json')
+        expected = None
+        if path.exists():
+            record = json.loads(path.read_bytes())
+            canonical = json.dumps(record, sort_keys=True, separators=(',', ':'), ensure_ascii=False)
+            expected = sha256(canonical.encode('utf-8')).hexdigest()
+        assert status[f'{kind}_sha256'] == expected, kind
+
+
 def _resume(creation):
     status = _status(creation)
     return tasks.resume_start(State(creation[0].root), 'demo', creation[2]['task_id'], 1, status['intent_sha256'])
@@ -128,16 +141,28 @@ def test_native_admission_is_not_bypassed(submitted_creation, native_client, mon
     assert _calls(submitted_creation).count('start')==1
 
 
-@pytest.mark.parametrize('scenario,status', [
-    ('before-intent','not_recorded'), ('after-intent','prepared'), ('before-attempt','prepared'),
-    ('after-attempt','unknown'), ('before-result','unknown'), ('after-result','submitted'),
-    ('lost-response','unknown'),
+@pytest.mark.parametrize('scenario,status,next_action', [
+    ('before-intent', 'not_recorded', 'start'),
+    ('after-intent', 'prepared', 'resume_start'),
+    ('before-attempt', 'prepared', 'resume_start'),
+    ('after-attempt', 'unknown', 'lookup_original_workflow'),
+    ('before-result', 'unknown', 'lookup_original_workflow'),
+    ('after-result', 'submitted', 'read_original_run'),
+    ('lost-response', 'unknown', 'lookup_original_workflow'),
 ])
-def test_each_interruption_recovers_without_reissuing_uncertain_start(submitted_creation, native_client, monkeypatch, scenario, status):
+def test_each_interruption_recovers_without_reissuing_uncertain_start(
+        submitted_creation, native_client, monkeypatch, scenario, status, next_action):
     monkeypatch.setenv('ERGORA_TEST_SUBMISSION_SCENARIO', scenario)
     with pytest.raises(ValueError, match='interruption|timed out'):
         _start(submitted_creation)
-    assert _status(submitted_creation)['status']==status
+    calls_before = _calls(submitted_creation)
+    files_before = _files(_root(submitted_creation))
+    observed = _status(submitted_creation)
+    assert observed['status'] == status and observed['next_action'] == next_action
+    assert observed['task_id'] == 'new-task' and observed['workflow_id'] == 'dev-task/new-task'
+    assert observed['run_id'] == ('original-run' if status == 'submitted' else None)
+    _assert_evidence(submitted_creation, observed)
+    assert _calls(submitted_creation) == calls_before and _files(_root(submitted_creation)) == files_before
     if scenario=='before-intent':
         assert _calls(submitted_creation)==[]
         assert not (_root(submitted_creation)/'ingress').exists()
@@ -148,11 +173,21 @@ def test_each_interruption_recovers_without_reissuing_uncertain_start(submitted_
         result=_resume(submitted_creation)
     if scenario=='after-attempt':
         assert result['status']=='unknown' and result['reconciliation']=='not_found'
+        assert result['attempt_sha256'] == observed['attempt_sha256'] and result['result_sha256'] is None
+        assert not (_root(submitted_creation) / 'sdk-fixture/server.json').exists()
         assert 'start' not in _calls(submitted_creation)
         assert _resume(submitted_creation)['status']=='unknown'
     else:
         assert result['status']=='submitted' and result['run_id']=='original-run'
+        assert result['next_action'] == 'read_original_run'
+        _assert_evidence(submitted_creation, result)
         assert _calls(submitted_creation).count('start')==1
+        if scenario == 'lost-response':
+            assert result['intent_sha256'] == observed['intent_sha256']
+            assert result['attempt_sha256'] == observed['attempt_sha256']
+            assert observed['result_sha256'] is None and result['result_sha256']
+            original = json.loads((_root(submitted_creation) / 'sdk-fixture/server.json').read_bytes())
+            assert result['run_id'] == original['run_id']
     assert _start(submitted_creation)['status']==result['status']
 
 
@@ -209,6 +244,8 @@ def test_preexisting_run_cannot_be_adopted_even_after_its_history_disappears(sub
         _start(submitted_creation)
     status=_status(submitted_creation)
     assert status['status']=='rejected' and status['conflicting_run_id']=='foreign-run'
+    assert status['next_action'] == 'inspect_ownership_conflict' and status['run_id'] is None
+    _assert_evidence(submitted_creation, status)
     (_root(submitted_creation)/'sdk-fixture/server.json').unlink()
     assert _resume(submitted_creation)==_start(submitted_creation)==status
     assert 'start' not in _calls(submitted_creation)
@@ -233,6 +270,7 @@ def test_competing_start_after_preflight_is_never_adopted(submitted_creation,nat
     status=_status(submitted_creation)
     assert status['status']==('unknown' if lost_rejection else 'rejected')
     assert status['run_id'] is None
+    _assert_evidence(submitted_creation, status)
     monkeypatch.setenv('ERGORA_TEST_SUBMISSION_SCENARIO','normal')
     if lost_rejection:
         with pytest.raises(ValueError,match='matching submission memo'):
@@ -270,7 +308,9 @@ def test_unknown_recovery_refuses_a_different_submission_memo(submitted_creation
     record=json.loads(path.read_text());record['memo']=memo;path.write_text(json.dumps(record))
     with pytest.raises(ValueError,match='matching submission memo'):
         _resume(submitted_creation)
-    assert _status(submitted_creation)['status']=='unknown'
+    status = _status(submitted_creation)
+    assert status['status'] == 'unknown' and status['run_id'] is None
+    assert status['result_sha256'] is None and status['rejection_sha256'] is None
     assert 'start' not in _calls(submitted_creation)
 
 
@@ -284,10 +324,15 @@ def test_reconciliation_requires_original_history_and_does_not_release_or_restar
         _resume(submitted_creation)
     assert _status(submitted_creation)['status']=='unknown'
     assert 'start' not in _calls(submitted_creation)
-    monkeypatch.setenv('ERGORA_TEST_SUBMISSION_SCENARIO','lookup-unavailable')
-    with pytest.raises(ValueError,match='unavailable|UNAVAILABLE'):
-        _resume(submitted_creation)
-    assert _status(submitted_creation)['status']=='unknown'
+    original = _status(submitted_creation)
+    for scenario, message in [('lookup-unavailable', 'RPC failed: UNAVAILABLE'),
+                              ('lookup-denied', 'RPC failed: PERMISSION_DENIED'),
+                              ('connect-blocked', 'service is offline')]:
+        monkeypatch.setenv('ERGORA_TEST_SUBMISSION_SCENARIO', scenario)
+        with pytest.raises(ValueError, match=message):
+            _resume(submitted_creation)
+        assert _status(submitted_creation) == original
+    assert 'start' not in _calls(submitted_creation)
 
 
 @pytest.mark.parametrize('revision',[True,0,'1',2])
@@ -363,7 +408,7 @@ def test_native_spec_read_drift_is_rejected_before_doctor_and_claim(submitted_cr
     assert _resume(submitted_creation)['status']=='submitted'
 
 
-def test_cli_and_api_share_submission_and_explicit_recovery(submitted_creation,native_client,monkeypatch):
+def test_cli_and_api_share_submission_and_explicit_recovery(submitted_creation,native_client,monkeypatch,capsys):
     pytest.importorskip('fastapi')
     from fastapi.testclient import TestClient
     import ergora.interfaces.cli as cli
@@ -382,12 +427,24 @@ def test_cli_and_api_share_submission_and_explicit_recovery(submitted_creation,n
     monkeypatch.setenv('ERGORA_TEST_SUBMISSION_SCENARIO','normal')
     status=client.get(uri+'/submission').json()
     assert status['status']=='unknown'
+    assert status['next_action'] == 'lookup_original_workflow'
+    assert status['run_id'] is None and status['result_sha256'] is None
+    _assert_evidence(submitted_creation, status)
     args=['--home',str(state.root),'task']
+    assert cli.main([*args, 'submission', 'demo', 'new-task']) == 0
+    assert json.loads(capsys.readouterr().out) == status
     assert cli.main([*args,'start','demo','new-task','--revision','1','--creation-sha256',body['creation_sha256']])==1
-    resumed=client.post(uri+'/resume-start',json={'revision':1,'intent_sha256':status['intent_sha256']},headers=headers)
-    assert resumed.status_code==200 and resumed.json()['status']=='unknown'
+    assert json.loads(capsys.readouterr().out) == status
+    recovery = {'revision': 1, 'intent_sha256': status['intent_sha256']}
+    resumed = client.post(uri+'/resume-start', json=recovery, headers=headers)
+    assert resumed.status_code == 200 and resumed.json()['reconciliation'] == 'not_found'
+    monkeypatch.setenv('ERGORA_TEST_SUBMISSION_SCENARIO', 'lookup-unavailable')
+    unavailable = client.post(uri+'/resume-start', json=recovery, headers=headers)
+    assert unavailable.status_code == 400 and 'RPC failed: UNAVAILABLE' in unavailable.text
+    assert client.get(uri+'/submission').json() == status
+    monkeypatch.setenv('ERGORA_TEST_SUBMISSION_SCENARIO', 'normal')
     _seed_run(submitted_creation,owned=True)
-    resumed=client.post(uri+'/resume-start',json={'revision':1,'intent_sha256':status['intent_sha256']},headers=headers)
+    resumed = client.post(uri+'/resume-start', json=recovery, headers=headers)
     assert resumed.json()['status']=='submitted' and resumed.json()['run_id']=='owned-run'
     assert cli.main([*args,'resume-start','demo','new-task','--revision','1','--intent-sha256',status['intent_sha256']])==0
     assert client.get(uri+'/submission').json()==_status(submitted_creation)

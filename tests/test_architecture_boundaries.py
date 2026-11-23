@@ -68,15 +68,16 @@ def test_control_plane_import_graph_is_acyclic(local_dependencies):
     ("ergora.storage.state", set()), ("ergora.storage.git", set()),
     ("ergora.storage.assets", set()),
     ("ergora.training.materials", {"ergora.storage.assets"}),
-    ("ergora.development.dags", set()), ("ergora.issues.identity", set()),
+    ("ergora.development.route_errors", set()),
+    ("ergora.development.dags", {"ergora.development.route_errors"}), ("ergora.issues.identity", set()),
     ("ergora.runtime.budget_clock", set()),
     ("ergora.development.budget", {
         "ergora.runtime", "ergora.runtime.budget_clock", "ergora.development.dags",
     }),
-    ("ergora.development.six_stage", set()),
+    ("ergora.development.six_stage", {"ergora.development.route_errors"}),
     ("ergora.development.envelopes", {
         "ergora.configuration.catalog", "ergora.development.dags", "ergora.issues.identity",
-        "ergora.development.budget", "ergora.development.six_stage",
+        "ergora.development.budget", "ergora.development.six_stage", "ergora.development.route_errors",
         "ergora.development", "ergora.development.verification", "ergora.training.materials",
     }),
     ("ergora.development.handoff", {
@@ -93,7 +94,7 @@ def test_foundations_do_not_depend_on_application_modules(local_dependencies, mo
     assert local_dependencies[module] <= allowed, (module, local_dependencies[module] - allowed)
     if module in {
         "ergora._paths", "ergora.configuration.catalog", "ergora.development.dags",
-        "ergora.development.envelopes", "ergora.issues.identity", "ergora.runtime.budget_clock",
+        "ergora.development.envelopes", "ergora.development.route_errors", "ergora.issues.identity", "ergora.runtime.budget_clock",
         "ergora.development.budget", "ergora.development.six_stage", "ergora.storage.git",
         "ergora.development.verification", "ergora.training.materials", "ergora.storage.assets",
     }:

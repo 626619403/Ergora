@@ -45,12 +45,15 @@ class _Submission:
 
     def load(self) -> dict | None:
         record = self.creation.optional(self.intent_path)
+        if record is None and any(path.exists() for path in (self.attempt_path, self.result_path, self.rejection_path)):
+            # A concurrent writer may have published the intent since the first read.
+            record = self.creation.optional(self.intent_path)
+            if record is None:
+                raise ValueError('Submission records have no original intent; reconcile before starting')
         if record is not None:
             if (type(record.get('project_revision')) is not int or record['project_revision'] < 1
                     or self.sha(record) != self.sha({**self.expected, 'project_revision': record['project_revision']})):
                 raise ValueError('Submission intent conflicts with its original task, project or control directory')
-        elif any(path.exists() for path in (self.attempt_path, self.result_path, self.rejection_path)):
-            raise ValueError('Submission records have no original intent; reconcile before starting')
         return record
 
     def submitted(self) -> tuple[dict, str]:
@@ -81,31 +84,40 @@ class _Submission:
     def status(self, intent: dict | None) -> dict:
         result = {'project': self.creation.project['id'], 'project_revision': self.creation.project['revision'],
                   'task_id': self.creation.task_id, 'workflow_id': self.expected['workflow_id'],
-                  'run_id': None, 'runtime_status': 'not_queried', 'execution_success': None}
+                  'run_id': None, 'runtime_status': 'not_queried', 'execution_success': None,
+                  'creation_sha256': self.expected['creation_sha256']}
+        records = {'intent_sha256': None, 'attempt_sha256': None, 'result_sha256': None, 'rejection_sha256': None}
         if intent is None:
-            return {**result, 'status': 'not_recorded'}
-        # Read completion first: an in-flight writer may then add an attempt or
-        # result, but cannot make an observed completion precede its checkpoint.
+            return {**result, **records, 'status': 'not_recorded', 'next_action': 'start'}
+        # Read both completion records before the attempt. A concurrent writer
+        # can only make the snapshot less complete, never invert that order.
         receipt = self.creation.optional(self.result_path)
-        attempt = self.creation.optional(self.attempt_path)
         rejection = self.creation.optional(self.rejection_path)
-        if attempt is not None and self.sha(attempt) != self.sha(self.attempt(intent)):
+        attempt = self.creation.optional(self.attempt_path)
+        intent_sha = self.sha(intent)
+        attempt_sha = self.sha(attempt) if attempt is not None else None
+        if attempt_sha is not None and attempt_sha != self.sha(self.attempt(intent)):
             raise ValueError('Submission attempt conflicts with its saved intent')
+        common = {**result, **records, 'intent_sha256': intent_sha, 'attempt_sha256': attempt_sha,
+                  'submitted_revision': intent['project_revision'], 'attempt_saved': attempt is not None,
+                  'result_saved': receipt is not None}
         if rejection is not None:
+            rejection_sha = self.sha(rejection)
             if (receipt is not None or (attempt is not None) != (rejection.get('reason') == 'start_conflict') or
-                    self.sha(rejection) != self.sha(self.rejection(intent, rejection.get('reason'), rejection.get('run_id')))):
+                    rejection_sha != self.sha(self.rejection(intent, rejection.get('reason'), rejection.get('run_id')))):
                 raise ValueError('Submission ownership rejection conflicts with its saved intent')
-            return {**result, 'status': 'rejected', 'intent_sha256': self.sha(intent),
-                    'creation_sha256': intent['creation_sha256'], 'reason': rejection['reason'],
-                    'conflicting_run_id': rejection['run_id'], 'attempt_saved': attempt is not None, 'result_saved': False}
+            return {**common, 'status': 'rejected', 'next_action': 'inspect_ownership_conflict',
+                    'rejection_sha256': rejection_sha, 'reason': rejection['reason'],
+                    'conflicting_run_id': rejection['run_id']}
         if receipt is not None:
-            if attempt is None or self.sha(receipt) != self.sha(self.receipt(intent, receipt.get('run_id'))):
+            result_sha = self.sha(receipt)
+            if attempt is None or result_sha != self.sha(self.receipt(intent, receipt.get('run_id'))):
                 raise ValueError('Submission result conflicts with its saved intent or dispatch checkpoint')
-            result['run_id'] = receipt['run_id']
-        return {**result, 'status': 'submitted' if receipt is not None else 'unknown' if attempt else 'prepared',
-                'intent_sha256': self.sha(intent), 'creation_sha256': intent['creation_sha256'],
-                'submitted_revision': intent['project_revision'], 'attempt_saved': attempt is not None,
-                'result_saved': receipt is not None}
+            return {**common, 'status': 'submitted', 'next_action': 'read_original_run',
+                    'run_id': receipt['run_id'], 'result_sha256': result_sha}
+        if attempt is not None:
+            return {**common, 'status': 'unknown', 'next_action': 'lookup_original_workflow'}
+        return {**common, 'status': 'prepared', 'next_action': 'resume_start'}
 
     async def dispatch(self, intent: dict) -> dict:
         from agent_platform import cli, doctor
@@ -201,12 +213,15 @@ class _Submission:
 
     async def reconcile(self, intent: dict) -> dict:
         from dev_platform.runtime import RuntimeNotFound
+        from temporalio.service import RPCError
 
         try:
             _, description, _ = await self.lookup_run(intent)
         except RuntimeNotFound:
             return {**self.status(intent), 'reconciliation': 'not_found',
                     'instruction': 'Dispatch remains uncertain; do not resubmit or change the task ID to bypass it'}
+        except RPCError as error:
+            raise ValueError(f'Original workflow lookup RPC failed: {error.status.name}; submission remains unknown') from error
         self.core.write(self.result_path, self.receipt(intent, description.run_id))
         return self.status(intent)
 

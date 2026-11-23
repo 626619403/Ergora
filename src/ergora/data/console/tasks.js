@@ -1,6 +1,6 @@
 import { api } from "./api.js";
 import {
-  $, node, button, pre, heading, panel, empty, row, field, select, badge, form, modal, table, download,
+  $, node, button, pre, heading, panel, empty, row, field, select, badge, form, modal, table, download, notify,
 } from "./ui.js";
 import { app, stages } from "./state.js";
 import { taskComposition } from "./task-composition.js";
@@ -12,12 +12,50 @@ const stageForPhase = {
   INVENTORY: "inventory", PLANNING: "plan", IMPLEMENTING: "work",
   INTEGRATING: "integrate", VERIFYING: "verify", REVIEWING: "review",
 };
+const taskIdPattern = /^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$/;
 const disclosure = (title, value) =>
   node("details", {}, node("summary", {}, title), pre(value));
 const facts = (items) =>
   node("dl", { className: "task-facts" }, items.map(([name, value]) => [
     node("dt", {}, name), node("dd", {}, value ?? "未返回"),
   ]));
+
+const submissionActions = {
+  start: {
+    description: "尚无统一提交意图。可检查冻结合同并确认首次提交。",
+    check: "检查首次提交",
+    confirm: "确认提交此冻结任务",
+  },
+  resume_start: {
+    description: "原意图已保存，尚未记录派发尝试。可恢复原意图，继续原生准入和首次派发。",
+    check: "检查并恢复未派发的原意图",
+    confirm: "确认恢复原意图",
+  },
+  lookup_original_workflow: {
+    description: "派发尝试已保存，原运行回执尚未确认。请按原工作流 ID 核对输入和提交归属。即使未找到，也请保留原任务 ID 和意图。",
+    check: "检查原工作流归属与回执",
+    confirm: "查询原工作流并恢复回执",
+  },
+  inspect_ownership_conflict: {
+    description: "已有归属冲突记录。请核对冲突原因和原运行所有者，保留原任务和拒绝记录。",
+  },
+  read_original_run: {
+    description: "回执已保存。请按原 run ID 读取运行进度或闭合结果。",
+  },
+};
+
+function submissionFacts(record) {
+  return facts([
+    ["任务 ID", record.task_id], ["工作流 ID", record.workflow_id],
+    ...(record.run_id ? [["原 run ID", record.run_id]] : []),
+    ["原提交意图 SHA256", record.intent_sha256 ?? "未保存"],
+    ["原派发尝试 SHA256", record.attempt_sha256 ?? "未保存"],
+    ["原运行回执 SHA256", record.result_sha256 ?? "未保存"],
+    ["原归属拒绝记录 SHA256", record.rejection_sha256 ?? "未保存"],
+    ...(record.reason ? [["归属拒绝原因", record.reason]] : []),
+    ...(record.conflicting_run_id ? [["冲突 run ID", record.conflicting_run_id]] : []),
+  ]);
+}
 
 export function tasksView(data, base, { sourceSnapshot = "" } = {}) {
   const actions = row(button("按 SHA 读取 PR／MR 关联", () =>
@@ -31,7 +69,8 @@ export function tasksView(data, base, { sourceSnapshot = "" } = {}) {
 
   const selectionKey = `ergora-task:${data.project.id}`;
   const preparationKey = `ergora-preparation:${data.project.id}`;
-  let selected = sessionStorage.getItem(selectionKey) || "";
+  const previousSelection = sessionStorage.getItem(selectionKey) || "";
+  let selected = taskIdPattern.test(previousSelection) ? previousSelection : "";
   let listSequence = 0;
   let detailSequence = 0;
   let pageIndex = 0;
@@ -46,7 +85,11 @@ export function tasksView(data, base, { sourceSnapshot = "" } = {}) {
     loadPage();
   });
   const view = node("div", { className: "task-layout" },
-    panel("任务合同", "每页最多扫描20条记录；运行状态需单独查询。", entries, pageNote,
+    panel("任务合同", "每页最多扫描20条记录；运行状态需单独查询。",
+      form([field("原任务 ID", "task_id", "", "text", {
+        required: true, autocomplete: "off",
+      })], "按原任务 ID 查询", (values) => { inspect(values.get("task_id")); }),
+      entries, pageNote,
       row(previous, next, button("重新读取列表", () => { pageIndex = 0; loadPage(); }))),
     detail,
   );
@@ -490,7 +533,11 @@ export function tasksView(data, base, { sourceSnapshot = "" } = {}) {
     if (!selected && page.items.length) inspect(page.items[0].task_id);
   }
 
-  async function inspect(taskId) {
+  async function inspect(taskId, { readSubmittedRun = false } = {}) {
+    if (typeof taskId !== "string" || !taskIdPattern.test(taskId)) {
+      notify("任务 ID 无效。请输入 1–80 个字符，以英文字母或数字开头，其余字符可为英文字母、数字、连字符或下划线。", true);
+      return;
+    }
     const sequence = ++detailSequence;
     selected = taskId;
     sessionStorage.setItem(selectionKey, taskId);
@@ -510,14 +557,15 @@ export function tasksView(data, base, { sourceSnapshot = "" } = {}) {
     const input = request.input;
     const bindings = task.agent_bindings;
     const saved = submission.status === "fulfilled" ? submission.value : null;
-    const runtime = node("div", {}, empty("尚未查询运行状态。查询会读取所登记的Temporal，合同存在不代表已经提交或完成。"));
+    const submissionAction = submissionActions[saved?.next_action];
+    const canReadManualRun = !saved || saved.status === "not_recorded";
+    const runtime = node("div", { "aria-live": "polite" }, empty("尚未查询运行状态。"));
     const runKey = `ergora-run:${data.project.id}:${taskId}`;
-    const runField = field("原 run ID", "run_id", sessionStorage.getItem(runKey) || saved?.run_id || "", "text", {
+    const runField = canReadManualRun ? field("待查询 run ID", "run_id", sessionStorage.getItem(runKey) || "", "text", {
       required: true, maxlength: 128, autocomplete: "off",
-    });
-    const runInput = runField.querySelector("input");
+    }) : null;
     let runSequence = 0;
-    runInput.addEventListener("input", () => {
+    runField?.querySelector("input").addEventListener("input", () => {
       runSequence++;
       runtime.replaceChildren(empty("run ID已更改，请重新查询。"));
     });
@@ -1153,7 +1201,7 @@ export function tasksView(data, base, { sourceSnapshot = "" } = {}) {
             ["开发成功", record.execution_success == null ? "未知" : record.execution_success ? "是" : "否"],
           ]),
           disclosure("完整原对账记录", record),
-          canRequest || canResume ? form([], canRequest ? "确认外部对账并释放原租约" : "确认恢复原对账意图", async () => {
+          canRequest || canResume ? form([], canRequest ? "确认发起原运行外部对账" : "确认恢复原对账意图", async () => {
             if (!current(reading) || writing) return;
             writing = true;
             readButton.disabled = true;
@@ -1197,7 +1245,9 @@ export function tasksView(data, base, { sourceSnapshot = "" } = {}) {
         if (runId) {
           if (external.status === "fulfilled") {
             observation = external.value;
-            observations.replaceChildren(panel("本轮只读外部证据", "本次读取没有释放租约，也不改写原workflow结果。",
+            observations.replaceChildren(panel("本轮外部证据", observation.external_confirmed
+              ? "已核对原 fence 和外部终态回执。请查看本地对账记录中的租约释放凭据。"
+              : "原运行已闭合，外部清理尚未确认。请保留原租约，按原对账记录核对 fence 和外部终态回执。",
               facts([
                 ["原 run ID", observation.run_id], ["原 Temporal 状态", observation.temporal_status],
                 ["原结果", observation.original_outcome?.status], ["History job SHA256", observation.history_jobs_sha256],
@@ -1329,6 +1379,7 @@ export function tasksView(data, base, { sourceSnapshot = "" } = {}) {
     }
 
     function submissionDialog() {
+      if (!view.isConnected || sequence !== detailSequence) return;
       let readingSequence = 0;
       const result = node("div", { "aria-live": "polite" });
       const content = node("div", {},
@@ -1340,39 +1391,30 @@ export function tasksView(data, base, { sourceSnapshot = "" } = {}) {
       const current = (reading) => active() && reading === readingSequence;
 
       function showSubmission(creation, record, reading) {
-        const descriptions = {
-          not_recorded: "没有统一提交记录。确认后沿原生准入提交此冻结合同一次。",
-          prepared: "原提交意图已保存，尚无派发检查点。明确恢复后，由原生流程决定是否继续首次派发。",
-          unknown: "派发结果尚未确认。恢复只核对原工作流，不重新发起start；not_found仍不证明从未提交。",
-          submitted: "本地回执已保存原run；这不代表六阶段完成。请按原run单独查询运行状态。",
-          rejected: "原提交归属已被拒绝。请核对冲突记录，页面不会覆盖、重提或更换任务ID。",
-        };
-        const canStart = creation.status === "published" && record.status === "not_recorded";
-        const canResume = creation.status === "published" && ["prepared", "unknown"].includes(record.status);
-        if (record.status === "submitted") sessionStorage.setItem(runKey, record.run_id);
-        result.replaceChildren(panel(`提交记录：${record.status}`, descriptions[record.status],
+        const action = submissionActions[record.next_action];
+        const canStart = record.next_action === "start";
+        result.replaceChildren(panel(`提交记录：${record.status}`, action?.description,
+          submissionFacts(record),
           facts([
-            ["任务 ID", taskId], ["项目当前修订", creation.project_revision],
+            ["项目当前修订", record.project_revision],
             ["创建状态", creation.status], ["原创建修订", creation.created_revision],
             ["原创建意图 SHA256", creation.intent_sha256],
             ["请求 SHA256", task.request_sha256], ["合同文件 SHA256", task.spec_file_sha256],
-            ["原提交意图 SHA256", record.intent_sha256], ["原提交修订", record.submitted_revision],
-            ["工作流 ID", record.workflow_id], ["原 run ID", record.run_id],
-            ["原工作流恢复查询", record.reconciliation],
-            ["归属拒绝原因", record.reason], ["冲突 run ID", record.conflicting_run_id],
+            ["原提交修订", record.submitted_revision],
           ]),
+          record.reconciliation === "not_found" ? empty("本次查询未找到原工作流。派发结果仍为 unknown。") : null,
           disclosure("完整创建记录与冻结角色", creation),
           disclosure("冻结合同、输入与验收", task.spec),
           disclosure("完整本地提交记录", record),
           creation.status !== "published" ? empty("创建尚未完整发布；请先按原ID检查创建记录，不能提交运行。") : null,
-          canStart || canResume ? form([], canStart ? "确认提交此冻结任务" : "确认恢复原提交意图", async () => {
+          creation.status === "published" && action?.confirm ? form([], action.confirm, async () => {
             if (!current(reading)) return;
             result.replaceChildren(empty(`正在处理 ${taskId} 的原提交；关闭页面不取消操作。回复未知时先重新读取原记录。`));
             let observed;
             try {
               observed = await api(`${path}/${canStart ? "start" : "resume-start"}`, {
-                revision: creation.project_revision, timeout: 20,
-                ...(canStart ? { creation_sha256: creation.intent_sha256 }
+                revision: record.project_revision, timeout: 20,
+                ...(canStart ? { creation_sha256: record.creation_sha256 }
                   : { intent_sha256: record.intent_sha256 }),
               });
             } catch (error) {
@@ -1386,10 +1428,10 @@ export function tasksView(data, base, { sourceSnapshot = "" } = {}) {
           }) : null,
           row(
             button("重新读取原提交记录", read),
-            record.status === "submitted" ? button("查看原任务与运行", () => {
+            record.status === "submitted" ? button("读取原运行", () => {
               if (!current(reading)) return;
               $("#dialog").close();
-              inspect(taskId);
+              inspect(taskId, { readSubmittedRun: true });
             }) : null,
           ),
         ));
@@ -1415,7 +1457,60 @@ export function tasksView(data, base, { sourceSnapshot = "" } = {}) {
       read();
     }
 
-    detail.replaceChildren(
+    async function readRun(runId) {
+      if (!view.isConnected || sequence !== detailSequence) return;
+      if (canReadManualRun) sessionStorage.setItem(runKey, runId);
+      const reading = ++runSequence;
+      runtime.replaceChildren(empty("正在查询原运行…"));
+      let observed;
+      try {
+        observed = await api(`${path}/status?${new URLSearchParams({ run_id: runId, timeout: "20" })}`);
+      } catch (error) {
+        if (view.isConnected && sequence === detailSequence && reading === runSequence)
+          runtime.replaceChildren(panel("运行查询失败", error.message));
+        return;
+      }
+      if (!view.isConnected || sequence !== detailSequence || reading !== runSequence) return;
+      const state = observed.status || observed.outcome;
+      const currentStage = observed.terminal ? null : stageForPhase[observed.phase];
+      runtime.replaceChildren(...[
+        row(badge(observed.runtime_status), observed.phase ? badge(observed.phase) : null),
+        observed.runtime_status === "not_found"
+          ? empty("本次未找到所选运行。请按原提交记录核对 run ID 和 Temporal 服务。")
+          : facts([
+            ["工作流 ID", observed.workflow_id], [canReadManualRun ? "查询到的 run ID" : "原 run ID", observed.run_id],
+            ["原运行已闭合", observed.terminal ? "是" : "否"],
+            ["候选提交", state?.candidate_sha], ["计划 SHA256", state?.plan_sha256],
+          ]),
+        observed.terminal && observed.runtime_status === "queried" && saved?.run_id === runId
+          ? empty("原运行已闭合。请读取外部证据和原对账记录，确认外部清理与租约状态。") : null,
+        observed.runtime_status === "queried"
+          ? button("读取原运行事件", () => eventsDialog(observed.run_id, reading)) : null,
+        !observed.terminal && observed.phase === "AWAITING_PLAN_APPROVAL"
+          ? button("审阅计划与批准", () => {
+            if (!view.isConnected || sequence !== detailSequence || reading !== runSequence) return;
+            return approvalDialog({ run_id: observed.run_id, plan_sha256: observed.status.plan_sha256 }, reading);
+          }, "primary") : null,
+        !observed.terminal && observed.runtime_status === "queried"
+          ? button("请求取消此运行", () => cancellationDialog(observed.run_id, reading)) : null,
+        observed.terminal && observed.runtime_status === "queried"
+          ? button("证据、预算与交接", () => evidenceDialog(observed.run_id, reading)) : null,
+        observed.terminal && observed.runtime_status === "queried"
+          ? button("外部证据与对账", () => reconciliationDialog(observed.run_id, reading)) : null,
+        observed.terminal && observed.runtime_status === "queried" && observed.outcome?.status === "REVIEW_READY"
+          ? button("导出精确候选", () => exportDialog({ run_id: observed.run_id,
+            candidate_sha: observed.outcome.candidate_sha }, reading), "primary") : null,
+        node("div", { className: "stage-strip", "aria-label": "六阶段位置" }, stages.map((stage) =>
+          node("span", { className: currentStage === stage ? "current" : null }, stage))),
+        observed.status ? facts([
+          ["活动阶段/单元", observed.status.active_stages.join("、") || "无"],
+          ["已完成阶段/单元", observed.status.completed_stages.join("、") || "无"],
+        ]) : null,
+        disclosure("原始运行与结果", observed),
+      ].filter(Boolean));
+    }
+
+    detail.replaceChildren(...[
       panel(taskId, input.goal,
         row(badge(request.task_type), badge("冻结合同 · 本地读取")),
         facts([
@@ -1430,6 +1525,24 @@ export function tasksView(data, base, { sourceSnapshot = "" } = {}) {
         disclosure("完整冻结合同", task.spec),
         task.selected_context ? disclosure("冻结项目资料与派生根来源", task.selected_context) : null,
       ),
+      panel("原提交与恢复", submissionAction?.description,
+        saved ? submissionFacts(saved)
+          : node("p", { className: "task-error" }, `原提交记录读取失败：${submission.reason.message}`),
+        saved ? disclosure(`完整原提交记录 · ${saved.status}`, saved) : null,
+        submissionAction?.check ? button(submissionAction.check, submissionDialog, "primary") : null,
+        !saved ? button("重新读取原提交记录", () => inspect(taskId)) : null,
+        saved?.status === "submitted" ? button("读取原运行", () => readRun(saved.run_id), "primary") : null,
+      ),
+      saved?.status === "submitted" || canReadManualRun ? panel("原生运行", null,
+        runField ? form([runField], "读取所选运行", (values) => readRun(values.get("run_id"))) : null,
+        runtime,
+        saved?.status === "submitted" ? row(
+          button("按原 ID 检查批准记录", () => approvalDialog()),
+          button("按原 ID 检查取消记录", () => cancellationDialog()),
+          button("检查原对账记录与恢复", () => reconciliationDialog()),
+          button("检查原导出记录与恢复", () => exportDialog()),
+        ) : null,
+      ) : null,
       panel("冻结角色与工作单元", "后续项目绑定调整不会更换此任务已冻结的选择。",
         bindings
           ? table(["角色", "工具", "模型"], Object.entries(bindings.bindings).map(([role, binding]) => [role, binding.tool, binding.model ?? "未指定"]))
@@ -1439,69 +1552,8 @@ export function tasksView(data, base, { sourceSnapshot = "" } = {}) {
         ])),
         bindings ? disclosure("完整角色快照", bindings) : null,
       ),
-      panel("本地提交回执", "回执记录操作事实；submitted不代表六阶段通过。",
-        saved ? disclosure(`提交状态：${saved.status}`, saved)
-          : node("p", { className: "task-error" }, `提交回执读取失败：${submission.reason.message}`),
-        button("检查提交与恢复", submissionDialog),
-        saved?.status === "submitted" ? button("按原 ID 检查批准记录", () => approvalDialog()) : null,
-        saved?.status === "submitted" ? button("按原 ID 检查取消记录", () => cancellationDialog()) : null,
-        saved?.status === "submitted" ? button("检查原对账记录与恢复", () => reconciliationDialog()) : null,
-        saved?.status === "submitted" ? button("检查原导出记录与恢复", () => exportDialog()) : null,
-      ),
-      panel("原生运行", "按固定run读取。关闭页面不会取消任务；取消后的外部清理需另行对账。",
-        form([runField], "读取原运行", async (values) => {
-          const runId = values.get("run_id");
-          sessionStorage.setItem(runKey, runId);
-          const reading = ++runSequence;
-          runtime.replaceChildren(empty("正在查询原运行…"));
-          let observed;
-          try {
-            observed = await api(`${path}/status?${new URLSearchParams({ run_id: runId, timeout: "20" })}`);
-          } catch (error) {
-            if (view.isConnected && sequence === detailSequence && reading === runSequence)
-              runtime.replaceChildren(panel("运行查询失败", error.message));
-            return;
-          }
-          if (!view.isConnected || sequence !== detailSequence || reading !== runSequence) return;
-          const state = observed.status || observed.outcome;
-          const currentStage = observed.terminal ? null : stageForPhase[observed.phase];
-          runtime.replaceChildren(...[
-            row(badge(observed.runtime_status), observed.phase ? badge(observed.phase) : null),
-            observed.runtime_status === "not_found"
-              ? empty("未找到所选原运行；这不证明任务从未提交。请核对原run和提交回执。")
-              : facts([
-                ["工作流 ID", observed.workflow_id], ["原 run ID", observed.run_id],
-                ["原运行已闭合", observed.terminal ? "是" : "否"],
-                ["候选提交", state?.candidate_sha], ["计划 SHA256", state?.plan_sha256],
-              ]),
-            observed.runtime_status === "queried"
-              ? button("读取原运行事件", () => eventsDialog(observed.run_id, reading)) : null,
-            !observed.terminal && observed.phase === "AWAITING_PLAN_APPROVAL"
-              ? button("审阅计划与批准", () => {
-                if (!view.isConnected || sequence !== detailSequence || reading !== runSequence) return;
-                return approvalDialog({ run_id: observed.run_id, plan_sha256: observed.status.plan_sha256 }, reading);
-              }, "primary") : null,
-            !observed.terminal && observed.runtime_status === "queried"
-              ? button("请求取消此运行", () => cancellationDialog(observed.run_id, reading)) : null,
-            observed.terminal && observed.runtime_status === "queried"
-              ? button("证据、预算与交接", () => evidenceDialog(observed.run_id, reading)) : null,
-            observed.terminal && observed.runtime_status === "queried"
-              ? button("外部证据与对账", () => reconciliationDialog(observed.run_id, reading)) : null,
-            observed.terminal && observed.runtime_status === "queried" && observed.outcome?.status === "REVIEW_READY"
-              ? button("导出精确候选", () => exportDialog({ run_id: observed.run_id,
-                candidate_sha: observed.outcome.candidate_sha }, reading), "primary") : null,
-            node("div", { className: "stage-strip", "aria-label": "六阶段位置" }, stages.map((stage) =>
-              node("span", { className: currentStage === stage ? "current" : null }, stage))),
-            observed.status ? facts([
-              ["活动阶段/单元", observed.status.active_stages.join("、") || "无"],
-              ["已完成阶段/单元", observed.status.completed_stages.join("、") || "无"],
-            ]) : null,
-            disclosure("原始运行与结果", observed),
-          ].filter(Boolean));
-        }),
-        runtime,
-      ),
-    );
+    ].filter(Boolean));
+    if (readSubmittedRun && saved?.status === "submitted") await readRun(saved.run_id);
   }
 
   loadPage();

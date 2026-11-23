@@ -81,7 +81,17 @@ ergora task submission my-project TASK_ID
 ergora task resume-start my-project TASK_ID --revision 1 --intent-sha256 SUBMISSION_SHA --timeout 20
 ```
 
-`submission` checks only the local submission record without connecting to Temporal. `status: submitted` means the original workflow/run ID receipt is saved; `execution_success: null` does not mean the six stages succeeded. Query progress with `task status --run-id RUN_ID`. Repeated start returns only the original local record without resubmitting. `not_recorded` means no submission intent exists. `prepared` means an intent exists but no dispatch checkpoint has been saved. `unknown` means the checkpoint is saved but the original call's result is unknown. `rejected` means an existing run not belonging to this submission was found and the rejection record preserved. A mutation command reports CLI success only for submitted.
+On the formal task page, enter the original task ID to see its submission and next action. The initial view and `task submission` read local evidence without connecting to Temporal. They show the task and workflow IDs, a run ID when verified by the saved submission receipt, and canonical JSON SHA256 digests for each verified intent, attempt, result and rejection record. A null digest means that record was absent in the local read.
+
+| Submission status | Next action |
+| --- | --- |
+| `not_recorded` | Review the frozen task. To submit it for the first time, use the current project revision and `creation_sha256` with `task start`. |
+| `prepared` | Use `task resume-start` with the original `intent_sha256` to continue admission for the first dispatch. |
+| `unknown` | Use `task resume-start` with the original `intent_sha256` to check the original workflow for its matching input and submission memo. Preserve the original identity and attempt if the lookup fails or returns `not_found`. |
+| `rejected` | Inspect the original rejection digest and conflict reason. A reported conflicting run belongs to the conflict record. |
+| `submitted` | Read progress with `task status --run-id RUN_ID` using the saved run ID. If closed, check [external evidence and reconciliation](#explicitly-reconcile-terminal-state-and-release-issue-leases) for cleanup. |
+
+A mutation command reports CLI success only for `submitted`. The receipt records delivery. Execution and cleanup have their own observations.
 
 The immutable intent is saved first, followed by original admission/claim. An attempt is saved before the actual start, and the native receipt is saved last. prepared can repeat admission through an explicit resume while reusing the same lease. unknown can only query original input under the original workflow ID and fill in the receipt; even NOT_FOUND does not permit resending. A crash after writing the checkpoint but before the actual RPC also retains unknown and requires manual reconciliation. An existing run is rejected rather than taken over; later disappearance of its history does not automatically restart it. The original start associates this submission-intent digest in Temporal memo, and unknown recovery also checks that marker. Missing or different markers prevent adoption as this submission. An AlreadyStarted response from a submission race is persistently rejected without adopting another entry point's run. Original input is compared exactly by canonical JSON digest, distinguishing true/1/1.0. Original-input mismatch, RPC failure and contract/registration drift all cause explicit errors. Do not change the task ID to bypass an unknown state, and do not release the lease. Repeated operations with an already saved receipt continue returning the original run ID.
 

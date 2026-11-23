@@ -79,7 +79,17 @@ ergora task submission my-project TASK_ID
 ergora task resume-start my-project TASK_ID --revision 1 --intent-sha256 SUBMISSION_SHA --timeout 20
 ```
 
-`submission`仅检查本地提交记录，不连接Temporal。`status: submitted`表示保存了原workflow/run ID回执，`execution_success: null`不代表六阶段成功；运行进度用`task status --run-id RUN_ID`查询。重复start只返回原本地记录，不重发提交。`not_recorded`表示没有提交意图，`prepared`表示已有意图但尚无派发检查点，`unknown`表示检查点已保存而原调用结果未知，`rejected`表示发现不属于本次提交的既有run并保留了拒绝记录。变更命令仅在submitted时返回CLI成功。
+在正式任务页输入原任务 ID，即可查看提交记录和下一步。任务详情初次打开和 `task submission` 都只读本地证据。任务与工作流 ID、由提交回执验证的原 run ID，以及已验证的意图、尝试、回执和拒绝记录的规范 JSON SHA256 摘要均在此显示。摘要为 null 表示此次本地读取未见该记录。
+
+| 提交状态 | 下一步 |
+| --- | --- |
+| `not_recorded` | 检查冻结任务。确认首次提交时，用当前项目修订和 `creation_sha256` 执行 `task start`。 |
+| `prepared` | 用原 `intent_sha256` 执行 `task resume-start`，继续首次派发的准入。 |
+| `unknown` | 用原 `intent_sha256` 执行 `task resume-start`，查询原工作流的输入与提交 memo。查询失败或返回 `not_found` 时保留原任务身份和尝试记录。 |
+| `rejected` | 核对原拒绝摘要和冲突原因。返回的冲突 run ID 属于冲突记录。 |
+| `submitted` | 用已保存的原 run ID 执行 `task status --run-id RUN_ID`。原运行闭合后按[外部证据与对账](#显式终态对账与工单租约释放)核对清理。 |
+
+变更命令仅在 `submitted` 时返回 CLI 成功。提交回执记录投递事实，执行进展和清理状态需分别查询。
 
 先保存不可变意图，再走原准入/claim；实际start之前保存attempt，最后保存原生回执。prepared可通过明确resume重走准入、复用同一租约；unknown只能沿原workflow ID查询原始输入并补回执，即使NOT_FOUND也不能重发。检查点写入后、实际RPC前崩溃也保留unknown，需人工对账。发现既有run时拒绝接管，后续历史消失也不会自动重新开始。原start在Temporal memo中关联本次提交意图摘要，未知恢复还会核对该标记；没有或不同的标记不能被采用为本次提交。提交竞争返回AlreadyStarted会持久拒绝，不采用其他入口的run。原始输入按规范JSON摘要精确比较，true/1/1.0不混淆。原始输入不一致、RPC失败、合同/登记漂移均明确报错，不换任务ID绕过未知状态，不释放租约。已保存回执的重复操作继续返回原run ID。
 

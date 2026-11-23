@@ -9,12 +9,7 @@ import json
 from pathlib import PurePosixPath
 
 
-class RouteBlocked(ValueError):
-    """A selected route cannot execute at the identified graph instance."""
-
-    def __init__(self, instance: str, reason: str):
-        super().__init__(f'{reason} ({instance})')
-        self.instance, self.reason = instance, reason
+from ergora.development.route_errors import RouteBlocked
 
 
 def require_root_task(instances: dict, leaf: dict) -> None:
