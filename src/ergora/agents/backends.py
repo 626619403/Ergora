@@ -625,6 +625,12 @@ _BACKENDS = {"codex": CodexBackend, "claude-code": ClaudeCodeBackend,
              "mini-swe-agent": MiniSweBackend, "deepseek-harness": DeepSeekHarnessBackend, "command": CommandBackend}
 
 
+def supports_mode(tool: str, mode: str) -> bool:
+    """Read the registered backend's mode declaration without constructing it."""
+    implementation = components.COMPONENTS[tool]["implementation"]
+    return mode in _BACKENDS[implementation].invocation_modes
+
+
 def for_binding(binding: dict, configurations: dict | None = None) -> AgentBackend:
     implementation = components.COMPONENTS[binding["tool"]]["implementation"]
     return _BACKENDS[implementation](binding, (configurations or {}).get(implementation, {}))

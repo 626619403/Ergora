@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import runpy
 import shutil
 import subprocess
 import sys
@@ -282,6 +283,295 @@ def test_complete_review_report_retains_each_original_and_minority_without_redis
     with state.connect() as db:
         assert list(db.iterdump()) == before
     assert {name: Path(name).read_bytes() for name in originals} == originals
+
+
+@pytest.mark.parametrize("expected,fault", [
+    ("confirmed", None), ("disproved", None), ("inconclusive", None),
+    ("confirmed", "selector"), ("confirmed", "reason"), ("confirmed", "binding"), ("confirmed", "recipe"),
+    ("confirmed", "unknown-run"), ("confirmed", "unsupported-mode"), ("confirmed", "saved-unicode"),
+], ids=["confirmed", "disproved", "inconclusive", "invalid-selector", "invalid-reason", "invalid-binding", "same-recipe",
+        "unknown-validator-run", "unsupported-saved-mode", "malformed-saved-unicode"])
+def test_finding_validation_binds_one_original_reply_to_a_cpu_case(expected, fault, review_manifest, tmp_path, monkeypatch, capsys):
+    def call(*arguments, exit_code=0):
+        assert cli.main(["--home", str(state.root), *map(str, arguments)]) == exit_code
+        output = capsys.readouterr()
+        if exit_code:
+            return output.err
+        return json.loads(output.out)
+
+    def save(path, value):
+        path.write_text(json.dumps(value, ensure_ascii=False), encoding="utf-8")
+        return path
+
+    examples = Path(__file__).resolve().parents[1] / "examples" / "review" / "training_domains.py"
+    oracle_directory = tmp_path / "oracles"
+    example = runpy.run_path(str(examples))["build"](oracle_directory, "pretraining")
+    root = oracle_directory / "pretraining"
+    repository = root / "source"
+    assert example["values"] == pytest.approx({"base": 7.5, "regression": 16 / 3, "valid": 7.5})
+    case = "regression" if expected == "confirmed" else "valid"
+    receipt = example["packets"][case]
+    if expected == "inconclusive":
+        receipt = review_packets.prepare(repository, repository_id="example/pretraining", base=example["base"],
+            head=example["valid"], requirements=root / "request.md", context_paths=["loss.py", "config.json"],
+            destination=root / "missing-caller")
+    source = receipt["directory"]
+    state = State(tmp_path / "finding-state")
+    projects.create(state, "demo", repository)
+
+    agent = tmp_path / "validator-agent"
+    agent.mkdir()
+    instructions = b"Independently validate the selected finding using only the supplied task.\n"
+    (agent / "instructions.md").write_bytes(instructions)
+    save(agent / "agent.json", {"schema_version": 1, "id": "finding-inspector", "version": "1.0.0",
+        "description": "Check the selected finding", "roles": ["inspector", "reviewer"], "specialties": ["finding-validation"],
+        "backend": {"tool": "codex"}, "resources": [{"id": "finding-instructions", "kind": "instructions",
+            "path": "instructions.md", "sha256": hashlib.sha256(instructions).hexdigest()}]})
+    imported = call("agent", "definition", "import", agent)
+    policy = {"read": ["workspace", "definitions"], "write": [], "shell": False, "network": []}
+    limits = {"depth": 2, "instances": 4, "concurrency": 1, "material_bytes": 8192}
+    workflow = tmp_path / "validator-workflow"
+    workflow.mkdir()
+    save(workflow / "workflow.json", {"schema_version": 2, "id": "finding-validation", "version": "1.0.0",
+        "description": "One independent inspector", "resources": [], "permissions": policy, "limits": limits,
+        "inputs": ["task"], "outputs": {"result": {"node": "inspect", "output": "result"}},
+        "nodes": [{"id": "inspect", "ref": {"kind": "agent", "id": "finding-inspector", "version": "1.0.0",
+            "digest": imported["digest"]}, "role": "inspector", "depends_on": [],
+            "inputs": {"task": {"input": "task"}}, "permissions": policy}]})
+    call("composition", "import", workflow)
+    grant = save(tmp_path / "grant.json", {"schema_version": 1, "permissions": policy, "limits": limits})
+    validator = call("composition", "prepare-manifest", "finding-validation", "1.0.0",
+                     "--grant", grant, "--directory", tmp_path / "validator")
+    validator_scope = ["--validator-manifest", validator["path"], "--validator-manifest-digest", validator["digest"]]
+    if fault == "recipe":
+        recipe = json.loads((workflow / "workflow.json").read_bytes())
+        recipe["id"] = "same-recipe-review"
+        recipe["nodes"][0]["role"] = "reviewer"
+        recipe["nodes"][0]["review_requirement"] = "required"
+        call("composition", "import", save(workflow / "workflow.json", recipe).parent)
+        manifest = call("composition", "prepare-manifest", recipe["id"], "1.0.0",
+                        "--grant", grant, "--directory", tmp_path / "same-recipe-review")
+        instance = "root/inspect"
+    else:
+        manifest = review_manifest("pretraining")
+        instance = "root/domain/review"
+    scope = ["--source-kind", "local", "--source-sha256", receipt["packet_sha256"],
+             "--manifest", manifest["path"], "--manifest-digest", manifest["digest"]]
+    exercise_r1_controls = expected == "confirmed" and fault is None
+
+    claim = ("The head caller reweights the selected tokens before invoking objective." if expected == "inconclusive"
+             else "The head's reduction changes the equally weighted all-token mean.")
+    prefix, quote = "审查结果\r\n", "发现：" + claim
+    original_reply = prefix + quote + "\r\n\r\nThe original evidence and remaining scope are retained."
+    calls = []
+    invalid_citation = False
+
+    def native(argv, cwd, output, timeout, stdin, env, **kwargs):
+        task = json.loads(stdin.rsplit("Operator supplied task (workflow ports have not been executed):\n", 1)[1])
+        calls.append(task["kind"])
+        if task["kind"] == "source-bound-advisory-review":
+            result = {"summary": "Original review", "decision": "request-changes", "artifacts": {"response": original_reply}}
+        else:
+            assert task["kind"] == "source-bound-finding-validation"
+            assert task["finding"] == prepared["finding"]
+            assert task["material"] == review_packets.read(Path(source), sha256=receipt["packet_sha256"])
+            packet = task["material"]["packet"]
+            files, blobs = packet["source"]["head"]["files"], packet["source"]["blobs"]
+            if "run.py" not in files:
+                reply = {"verdict": "inconclusive", "reason": "The original caller run.py is absent.", "evidence": []}
+            else:
+                batches = json.loads(blobs[files["config.json"]["git_object"]]["text"])["batches"]
+                code = blobs[files["loss.py"]["git_object"]]["text"]
+                if "sum(sum(batch) / len(batch) for batch in batches) / len(batches)" in code:
+                    value = sum(sum(batch) / len(batch) for batch in batches) / len(batches)
+                else:
+                    assert "sum(sum(batch) for batch in batches) / sum(len(batch) for batch in batches)" in code
+                    value = sum(sum(batch) for batch in batches) / sum(len(batch) for batch in batches)
+                reply = {"verdict": "disproved" if value == 7.5 else "confirmed",
+                         "reason": f"The selected source computes {value} with an all-token oracle of 7.5. 🧪",
+                         "evidence": [{"side": "head", "path": "loss.py",
+                                       "start_line": 4 if invalid_citation else 3, "end_line": 4 if invalid_citation else 3}]}
+            if fault == "reason":
+                reply["reason"] = "\ud800"
+            result = {"summary": "Independent finding validation", "artifacts": {"response": json.dumps(reply)}}
+        Path(argv[argv.index("--output-last-message") + 1]).write_text(json.dumps(result), encoding="utf-8")
+        output.mkdir()
+        return {"status": "succeeded", "returncode": 0, "output": str(output)}
+
+    monkeypatch.setattr(processes, "run", native)
+    original = call("review", "prepare-input", source, *scope, "--instance", instance,
+                    "--directory", tmp_path / "original", "--max-prompt-bytes", 1000000)
+    review_run = call("composition", "run-input", "demo", original["path"], "--input-digest", original["input_digest"])
+    selector = {"instance": instance, "run_id": review_run["id"], "result_sha256": review_run["result_sha256"],
+                "response_span": [len(prefix.encode()), len((prefix + quote).encode())]}
+    finding = save(tmp_path / "finding.json", selector)
+    prepare_args = ["review", "prepare-finding", "demo", source, *scope, *validator_scope,
+                    "--directory", tmp_path / "prepared-validator", "--max-prompt-bytes", 1000000]
+    if exercise_r1_controls:
+        split = {**selector, "response_span": [selector["response_span"][0] + 1, selector["response_span"][1]]}
+        error = call(*prepare_args, "--finding", save(tmp_path / "split.json", split), exit_code=2)
+        assert "splits a UTF-8 character" in error
+        assert not (tmp_path / "prepared-validator").exists()
+    target = {**selector, "quote": quote, "project": "demo",
+        "input_digest": original["input_digest"], "source_kind": "local", "source_sha256": receipt["packet_sha256"],
+        "head": example[case], "manifest_digest": manifest["digest"]}
+    if fault == "recipe":
+        prepare_exit = cli.main(["--home", str(state.root), *map(str, prepare_args), "--finding", str(finding)])
+        prepare_error = capsys.readouterr().err
+        material = review_packets.read(Path(source), sha256=receipt["packet_sha256"])
+        task = tmp_path / "same-recipe-task.json"
+        task.write_bytes(review_requests._finding_task(material, target, validator["digest"]))
+        forced = call("composition", "prepare-from-manifest", validator["path"], "root/inspect", "--task", task,
+                      "--directory", tmp_path / "forced-validator", "--max-prompt-bytes", 1000000)
+        prepared = {"finding": target, "path": forced["path"], "input_digest": forced["digest"]}
+    else:
+        prepared = call(*prepare_args, "--finding", finding)
+        assert prepared["finding"] == target
+        assert prepared["execution_authorized"] is False and prepared["instance"] == "root/inspect"
+    validation_args = ["composition", "run-input", "demo", prepared["path"], "--model", "fixture-selected", "--input-digest"]
+    if exercise_r1_controls:
+        assert "explicitly selected digest" in call(*validation_args, "0" * 64, exit_code=2)
+        assert len(calls) == 1 and len(agent_runs.runs(state, "demo")) == 1
+    admission = call("composition", "check-input", "demo", prepared["path"], "--input-digest", prepared["input_digest"])
+    assert admission["role"] == "inspector" and admission["policy"]["mode"] == "text-only"
+    validation_run = call(*validation_args, prepared["input_digest"])
+    assert validation_run["binding"] == {"tool": "codex", "model": "fixture-selected"}
+    assert validation_run["requested_binding"] == {"tool": "codex"}
+    selected = {"finding": selector, "validator_manifest": validator["path"], "validator_manifest_digest": validator["digest"],
+                "input_digest": prepared["input_digest"], "run_id": validation_run["id"]}
+    if exercise_r1_controls:
+        invalid_citation = True
+        malformed = call(*validation_args, prepared["input_digest"])
+        assert malformed["status"] == "succeeded"
+        another = example["packets"]["valid"]
+        another_scope = scope.copy()
+        another_scope[3] = another["packet_sha256"]
+        another_input = call("review", "prepare-input", another["directory"], *another_scope, "--instance", instance,
+                             "--directory", tmp_path / "another-original", "--max-prompt-bytes", 1000000)
+        another_run = call("composition", "run-input", "demo", another_input["path"])
+        assert another_run["result_sha256"] == review_run["result_sha256"]
+    assert calls == ["source-bound-advisory-review", "source-bound-finding-validation"] + (
+        ["source-bound-finding-validation", "source-bound-advisory-review"] if exercise_r1_controls else [])
+
+    originals = {path: path.read_bytes() for path in (state.root / "runs").rglob("*") if path.is_file()}
+    before_runs = agent_runs.runs(state, "demo")
+    monkeypatch.setenv("PATH", "")
+    monkeypatch.setattr(agent_backends, "for_binding", lambda *a, **k: pytest.fail("Report must not readmit a backend"))
+    monkeypatch.setattr(processes, "run", lambda *a, **k: pytest.fail("Report must not invoke"))
+    runs = save(tmp_path / "runs.json", {instance: review_run["id"]})
+    args = ["review", "report", "demo", source, *scope, "--runs", runs]
+    base = call(*args)
+    assert base["decision"] == ("request-changes" if fault == "recipe" else "incomplete")
+    assert base["request_changes"] == [instance]
+    selection = save(tmp_path / "validation.json", selected)
+
+    def invalid_report(error, *, raw_available=True, quote_available=True):
+        for output_format in ("json", "markdown"):
+            options = [*args, "--finding-validation", selection, "--format", output_format]
+            if output_format == "json":
+                document = call(*options)
+            else:
+                assert cli.main(["--home", str(state.root), *map(str, options)]) == 0
+                rendered = capsys.readouterr().out
+                assert "## Finding validation\n\nStatus: incomplete" in rendered
+                encoded = rendered.split("## Complete source and original observations\n\n", 1)[1]
+                document = json.loads("\n".join(line[4:] for line in encoded.split("\n") if line.startswith("    ")))
+            validation = document.pop("finding_validation")
+            assert document == base
+            assert validation["status"] == "incomplete" and validation["verdict"] is None
+            assert error in validation["error"]
+            if quote_available:
+                assert validation["finding"]["quote"] == quote
+            if raw_available:
+                raw = validation["observation"]["result"]
+                assert raw["available"] and raw["sha256"] == validation_run["result_sha256"]
+                assert raw["document"] == json.loads((state.root / "runs" / validation_run["id"] / "result.json").read_bytes())
+
+    if fault == "selector":
+        save(selection, {**selected, "finding": {**selector, "response_span": [-1, 1]}})
+        invalid_report("nonempty half-open UTF-8 byte range", quote_available=False)
+        selection.write_text("{", encoding="utf-8")
+        invalid_report("Expecting property name", raw_available=False, quote_available=False)
+    elif fault == "reason":
+        invalid_report("valid UTF-8 text")
+    elif fault == "unknown-run":
+        save(selection, {**selected, "run_id": "unknown-validation"})
+        invalid_report("Unknown agent run", raw_available=False)
+    elif fault in ("binding", "unsupported-mode", "saved-unicode"):
+        if fault == "binding":
+            alternatives = [
+                ({}, "validation run backend binding"),
+                ({"binding": {"tool": "codex", "reasoning_effort": 42}}, "validation run backend binding"),
+                ({"binding": validation_run["binding"], "requested_binding": {"tool": "codex", "model": "other"}},
+                 "requested binding differs"),
+            ]
+        elif fault == "unsupported-mode":
+            alternatives = [({"binding": {"tool": "command", "argv": ["must-not-run"], "protocol": "stage-json-v1",
+                            "capabilities": ["baseline-inspection", "repository-read"]}}, "does not support recorded text-only mode")]
+        else:
+            alternatives = [({"binding": {"tool": "codex", "model": "\ud800"}}, "saved validation observation")]
+        with state.connect() as db:
+            saved = db.execute("SELECT document FROM agent_runs WHERE id=?", (validation_run["id"],)).fetchone()[0]
+        try:
+            for changed, error in alternatives:
+                record = json.loads(saved)
+                del record["binding"]
+                record.update(changed)
+                encoded = json.dumps(record)
+                with state.connect() as db:
+                    db.execute("UPDATE agent_runs SET document=? WHERE id=?", (encoded, validation_run["id"]))
+                invalid_report(error)
+                with state.connect() as db:
+                    assert db.execute("SELECT document FROM agent_runs WHERE id=?", (validation_run["id"],)).fetchone()[0] == encoded
+        finally:
+            with state.connect() as db:
+                db.execute("UPDATE agent_runs SET document=? WHERE id=?", (saved, validation_run["id"]))
+        assert call(*args, "--finding-validation", selection)["finding_validation"]["verdict"] == "confirmed"
+    elif fault == "recipe":
+        invalid_report("different frozen Agent definition")
+        assert prepare_exit == 2 and "different frozen Agent definition" in prepare_error
+    if fault is not None:
+        assert agent_runs.runs(state, "demo") == before_runs
+        assert {path: path.read_bytes() for path in originals} == originals
+        return
+
+    report = call(*args, "--finding-validation", selection)
+    finding_report = report.pop("finding_validation")
+    assert report == base
+    assert finding_report["status"] == "completed" and finding_report["verdict"] == expected
+    assert finding_report["finding"]["quote"] == quote
+    assert finding_report["observation"]["run"]["id"] == validation_run["id"]
+    if expected != "inconclusive":
+        assert finding_report["evidence"][0]["commit"] == example[case]
+        assert finding_report["reason"].endswith("🧪")
+    else:
+        assert finding_report["evidence"] == [] and "run.py" in finding_report["reason"]
+    if exercise_r1_controls:
+        different_span = {**selector, "response_span": [selector["response_span"][0], len(original_reply.encode())]}
+        for replacement, error in (
+            ({"finding": different_span}, "selected validator"),
+            ({"run_id": malformed["id"]}, "outside its selected blob"),
+            ({"run_id": "unknown-validation"}, "Unknown agent run"),
+        ):
+            invalid = call(*args, "--finding-validation", save(selection, {**selected, **replacement}))
+            finding_report = invalid.pop("finding_validation")
+            assert invalid == base and finding_report["verdict"] is None
+            assert finding_report["status"] == "incomplete" and error in finding_report["error"]
+        other_selection = {**selected, "finding": {**selector, "run_id": another_run["id"]}}
+        moved = call("review", "report", "demo", another["directory"], *another_scope,
+                     "--runs", save(tmp_path / "another-runs.json", {instance: another_run["id"]}),
+                     "--finding-validation", save(selection, other_selection))
+        assert moved["coverage"]["completed"] == 1 and moved["request_changes"] == [instance]
+        mismatch = moved["finding_validation"]
+        assert mismatch["finding"]["head"] == example["valid"] and mismatch["verdict"] is None
+        assert "selected validator" in mismatch["error"]
+        save(selection, selected)
+        argv = ["--home", str(state.root), *map(str, args), "--finding-validation", str(selection), "--format", "markdown"]
+        assert cli.main(argv) == 0
+        validation_section = capsys.readouterr().out.split("## Finding validation\n", 1)[1]
+        assert "    " + quote in validation_section
+    assert agent_runs.runs(state, "demo") == before_runs
+    assert {path: path.read_bytes() for path in originals} == originals
 
 
 def test_review_report_keeps_original_unfinished_states_separate_from_evidence_and_opinion(reviewed_source):
