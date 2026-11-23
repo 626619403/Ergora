@@ -19,9 +19,10 @@ import pytest
 
 from ergora.configuration import projects
 from ergora.definitions import workflows
-from ergora.development import application as tasks, envelopes
+from ergora.development import application as tasks, envelopes, plan_methods
 from ergora.development.inputs import execution_input
 from ergora.interfaces import cli
+from ergora._paths import IMPORT_ROOT
 from test_registrations import installation, registration
 from test_task_budget import budget_creation, budget_graph
 from test_task_creation import creation_project
@@ -30,6 +31,48 @@ from test_workflow_definitions import ref, write_bundle
 
 
 pytestmark = pytest.mark.skipif(sys.platform != 'linux', reason='Formal task operations use Linux/WSL2')
+
+
+def _inspect_method_materials(contexts, runtime, config, installation):
+    source = '''
+import json,sys
+from ergora.development.runtime.executor import Blocked, Executor, STATE, canonical_sha
+
+contexts = json.load(sys.stdin)
+observed = {}
+for context in contexts:
+    composite = Executor._validate_method_approval(context, context['admission'])
+    assert composite == context['approved_plan']['approval']['approval_plan_sha256']
+    owner = Executor.__new__(Executor)
+    owner.context, owner.stage = context, context['stage'].split(':')[0]
+    owner.work_delivery, owner.envelope = True, {'job_sha256': canonical_sha(context)}
+    projected = owner._composition_context()['approved_plan']['approval']
+    assert 'method_addendum' not in projected and projected['approval_plan_sha256'] == composite
+    observed[context['stage']] = owner._method_material()
+context = contexts[0]
+proof = context['approved_plan']['approval']
+path = STATE / 'approvals' / (proof['receipt_id'] + '.json')
+original = path.read_bytes()
+altered = json.loads(original)
+altered['method_addendum']['methods']['a'] += '!'
+try:
+    path.write_text(json.dumps(altered))
+    try:
+        Executor._validate_method_approval(context, context['admission'])
+    except Blocked as error:
+        assert 'Saved owner receipt does not bind' in str(error)
+    else:
+        raise AssertionError('Executor accepted changed owner method bytes')
+finally:
+    path.write_bytes(original)
+print(json.dumps(observed, ensure_ascii=False))
+'''
+    env = dict(os.environ, AGENTFLOW_CONFIG_DIR=str(config), AGENTFLOW_STATE_DIR=str(runtime), PYTHONUTF8='1',
+               PYTHONPATH=os.pathsep.join(map(str, (IMPORT_ROOT, installation / 'local', installation / 'upstream/platform'))))
+    result = subprocess.run([sys.executable, '-P', '-c', source], input=json.dumps(contexts, ensure_ascii=False),
+                            env=env, capture_output=True, encoding='utf-8', timeout=10)
+    assert result.returncode == 0, result.stderr
+    return json.loads(result.stdout)
 
 
 @pytest.fixture
@@ -100,6 +143,30 @@ def test_work_priority_respects_original_dependencies_and_stop(priority_creation
         return run.prioritize_work_unit({'decision_id': decision, 'work_unit_id': unit, 'run_id': 'original',
             'request_sha256': run.spec['request_sha256'], 'admission_sha256': run.admission['sha256'],
             'plan_sha256': run.plan_sha256, 'project_revision': revision})
+
+    method = plan_methods.addendum(selected.document, 'original', run.plan_sha256, {'a': 'Use the existing parser.'})
+    with pytest.raises(ValueError, match='frozen original work units'):
+        plan_methods.addendum(selected.document, 'original', run.plan_sha256, {'unknown': 'Use the parser.'})
+    with pytest.raises(ValueError, match='2048 bytes'):
+        plan_methods.addendum(selected.document, 'original', run.plan_sha256, {'a': '字' * 700})
+    signal = {'request_sha256': selected.spec['request_sha256'], 'plan_sha256': plan_methods.approval_digest(method),
+              'receipt_id': 'method-owner', 'method_addendum': method}
+    run.phase = 'AWAITING_PLAN_APPROVAL'
+    run.approved_plan = None
+    run.pending_approval = {'receipt_id': 'prior-owner'}
+    run.approve_plan(signal)
+    assert run.pending_approval == {'receipt_id': 'prior-owner'} and 'already pending or used' in run.last_rejection
+    run.pending_approval = None
+    current_time = cutoff
+    run.approve_plan(signal)
+    assert run.pending_approval is None and 'cutoff' in run.last_rejection
+    current_time -= timedelta(seconds=1)
+    run.request_cancel({'request_sha256': selected.spec['request_sha256'], 'reason': 'Before method approval'})
+    run.approve_plan(signal)
+    assert run.pending_approval is None and 'Cancellation' in run.last_rejection
+    run.cancel_reason = None
+    run.phase = 'IMPLEMENTING'
+    run.approved_plan = {'plan_sha256': run.plan_sha256}
 
     async def stage(stage, expected_sha=None, unit=None, dependencies=None):
         key = unit['id']
@@ -509,8 +576,9 @@ Client.start_workflow = start
 
 
 @pytest.mark.skipif(not os.environ.get('ERGORA_TEST_TEMPORAL_BIN'), reason='Requires the optional local Temporal CLI')
-@pytest.mark.parametrize('steer', [False, True], ids=['original-order', 'prioritize'])
-def test_original_run_applies_and_recovers_pending_priority(priority_creation, tmp_path, monkeypatch, capsys, steer):
+@pytest.mark.parametrize(('steer', 'with_method'), [(False, False), (True, False), (False, True)],
+                         ids=['original-order', 'prioritize', 'method-addendum'])
+def test_original_run_applies_and_recovers_pending_priority(priority_creation, tmp_path, monkeypatch, capsys, steer, with_method):
     pytest.importorskip('temporalio')
     binary = os.environ['ERGORA_TEST_TEMPORAL_BIN']
     from ergora.development.runtime.worker import _ErgoraPackage
@@ -519,7 +587,8 @@ def test_original_run_applies_and_recovers_pending_priority(priority_creation, t
     from temporalio.worker import Replayer, Worker
 
     state, registered, definition = priority_creation
-    monkeypatch.syspath_prepend(str(Path(registered['execution']['installation']) / 'upstream/platform'))
+    installation = Path(registered['execution']['installation'])
+    monkeypatch.syspath_prepend(str(installation / 'upstream/platform'))
     assert tasks.prepare(state, 'demo', definition, 1)['status'] == 'prepared'
     preview = tasks.preview(state, 'demo', definition, 1)
     created = tasks.create(state, 'demo', definition, 1, preview['preview_sha256'], prepare_sha256=preview['prepare_sha256'])
@@ -530,6 +599,15 @@ def test_original_run_applies_and_recovers_pending_priority(priority_creation, t
     plan_approval = []
     sends = tmp_path / 'update-sends'
     racing, release_race = tmp_path / 'racing', tmp_path / 'release-race'
+    approval_sends = tmp_path / 'approval-sends'
+    runtime = Path(registered['execution']['state_directory'])
+    config_dir = Path(registered['execution']['config_directory'])
+    approval_received, authorize_method, plan_published = asyncio.Event(), asyncio.Event(), asyncio.Event()
+    if with_method:
+        config = {key: str(runtime / key) for key in ('requests', 'receipts', 'artifacts', 'approvals', 'fences')}
+        config['trusted_receipts'] = True
+        (config_dir / 'adapter.json').write_text(json.dumps(config), encoding='utf-8')
+        adapter = selected.adapter(config)
 
     @activity.defn(name='dev_validate')
     async def validate(spec):
@@ -540,6 +618,8 @@ def test_original_run_applies_and_recovers_pending_priority(priority_creation, t
     async def submit(context):
         job = {key: context[key] for key in ('task_id', 'job_id')}
         assert context['job_id'] not in contexts and context['admission'] == selected.document
+        if with_method:
+            await adapter.submit(context)
         contexts[context['job_id']] = context
         if context['stage'].startswith('work:'):
             await work.put(context['unit']['id'])
@@ -554,11 +634,41 @@ def test_original_run_applies_and_recovers_pending_priority(priority_creation, t
             await gates[context['unit']['id']].wait()
         receipt = {**job, 'state': 'SUCCEEDED', 'actor': {'id': stage, 'session_id': job['job_id']},
                    'candidate_sha': selected.spec['request']['repository']['starting_sha']}
+        if with_method:
+            from dev_platform.adapter import publish
+
+            files = {}
+            if stage == 'plan':
+                files = {name: f'Original {name}' for name in selected.spec['profile']['artifacts_by_stage']['plan']}
+                files['preparation-sources'] = json.dumps({'kind': 'formal-preparation-sources', 'stage': 'plan',
+                    'member': context['preparation_ports']['member'], 'request_sha256': context['request_sha256'],
+                    'profile_sha256': context['profile_sha256'], 'admission_sha256': context['admission']['sha256'],
+                    'members': {}, 'inventory': {'outputs': {}}})
+            artifacts = []
+            for name, material in files.items():
+                relative = f"{context['task_id']}/{context['job_id']}/{name}.txt"
+                path = adapter.path('artifacts', relative)
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(material.encode())
+                artifacts.append({'name': name, 'path': relative, 'sha256': hashlib.sha256(material.encode()).hexdigest()})
+            receipt.pop('task_id')
+            group = stage.split(':')[0]
+            receipt['actor'].update(kind='ci' if group in ('integrate', 'verify') else 'agent',
+                                    role=selected.spec['profile']['roles'][group])
+            receipt.update(schema_version=1, artifacts=artifacts, checks=[])
+            publish(adapter.path('receipts', f"{context['task_id']}/{context['job_id']}.json"), receipt)
+            if stage == 'plan':
+                plan_published.set()
         return {'receipt': receipt, 'review_decision': 'approve'} if stage.startswith('review:') else receipt
 
     @activity.defn(name='dev_authorize_plan')
     async def authorize(context):
         plan_approval.append(context)
+        if with_method:
+            result = await adapter.authorize(context)
+            approval_received.set()
+            await authorize_method.wait()
+            return result
         return {'receipt_id': context['receipt_id']}
 
     @activity.defn(name='dev_fence')
@@ -574,7 +684,7 @@ def test_original_run_applies_and_recovers_pending_priority(priority_creation, t
             def run_native(argv, **kwargs):
                 if isinstance(argv[-1], str) and argv[-1].startswith('from ergora.development.runtime.'):
                     command = argv[-1]
-                    if any(name in command for name in ('.submission', '.approval', '.work_priority')):
+                    if any(name in command for name in ('.submission', '.approval', '.work_priority', '.reconciliation')):
                         setup = f"""
 import asyncio
 from pathlib import Path
@@ -601,6 +711,14 @@ async def execute_update(self, *args, **kwargs):
         raise WorkflowUpdateRPCTimeoutOrCancelledError()
     return result
 WorkflowHandle.execute_update = execute_update
+send_signal = WorkflowHandle.signal
+async def signal(self, method, value, **kwargs):
+    await send_signal(self, method, value, **kwargs)
+    if isinstance(value, dict) and 'method_addendum' in value:
+        with Path({str(approval_sends)!r}).open('a') as stream:
+            print(value['receipt_id'], file=stream)
+        raise TimeoutError('Controlled loss after the exact approval signal')
+WorkflowHandle.signal = signal
 """
                         argv = [*argv[:-1], setup + command]
                 return original_run(argv, **kwargs)
@@ -616,17 +734,57 @@ WorkflowHandle.execute_update = execute_update
                     assert submitted['status'] == 'submitted'
                     run_id = submitted['run_id']
                     handle = service.client.get_workflow_handle(submitted['workflow_id'], run_id=run_id)
-                    async with asyncio.timeout(5):
+                    async with asyncio.timeout(30 if with_method else 5):
+                        if with_method:
+                            await plan_published.wait()
                         while (current := await handle.query('status'))['phase'] != 'AWAITING_PLAN_APPROVAL':
-                            await asyncio.sleep(.05)
+                            await asyncio.sleep(.15 if with_method else .05)
                     plan = current['plan_sha256']
                     if steer:
                         before_approval = await asyncio.to_thread(tasks.prioritize_work_unit, state, 'demo',
                             definition['task_id'], 'c', 1, run_id=run_id, plan_sha256=plan,
                             decision_id='before-approval', confirm=True)
                         assert before_approval['status'] == 'rejected' and not before_approval['attempt_saved']
-                    assert (await asyncio.to_thread(tasks.approve, state, 'demo', definition['task_id'], 'owner', 1,
-                                run_id=run_id, plan_sha256=plan, confirm=True))['status'] == 'requested'
+                    if with_method:
+                        methods = {'a': 'Reuse the original parser before allocating memory.\r\n完整原文。\n'}
+                        method_file = tmp_path / 'methods.json'
+                        method_file.write_text(json.dumps(methods), encoding='utf-8')
+                        task_args = ['--home', str(state.root), 'task']
+                        target = ['demo', definition['task_id'], '--run-id', run_id]
+                        method_args = ['--method-addendum', str(method_file)]
+                        assert await asyncio.to_thread(cli.main, [*task_args, 'plan', *target,
+                            '--plan-sha256', plan, *method_args]) == 0
+                        method_preview = json.loads(capsys.readouterr().out)
+                        assert method_preview['plan_sha256'] == plan and method_preview['method_addendum']['methods'] == methods
+                        assert next(item['text'] for item in method_preview['materials'] if item['name'] == 'execution-plan') == 'Original execution-plan'
+                        composite = method_preview['approval_plan_sha256']
+                        assert composite != plan and work.empty()
+                        with pytest.raises(ValueError, match='exact composite Plan digest'):
+                            await asyncio.to_thread(tasks.approve, state, 'demo', definition['task_id'], 'tampered', 1,
+                                run_id=run_id, plan_sha256=composite, confirm=True, methods={'a': methods['a'] + '!'},
+                                original_plan_sha256=plan)
+                        assert await asyncio.to_thread(cli.main, [*task_args, 'approve', *target, '--decision-id', 'owner',
+                            '--revision', '1', '--confirm', '--plan-sha256', composite, '--original-plan-sha256', plan,
+                            *method_args]) == 2
+                        assert 'Approval timed out' in capsys.readouterr().err
+                        pending = await asyncio.to_thread(tasks.approval, state, 'demo', definition['task_id'], 'owner')
+                        assert pending['status'] == 'unknown' and pending['plan_sha256'] == composite
+                        await asyncio.wait_for(approval_received.wait(), 5)
+                        assert work.empty()
+                        await handle.signal('approve_plan', {'request_sha256': selected.spec['request_sha256'],
+                            'receipt_id': 'second-owner', 'plan_sha256': composite, 'method_addendum': method_preview['method_addendum']})
+                        async with asyncio.timeout(5):
+                            while (await handle.query('status'))['last_rejection'] is None:
+                                await asyncio.sleep(.025)
+                        assert 'already pending or used' in (await handle.query('status'))['last_rejection']
+                        recovered_approval = await asyncio.to_thread(tasks.resume_approve, state, 'demo', definition['task_id'],
+                            'owner', 1, pending['intent_sha256'], confirm=True)
+                        assert recovered_approval['status'] == 'requested' and recovered_approval['signal_delivery'] == 'history'
+                        assert approval_sends.read_text().splitlines() == [pending['owner_receipt_id']]
+                        authorize_method.set()
+                    else:
+                        assert (await asyncio.to_thread(tasks.approve, state, 'demo', definition['task_id'], 'owner', 1,
+                                    run_id=run_id, plan_sha256=plan, confirm=True))['status'] == 'requested'
 
                     async def prioritize(unit, decision, *, plan_sha256=plan, revision=1):
                         return await asyncio.to_thread(cli.main, ['--home', str(state.root), 'task', 'prioritize-work',
@@ -640,6 +798,14 @@ WorkflowHandle.execute_update = execute_update
                         return json.loads(capsys.readouterr().out)
 
                     assert await asyncio.wait_for(work.get(), 5) == 'a'
+                    if with_method:
+                        live = await handle.query('status')
+                        assert live['plan_sha256'] == composite and live['original_plan_sha256'] == plan
+                        assert await prioritize('b', 'base-is-stale') == 1
+                        denied = json.loads(capsys.readouterr().out)
+                        assert denied['status'] == 'rejected' and not denied['attempt_saved']
+                        assert await prioritize('b', 'method-bound-priority', plan_sha256=composite) == 0
+                        assert json.loads(capsys.readouterr().out)['status'] == 'applied'
                     if steer:
                         info = (await handle.query('status'))['work_priority']
                         assert info == {'available': True, 'unavailable_reason': None,
@@ -691,6 +857,81 @@ WorkflowHandle.execute_update = execute_update
                     assert result['status'] == 'REVIEW_READY'
                     assert result['plan_sha256'] == plan and len(plan_approval) == 1
                     assert result['budget']['sha256'] == selected.document['budget']['instance']['sha256']
+                    if with_method:
+                        assert result['plan_approval']['approval_plan_sha256'] == composite
+                        assert result['plan_approval']['method_addendum'] == method_preview['method_addendum']
+                        work_contexts = [context for context in contexts.values() if context['stage'].startswith('work:')]
+                        review_contexts = [context for context in contexts.values() if context['stage'].startswith('review:')]
+                        units = {unit['id']: unit for unit in selected.spec['request']['input']['work_units']}
+                        assert len(work_contexts) == len(units) and review_contexts
+                        for context in work_contexts:
+                            assert context['unit'] == {**units[context['unit']['id']], 'approval_plan_sha256': composite}
+                        for context in review_contexts:
+                            assert context['review_ports']['approval_plan_sha256'] == composite
+                        assert all(context['approved_plan']['plan_sha256'] == plan for context in [*work_contexts, *review_contexts])
+                        materials = await asyncio.to_thread(_inspect_method_materials,
+                            [*work_contexts, *review_contexts], runtime, config_dir, installation)
+                        expected = {'approved_plan_methods': {'original_plan_sha256': plan,
+                            'approval_plan_sha256': composite, 'method_addendum_sha256': method_preview['method_addendum_sha256'],
+                            'methods': methods}}
+                        assert materials['work:a'] == expected
+                        assert all(materials['work:' + key] == {} for key in units.keys() - {'a'})
+                        expected_review = {'approved_plan_methods': {'approval_plan_sha256': composite,
+                            'method_addendum_sha256': method_preview['method_addendum_sha256'],
+                            'method_addendum': method_preview['method_addendum']}}
+                        assert all(materials[context['stage']] == expected_review for context in review_contexts)
+
+                        revised = {**definition, 'task_id': 'audit-successor',
+                                   'input': {**definition['input'], 'goal': 'Handle a new fixture requirement'}}
+                        task_id = definition['task_id']
+
+                        async def inspect_authority(expected_state):
+                            index = await asyncio.to_thread(tasks.evidence, state, 'demo', task_id, run_id=run_id)
+                            preview = await asyncio.to_thread(tasks.preview_amendment, state, 'demo', task_id, revised, 1,
+                                run_id=run_id, change='Different requirements')
+                            checkpoint = preview['checkpoint']
+                            method = index['method_approval']
+                            assert not index['unresolved_jobs'] and method == checkpoint['method_approval']
+                            assert index['original_outcome'] == result == checkpoint['original_outcome']
+                            assert method['state'] == expected_state and checkpoint['plan']['receipt_sha256'] == plan
+                            if expected_state == 'verified':
+                                assert index['published_evidence'] == 'verified' and checkpoint['plan']['state'] == 'accepted'
+                                assert method['approval_plan_sha256'] == checkpoint['plan']['approval_plan_sha256'] == composite
+                            else:
+                                assert index['external_confirmed'] is True and checkpoint['external_confirmed'] is True
+                                assert index['published_evidence'] == 'incomplete' and checkpoint['plan']['state'] == 'unverified'
+                                assert 'approval_plan_sha256' not in method and 'approval_plan_sha256' not in checkpoint['plan']
+                            return method
+
+                        await inspect_authority('verified')
+                        saved_approval = runtime / 'approvals' / (pending['owner_receipt_id'] + '.json')
+                        original_approval = saved_approval.read_bytes()
+                        original_mode = stat.S_IMODE(saved_approval.stat().st_mode)
+                        saved_approval.unlink()
+                        try:
+                            release = await asyncio.to_thread(tasks.reconcile, state, 'demo', task_id, 1,
+                                                              run_id=run_id, confirm=True)
+                            assert release['status'] == 'reconciled' and release['lease_released'] is True
+                            missing = await inspect_authority('unverified')
+                            assert 'missing' in missing['reason']
+                            destination = tmp_path / 'incomplete-handoff.zip'
+                            with pytest.raises(ValueError, match='complete verified original materials'):
+                                await asyncio.to_thread(tasks.handoff, state, 'demo', task_id, run_id=run_id, output=destination)
+                            assert not destination.exists()
+                            changed = json.loads(original_approval)
+                            changed['method_addendum']['methods']['a'] += '!'
+                            saved_approval.write_text(json.dumps(changed), encoding='utf-8')
+                            invalid = await inspect_authority('unverified')
+                            assert 'does not bind' in invalid['reason']
+                        finally:
+                            saved_approval.write_bytes(original_approval)
+                            saved_approval.chmod(original_mode)
+                        await inspect_authority('verified')
+                        destination = tmp_path / 'verified-handoff.zip'
+                        packet = await asyncio.to_thread(tasks.handoff, state, 'demo', task_id, run_id=run_id, output=destination)
+                        from ergora.development import handoff
+
+                        assert handoff.verify(destination, sha256=packet['sha256'])['status'] == 'verified'
                     if steer:
                         assert (await priority_outcome('lost-reply')) == recovered
                         attempt_path = (Path(registered['execution']['state_directory']) / 'ergora/task-submissions'
@@ -718,7 +959,7 @@ WorkflowHandle.execute_update = execute_update
                     completed_updates = [event.workflow_execution_update_completed_event_attributes.meta.update_id
                                          for event in history.events
                                          if event.HasField('workflow_execution_update_completed_event_attributes')]
-                    assert completed_updates == (sends.read_text().splitlines() if steer else [])
+                    assert completed_updates == (sends.read_text().splitlines() if steer or with_method else [])
                 (tmp_path / 'history.json').write_text(history.to_json(), encoding='utf-8')
                 await asyncio.wait_for(Replayer(workflows=[selected.workflow_type()]).replay_workflow(history), 10)
             finally:

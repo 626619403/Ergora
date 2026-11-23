@@ -32,6 +32,7 @@ import ergora.improvement.skill_adoption as skills
 import ergora.operations.tools as tools
 import ergora.definitions.workflows as workflow_definitions
 from ergora.configuration import validation as contracts
+from ergora.development import plan_methods
 from ergora.storage.state import State, resolve_home
 
 
@@ -478,6 +479,7 @@ def parser() -> argparse.ArgumentParser:
     plan.add_argument("task_id")
     plan.add_argument("--run-id", required=True)
     plan.add_argument("--plan-sha256", required=True)
+    plan.add_argument("--method-addendum", type=Path, help="Preview a JSON map of original work unit IDs to method text")
     plan.add_argument("--timeout", type=int, default=20)
     design_source = operations.add_parser("design", help="Store/read complete inspection-only design sources; grants no approval")
     source_operations = design_source.add_subparsers(dest="source_operation", required=True)
@@ -506,6 +508,8 @@ def parser() -> argparse.ArgumentParser:
     approving.add_argument("--revision", type=int, required=True)
     approving.add_argument("--run-id", required=True)
     approving.add_argument("--plan-sha256", required=True)
+    approving.add_argument("--method-addendum", type=Path, help="Approve the exact previewed JSON method map")
+    approving.add_argument("--original-plan-sha256", help="Original Plan receipt digest for a composite approval")
     approving.add_argument("--confirm", action="store_true", required=True)
     approving.add_argument("--timeout", type=int, default=20)
     for name in ("approval", "resume-approve"):
@@ -985,6 +989,22 @@ def parser() -> argparse.ArgumentParser:
     return result
 
 
+def _method_file(path: Path) -> dict:
+    def unique(pairs):
+        result = dict(pairs)
+        if len(result) != len(pairs):
+            raise ValueError('Method addendum contains a duplicate work unit ID')
+        return result
+
+    with path.open('rb') as stream:
+        raw = stream.read(2 * plan_methods.METHODS_BYTES + 1)
+    if len(raw) > 2 * plan_methods.METHODS_BYTES:
+        raise ValueError('Method addendum JSON file exceeds 16384 bytes')
+    methods = json.loads(raw.decode('utf-8-sig'), object_pairs_hook=unique)
+    plan_methods.validate_methods(methods)
+    return methods
+
+
 def main(argv: list[str] | None = None) -> int:
     if os.name == "nt":
         for stream in (sys.stdout, sys.stderr):
@@ -1260,8 +1280,9 @@ def main(argv: list[str] | None = None) -> int:
                                    artifact=args.artifact, receipt_sha256=args.receipt_sha256,
                                    offset=args.offset, limit=args.limit, timeout=args.timeout)
             elif args.operation == "plan":
+                options = {'methods': _method_file(args.method_addendum)} if args.method_addendum else {}
                 output = tasks.plan(state, args.project, args.task_id, run_id=args.run_id,
-                                    plan_sha256=args.plan_sha256, timeout=args.timeout)
+                                    plan_sha256=args.plan_sha256, timeout=args.timeout, **options)
             elif args.operation == "preview-amendment":
                 definition = json.loads(args.definition.read_text(encoding="utf-8-sig"))
                 output = tasks.preview_amendment(state, args.project, args.task_id, definition, args.revision,
@@ -1332,8 +1353,13 @@ def main(argv: list[str] | None = None) -> int:
             elif args.operation == "approval":
                 output = tasks.approval(state, args.project, args.task_id, args.decision_id)
             elif args.operation in ("approve", "resume-approve"):
+                options = {}
+                if args.operation == 'approve' and (args.method_addendum or args.original_plan_sha256):
+                    options = {'methods': _method_file(args.method_addendum) if args.method_addendum else None,
+                               'original_plan_sha256': args.original_plan_sha256}
                 output = (tasks.approve(state, args.project, args.task_id, args.decision_id, args.revision,
-                                        run_id=args.run_id, plan_sha256=args.plan_sha256, confirm=args.confirm, timeout=args.timeout)
+                                        run_id=args.run_id, plan_sha256=args.plan_sha256, confirm=args.confirm,
+                                        timeout=args.timeout, **options)
                           if args.operation == "approve" else
                           tasks.resume_approve(state, args.project, args.task_id, args.decision_id, args.revision,
                                                args.intent_sha256, confirm=args.confirm, timeout=args.timeout))

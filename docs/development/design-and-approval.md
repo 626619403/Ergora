@@ -17,6 +17,22 @@ Each material is limited to 256 KiB, and the total JSON response to 1 MiB. Missi
 
 API: GET `.../tasks/TASK_ID/plan?run_id=RUN_ID&plan_sha256=PLAN_SHA&timeout=20`. The page's “Review plan and approve” uses the same entry point. After a network failure or when the plan is no longer awaiting approval, query status again using the original ID without creating a replacement task.
 
+## Approve per-unit method guidance at the original checkpoint
+
+For a current budgeted native run, the owner can include implementation guidance for named, frozen work units in the initial Plan approval. Use a JSON object such as `{"parse":"Reuse the existing parser before allocating memory."}`, where each key is an original unit ID. Each UTF-8 text value is at most 2,048 bytes and the complete canonical map is at most 8,192 bytes. The guidance shares the original objective, acceptance, checks, assignments, permissions, scopes and budget. Substantive changes to those fields use the linked-successor workflow.
+
+```bash
+ergora task plan my-project TASK_ID --run-id RUN_ID --plan-sha256 ORIGINAL_PLAN_SHA \
+  --method-addendum methods.json
+ergora task approve my-project TASK_ID --decision-id owner-method --revision REVISION --run-id RUN_ID \
+  --original-plan-sha256 ORIGINAL_PLAN_SHA --plan-sha256 APPROVAL_PLAN_SHA \
+  --method-addendum methods.json --confirm
+```
+
+Read the complete original Plan and method preview. Use its `approval_plan_sha256` as `APPROVAL_PLAN_SHA`. The composite digest binds the original Plan receipt and complete canonical addendum, including its exact unit text and original run. The preview is read-only. Preview and approval require a worker with the checkpoint capability. A pending or previously consumed approval, cancellation or expiration closes the method checkpoint. The original worker decides races in original history before work reserves any unit.
+
+Use the same decision ID and `task approval` or `task resume-approve` when delivery is uncertain. Recovery checks the original signal, including the exact method contents. The workflow must verify the owner receipt before dispatch. Work sees its own approved method text and Review sees the complete approved addendum with the original Plan and independent candidate evidence. Use the supported Worker and Executor throughout the run. Status exposes the composite approval digest for method-approved work, including work priority. The evidence index and later amendment checkpoint verify the original owner receipt before reporting the applied composite. A missing or changed receipt leaves the authority audit incomplete.
+
 ## Store complete design sources and reported answers
 
 **Published development candidate:** this section describes source `2ae107b` included in verified public commit `9f3e693498834f071cf20d0f25c18555554765f1`. Its own Portability run `43867345323` is terminal 8/8 success, including existing Windows checks; this source-storage slice's publication/CI gate is closed without inheriting e5's result. Source commands still require Linux/WSL2 below; this adds no native Windows source support. An older installation may not provide these commands. This is inspection-only storage, not a new default design/approval workflow.

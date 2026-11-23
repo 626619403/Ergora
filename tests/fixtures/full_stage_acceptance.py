@@ -14,6 +14,7 @@ import time
 import ergora
 import ergora.agents.runs as agent_runs
 import ergora.definitions.workflows as workflows
+from ergora.development import plan_methods
 from ergora.development.envelopes import preparation_dags
 from ergora.storage.assets import digest_tree
 
@@ -61,7 +62,7 @@ async def _stop_executor(daemon, requests, runtime):
 
 
 def _preparation_rendezvous(case, app, state, runtime):
-    if case not in {'full', 'context', 'owner-source-artifact', 'issue-source', 'development-specialists'}:
+    if case not in {'full', 'context', 'owner-source-artifact', 'issue-source', 'development-specialists', 'method-addendum'}:
         return None
     groups = preparation_dags(app.admission['composition'])
     names = ('server', 'client') if case == 'development-specialists' else ('expert-a', 'expert-b')
@@ -282,12 +283,21 @@ async def _exercise(root, case, app, activities, adapter, installation, state, r
     material = json.loads(inspected.stdout)
     trusted = next(item for item in material['materials'] if item['name'] == 'preparation-sources')
     assert material['plan_sha256'] == plan_sha and json.loads(trusted['text'])['inventory']['receipt'] == records['inventory']
+    method = (plan_methods.addendum(app.admission, 'controlled-method-run', plan_sha,
+                {'implementation': 'Use the existing fixture parser.\r\n原始方法。\n'}) if case == 'method-addendum' else None)
+    approved_sha = plan_methods.approval_digest(method) if method is not None else plan_sha
+    bound_method = {'method_addendum': method} if method is not None else {}
     write(runtime / 'approvals/fixture-approval.json', {'schema_version': 1, 'kind': 'plan-approval',
         'task_id': 'task-1', 'request_sha256': app.spec['request_sha256'], 'profile_sha256': app.spec['profile_sha256'],
-        'plan_sha256': plan_sha, 'decision': 'approve', 'principal_type': 'human', 'actor_id': 'fixture-maintainer',
-        'role': 'maintainer', 'expires_at': time.time() + 3600, 'revoked': False})
+        'plan_sha256': approved_sha, 'decision': 'approve', 'principal_type': 'human',
+        'actor_id': 'fixture-owner' if method is not None else 'fixture-maintainer',
+        'role': 'owner' if method is not None else 'maintainer', 'expires_at': time.time() + 3600, 'revoked': False,
+        **bound_method})
     authorization = await adapter.authorize({'task_id': 'task-1', 'request_sha256': app.spec['request_sha256'],
-        'profile_sha256': app.spec['profile_sha256'], 'plan_sha256': plan_sha, 'receipt_id': 'fixture-approval'})
+        'profile_sha256': app.spec['profile_sha256'], 'plan_sha256': approved_sha, 'receipt_id': 'fixture-approval',
+        **bound_method})
+    if method is not None:
+        app.plan_sha256 = plan_sha
     app.approved_plan = {'plan_sha256': plan_sha, 'receipt': plan, 'approval': authorization}
     result = await original_work(root, case if case.startswith('fixed-') else 'materials-specialists' if selected else ('materials-issue-source' if case == 'issue-source' else 'materials'), app, activities,
         installation, state, runtime, requests, records)
@@ -308,6 +318,34 @@ async def _exercise(root, case, app, activities, adapter, installation, state, r
             original = json.loads(plan_sources)['members'][app.admission['composition']['preparation']['plan']['instance'] + '/expert-a']
             assert any(output['bytes'] > 60000 and output['text'].endswith('Complete planner original tail: kernel 原文，未截断。\r\n')
                        for output in original['outputs'].values())
+    if method is not None:
+        hashes = {'approval_plan_sha256': approved_sha, 'method_addendum_sha256': sha(method)}
+        work_method = {**hashes, 'original_plan_sha256': plan_sha, 'methods': method['methods']}
+        review_method = {**hashes, 'method_addendum': method}
+        consuming = []
+        for stage, receipt in records.items():
+            if not stage.startswith(('work:', 'review:')):
+                continue
+            job = runtime / 'workspaces/task-1/jobs' / receipt['job_id']
+            materials = read(job / 'selected-agent/materials.json')
+            payload = json.loads((job / 'selected-agent/input/task.txt').read_text().splitlines()[-1])
+            invocation = read(job / 'output/selected-agent/invocation.json')
+            assert payload == materials
+            assert (Path(invocation['output']) / 'stdin.txt').read_bytes() == (job / 'selected-agent/input/prompt.txt').read_bytes()
+            scoped = stage == 'work:implementation' or stage.startswith('review:')
+            observed = materials.get('approved_plan_methods')
+            if stage.startswith('review:'):
+                assert observed == review_method
+                assert sha(observed['method_addendum']) == observed['method_addendum_sha256']
+                assert plan_methods.approval_digest(observed['method_addendum']) == observed['approval_plan_sha256']
+            else:
+                assert observed == (work_method if scoped else None)
+            projected = materials['context']['approved_plan']['approval']
+            assert projected['method_addendum_sha256'] == sha(method) and 'method_addendum' not in projected
+            if scoped:
+                consuming.append(stage)
+        assert 'work:implementation' in consuming and any(stage.startswith('review:') for stage in consuming)
+        result['method_material_consumers'] = sorted(consuming)
     if 'budget' in app.admission:
         instance = app.admission['budget']['instance']
         owners = [runtime / 'workspaces/task-1/jobs' / receipt['job_id'] / 'budget' for receipt in records.values()]

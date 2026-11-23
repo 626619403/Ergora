@@ -16,6 +16,7 @@ import time
 import uuid
 
 from ergora.development.runtime.submission import _Submission
+from ergora.development import plan_methods
 from ergora.native.history import find_signal_event
 from ergora.storage.state import file_lock
 from ergora._paths import DATA_ROOT
@@ -73,6 +74,14 @@ def _read_design(creation, selected, context: dict, material: dict) -> tuple[dic
             'work_unit_ids': [unit['id'] for unit in units] if units is not None else None}, materials
 
 
+def _require_method_window(status: dict, submission: _Submission) -> None:
+    capability = status.get('plan_method_addendum')
+    if capability is None or status.get('admission_sha256') != submission.input.document.get('sha256'):
+        raise ValueError('Original worker cannot attest to the method addendum checkpoint')
+    if capability['available'] is not True:
+        raise ValueError(capability['unavailable_reason'])
+
+
 async def _plan(payload: dict) -> dict:
     from dev_platform.adapter import identifier
     from dev_platform.workflow import DevelopmentWorkflow
@@ -117,6 +126,12 @@ async def _plan(payload: dict) -> dict:
         raise ValueError('Original history has no submitted plan job')
 
     result = _plan_materials(submission, intent, run_id, context, event.event_id, payload['plan_sha256'])
+    if 'methods' in payload:
+        _require_method_window(status, submission)
+        method = plan_methods.addendum(submission.input.document, run_id, result['plan_sha256'], payload['methods'])
+        result.update(method_addendum=method, method_addendum_sha256=creation.sha(method),
+                      approval_plan_sha256=plan_methods.approval_digest(method))
+        creation.check_size(result, 1_048_576, 'Plan inspection with method addendum')
     if 'design_read' in result:
         directory = creation.path('ergora/task-approvals/' + creation.task_id)
         if directory.exists():
@@ -775,11 +790,17 @@ class _Approval:
     def actor() -> str:
         return f'unix:{os.getuid()}:{getpass.getuser()}'
 
-    def record(self, revision: int, plan: str, receipt_id: str, created_at: int, actor: str) -> dict:
+    def record(self, revision: int, plan: str, receipt_id: str, created_at: int, actor: str, method=None) -> dict:
         approval = {'schema_version': 1, 'kind': 'plan-approval', 'task_id': self.creation.task_id,
                     'request_sha256': self.spec['request_sha256'], 'profile_sha256': self.spec['profile_sha256'],
                     'plan_sha256': plan, 'decision': 'approve', 'principal_type': 'human', 'actor_id': actor,
                     'role': 'owner', 'expires_at': created_at + 86400, 'revoked': False}
+        if method is not None:
+            plan_methods.require_addendum(method, self.submission.input.document, self.run_id,
+                                          method['original_plan_sha256'])
+            if plan_methods.approval_digest(method) != plan:
+                raise ValueError('Approval must bind the exact composite Plan digest')
+            approval['method_addendum'] = method
         return {**self.submission.expected, 'operation': 'approve', 'project_revision': revision,
                 'submission_sha256': self.sha(self.start_intent), 'run_id': self.run_id,
                 'decision_id': self.decision_id, 'plan_sha256': plan, 'receipt_id': receipt_id,
@@ -799,7 +820,8 @@ class _Approval:
         actor = record['approval']['actor_id']
         if not isinstance(actor, str) or not actor.strip():
             raise ValueError('Saved owner identity is invalid')
-        expected = self.record(record['project_revision'], record['plan_sha256'], record['receipt_id'], record['created_at'], actor)
+        expected = self.record(record['project_revision'], record['plan_sha256'], record['receipt_id'],
+                               record['created_at'], actor, record['approval'].get('method_addendum'))
         if self.sha(record) != self.sha(expected):
             raise ValueError('Approval intent conflicts with its original project, submission, run or owner receipt')
         return record
@@ -808,8 +830,11 @@ class _Approval:
         return self.creation.path('approvals/' + intent['receipt_id'] + '.json')
 
     def signal(self, intent: dict) -> dict:
-        return {'request_sha256': self.spec['request_sha256'], 'plan_sha256': intent['plan_sha256'],
-                'receipt_id': intent['receipt_id']}
+        signal = {'request_sha256': self.spec['request_sha256'], 'plan_sha256': intent['plan_sha256'],
+                  'receipt_id': intent['receipt_id']}
+        if 'method_addendum' in intent['approval']:
+            signal['method_addendum'] = intent['approval']['method_addendum']
+        return signal
 
     def attempt(self, intent: dict) -> dict:
         return {'schema_version': 1, 'intent_sha256': self.sha(intent), 'workflow_id': intent['workflow_id'],
@@ -838,6 +863,8 @@ class _Approval:
         if receipt is not None and (attempt is None or self.sha(receipt) != self.sha(
                 self.receipt(intent, receipt.get('delivery'), receipt.get('history_event_id')))):
             raise ValueError('Approval result conflicts with its original intent or signal checkpoint')
+        if method := intent['approval'].get('method_addendum'):
+            result.update(original_plan_sha256=method['original_plan_sha256'], method_addendum_sha256=self.sha(method))
         return {**result, 'workflow_id': intent['workflow_id'], 'intent_sha256': self.sha(intent),
                 'status': 'requested' if receipt is not None else 'unknown' if attempt is not None else 'prepared',
                 'plan_sha256': intent['plan_sha256'], 'owner_receipt_id': intent['receipt_id'],
@@ -855,9 +882,13 @@ class _Approval:
             raise ValueError('Approval expired; inspect the current plan and make a new explicit decision with a new ID')
         handle, _, _ = await self.submission.lookup_run(self.start_intent, intent['run_id'])
         status = await handle.query(DevelopmentWorkflow.status, rpc_timeout=timedelta(seconds=20))
+        method = intent['approval'].get('method_addendum')
+        original_plan = method['original_plan_sha256'] if method is not None else intent['plan_sha256']
         if (status['phase'] != 'AWAITING_PLAN_APPROVAL' or status['request_sha256'] != self.spec['request_sha256']
-                or status['plan_sha256'] != intent['plan_sha256']):
+                or status['plan_sha256'] != original_plan):
             raise ValueError('Approval must name the exact plan currently awaiting an owner decision')
+        if method is not None:
+            _require_method_window(status, self.submission)
         publish(self.approval_path(intent), intent['approval'])
         self.core.write(self.attempt_path, self.attempt(intent))
         await handle.signal(DevelopmentWorkflow.approve_plan, self.signal(intent), rpc_timeout=timedelta(seconds=20))
@@ -887,12 +918,17 @@ class _Approval:
             if operation == 'prepare':
                 if self.payload['run_id'] != self.run_id:
                     raise ValueError('Approval must pin the original submitted run ID')
+                method = None
+                if 'methods' in self.payload or 'original_plan_sha256' in self.payload:
+                    method = plan_methods.addendum(self.submission.input.document, self.run_id,
+                        self.payload.get('original_plan_sha256'), self.payload.get('methods'))
                 if intent is not None:
-                    if intent['plan_sha256'] != self.payload['plan_sha256']:
+                    if (intent['plan_sha256'] != self.payload['plan_sha256']
+                            or intent['approval'].get('method_addendum') != method):
                         raise ValueError('Decision ID already names a different plan; inspect its original intent')
                     return {'created': False, 'approval': self.status(intent)}
                 intent = self.record(self.creation.project['revision'], self.payload['plan_sha256'],
-                                     'owner-' + uuid.uuid4().hex, int(time.time()), self.actor())
+                                     'owner-' + uuid.uuid4().hex, int(time.time()), self.actor(), method)
                 self.core.write(self.intent_path, intent)
                 return {'created': True, 'approval': self.status(intent)}
             if intent is None or self.sha(intent) != self.payload['intent_sha256']:
