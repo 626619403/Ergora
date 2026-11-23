@@ -109,10 +109,13 @@ def evaluate(state: State, project_id: str, digest: str, suite_digest: str, case
         if not case_ids or not set(case_ids).issubset({case["id"] for case in cases}):
             raise ValueError("Unknown evaluation case IDs")
         cases = [case for case in cases if case["id"] in case_ids]
+    snapshot = specification
+    if len(cases) < len(specification["cases"]):
+        snapshot = {**specification, "cases": cases, "partial": True, "suite_digest": suite_digest}
     run_id = uuid.uuid4().hex
     directory = state.root / "evaluations" / run_id
     directory.mkdir(parents=True)
-    (directory / "suite.json").write_text(json.dumps(specification, ensure_ascii=False, indent=2), encoding="utf-8", newline="\n")
+    (directory / "suite.json").write_text(json.dumps(snapshot, ensure_ascii=False, indent=2), encoding="utf-8", newline="\n")
     working = directory / "work"
     working.mkdir()
     document = {"id": run_id, "project": project_id, "skill": digest, "name": candidate["name"],
