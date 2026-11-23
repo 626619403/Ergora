@@ -1,5 +1,5 @@
 {
-  "description": "Formal six-stage MoE development; shared policy is the complete resource snapshot of ergora-training-proposal@4.2.2 digest 3947a032ce495c3c7728a19fc2e48c92f889e5deb1e7ea6c10e9395943768733.",
+  "description": "Formal six-stage MoE development; shared policy is the complete resource snapshot of ergora-training-proposal@4.2.3 digest f503bea6cd30d1879799426c4e2a7c665d592d71cf24502eb81739520e635657.",
   "id": "ergora-large-change-delivery",
   "inputs": [
     "task"
@@ -85,7 +85,7 @@
       "sha256": "ce0820f121e75a64ef567af0bd30c7bbffbe40233ff952d710f1534356723a20"
     },
     {
-      "digest": "90aaeb7c6041ac0f10fa8eebae48978a504a1cb213fafc0a537078fb8961ea17",
+      "digest": "4cd1d6a03e413122b0baefbd3548a0cceed75d9d7f28d3bc0d49c42c91c5fb0d",
       "id": "ergora-bottleneck-optimization-skill",
       "kind": "skill",
       "path": "skills/ergora-bottleneck-optimization"
@@ -104,5 +104,5 @@
     }
   ],
   "schema_version": 2,
-  "version": "1.6.1"
+  "version": "1.6.2"
 }

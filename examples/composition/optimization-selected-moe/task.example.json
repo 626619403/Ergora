@@ -18,7 +18,7 @@
     ],
     "constraints": [
       "Replace this illustrative workload, paths and work split with the real project contract before preparation.",
-      "Stage specialists remain readonly; experiment execution stays with the authorized original supervisor and executor.",
+      "Preparation and review use their declared readonly grants; assigned execution specialists follow the inherited delegation policy through supported original execution tools.",
       "Follow inherited GPU comparison and pool-validation policy and the original task clock, budget and cleanup owners."
     ],
     "risk": "high",
