@@ -11,6 +11,7 @@ import sqlite3
 import stat
 import sys
 
+from ergora.development import plan_methods
 from ergora.development.runtime.submission import _Submission
 from ergora.storage.state import file_lock
 from ergora.development.envelopes import outcome_reference_state, wire_limit
@@ -97,7 +98,55 @@ class _Inspection:
                              'value': seconds if seconds is not None and seconds >= 0 else None, 'unit': 'seconds'})
         return jobs
 
-    async def files(self, jobs: dict, *, include_receipts: bool = False) -> dict:
+    def _method_approval(self, jobs: dict, observations: list, outcome: dict | None) -> dict | None:
+        from dev_platform.adapter import identifier
+
+        downstream = [job['context'] for job in jobs.values()
+                      if job['context']['stage'].split(':', 1)[0] in ('work', 'integrate', 'verify', 'review')]
+        outcome_approval = (outcome or {}).get('plan_approval')
+        proofs = (context.get('approved_plan') for context in downstream)
+        frames = (context.get(key) for context in downstream for key in ('unit', 'review_ports'))
+        if (not plan_methods.has_method_approval(outcome_approval)
+                and not any(plan_methods.has_method_approval(proof.get('approval')) for proof in proofs if isinstance(proof, dict))
+                and not any(isinstance(frame, dict) and 'approval_plan_sha256' in frame for frame in frames)):
+            return None
+
+        def read_receipt(receipt_id):
+            return self.creation.document(self.adapter.path('approvals', identifier(receipt_id) + '.json'))
+
+        try:
+            matched = {row['job_id'] for row in observations if row['request_state'] == 'matches'}
+            if not downstream or any(context['job_id'] not in matched for context in downstream):
+                raise ValueError('Method approval has unconfirmed original job requests')
+            approved = downstream[0]['approved_plan']
+            if any(self.sha(context['approved_plan']) != self.sha(approved) for context in downstream):
+                raise ValueError('Original jobs disagree on their method approval')
+            plan = [row for row in observations if row['stage'] == 'plan']
+            if (len(plan) != 1 or plan[0]['request_state'] != 'matches' or plan[0]['receipt_state'] != 'SUCCEEDED'
+                    or plan[0]['receipt_sha256'] != approved['plan_sha256']):
+                raise ValueError('Method approval has no matching successful original Plan receipt')
+            if outcome is not None and (outcome.get('status') == 'REVIEW_READY' or outcome_approval is not None):
+                if (outcome.get('plan_sha256') != approved['plan_sha256']
+                        or self.sha(outcome_approval) != self.sha(approved['approval'])):
+                    raise ValueError('Original outcome disagrees with its method-approved jobs')
+            composite = plan_methods.verify_owner_receipt(approved, self.submission.input.document,
+                                                          read_receipt, run_id=self.run_id)
+            if composite is None:
+                raise ValueError('Original jobs lack their complete method approval')
+            for context in downstream:
+                stage = context['stage']
+                if ((stage.startswith('work:') and context['unit'].get('approval_plan_sha256') != composite)
+                        or (stage.startswith('review:') and context['review_ports'].get('approval_plan_sha256') != composite)):
+                    raise ValueError('Original job material does not bind the exact composite approval')
+            proof = approved['approval']
+            return {'state': 'verified', 'original_plan_sha256': approved['plan_sha256'], 'approval_plan_sha256': composite,
+                    'method_addendum_sha256': self.sha(proof['method_addendum']), 'owner_receipt_sha256': proof['approval_sha256']}
+        except FileNotFoundError:
+            return {'state': 'unverified', 'reason': 'Original owner approval receipt is missing'}
+        except (AttributeError, KeyError, OSError, TypeError, ValueError) as error:
+            return {'state': 'unverified', 'reason': str(error)[:1500]}
+
+    async def files(self, jobs: dict, *, include_receipts: bool = False, outcome: dict | None = None) -> dict:
         from dev_platform.adapter import identifier
 
         actual = set()
@@ -140,10 +189,15 @@ class _Inspection:
         expected_fence = {'schema_version': 1, 'task_id': self.creation.task_id, 'request_sha256': self.spec['request_sha256']}
         if fence is not None and self.sha(fence) != self.sha(expected_fence):
             raise ValueError('External fence conflicts with the original task request')
+        # Fence and lease reconciliation depend on original process/terminal evidence.
+        # Auditing the owner receipt is a separate read-only observation.
+        method = (self._method_approval(jobs, observations, outcome)
+                  if self.payload['operation'] not in ('dispatch', 'resume') else None)
         return {'jobs': observations, 'unexpected_jobs': unexpected, 'unresolved_jobs': sorted(unresolved),
                 'fence': {'state': 'matches' if fence is not None else 'not_recorded',
                           'sha256': self.sha(fence) if fence is not None else None},
-                'external_confirmed': fence is not None and not unresolved}
+                'external_confirmed': fence is not None and not unresolved,
+                **({'method_approval': method} if method is not None else {})}
 
     async def observe(self, *, allow_running=False, usage=None, include_receipts=False) -> tuple[dict, dict]:
         handle, description, converter = await self.submission.lookup_run(self.intent, self.run_id)
@@ -174,7 +228,7 @@ class _Inspection:
                 'terminal': not running, 'temporal_status': temporal_status, 'original_outcome': outcome,
                 'history_jobs_sha256': self.sha([{'job_id': key, 'job_sha256': value['job_sha256']}
                                                for key, value in sorted(jobs.items())]),
-                **await self.files(jobs, include_receipts=include_receipts),
+                **await self.files(jobs, include_receipts=include_receipts, outcome=outcome),
                 'lease_released_by_operation': False, 'execution_success': None}
         if running:
             result.update(external_confirmed=False, phase=status['phase'], pending_plan_sha256=status['plan_sha256']
@@ -187,6 +241,7 @@ class _Inspection:
         result, _ = await self.observe(usage=usage, include_receipts=indexed)
         outcome = result['original_outcome']
         if indexed:
+            complete = not result['unresolved_jobs'] and result.get('method_approval', {'state': 'verified'})['state'] == 'verified'
             response_limit = wire_limit(self.submission.input.document)
             selection = self.submission.creation_record['files']['agent-bindings.json']
             profile = self.spec['profile']
@@ -207,7 +262,7 @@ class _Inspection:
                         'scope': 'workflow_admission_and_waiting', 'limits': profile['limits'],
                         **{key: profile[key] for key in ('stage_timeout_seconds', 'approval_timeout_seconds', 'poll_seconds')}},
                 usage=usage,
-                published_evidence='verified' if not result['unresolved_jobs'] else 'incomplete',
+                published_evidence='verified' if complete else 'incomplete',
                 context_snapshots={key: {'state': 'not_recorded'} for key in
                                    ('evaluations', 'skills', 'memories', 'source_adoptions')},
                 artifact_limit_bytes=16_777_216, response_limit_bytes=response_limit)
@@ -487,6 +542,12 @@ def _amendment_jobs(inspection, observed, history) -> tuple[dict, dict]:
     if plan is None or plan['request_state'] != 'matches' or plan['receipt_state'] != 'SUCCEEDED':
         return units, {'state': 'unavailable'}
     digest = plan['receipt_sha256']
+    method = observed.get('method_approval')
+    if method is not None:
+        evidence = {'receipt_sha256': digest, 'job_id': plan['job_id']}
+        if method['state'] == 'verified':
+            return units, {**evidence, 'state': 'accepted', 'approval_plan_sha256': method['approval_plan_sha256']}
+        return units, {**evidence, 'state': 'unverified'}
     accepted = any(jobs[entry['context']['stage']]['request_state'] == 'matches'
                    and approved.get('plan_sha256') == digest
                    and inspection.sha(approved.get('receipt')) == digest
@@ -527,6 +588,8 @@ async def _amendment_checkpoint(payload: dict) -> dict:
     work, plan = _amendment_jobs(inspection, observed, history)
     result.update(runtime_status='queried', work=work, plan=plan, **{key: observed[key] for key in (
         'terminal', 'temporal_status', 'original_outcome', 'fence', 'external_confirmed', 'unexpected_jobs', 'unresolved_jobs')})
+    if 'method_approval' in observed:
+        result['method_approval'] = observed['method_approval']
     if not observed['terminal']:
         return {**result, 'phase': observed['phase'], 'next_action': 'request_original_cancellation'}
     owner = _Reconciliation(payload, inspection)

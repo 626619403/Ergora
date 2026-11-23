@@ -15,6 +15,22 @@ ergora task plan my-project TASK_ID --run-id RUN_ID --plan-sha256 PLAN_SHA --tim
 
 API：GET `.../tasks/TASK_ID/plan?run_id=RUN_ID&plan_sha256=PLAN_SHA&timeout=20`。网页“审阅计划与批准”使用同一入口。网络失败或计划已不再待批时，沿原ID重新查询status，不创建替代任务。
 
+## 在原计划审批时补充工作单元的实施方法
+
+当前带预算的原生任务可在初次计划审批时为已冻结的工作单元补充实施方法。将原单元 ID 映射到方法文本，例如 `{"parse":"先复用已有解析器，再分配内存。"}`。每段文本最多 2,048 个 UTF-8 字节，规范化映射合计最多 8,192 字节。补充方法沿用原目标、验收标准、检查、分配、权限、范围和预算。对这些字段的实质性修订走关联后续任务。
+
+```bash
+ergora task plan my-project TASK_ID --run-id RUN_ID --plan-sha256 ORIGINAL_PLAN_SHA \
+  --method-addendum methods.json
+ergora task approve my-project TASK_ID --decision-id owner-method --revision REVISION --run-id RUN_ID \
+  --original-plan-sha256 ORIGINAL_PLAN_SHA --plan-sha256 APPROVAL_PLAN_SHA \
+  --method-addendum methods.json --confirm
+```
+
+预览读取原计划和完整方法，并返回 `approval_plan_sha256`。审批时使用这个摘要，绑定原计划回执、原运行和精确方法文本。必须在首个审批回执进入等待或被使用前提交。原工作流在首次派发前按原历史处理审批、取消和截止时间的竞争。
+
+审批送达不确定时，沿用决定 ID，使用 `task approval` 或 `task resume-approve` 对账。工作单元只读取自己的方法。审查者读取完整补充文档、原计划和绑定同一候选的证据。使用支持补充方法的 Worker 和 Executor 执行已审批的工作。提高待派发单元优先级时，使用状态返回的复合审批摘要。证据索引与后续修订检查点会核对原所有者回执，再报告已生效的复合摘要。回执丢失或变化时，审批证据标记为不完整。
+
 ## 保存完整设计来源与原答复
 
 **已发布开发候选：** 本节对应源码 `2ae107b`，已包含于核远端一致的公开提交 `9f3e693498834f071cf20d0f25c18555554765f1`。它自己的Portability run `43867345323`已终态8/8 success，含既有Windows检查；本source存取片发布／CI门闭合，未继承e5结果。下述source命令仍须Linux／WSL2，不新增Windows原生source支持。旧安装可能没有这些命令。本节仅为inspection-only存取，不是新增的默认设计／批准流程。

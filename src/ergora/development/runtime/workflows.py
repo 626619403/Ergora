@@ -11,14 +11,14 @@ from temporalio.exceptions import ApplicationError
 
 with workflow.unsafe.imports_passed_through():
     from dev_platform.activities import Activities
-    from dev_platform.adapter import FileAdapter, ContractViolation, identifier, sha
-    from dev_platform.adapter import read_raw
+    from dev_platform.adapter import ApprovalRejected, FileAdapter, ContractViolation, identifier, sha
+    from dev_platform.adapter import read_json, read_raw
     from dev_platform.workflow import DevelopmentWorkflow, RETRY, StopWork
     from ergora.development import budget as reference_budget
     from ergora.development import envelopes as task_envelopes
     from ergora.development.runtime.review_opinions import review_observation
     from ergora.development.dags import preparation_stages
-    from ergora.development import verification
+    from ergora.development import plan_methods, verification
 
 
 WORK_PRIORITY_UPDATE_ID_PREFIX = 'ergora-work-priority/'
@@ -475,6 +475,22 @@ class PreparationDAGAdapter(StageResultsAdapter):
         except ValueError as error:
             raise ContractViolation(str(error)) from error
 
+    async def authorize(self, context):
+        result = await super().authorize(context)
+        if 'method_addendum' not in context:
+            return result
+        try:
+            method = context['method_addendum']
+            receipt = read_json(self.path('approvals', identifier(context['receipt_id']) + '.json'))
+            if (plan_methods.approval_digest(method) != context['plan_sha256']
+                    or sha(receipt) != result['approval_sha256']
+                    or receipt['role'] != 'owner'
+                    or sha(receipt['method_addendum']) != sha(method)):
+                raise ValueError('Owner approval does not bind the exact method addendum')
+            return {**result, 'approval_plan_sha256': context['plan_sha256'], 'method_addendum': method}
+        except (OSError, ValueError, KeyError, TypeError) as error:
+            raise ApprovalRejected(str(error)) from error
+
 
 class PreparationDAGActivities(WorkDeliveryActivities):
     context_limit_bytes = task_envelopes.WIRE_LIMIT
@@ -532,6 +548,47 @@ class PreparationDAGWorkflow(StageResultsWorkflow):
 
     envelope_version = 12
 
+    def __init__(self):
+        super().__init__()
+        self._method_signal = None
+
+    def _method_approval_unavailable(self):
+        if self.cancel_reason or self.admission is not None and self.remaining() <= 0:
+            return 'Cancellation or the original work cutoff is in effect'
+        if self.phase != 'AWAITING_PLAN_APPROVAL' or self.plan_sha256 is None:
+            return 'Method addenda require the original Plan awaiting its initial approval'
+        if self.pending_approval is not None or self.used_receipts:
+            return 'An original approval receipt is already pending or used'
+        return None
+
+    @workflow.signal(name='approve_plan')
+    def approve_plan(self, signal: dict):
+        if 'method_addendum' not in signal:
+            return super().approve_plan(signal)
+        reason = self._method_approval_unavailable()
+        if reason is not None:
+            self.last_rejection = reason
+            return
+        try:
+            method = signal['method_addendum']
+            plan_methods.require_addendum(method, self.admission, workflow.info().run_id, self.plan_sha256)
+            if (set(signal) != {'request_sha256', 'plan_sha256', 'receipt_id', 'method_addendum'}
+                    or signal['request_sha256'] != self.spec['request_sha256']
+                    or signal['plan_sha256'] != plan_methods.approval_digest(method)
+                    or not isinstance(signal['receipt_id'], str) or not signal['receipt_id']):
+                raise ValueError('Owner signal does not bind the exact composite approval')
+        except (KeyError, TypeError, ValueError) as error:
+            self.last_rejection = str(error)
+            return
+        self.pending_approval = signal
+        self._method_signal = signal
+        self.last_rejection = None
+
+    def _effective_plan_sha256(self):
+        if self.approved_plan is not None:
+            return self.approved_plan.get('approval', {}).get('approval_plan_sha256', self.plan_sha256)
+        return self.plan_sha256
+
     def source_stage(self, path):
         stages = {member: stage for stage, member in
                   preparation_stages(self.admission['composition']['preparation']).items()}
@@ -539,6 +596,15 @@ class PreparationDAGWorkflow(StageResultsWorkflow):
 
     def context(self, stage, expected_sha=None, unit=None, dependencies=None):
         context = super().context(stage, expected_sha, unit, dependencies)
+        composite = self._effective_plan_sha256()
+        if composite != self.plan_sha256:
+            if stage.startswith('work:'):
+                context['unit'] = plan_methods.work_unit(unit, composite)
+            elif stage.startswith('review:'):
+                context['review_ports']['approval_plan_sha256'] = composite
+            if len(json.dumps(context, ensure_ascii=False, sort_keys=True, separators=(',', ':'),
+                              allow_nan=False).encode('utf-8')) > task_envelopes.context_limit(self.admission):
+                raise StopWork('Complete method-approved stage context exceeds its wire byte limit')
         composition = self.admission['composition']
         member = preparation_stages(composition['preparation']).get(stage)
         if member is not None:
@@ -630,7 +696,7 @@ class PreparationDAGWorkflow(StageResultsWorkflow):
         if (self.spec is None or self.admission is None or command['run_id'] != workflow.info().run_id
                 or command['request_sha256'] != self.spec['request_sha256']
                 or command['admission_sha256'] != self.admission['sha256']
-                or command['plan_sha256'] != self.plan_sha256):
+                or command['plan_sha256'] != self._effective_plan_sha256()):
             return {**outcome, 'status': 'rejected', 'reason': 'Work priority differs from the original run or approved plan'}
         reason = self._work_priority_unavailable()
         if reason is not None:
@@ -647,6 +713,12 @@ class PreparationDAGWorkflow(StageResultsWorkflow):
             instance = self.admission['budget']['instance']
             result['budget'] = {key: instance[key] for key in ('id', 'sha256', 'authorized_at', 'deadline_at')}
             result['native_invocation'] = self.admission['composition']['native']
+            method_reason = self._method_approval_unavailable()
+            result['plan_method_addendum'] = {'available': method_reason is None, 'unavailable_reason': method_reason}
+            composite = self._effective_plan_sha256()
+            if composite != self.plan_sha256:
+                result.update(plan_sha256=composite, original_plan_sha256=self.plan_sha256,
+                              method_addendum_sha256=sha(self.approved_plan['approval']['method_addendum']))
             reason = self._work_priority_unavailable()
             result['work_priority'] = {'available': reason is None, 'unavailable_reason': reason,
                 'pending_work_unit_ids': sorted(self._pending_work_units or ()),
@@ -666,9 +738,20 @@ class PreparationDAGWorkflow(StageResultsWorkflow):
             # Keep full material in the original immutable request, outside the
             # repeatedly recorded poll payload.
             value = {key: value[key] for key in ('task_id', 'job_id', 'job_sha256')}
-        return await workflow.execute_activity(self.operations.get(name, name), value, result_type=result_type,
+        method = self._method_signal if name == 'dev_authorize_plan' else None
+        if method is not None:
+            self._method_signal = None
+            if value['receipt_id'] != method['receipt_id']:
+                raise StopWork('Method addendum differs from the original pending receipt')
+            value = {**value, 'plan_sha256': method['plan_sha256'], 'method_addendum': method['method_addendum']}
+        result = await workflow.execute_activity(self.operations.get(name, name), value, result_type=result_type,
             start_to_close_timeout=timedelta(seconds=min(30, timeout)),
             schedule_to_close_timeout=timedelta(seconds=min(180, timeout)), retry_policy=RETRY)
+        if method is not None and (result.get('receipt_id') != method['receipt_id']
+                or result.get('approval_plan_sha256') != method['plan_sha256']
+                or sha(result.get('method_addendum')) != sha(method['method_addendum'])):
+            raise StopWork('Worker did not verify the exact owner-approved method addendum')
+        return result
 
     async def stop(self, reason):
         if self.remaining() <= 0 and not self.cancel_reason:

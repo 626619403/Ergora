@@ -23,7 +23,7 @@ from ergora.configuration import validation as contracts
 from ergora.issues import identity as issue_sources
 from ergora.development import budget as reference_budget
 from ergora.development import envelopes as task_envelopes
-from ergora.development import verification
+from ergora.development import plan_methods, verification
 from ergora.development.dags import WorkDelivery
 from ergora.development.route_errors import RouteBlocked
 from ergora.development.envelopes import identity
@@ -532,15 +532,19 @@ def approval(state: State, project_id: str, task_id: str, decision_id: str) -> d
                                    {'task_id': task_id, 'decision_id': decision_id}, timeout=20)
 
 
-def plan(state: State, project_id: str, task_id: str, *, run_id: str, plan_sha256: str, timeout: int = 20) -> dict:
+def plan(state: State, project_id: str, task_id: str, *, run_id: str, plan_sha256: str,
+         timeout: int = 20, methods: dict | None = None) -> dict:
     """Read bounded review materials for the original run's exact pending plan."""
     _run_id(run_id)
     _digest(plan_sha256, 'Plan')
     if type(timeout) is not int or not 1 <= timeout <= 60:
         raise ValueError('Plan inspection timeout must be 1–60 seconds')
     project = _project(state, project_id)
-    return development_native.task_plan(project, state.root, {'task_id': task_id, 'run_id': run_id,
-                                                    'plan_sha256': plan_sha256}, timeout=timeout)
+    payload = {'task_id': task_id, 'run_id': run_id, 'plan_sha256': plan_sha256}
+    if methods is not None:
+        plan_methods.validate_methods(methods)
+        payload['methods'] = methods
+    return development_native.task_plan(project, state.root, payload, timeout=timeout)
 
 
 
@@ -603,13 +607,18 @@ def resume_design_operation(state: State, project_id: str, task_id: str, operati
 
 
 def approve(state: State, project_id: str, task_id: str, decision_id: str, expected_revision: int,
-            *, run_id: str, plan_sha256: str, confirm: bool = False, timeout: int = 20) -> dict:
+            *, run_id: str, plan_sha256: str, confirm: bool = False, timeout: int = 20,
+            methods: dict | None = None, original_plan_sha256: str | None = None) -> dict:
     """Freeze an explicit owner decision, then signal its exact run and plan once."""
     _run_id(run_id)
     _digest(plan_sha256, 'Plan')
+    payload = {'task_id': task_id, 'decision_id': decision_id, 'run_id': run_id, 'plan_sha256': plan_sha256}
+    if methods is not None or original_plan_sha256 is not None:
+        _digest(original_plan_sha256, 'Original Plan')
+        plan_methods.validate_methods(methods)
+        payload.update(methods=methods, original_plan_sha256=original_plan_sha256)
     project, prepared = _decision_prepare(state, project_id, expected_revision, development_native.task_approval, 'prepare',
-                                         {'task_id': task_id, 'decision_id': decision_id,
-                                          'run_id': run_id, 'plan_sha256': plan_sha256}, confirm, timeout)
+                                         payload, confirm, timeout)
     if not prepared['created']:
         return prepared['approval']
     return development_native.task_approval(project, state.root, 'dispatch',
