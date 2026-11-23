@@ -514,6 +514,282 @@ print(json.dumps({"skill":request["candidate"]["skill"].replace("BASELINE","IMPR
     assert skill_assets.versions(state, "demo")["active"][0]["digest"] == baseline["digest"]
 
 
+def _reported_outcome(output, raw, *, status="succeeded"):
+    output.mkdir(parents=True)
+    (output / "stdout.txt").write_text(raw, encoding="utf-8")
+    return {"status": status, "returncode": 0 if status == "succeeded" else 2, "output": str(output)}
+
+
+@pytest.mark.parametrize("failure", ["nonzero", "malformed", "missing-cost", "invalid-cost", "oversized", "exception", "interrupt"])
+def test_reported_cost_evaluator_failure_retains_unknown_subtotal_and_case(skill_project, monkeypatch, failure):
+    state, _, _, baseline, suite = skill_project
+    calls = []
+    rejected = {
+        "nonzero": '{"score":1,"passed":true,"cost":99,"feedback":"not an accepted report"}',
+        "malformed": '{"cost":99',
+        "missing-cost": '{"score":1,"passed":true,"feedback":"no cost"}',
+        "invalid-cost": '{"score":1,"passed":true,"cost":NaN,"feedback":"invalid cost"}',
+        "oversized": "x" * 1_000_001,
+    }
+
+    def process(argv, cwd, output, timeout, stdin, **options):
+        pending = evaluation.listing(State(state.root), "demo")["runs"][0]
+        assert pending["status"] == "running" and pending["reported_cost_complete"] is False
+        assert pending["reported_cost"] == (0 if not calls else .125)
+        row = pending["cases"][-1]
+        assert row["id"] == json.loads(stdin)["case"]["split"] and row["output"] == str(output)
+        assert row["reported_cost_complete"] is False and "score" not in row and "cost" not in row
+        if calls:
+            assert pending["cases"][0]["cost"] == .125 and pending["cases"][0]["reported_cost_complete"] is True
+        calls.append(output)
+        assert len(calls) <= 2, "Incomplete reports must halt subsequent cases"
+        if len(calls) == 1:
+            return _reported_outcome(output, '{"score":0,"passed":false,"cost":0.125,"feedback":"wrong answer, valid cost"}')
+        if failure == "interrupt":
+            raise KeyboardInterrupt()
+        if failure == "exception":
+            raise OSError("Lost evaluator return")
+        return _reported_outcome(output, rejected[failure], status="failed" if failure == "nonzero" else "succeeded")
+
+    monkeypatch.setattr(evaluation.processes, "run", process)
+    if failure == "interrupt":
+        with pytest.raises(KeyboardInterrupt):
+            evaluation.evaluate(state, "demo", baseline["digest"], suite["digest"])
+        result = evaluation.listing(State(state.root), "demo")["runs"][0]
+        assert result["status"] == "running" and "finished" not in result
+    else:
+        result = evaluation.evaluate(state, "demo", baseline["digest"], suite["digest"])
+        assert result["status"] == "failed"
+        assert evaluation.get(State(state.root), "demo", result["id"]) == result
+    assert len(calls) == 2 and result["reported_cost"] == .125 and result["reported_cost_complete"] is False
+    assert len(result["cases"]) == 2 and result["cases"][-1]["reported_cost_complete"] is False
+    assert "score" not in result["cases"][-1] and "cost" not in result["cases"][-1]
+    expected_outcome = "failed" if failure == "nonzero" else "running" if failure in ("exception", "interrupt") else "succeeded"
+    assert result["cases"][-1]["status"] == expected_outcome
+    if failure in rejected:
+        assert (calls[-1] / "stdout.txt").read_text() == rejected[failure]
+        assert result["cases"][-1]["returncode"] == (2 if failure == "nonzero" else 0)
+
+
+@pytest.mark.parametrize("cost,expected_calls,expected_status", [(0, 3, "succeeded"), (2, 1, "budget_exhausted")])
+def test_reported_cost_complete_coverage_keeps_wrong_scores_and_full_overshoot(skill_project, monkeypatch,
+                                                                           cost, expected_calls, expected_status):
+    state, _, _, baseline, suite = skill_project
+    calls = []
+
+    def process(argv, cwd, output, timeout, stdin, **options):
+        calls.append(output)
+        return _reported_outcome(output, json.dumps({"score": 0, "passed": False, "cost": cost, "feedback": "wrong answer"}))
+
+    monkeypatch.setattr(evaluation.processes, "run", process)
+    result = evaluation.evaluate(state, "demo", baseline["digest"], suite["digest"])
+    assert len(calls) == expected_calls and result["status"] == expected_status
+    assert result["reported_cost"] == cost * expected_calls and result["reported_cost_complete"] is True
+    assert all(row["reported_cost_complete"] and row["score"] == 0 and not row["passed"] for row in result["cases"])
+
+
+def test_reported_cost_before_entry_and_after_material_failure_have_distinct_coverage(skill_project, monkeypatch):
+    state, _, _, baseline, suite = skill_project
+    monkeypatch.setattr(evaluation.processes, "run", lambda *a, **k: pytest.fail("Expired case cannot enter evaluator"))
+    expired = evaluation.evaluate(state, "demo", baseline["digest"], suite["digest"], deadline=0)
+    assert expired["status"] == "timed_out" and expired["cases"] == []
+    assert expired["reported_cost"] == 0 and expired["reported_cost_complete"] is True
+    calls = []
+
+    def process(argv, cwd, output, timeout, stdin, **options):
+        calls.append(output)
+        if len(calls) == 3:
+            (Path(baseline["path"]) / "SKILL.md").write_text("Changed after reports")
+        return _reported_outcome(output, '{"score":1,"passed":true,"cost":0.125,"feedback":"valid report"}')
+
+    monkeypatch.setattr(evaluation.processes, "run", process)
+    failed = evaluation.evaluate(state, "demo", baseline["digest"], suite["digest"])
+    assert failed["status"] == "failed" and "Stored skill content changed" in failed["error"]
+    assert failed["reported_cost"] == .375 and failed["reported_cost_complete"] is True
+
+
+def test_reported_cost_overflow_never_persists_complete_infinity(skill_project, monkeypatch):
+    state, _, _, baseline, original = skill_project
+    manifest = {key: value for key, value in original["manifest"].items() if key not in ("file_sha256", "path_bindings")}
+    manifest["max_reported_cost"] = 1e308
+    suite = evaluation.register(state, "demo", manifest)
+    monkeypatch.setattr(evaluation.processes, "run", lambda argv, cwd, output, *a, **k:
+        _reported_outcome(output, '{"score":1,"passed":true,"cost":1e308,"feedback":"finite individual report"}'))
+    result = evaluation.evaluate(state, "demo", baseline["digest"], suite["digest"])
+    assert result["status"] == "failed" and "total is not finite" in result["error"]
+    assert result["reported_cost"] == 1e308 and result["reported_cost_complete"] is False
+    assert len(result["cases"]) == 2 and result["cases"][-1]["cost"] == 1e308
+    assert result["cases"][-1]["status"] == "succeeded"
+    assert "Infinity" not in json.dumps(evaluation.get(State(state.root), "demo", result["id"]), allow_nan=False)
+    with pytest.raises(ValueError, match="Combined reported cost total is not finite"):
+        evaluation.compare(state, "demo", result["id"], result["id"])
+
+
+def test_reported_cost_comparison_preserves_unrecorded_history_and_quality_gate(skill_project, monkeypatch):
+    state, _, source, baseline, suite = skill_project
+    (source / "SKILL.md").write_text((source / "SKILL.md").read_text().replace("BASELINE", "IMPROVED"))
+    candidate = skill_assets.import_bundle(state, "demo", source)
+
+    def process(argv, cwd, output, timeout, stdin, **options):
+        request = json.loads(stdin)
+        score = .9 if request["skill_dir"] == candidate["path"] else .5
+        return _reported_outcome(output, json.dumps({"score": score, "passed": True, "cost": .125, "feedback": "report"}))
+
+    monkeypatch.setattr(evaluation.processes, "run", process)
+    base_run, candidate_run = [evaluation.evaluate(state, "demo", item["digest"], suite["digest"])
+                               for item in (baseline, candidate)]
+    complete = evaluation.compare(state, "demo", base_run["id"], candidate_run["id"])
+    assert complete["eligible"] and complete["reported_cost_complete"] is True and complete["reported_cost"] == .75
+    candidate_run.pop("reported_cost_complete")
+    with state.connect() as db:
+        db.execute("UPDATE evaluations SET document=? WHERE id=?", (json.dumps(candidate_run), candidate_run["id"]))
+    assert evaluation.get(State(state.root), "demo", candidate_run["id"]) == candidate_run
+    unrecorded = evaluation.compare(state, "demo", base_run["id"], candidate_run["id"])
+    assert unrecorded["eligible"] and unrecorded["reported_cost_complete"] is False
+    assert unrecorded["reported_cost"] == complete["reported_cost"]
+    assert evaluation.get(State(state.root), "demo", candidate_run["id"]) == candidate_run
+
+
+def test_reported_cost_optimization_halts_after_partial_evaluator_report(skill_project, monkeypatch):
+    gepa = pytest.importorskip("gepa")
+    state, _, _, baseline, suite = skill_project
+    projects.bind(state, "demo", "optimizer", {"tool": "gepa", "proposer_argv": [sys.executable, "unused-proposer"]}, 1)
+    calls = []
+
+    def process(argv, cwd, output, timeout, stdin, **options):
+        pending = optimization.listing(State(state.root), "demo")[0]
+        assert pending["reported_cost_complete"] is False
+        assert pending["reported_cost"] == (0 if not calls else .25)
+        calls.append(output)
+        if len(calls) == 3:
+            return _reported_outcome(output, '{"score":1,"passed":true,"cost":99,"feedback":"failed output"}', status="failed")
+        return _reported_outcome(output, json.dumps({"score": .5, "passed": True, "cost": .25 if len(calls) == 1 else .125,
+                                                    "feedback": "accepted report"}))
+
+    def engine(**request):
+        adapter, seed = request["adapter"], request["seed_candidate"]
+        adapter.evaluate([request["trainset"][0]], seed)
+        saved = optimization.listing(State(state.root), "demo")[0]
+        assert saved["reported_cost_complete"] and saved["reported_cost"] == .25
+        with pytest.raises(ValueError):
+            adapter.evaluate([request["trainset"][0], request["valset"][0]], seed)
+        for repeat in (lambda: adapter.evaluate([request["trainset"][0]], seed),
+                       lambda: request["custom_candidate_proposer"](seed, {}, ["skill"])):
+            with pytest.raises(ValueError, match="already terminated"):
+                repeat()
+        return SimpleNamespace(best_candidate=seed)
+
+    monkeypatch.setattr(gepa, "optimize", engine)
+    monkeypatch.setattr(optimization.processes, "run", process)
+    result = optimization.optimize(state, "demo", baseline["digest"], suite["digest"], "Retain incomplete reports", 6, 2, 20)
+    assert result["status"] == "failed" and result["reported_cost"] == .375 and result["reported_cost_complete"] is False
+    assert len(calls) == 3 and result["metric_calls"] == 3 and result["proposals"] == 0
+    assert len(result["evaluations"]) == 2 and optimization.listing(State(state.root), "demo")[0] == result
+
+
+@pytest.mark.parametrize("failure", ["nonzero", "malformed", "invalid-cost", "interrupt", "overshoot", "overflow"])
+def test_reported_cost_proposer_retains_prefix_and_unknown_on_failure(skill_project, monkeypatch, failure):
+    gepa = pytest.importorskip("gepa")
+    state, _, _, baseline, original = skill_project
+    manifest = {key: value for key, value in original["manifest"].items() if key not in ("file_sha256", "path_bindings")}
+    prefix = 1e308 if failure == "overflow" else .25
+    manifest["max_reported_cost"] = 1e308 if failure == "overflow" else 1
+    suite = evaluation.register(state, "demo", manifest)
+    projects.bind(state, "demo", "optimizer", {"tool": "gepa", "proposer_argv": [sys.executable, "unused-proposer"]}, 1)
+    calls = []
+
+    def process(argv, cwd, output, timeout, stdin, **options):
+        pending = optimization.listing(State(state.root), "demo")[0]
+        assert pending["reported_cost_complete"] is False
+        calls.append(output)
+        if len(calls) == 1:
+            return _reported_outcome(output, json.dumps({"score": .5, "passed": True, "cost": prefix, "feedback": "known prefix"}))
+        assert len(calls) == 2 and pending["reported_cost"] == prefix and pending["proposals"] == 1
+        if failure == "interrupt":
+            raise KeyboardInterrupt()
+        if failure == "malformed":
+            raw = "{}"
+        else:
+            raw = json.dumps({"skill": json.loads(stdin)["candidate"]["skill"],
+                              "cost": float("nan") if failure == "invalid-cost" else 1e308 if failure == "overflow" else 2})
+        return _reported_outcome(output, raw, status="failed" if failure == "nonzero" else "succeeded")
+
+    def engine(**request):
+        seed = request["seed_candidate"]
+        request["adapter"].evaluate([request["trainset"][0]], seed)
+        with pytest.raises(ValueError):
+            request["custom_candidate_proposer"](seed, {}, ["skill"])
+        with pytest.raises(ValueError, match="already terminated"):
+            request["adapter"].evaluate([request["trainset"][0]], seed)
+        return SimpleNamespace(best_candidate=seed)
+
+    monkeypatch.setattr(gepa, "optimize", engine)
+    monkeypatch.setattr(optimization.processes, "run", process)
+    result = optimization.optimize(state, "demo", baseline["digest"], suite["digest"], "Retain proposer uncertainty", 6, 2, 20)
+    assert len(calls) == 2 and result["proposals"] == 1 and result["metric_calls"] == 1
+    assert result["status"] == ("cancelled" if failure == "interrupt" else "budget_exhausted" if failure == "overshoot" else "failed")
+    assert result["reported_cost"] == (prefix + 2 if failure == "overshoot" else prefix)
+    assert result["reported_cost_complete"] is (failure == "overshoot")
+    assert optimization.listing(State(state.root), "demo")[0] == result
+
+
+def test_reported_cost_evaluation_subtotals_cannot_overflow_search_total(skill_project, monkeypatch):
+    gepa = pytest.importorskip("gepa")
+    state, _, _, baseline, original = skill_project
+    manifest = {key: value for key, value in original["manifest"].items() if key not in ("file_sha256", "path_bindings")}
+    manifest["max_reported_cost"] = 1e308
+    suite = evaluation.register(state, "demo", manifest)
+    projects.bind(state, "demo", "optimizer", {"tool": "gepa", "proposer_argv": [sys.executable, "unused-proposer"]}, 1)
+    calls = []
+
+    def process(argv, cwd, output, *args, **kwargs):
+        calls.append(output)
+        assert len(calls) <= 2
+        return _reported_outcome(output, '{"score":1,"passed":true,"cost":1e308,"feedback":"finite batch cost"}')
+
+    def engine(**request):
+        seed = request["seed_candidate"]
+        request["adapter"].evaluate([request["trainset"][0]], seed)
+        with pytest.raises(ValueError, match="total is not finite"):
+            request["adapter"].evaluate([request["valset"][0]], seed)
+        with pytest.raises(ValueError, match="already terminated"):
+            request["adapter"].evaluate([request["trainset"][0]], seed)
+        return SimpleNamespace(best_candidate=seed)
+
+    monkeypatch.setattr(gepa, "optimize", engine)
+    monkeypatch.setattr(optimization.processes, "run", process)
+    result = optimization.optimize(state, "demo", baseline["digest"], suite["digest"], "Preserve finite search total", 4, 1, 20)
+    assert result["status"] == "failed" and "total is not finite" in result["error"]
+    assert result["reported_cost"] == 1e308 and result["reported_cost_complete"] is False
+    assert len(calls) == len(result["evaluations"]) == 2 and result["proposals"] == 0
+    assert "Infinity" not in json.dumps(optimization.listing(State(state.root), "demo"), allow_nan=False)
+
+
+@pytest.mark.parametrize("interrupted", [False, True])
+def test_reported_cost_lost_evaluation_return_stays_unresolved(skill_project, monkeypatch, interrupted):
+    gepa = pytest.importorskip("gepa")
+    state, _, _, baseline, suite = skill_project
+    projects.bind(state, "demo", "optimizer", {"tool": "gepa", "proposer_argv": [sys.executable, "unused-proposer"]}, 1)
+
+    def evaluation_entry(*args, **kwargs):
+        pending = optimization.listing(State(state.root), "demo")[0]
+        assert pending["reported_cost_complete"] is False and pending["metric_calls"] == 1
+        if interrupted:
+            raise KeyboardInterrupt()
+        raise OSError("Lost evaluation return")
+
+    def engine(**request):
+        request["adapter"].evaluate([request["trainset"][0]], request["seed_candidate"])
+
+    monkeypatch.setattr(gepa, "optimize", engine)
+    monkeypatch.setattr(evaluation, "evaluate", evaluation_entry)
+    monkeypatch.setattr(optimization.processes, "run", lambda *a, **k: pytest.fail("Lost report must not dispatch a proposal"))
+    result = optimization.optimize(state, "demo", baseline["digest"], suite["digest"], "Retain lost return", 4, 1, 20)
+    assert result["status"] == ("cancelled" if interrupted else "failed")
+    assert result["reported_cost"] == 0 and result["reported_cost_complete"] is False
+    assert result["proposals"] == 0 and optimization.listing(State(state.root), "demo")[0] == result
+
+
 @pytest.fixture
 def retrospective_case(tmp_path):
     import ergora.development.handoff as handoff

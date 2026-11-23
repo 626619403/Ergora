@@ -10,7 +10,7 @@ Follow [source-branch selection](../install/linux.md#install-in-a-clean-environm
 |---|---|---|
 |repository-governance|`ergora-governance-template@1.1.3`|Parallel knowledge-map/boundary-test, then trusted integration/verification and structure, correctness and test-value reviews|
 |large-change|`ergora-large-change-template@1.1.3`|contract→parallel server/client→integration-tests, then trusted integration/verification and three reviews|
-|training-optimization|`ergora-training-proposal@4.2.5`|Source flow→planning/diagnosis→kernel implementation planning→measurement review; all five leaves inherit library/environment guidance, with actual experiments owned by trusted runners.|
+|training-optimization|`ergora-training-proposal@4.2.6`|Source flow→planning/diagnosis→kernel implementation planning→measurement review; all five leaves inherit library/environment guidance, with actual experiments owned by trusted runners.|
 |refactoring|`ergora-refactoring-template@1.3.3`|Preparation→rewrite→compatibility→original trusted integration/verification→three reviews; ordinary parent references one native large-change six-stage instance|
 
 Supervisors retain one direction owner across related tasks in the original project/workload/campaign and queue unrelated work. The templates require at least four experts from different directions active concurrently; select suitable independent assignments before freezing and report the actual count and blocker when the stock graph or actual limits cannot support four. Existing stage order, candidate bindings, cancellation and budgets still apply; see [composition selection](../definitions/workflows/compose.md#use-bundled-domain-compositions).

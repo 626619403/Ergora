@@ -10,8 +10,8 @@
 |---|---|---|
 |repository-governance|`ergora-governance-template@1.1.3`|knowledge-map与boundary-test并行，接可信集成／验证及结构、正确性、测试价值审查|
 |large-change|`ergora-large-change-template@1.1.3`|contract→server／client并行→integration-tests，再接可信集成／验证和三审查|
-|training-optimization|`ergora-training-proposal@4.2.5`|源码流程→跨域规划／诊断→kernel实施方案→测量审查；全部五叶继承库／环境选择，独立只读建议，原runner执行实验|
-|optimization-memory-tuning|`ergora-opt-memory-tuning-proposal@1.2.0`|容量／allocator方向资料＋共享设计／诊断专家，接独立测量证据审查|
+|training-optimization|`ergora-training-proposal@4.2.6`|源码流程→跨域规划／诊断→kernel实施方案→测量审查；全部五叶继承库／环境选择，独立只读建议，原runner执行实验|
+|optimization-memory-tuning|`ergora-opt-memory-tuning-proposal@1.2.1`|容量／allocator方向资料＋共享设计／诊断专家，接独立测量证据审查|
 |optimization-activation-recompute|`ergora-opt-activation-recompute-proposal@1.2.0`|重计算边界、数值与图／卸载约束；复用v2专家的只读子模板|
 |optimization-cpu-offloading|`ergora-opt-cpu-offloading-proposal@1.2.0`|分开三种卸载接口及host／传输／计算成本；复用v2专家的只读子模板|
 |optimization-tp-dp-overlap|`ergora-opt-tp-dp-overlap-proposal@1.2.0`|实际TP／DP／PP overlap路径、关键路径和独立测量；只读提案|

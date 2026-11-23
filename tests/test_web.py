@@ -500,6 +500,42 @@ def test_skill_evidence_and_adoption_use_existing_business_gate(console, tmp_pat
     assert client.post("/api/projects/demo/skills/adopt", json=payload).status_code == 400
 
 
+def test_reported_cost_failure_http_cli_and_dashboard_retain_subtotal(console, tmp_path, monkeypatch, capsys):
+    import ergora.improvement.evaluation as evaluation
+    from ergora.interfaces.cli import main
+
+    client, state, repo = console
+    source = tmp_path / "accounting-skill"
+    source.mkdir()
+    (source / "SKILL.md").write_text("---\nname: accounting-skill\ndescription: Cost reporting fixture\n---\nEvidence\n")
+    baseline = client.post("/api/projects/demo/skills/import", json={"directory": str(source)}).json()
+    evaluator = repo / "accounting.py"
+    evaluator.write_text("raise AssertionError('This source fixture must use its in-process port')\n")
+    manifest = {"schema_version": 1, "evaluator_argv": [sys.executable, str(evaluator)], "evaluator_files": [str(evaluator)],
+                "timeout_seconds": 5, "minimum_gain": .1, "max_reported_cost": 1,
+                "cases": [{"id": split, "split": split, "input": {}} for split in ("train", "validation", "holdout")]}
+    suite = client.post("/api/projects/demo/evaluations/suites", json=manifest).json()
+    calls = []
+
+    def process(argv, cwd, output, *args, **kwargs):
+        calls.append(output)
+        assert len(calls) <= 2
+        output.mkdir(parents=True)
+        (output / "stdout.txt").write_text(json.dumps({"score": 1, "passed": True, "cost": .25 if len(calls) == 1 else 99,
+                                                       "feedback": "Port fixture"}))
+        return {"status": "succeeded" if len(calls) == 1 else "failed", "returncode": 0 if len(calls) == 1 else 2,
+                "output": str(output)}
+
+    monkeypatch.setattr(evaluation.processes, "run", process)
+    result = client.post("/api/projects/demo/evaluations/run", json={"digest": baseline["digest"], "suite": suite["digest"]}).json()
+    assert result["status"] == "failed" and result["reported_cost"] == .25 and result["reported_cost_complete"] is False
+    assert len(result["cases"]) == 2 and "score" not in result["cases"][-1] and "cost" not in result["cases"][-1]
+    assert main(["--home", str(state.root), "evaluation", "show", "demo", result["id"]]) == 0
+    assert json.loads(capsys.readouterr().out) == result
+    observed = client.get("/api/projects/demo/dashboard").json()["evaluations"]["runs"]
+    assert observed == [result] and len(calls) == 2
+
+
 @pytest.mark.skipif(sys.platform != "linux", reason="mini driver explicitly requires Linux/bash")
 def test_slow_optional_mini_probe_keeps_dashboard_repairable(console, tmp_path):
     client, state, _ = console

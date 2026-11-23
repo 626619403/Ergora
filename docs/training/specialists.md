@@ -50,12 +50,14 @@ For each round, use the current trusted profile and source-flow bottleneck evide
 |`optimization-low-precision`|`ergora-opt-low-precision-proposal`|Low-precision expertise plus independent design, kernel assessment and measurement review; check PTQ/QAT-QAD/TE formats, runtime, quality and cost|
 |`optimization-kernel`|`ergora-opt-kernel-proposal`|Kernel expertise plus independent design/measurement review; check actual wrapper, oracle, compiled baseline and overall measurement; native tools require separate admission|
 
+For host-capacity work, keep the original process set and sampling window explicit: fork-shared RSS sums, PSS, host/cgroup availability and anonymous/file-backed attribution are different observations; missing counters remain UNKNOWN. Shared environment guidance covers native IPC/temp, optional-stream and failure-reporting boundaries. Any applicable DataLoader Tensor FD/socket regression belongs to the target's actual constructor and matched runtime; record unavailable or untested scope rather than treating a pathname check as transport acceptance.
+
 For capacity diagnosis, for example, first prepare project, backend, root grant and actual UTF-8 task body, then use original commands:
 
 ```bash
 ergora composition install-preset optimization-memory-tuning
-ergora composition show ergora-opt-memory-tuning-proposal 1.2.0
-ergora composition prepare-manifest ergora-opt-memory-tuning-proposal 1.2.0 --grant ./grant.json --directory ./memory-manifest
+ergora composition show ergora-opt-memory-tuning-proposal 1.2.1
+ergora composition prepare-manifest ergora-opt-memory-tuning-proposal 1.2.1 --grant ./grant.json --directory ./memory-manifest
 ergora composition prepare-from-manifest ./memory-manifest root/specialist --task ./memory-task.txt --directory ./memory-specialist --max-prompt-bytes 100000
 ergora composition check-input PROJECT_ID ./memory-specialist --mode task-mcp --backend codex --backend-reason "Explicit specialist backend"
 ergora composition run-input PROJECT_ID ./memory-specialist --mode task-mcp --backend codex --backend-reason "Explicit specialist backend" --timeout 600
