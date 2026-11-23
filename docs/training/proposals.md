@@ -70,7 +70,7 @@ Generator-native reports are candidate materials only. Submit candidate code, fr
 
 ## Optional experiment-expert proposals
 
-`ergora composition install-preset training-optimization` imports current common root `ergora-training-proposal@4.2.3`: source mapping, cross-domain experiment design, pure performance diagnosis, kernel implementation-plan assessment and independent measurement review. All five leaves inherit library/environment selection, the [delegated execution policy](../../src/ergora/data/presets/workflows/ergora-training-proposal/skills/ergora-bottleneck-optimization/SKILL.md#specialist-execution-and-supervision) for assigned execution specialists, and original evidence contracts. Model is fixed at gpt-6.1-sol, with max for design/kernel planning and high for diagnosis/measurement review. Selected-direction specialists enter complete optimization as actual structural descendants of this common root. They help operators fill original workload/baseline/experiment contracts; they neither execute search nor grant adoption. Real CPU/GPU execution remains with original runner/evidence gates.
+`ergora composition install-preset training-optimization` imports current common root `ergora-training-proposal@4.2.5`: source mapping, cross-domain experiment design, pure performance diagnosis, kernel implementation-plan assessment and independent measurement review. All five leaves inherit library/environment selection, the [delegated execution policy](../../src/ergora/data/presets/workflows/ergora-training-proposal/skills/ergora-bottleneck-optimization/SKILL.md#specialist-execution-and-supervision) for assigned execution specialists, and original evidence contracts. Model is fixed at gpt-6.1-sol, with max for design/kernel planning and high for diagnosis/measurement review. Selected-direction specialists enter complete optimization as actual structural descendants of this common root. They help operators fill original workload/baseline/experiment contracts; they neither execute search nor grant adoption. Real CPU/GPU execution remains with original runner/evidence gates.
 
 |Leaf path|Main responsibility and required materials|Result boundary|
 |---|---|---|
@@ -81,7 +81,7 @@ Generator-native reports are candidate materials only. Submit candidate code, fr
 
 First generate a grant and complete manifest for this exact root, then prepare a leaf input through [single-leaf invocation](../definitions/workflows/leaf-calls.md#call-a-prepared-leaf). With Skill attachments, select Linux/WSL2 `task-mcp` and ensure complete frozen resources are actually read. One `run-input` does not execute graph predecessors. Operators explicitly hand complete design/profile originals and digests to kernel, then all relevant inputs and actual experiment materials to measurement. Missing reports, hardware or experiment data remain unchecked; placeholder numbers never count as measurements. Record backend-override reasons by actual leaf path; measurement preferably differs from execution backend. If unavailable, explicitly record authorized same-backend fallback.
 
-Common design and measurement retain their global responsibilities; corresponding specialists handle 19 directions. Profiling/performance-diagnosis reuse performance-analyst; kernel topics reuse kernel-designer. Direction knowledge and native execution capability integrate separately. Installing current proposals does not integrate complete internal Forge/KDA workflows or arbitrary external MCP. Real experiments retain original manifests, trusted runners, independent evaluation and exact evidence SHA approval.
+Common design and measurement retain their global responsibilities; nineteen method-expert roles cover sixteen optimization directions and three evidence-support roles. Profiling/performance-diagnosis reuse performance-analyst; kernel topics reuse kernel-designer. Direction knowledge and native execution capability integrate separately. Installing current proposals does not integrate complete internal Forge/KDA workflows or arbitrary external MCP. Real experiments retain original manifests, trusted runners, independent evaluation and exact evidence SHA approval.
 
 ## Source-anchored flow maps
 
@@ -107,10 +107,10 @@ Preserve original reference and workload/semantics first; the original runner th
 
 ```bash
 ergora composition install-preset training-optimization
-ergora composition show ergora-training-proposal 4.2.3 --material
+ergora composition show ergora-training-proposal 4.2.5 --material
 ```
 
-Current common root `ergora-training-proposal@4.2.3` combines maps and four cross-domain experts. Root Skill owns evidence, direction and library/environment selection; child Skills retain their methods. For complete specialized optimization, revise this common root to place the complete root reference returned by selected-direction installation among its actual descendants before freezing a complete manifest. The [selected MoE composition example](../../examples/composition/optimization-selected-moe/README.md) supplies the current 18-leaf native development graph and complete handoffs; its [publication.json](../../examples/composition/optimization-selected-moe/publication.json) supplies formal root identity. Use actual returned full root references and manifests. This common proposal skeleton has design/profile reading the same materials:
+Current common root `ergora-training-proposal@4.2.5` combines maps and four cross-domain experts. Root Skill owns evidence, direction and library/environment selection; child Skills retain their methods. For complete specialized optimization, revise this common root to place the complete root reference returned by selected-direction installation among its actual descendants before freezing a complete manifest. The [selected MoE composition example](../../examples/composition/optimization-selected-moe/README.md) supplies the current 18-leaf native development graph and complete handoffs; its [publication.json](../../examples/composition/optimization-selected-moe/publication.json) supplies formal root identity. Use actual returned full root references and manifests. This common proposal skeleton has design/profile reading the same materials:
 
 ```mermaid
 flowchart LR
@@ -120,6 +120,10 @@ flowchart LR
   P --> K
   K --> M[measurement/review Measurement review]
 ```
+
+The inherited supervision policy requires one uninterrupted owner per direction across related tasks and at least four experts from different directions active concurrently. This stock graph has only two independent analysis leaves after flow, and each explicit leaf call runs one member. Select sufficient independent topic assignments in an exact root revision before freezing and use only supported execution capabilities; report the actual count and blocker when four cannot run. Five total leaves are not four concurrent experts.
+
+The [profile-driven selection and handoff policy](../../src/ergora/data/presets/workflows/ergora-training-proposal/skills/ergora-bottleneck-optimization/SKILL.md#profile-driven-direction-selection-and-handoff) chooses each round's relevant subset from trusted profile/source-flow evidence. Complete the current direction's agreed work, measurements and cleanup before changing priority under the original bounds. Switching direction uses that direction's different owner; the previous expert retains its direction and results. Later selections need an exact revision before freeze, with the original measurement, quality, clock and stop owners intact.
 
 |Leaf path|Complete materials required at invocation|
 |---|---|

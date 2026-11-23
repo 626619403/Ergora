@@ -195,14 +195,15 @@ def run_input(state: State, project_id: str, source: Path, timeout: int = 300, *
               codex_config: Path | None = None, mode: str = "text-only", binding_override: dict | None = None,
               result_schema: dict | None = None, env: dict | None = None,
               codex_bin: str = "codex", supervised: bool = False,
-              input_digest: str | None = None) -> dict:
+              input_digest: str | None = None, stop_requested=None, remaining=None,
+              record_lifecycle: bool = False) -> dict:
     """Explicit independent restricted call; no workflow ports or formal approval."""
     contracts.validate(timeout, {"type": "integer", "minimum": 1, "maximum": 3600}, "Agent timeout")
     prepared, document = _admit_input(state, project_id, source, backend=backend, model=model, reason=reason, mode=mode,
                                       codex_config=codex_config, binding_override=binding_override, input_digest=input_digest)
     return _run_prepared(state, prepared, document, timeout, mode=mode, codex_config=codex_config,
         result_schema=result_schema, env=env, codex_bin=codex_bin, supervised=supervised,
-        )
+        stop_requested=stop_requested, remaining=remaining, record_lifecycle=record_lifecycle)
 
 
 def run_workspace(state: State, project_id: str, source: Path, cwd: Path, authority: dict, timeout: int, *,

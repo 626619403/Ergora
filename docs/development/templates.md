@@ -8,10 +8,12 @@ Follow [source-branch selection](../install/linux.md#install-in-a-clean-environm
 
 |Template/preset|Current bundled root identity|Specialist relationships and entry points|
 |---|---|---|
-|repository-governance|`ergora-governance-template@1.1.1`|Parallel knowledge-map/boundary-test, then trusted integration/verification and structure, correctness and test-value reviews|
-|large-change|`ergora-large-change-template@1.1.1`|contract→parallel server/client→integration-tests, then trusted integration/verification and three reviews|
-|training-optimization|`ergora-training-proposal@4.2.2`|Source flow→planning/diagnosis→kernel implementation planning→measurement review; all five leaves inherit library/environment guidance, with actual experiments owned by trusted runners.|
-|refactoring|`ergora-refactoring-template@1.3.1`|Preparation→rewrite→compatibility→original trusted integration/verification→three reviews; ordinary parent references one native large-change six-stage instance|
+|repository-governance|`ergora-governance-template@1.1.3`|Parallel knowledge-map/boundary-test, then trusted integration/verification and structure, correctness and test-value reviews|
+|large-change|`ergora-large-change-template@1.1.3`|contract→parallel server/client→integration-tests, then trusted integration/verification and three reviews|
+|training-optimization|`ergora-training-proposal@4.2.5`|Source flow→planning/diagnosis→kernel implementation planning→measurement review; all five leaves inherit library/environment guidance, with actual experiments owned by trusted runners.|
+|refactoring|`ergora-refactoring-template@1.3.3`|Preparation→rewrite→compatibility→original trusted integration/verification→three reviews; ordinary parent references one native large-change six-stage instance|
+
+Supervisors retain one direction owner across related tasks in the original project/workload/campaign and queue unrelated work. The templates require at least four experts from different directions active concurrently; select suitable independent assignments before freezing and report the actual count and blocker when the stock graph or actual limits cannot support four. Existing stage order, candidate bindings, cancellation and budgets still apply; see [composition selection](../definitions/workflows/compose.md#use-bundled-domain-compositions).
 
 Select a focused training direction through the [optimization specialist guide](../training/specialists.md). Use `ergora composition presets` for the complete installed catalog and exact current identities; the [shipped catalog](../../src/ergora/data/presets/presets.json) owns those versions.
 
@@ -50,7 +52,7 @@ Copy destinations must be new. Reimporting a preset with identical identity reta
 For governance, read the original root declaration first and save explicitly reviewed permissions/budget as a grant:
 
 ```bash
-ergora composition show ergora-governance-template 1.1.1 --material > "$WALKTHROUGH_HOME/root.json"
+ergora composition show ergora-governance-template 1.1.3 --material > "$WALKTHROUGH_HOME/root.json"
 python3 - "$WALKTHROUGH_HOME" <<'PY'
 import json, pathlib, sys
 directory = pathlib.Path(sys.argv[1])
@@ -58,13 +60,13 @@ definition = json.loads((directory / "root.json").read_text())["definition"]
 grant = {"schema_version": 1, "permissions": definition["permissions"], "limits": definition["limits"]}
 (directory / "grant.json").write_text(json.dumps(grant, indent=2) + "\n")
 PY
-ergora composition preview ergora-governance-template 1.1.1 --grant "$WALKTHROUGH_HOME/grant.json"
+ergora composition preview ergora-governance-template 1.1.3 --grant "$WALKTHROUGH_HOME/grant.json"
 ```
 
 Review the complete preview's instances, ancestor materials and authorization limits. Use the actual returned `preview_sha256` for `PREVIEW_SHA256` below:
 
 ```bash
-ergora composition freeze-manifest ergora-governance-template 1.1.1 --grant "$WALKTHROUGH_HOME/grant.json" --preview-sha256 PREVIEW_SHA256
+ergora composition freeze-manifest ergora-governance-template 1.1.3 --grant "$WALKTHROUGH_HOME/grant.json" --preview-sha256 PREVIEW_SHA256
 ```
 
 Retain returned complete-package `path`, package `digest` and `manifest.preview_sha256`, then run `ergora composition verify-manifest FULL_MANIFEST_DIRECTORY`. When changing domain, use its root ID above and obtain/review that root's grant again; training roots request neither shell nor write permission. The page can also preview and “Save current preview as complete manifest”. Downloaded preview JSON is for reading; sharing/backups need the complete directory. See [complete bundles](../definitions/workflows/compose.md#save-and-share-a-complete-composition).

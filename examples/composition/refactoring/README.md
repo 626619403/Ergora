@@ -8,7 +8,7 @@ This example requires a registered Linux/WSL2 project with the original executio
 
    ```bash
    ergora composition install-preset refactoring
-   ergora composition prepare-manifest ergora-refactoring-template 1.3.1 \
+   ergora composition prepare-manifest ergora-refactoring-template 1.3.3 \
      --grant examples/composition/refactoring/grant.json \
      --directory ./refactoring-manifest
    ```
