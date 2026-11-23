@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "id": "ergora-opt-memory-tuning-proposal",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Limited readonly memory tuning proposal; complete optimization requires a shared training-proposal ancestor.",
   "resources": [
     {
@@ -41,8 +41,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-opt-memory-tuning-expert",
-        "version": "1.1.0",
-        "digest": "59993d1c8ff0cb0b59828c34eda727b1250468410ea5e34b986157d3764a38b9"
+        "version": "1.1.1",
+        "digest": "807db819684e4578f877e02763654334d5fa7f4c01ee964f87f544d204d42f51"
       },
       "role": "performance-analyst",
       "depends_on": [],

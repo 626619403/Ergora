@@ -42,7 +42,7 @@ ergora agent definition show ergora-server-implementer 2.0.1 --material
 |---|---|---|
 |repository-governance|`ergora-governance-template@1.1.3`|知识地图、架构回归两个专家并行，再经可信integrate/verify接三审查；包含独立盘点／规划与原工作／审查阶段|
 |large-change|`ergora-large-change-template@1.1.3`|接口合同 → 服务端与客户端并行 → 集成/兼容验证 → 三审查；包含独立盘点／规划与原工作／审查阶段|
-|training-optimization|`ergora-training-proposal@4.2.5`|源码流程 → 并行规划／诊断 → kernel实施方案评估 → 测量审查；全部五叶继承库／环境选择规则，只读建议与手工完整交接|
+|training-optimization|`ergora-training-proposal@4.2.6`|源码流程 → 并行规划／诊断 → kernel实施方案评估 → 测量审查；全部五叶继承库／环境选择规则，只读建议与手工完整交接|
 |refactoring|`ergora-refactoring-template@1.3.3`|普通父 → 原生六阶段：准备 → rewrite／compatibility串行工作 → 三类独立审查；正式task type沿用large-change，显式schema8／input12|
 |optimization-performance-diagnosis|`ergora-opt-performance-diagnosis-proposal@1.2.1`|同症状复现与兼容报告 reader；只读 design／profile→measurement 提案叶，原 runner 保留实验执行|
 |training-flow-map|`ergora-training-flow-map@1.1.0`|只读 `root/map` 分别产出算法／执行依赖图、状态生命周期和可证伪冗余假设；不自动运行后续专家或训练|

@@ -44,6 +44,9 @@ These identities serve distinct purposes: composition manifests freeze templates
 
 Failures, `no_gain`, noise, gaps and `unknown` retain original identities and budgets. Only trusted execution, independent correctness/quality and statistics satisfying the contract enter the original adoption flow. Native-tool completion, generator self-reported PASS or favorable measurement advice does not close this step. See the [original evidence format (Chinese source)](../../src/ergora/data/reference/platform/upstream/docs/evidence-format.md) for fields.
 
+
+The inherited [native-harness preflight policy](../../src/ergora/data/presets/workflows/ergora-training-proposal/skills/ergora-library-environment-optimization/SKILL.md#native-harness-preflight-and-failure-reporting) records process-set host accounting, owned short IPC/temp paths, explicit optional-stream sentinels and primary-failure preservation. Applicable Tensor FD/socket changes require real regressions through the target's existing harness/DataLoader construction with matched runtime and multiprocessing settings; pathname-only or mismatched CPU controls retain their limited scope. Record actual availability, original failures and cleanup in the existing environment-change record.
+
 ## Hand experiment candidates to development tasks
 
 After training evidence is approved by original evidence SHA, create an integration/revalidation task using repository-governance or large-change in the same business project. First register the corresponding development template, paths and trusted checks with `project register`. Follow the [formal task journey](../development/templates.md) to preview, create, submit and approve the exact plan, then verify verification/review and candidate against original run results and export a local branch. Training approval, development-plan approval and business merge retain separate original evidence and cannot replace one another.
@@ -70,7 +73,7 @@ Generator-native reports are candidate materials only. Submit candidate code, fr
 
 ## Optional experiment-expert proposals
 
-`ergora composition install-preset training-optimization` imports current common root `ergora-training-proposal@4.2.5`: source mapping, cross-domain experiment design, pure performance diagnosis, kernel implementation-plan assessment and independent measurement review. All five leaves inherit library/environment selection, the [delegated execution policy](../../src/ergora/data/presets/workflows/ergora-training-proposal/skills/ergora-bottleneck-optimization/SKILL.md#specialist-execution-and-supervision) for assigned execution specialists, and original evidence contracts. Model is fixed at gpt-6.1-sol, with max for design/kernel planning and high for diagnosis/measurement review. Selected-direction specialists enter complete optimization as actual structural descendants of this common root. They help operators fill original workload/baseline/experiment contracts; they neither execute search nor grant adoption. Real CPU/GPU execution remains with original runner/evidence gates.
+`ergora composition install-preset training-optimization` imports current common root `ergora-training-proposal@4.2.6`: source mapping, cross-domain experiment design, pure performance diagnosis, kernel implementation-plan assessment and independent measurement review. All five leaves inherit library/environment selection, the [delegated execution policy](../../src/ergora/data/presets/workflows/ergora-training-proposal/skills/ergora-bottleneck-optimization/SKILL.md#specialist-execution-and-supervision) for assigned execution specialists, and original evidence contracts. Model is fixed at gpt-6.1-sol, with max for design/kernel planning and high for diagnosis/measurement review. Selected-direction specialists enter complete optimization as actual structural descendants of this common root. They help operators fill original workload/baseline/experiment contracts; they neither execute search nor grant adoption. Real CPU/GPU execution remains with original runner/evidence gates.
 
 |Leaf path|Main responsibility and required materials|Result boundary|
 |---|---|---|
@@ -107,10 +110,10 @@ Preserve original reference and workload/semantics first; the original runner th
 
 ```bash
 ergora composition install-preset training-optimization
-ergora composition show ergora-training-proposal 4.2.5 --material
+ergora composition show ergora-training-proposal 4.2.6 --material
 ```
 
-Current common root `ergora-training-proposal@4.2.5` combines maps and four cross-domain experts. Root Skill owns evidence, direction and library/environment selection; child Skills retain their methods. For complete specialized optimization, revise this common root to place the complete root reference returned by selected-direction installation among its actual descendants before freezing a complete manifest. The [selected MoE composition example](../../examples/composition/optimization-selected-moe/README.md) supplies the current 18-leaf native development graph and complete handoffs; its [publication.json](../../examples/composition/optimization-selected-moe/publication.json) supplies formal root identity. Use actual returned full root references and manifests. This common proposal skeleton has design/profile reading the same materials:
+Current common root `ergora-training-proposal@4.2.6` combines maps and four cross-domain experts. Root Skill owns evidence, direction and library/environment selection; child Skills retain their methods. For complete specialized optimization, revise this common root to place the complete root reference returned by selected-direction installation among its actual descendants before freezing a complete manifest. The [selected MoE composition example](../../examples/composition/optimization-selected-moe/README.md) supplies the current 18-leaf native development graph and complete handoffs; its [publication.json](../../examples/composition/optimization-selected-moe/publication.json) supplies formal root identity. Use actual returned full root references and manifests. This common proposal skeleton has design/profile reading the same materials:
 
 ```mermaid
 flowchart LR
