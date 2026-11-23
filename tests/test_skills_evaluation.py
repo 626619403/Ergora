@@ -520,17 +520,78 @@ def _reported_outcome(output, raw, *, status="succeeded"):
     return {"status": status, "returncode": 0 if status == "succeeded" else 2, "output": str(output)}
 
 
-@pytest.mark.parametrize("failure", ["nonzero", "malformed", "missing-cost", "invalid-cost", "oversized", "exception", "interrupt"])
+@pytest.mark.parametrize("cost,returncode,expected_status", [
+    (0, 0, "failed"), (.25, 0, "failed"), (None, 0, "failed"), (2, 0, "budget_exhausted"), (.25, 2, "failed"),
+])
+def test_unevaluable_local_process_keeps_report_and_blocks_adoption(skill_project, cost, returncode, expected_status):
+    state, repo, source, baseline, original = skill_project
+    skill_file = source / "SKILL.md"
+    skill_file.write_text(skill_file.read_text().replace("BASELINE", "IMPROVED"))
+    candidate = skill_assets.import_bundle(state, "demo", source)
+    response = {"outcome": "unevaluable", "cost": cost, "feedback": "Missing usable answer"}
+    scored_response = ('{"score":0,"passed":false,"cost":0.125,"feedback":"Scored wrong answer",'
+                       '"upstream_metadata":{"raw_number":1e400}}')
+    scorer = repo / "unevaluable.py"
+    scorer.write_text(f'''import json, sys
+from pathlib import Path
+request = json.load(sys.stdin)
+if request["case"]["split"] == "validation" and "IMPROVED" in Path(request["skill_dir"], "SKILL.md").read_text():
+    print({json.dumps(response)!r})
+    print("Original evaluator diagnostic", file=sys.stderr)
+    sys.exit({returncode})
+print({scored_response!r})
+''', encoding="utf-8")
+    manifest = {key: value for key, value in original["manifest"].items() if key not in ("file_sha256", "path_bindings")}
+    manifest.update(evaluator_argv=[sys.executable, str(scorer)], evaluator_files=[str(scorer)])
+    suite = evaluation.register(state, "demo", manifest)
+    base_run = evaluation.evaluate(state, "demo", baseline["digest"], suite["digest"])
+    result = evaluation.evaluate(state, "demo", candidate["digest"], suite["digest"])
+    assert base_run["status"] == "succeeded"
+    assert result["status"] == expected_status and evaluation.get(State(state.root), "demo", result["id"]) == result
+    assert [row["id"] for row in result["cases"]] == ["train", "validation"]
+    assert not Path(result["output"], "cases", "holdout").exists()
+    first, row = result["cases"]
+    assert first["score"] == 0 and first["passed"] is False and first["reported_cost_complete"] is True
+    assert "upstream_metadata" not in first and Path(first["output"], "stdout.txt").read_text() == scored_response + "\n"
+    assert row["status"] == ("failed" if returncode else "succeeded") and row["returncode"] == returncode
+    assert json.loads(Path(row["output"], "stdout.txt").read_text()) == response
+    assert Path(row["output"], "stderr.txt").read_text() == "Original evaluator diagnostic\n"
+    assert {"score", "passed"}.isdisjoint(row)
+    if returncode:
+        assert {"outcome", "cost", "feedback"}.isdisjoint(row)
+    else:
+        assert {key: row[key] for key in response} == response
+    complete = returncode == 0 and cost is not None
+    assert row["reported_cost_complete"] is result["reported_cost_complete"] is complete
+    subtotal = .125 + (cost if complete else 0)
+    assert result["reported_cost"] == subtotal
+    comparison = evaluation.compare(state, "demo", base_run["id"], result["id"])
+    assert comparison["reasons"] == ["candidate did not complete the whole evaluation suite"]
+    assert not comparison["eligible"] and "candidate" not in comparison["averages"]
+    assert comparison["reported_cost"] == .375 + subtotal and comparison["reported_cost_complete"] is complete
+    with pytest.raises(ValueError, match="not eligible"):
+        skills.adopt(state, "demo", base_run["id"], result["id"], 1, "Cannot adopt unevaluable candidate")
+    assert skill_assets.versions(state, "demo")["active"][0]["digest"] == baseline["digest"]
+
+
+@pytest.mark.parametrize("failure", ["nonzero", "timed-out", "killed", "malformed", "missing-cost", "invalid-cost",
+                                     "overflowing-cost", "duplicate-outcome", "oversized", "exception", "interrupt"])
 def test_reported_cost_evaluator_failure_retains_unknown_subtotal_and_case(skill_project, monkeypatch, failure):
     state, _, _, baseline, suite = skill_project
     calls = []
     rejected = {
         "nonzero": '{"score":1,"passed":true,"cost":99,"feedback":"not an accepted report"}',
+        "timed-out": '{"outcome":"unevaluable","cost":99,"feedback":"untrusted timed-out output"}',
+        "killed": '{"outcome":"unevaluable","cost":99,"feedback":"untrusted killed output"}',
         "malformed": '{"cost":99',
         "missing-cost": '{"score":1,"passed":true,"feedback":"no cost"}',
         "invalid-cost": '{"score":1,"passed":true,"cost":NaN,"feedback":"invalid cost"}',
+        "overflowing-cost": '{"outcome":"unevaluable","cost":1e400,"feedback":"unrepresentable cost"}',
+        "duplicate-outcome": '{"outcome":"unknown","outcome":"unevaluable","cost":99,"feedback":"ambiguous"}',
         "oversized": "x" * 1_000_001,
     }
+    process_status, returncode = {"nonzero": ("failed", 2), "timed-out": ("timed_out", 0), "killed": ("failed", -9)}.get(
+        failure, ("succeeded", 0))
 
     def process(argv, cwd, output, timeout, stdin, **options):
         pending = evaluation.listing(State(state.root), "demo")["runs"][0]
@@ -549,7 +610,7 @@ def test_reported_cost_evaluator_failure_retains_unknown_subtotal_and_case(skill
             raise KeyboardInterrupt()
         if failure == "exception":
             raise OSError("Lost evaluator return")
-        return _reported_outcome(output, rejected[failure], status="failed" if failure == "nonzero" else "succeeded")
+        return {**_reported_outcome(output, rejected[failure], status=process_status), "returncode": returncode}
 
     monkeypatch.setattr(evaluation.processes, "run", process)
     if failure == "interrupt":
@@ -559,16 +620,16 @@ def test_reported_cost_evaluator_failure_retains_unknown_subtotal_and_case(skill
         assert result["status"] == "running" and "finished" not in result
     else:
         result = evaluation.evaluate(state, "demo", baseline["digest"], suite["digest"])
-        assert result["status"] == "failed"
+        assert result["status"] == ("timed_out" if failure == "timed-out" else "failed")
         assert evaluation.get(State(state.root), "demo", result["id"]) == result
     assert len(calls) == 2 and result["reported_cost"] == .125 and result["reported_cost_complete"] is False
     assert len(result["cases"]) == 2 and result["cases"][-1]["reported_cost_complete"] is False
-    assert "score" not in result["cases"][-1] and "cost" not in result["cases"][-1]
-    expected_outcome = "failed" if failure == "nonzero" else "running" if failure in ("exception", "interrupt") else "succeeded"
+    assert {"score", "passed", "cost", "outcome"}.isdisjoint(result["cases"][-1])
+    expected_outcome = "running" if failure in ("exception", "interrupt") else process_status
     assert result["cases"][-1]["status"] == expected_outcome
     if failure in rejected:
         assert (calls[-1] / "stdout.txt").read_text() == rejected[failure]
-        assert result["cases"][-1]["returncode"] == (2 if failure == "nonzero" else 0)
+        assert result["cases"][-1]["returncode"] == returncode
 
 
 @pytest.mark.parametrize("cost,expected_calls,expected_status", [(0, 3, "succeeded"), (2, 1, "budget_exhausted")])
@@ -608,18 +669,28 @@ def test_reported_cost_before_entry_and_after_material_failure_have_distinct_cov
     assert failed["reported_cost"] == .375 and failed["reported_cost_complete"] is True
 
 
-def test_reported_cost_overflow_never_persists_complete_infinity(skill_project, monkeypatch):
+@pytest.mark.parametrize("unevaluable", [False, True])
+def test_reported_cost_overflow_never_persists_complete_infinity(skill_project, monkeypatch, unevaluable):
     state, _, _, baseline, original = skill_project
     manifest = {key: value for key, value in original["manifest"].items() if key not in ("file_sha256", "path_bindings")}
     manifest["max_reported_cost"] = 1e308
     suite = evaluation.register(state, "demo", manifest)
-    monkeypatch.setattr(evaluation.processes, "run", lambda argv, cwd, output, *a, **k:
-        _reported_outcome(output, '{"score":1,"passed":true,"cost":1e308,"feedback":"finite individual report"}'))
+    def process(argv, cwd, output, *args, **kwargs):
+        response = {"cost": 1e308, "feedback": "Finite individual report"}
+        if unevaluable and output.name == "validation":
+            response["outcome"] = "unevaluable"
+        else:
+            response.update(score=1, passed=True)
+        return _reported_outcome(output, json.dumps(response))
+
+    monkeypatch.setattr(evaluation.processes, "run", process)
     result = evaluation.evaluate(state, "demo", baseline["digest"], suite["digest"])
     assert result["status"] == "failed" and "total is not finite" in result["error"]
     assert result["reported_cost"] == 1e308 and result["reported_cost_complete"] is False
     assert len(result["cases"]) == 2 and result["cases"][-1]["cost"] == 1e308
     assert result["cases"][-1]["status"] == "succeeded"
+    if unevaluable:
+        assert result["cases"][-1]["outcome"] == "unevaluable" and "score" not in result["cases"][-1]
     assert "Infinity" not in json.dumps(evaluation.get(State(state.root), "demo", result["id"]), allow_nan=False)
     with pytest.raises(ValueError, match="Combined reported cost total is not finite"):
         evaluation.compare(state, "demo", result["id"], result["id"])
@@ -650,7 +721,12 @@ def test_reported_cost_comparison_preserves_unrecorded_history_and_quality_gate(
     assert evaluation.get(State(state.root), "demo", candidate_run["id"]) == candidate_run
 
 
-def test_reported_cost_optimization_halts_after_partial_evaluator_report(skill_project, monkeypatch):
+@pytest.mark.parametrize("failure,expected_subtotal,complete,expected_status", [
+    ("nonzero", .375, False, "failed"), ("unknown", .375, False, "failed"),
+    ("known", .625, True, "failed"), ("overshoot", 2.375, True, "budget_exhausted"),
+])
+def test_reported_cost_optimization_halts_after_partial_evaluator_report(skill_project, monkeypatch, failure,
+                                                                       expected_subtotal, complete, expected_status):
     gepa = pytest.importorskip("gepa")
     state, _, _, baseline, suite = skill_project
     projects.bind(state, "demo", "optimizer", {"tool": "gepa", "proposer_argv": [sys.executable, "unused-proposer"]}, 1)
@@ -662,7 +738,11 @@ def test_reported_cost_optimization_halts_after_partial_evaluator_report(skill_p
         assert pending["reported_cost"] == (0 if not calls else .25)
         calls.append(output)
         if len(calls) == 3:
-            return _reported_outcome(output, '{"score":1,"passed":true,"cost":99,"feedback":"failed output"}', status="failed")
+            if failure == "nonzero":
+                return _reported_outcome(output, '{"score":1,"passed":true,"cost":99,"feedback":"failed output"}',
+                                         status="failed")
+            cost = {"unknown": None, "known": .25, "overshoot": 2}[failure]
+            return _reported_outcome(output, json.dumps({"outcome": "unevaluable", "cost": cost, "feedback": "No score"}))
         return _reported_outcome(output, json.dumps({"score": .5, "passed": True, "cost": .25 if len(calls) == 1 else .125,
                                                     "feedback": "accepted report"}))
 
@@ -682,9 +762,12 @@ def test_reported_cost_optimization_halts_after_partial_evaluator_report(skill_p
     monkeypatch.setattr(gepa, "optimize", engine)
     monkeypatch.setattr(optimization.processes, "run", process)
     result = optimization.optimize(state, "demo", baseline["digest"], suite["digest"], "Retain incomplete reports", 6, 2, 20)
-    assert result["status"] == "failed" and result["reported_cost"] == .375 and result["reported_cost_complete"] is False
+    assert result["status"] == expected_status and result["reported_cost"] == expected_subtotal
+    assert result["reported_cost_complete"] is complete
     assert len(calls) == 3 and result["metric_calls"] == 3 and result["proposals"] == 0
     assert len(result["evaluations"]) == 2 and optimization.listing(State(state.root), "demo")[0] == result
+    last_evaluation = evaluation.get(State(state.root), "demo", result["evaluations"][-1])
+    assert {"score", "passed"}.isdisjoint(last_evaluation["cases"][-1])
 
 
 @pytest.mark.parametrize("failure", ["nonzero", "malformed", "invalid-cost", "interrupt", "overshoot", "overflow"])

@@ -500,7 +500,8 @@ def test_skill_evidence_and_adoption_use_existing_business_gate(console, tmp_pat
     assert client.post("/api/projects/demo/skills/adopt", json=payload).status_code == 400
 
 
-def test_reported_cost_failure_http_cli_and_dashboard_retain_subtotal(console, tmp_path, monkeypatch, capsys):
+@pytest.mark.parametrize("clean_exit", [False, True])
+def test_reported_cost_failure_http_cli_and_dashboard_retain_subtotal(console, tmp_path, monkeypatch, capsys, clean_exit):
     import ergora.improvement.evaluation as evaluation
     from ergora.interfaces.cli import main
 
@@ -519,21 +520,37 @@ def test_reported_cost_failure_http_cli_and_dashboard_retain_subtotal(console, t
 
     def process(argv, cwd, output, *args, **kwargs):
         calls.append(output)
-        assert len(calls) <= 2
         output.mkdir(parents=True)
-        (output / "stdout.txt").write_text(json.dumps({"score": 1, "passed": True, "cost": .25 if len(calls) == 1 else 99,
-                                                       "feedback": "Port fixture"}))
-        return {"status": "succeeded" if len(calls) == 1 else "failed", "returncode": 0 if len(calls) == 1 else 2,
+        if output.name == "train":
+            payload = {"score": 1, "passed": True, "cost": .25, "feedback": "Port fixture"}
+        else:
+            assert output.name == "validation", "No holdout call may follow an unevaluable result"
+            payload = {"outcome": "unevaluable", "cost": .375, "feedback": "No score"}
+        succeeded = output.name == "train" or clean_exit
+        (output / "stdout.txt").write_text(json.dumps(payload))
+        return {"status": "succeeded" if succeeded else "failed", "returncode": 0 if succeeded else 2,
                 "output": str(output)}
 
     monkeypatch.setattr(evaluation.processes, "run", process)
     result = client.post("/api/projects/demo/evaluations/run", json={"digest": baseline["digest"], "suite": suite["digest"]}).json()
-    assert result["status"] == "failed" and result["reported_cost"] == .25 and result["reported_cost_complete"] is False
-    assert len(result["cases"]) == 2 and "score" not in result["cases"][-1] and "cost" not in result["cases"][-1]
+    subtotal = .625 if clean_exit else .25
+    assert result["status"] == "failed" and result["reported_cost"] == subtotal
+    assert result["reported_cost_complete"] is clean_exit and len(result["cases"]) == 2
+    row = result["cases"][-1]
+    assert {"score", "passed"}.isdisjoint(row)
+    if clean_exit:
+        assert row["outcome"] == "unevaluable" and row["cost"] == .375 and row["returncode"] == 0
+    else:
+        assert {"outcome", "cost"}.isdisjoint(row) and row["returncode"] == 2
     assert main(["--home", str(state.root), "evaluation", "show", "demo", result["id"]]) == 0
     assert json.loads(capsys.readouterr().out) == result
     observed = client.get("/api/projects/demo/dashboard").json()["evaluations"]["runs"]
     assert observed == [result] and len(calls) == 2
+    if clean_exit:
+        assert main(["--home", str(state.root), "evaluation", "run", "demo", baseline["digest"], "--suite", suite["digest"]]) == 1
+        run = json.loads(capsys.readouterr().out)
+        assert run["status"] == "failed" and run["reported_cost"] == subtotal and run["reported_cost_complete"] is True
+        assert run["cases"][-1]["outcome"] == "unevaluable" and len(calls) == 4
 
 
 @pytest.mark.skipif(sys.platform != "linux", reason="mini driver explicitly requires Linux/bash")

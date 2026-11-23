@@ -11,6 +11,7 @@ import uuid
 
 import ergora.definitions.skills as skill_assets
 from ergora.configuration import validation as contracts
+from ergora.definitions.bundles import parse_json
 from ergora.runtime import processes
 from ergora.storage.state import State, now
 
@@ -155,18 +156,30 @@ def evaluate(state: State, project_id: str, digest: str, suite_digest: str, case
             output = Path(outcome["output"]) / "stdout.txt"
             if output.stat().st_size > 1_000_000:
                 raise ValueError("Evaluator JSON response exceeded 1 MB")
-            result = json.loads(output.read_text(encoding="utf-8"))
+            try:
+                # The schema checks consumed numbers and leaves scored metadata opaque.
+                result = parse_json(output.read_text(encoding="utf-8"), "Evaluator result")
+            except RecursionError as error:
+                raise ValueError("Evaluator JSON response is too deeply nested") from error
             contracts.validate(result, contracts.EVALUATION_RESULT, "Evaluator result")
             cost = result["cost"]
-            row.update({key: result[key] for key in ("score", "cost", "passed", "feedback")})
-            row["reported_cost_complete"] = True
-            total = document["reported_cost"] + cost
-            if not math.isfinite(total):
-                raise ValueError("Reported cost total is not finite")
-            document.update(reported_cost=total, reported_cost_complete=True)
-            persist()
+            unevaluable = result.get("outcome") == "unevaluable"
+            row.update(cost=cost, feedback=result["feedback"], reported_cost_complete=cost is not None)
+            if unevaluable:
+                row["outcome"] = "unevaluable"
+            else:
+                row.update(score=result["score"], passed=result["passed"])
+            if cost is not None:
+                total = document["reported_cost"] + cost
+                if not math.isfinite(total):
+                    raise ValueError("Reported cost total is not finite")
+                document.update(reported_cost=total, reported_cost_complete=True)
             if document["reported_cost"] > cost_limit:
                 document["status"] = "budget_exhausted"
+            elif unevaluable:
+                document.update(status="failed", error=f"Case {case['id']}: evaluator returned an unevaluable result")
+            persist()
+            if document["status"] != "running":
                 break
         except (ValueError, KeyError, OSError) as error:
             document["status"] = "failed"
