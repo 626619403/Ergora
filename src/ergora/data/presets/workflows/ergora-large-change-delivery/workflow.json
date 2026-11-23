@@ -1,14 +1,14 @@
 {
   "schema_version": 2,
   "id": "ergora-large-change-delivery",
-  "version": "1.5.5",
+  "version": "1.5.6",
   "description": "Deliver a compatible cross-module change with complementary experts and independent final review.",
   "resources": [
     {
       "id": "ergora-large-change-delivery-instructions",
       "kind": "instructions",
       "path": "instructions.md",
-      "sha256": "a41380017b0939d23cf0d144941c9f6ef8251c874fde347e57da21b69fa74e38"
+      "sha256": "7206b39588c19c7a8d4685221a6d0dce517fdd71b6b2048318e97425e344811d"
     }
   ],
   "permissions": {
@@ -73,8 +73,8 @@
       "ref": {
         "kind": "workflow",
         "id": "ergora-delivery-review",
-        "version": "1.2.4",
-        "digest": "653b8dba06e953e60b9d6e30b7f368355bdbd846a0ed63efb096eb1d69d188a2"
+        "version": "1.2.5",
+        "digest": "dbd74724a216ee0e3fe95e496b7eeccd45a707353bcc5415e11662f273f8da1d"
       },
       "depends_on": [
         "work"

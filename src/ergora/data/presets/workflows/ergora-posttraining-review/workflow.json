@@ -1,14 +1,14 @@
 {
   "schema_version": 2,
   "id": "ergora-posttraining-review",
-  "version": "1.1.4",
+  "version": "1.1.5",
   "description": "General three-way engineering plus posttraining specialist review, explicit all-join.",
   "resources": [
     {
       "id": "ergora-posttraining-review-instructions",
       "kind": "instructions",
       "path": "instructions.md",
-      "sha256": "3c63724313ede1ba58915a892234122c8e5f94a10291782c04c974424c4416e5"
+      "sha256": "8c668962b34ad6fe1e1b5e2c90e7a9b3f94c16697187f526c52e391573509198"
     },
     {
       "id": "ergora-review-backends-skill",
@@ -47,8 +47,8 @@
       "ref": {
         "kind": "workflow",
         "id": "ergora-delivery-review",
-        "version": "1.2.4",
-        "digest": "653b8dba06e953e60b9d6e30b7f368355bdbd846a0ed63efb096eb1d69d188a2"
+        "version": "1.2.5",
+        "digest": "dbd74724a216ee0e3fe95e496b7eeccd45a707353bcc5415e11662f273f8da1d"
       },
       "depends_on": [],
       "inputs": {

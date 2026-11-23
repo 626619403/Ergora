@@ -2,14 +2,14 @@
   "policy_source": {
     "kind": "workflow",
     "id": "ergora-training-proposal",
-    "version": "4.2.8",
-    "digest": "2991968b42e7bd4727d3d1aeb2d68c88c625aee57964cdb6b88d789e375a4729"
+    "version": "4.2.9",
+    "digest": "9180067f3b64f32d0fd5c3cba45f5bff6c5f6ddd7440e0d2e3f0feb667a0fa01"
   },
   "policy_files": {
     "skills/ergora-bottleneck-optimization/SKILL.md": {
-      "sha256": "75d378da46d97e36a79efe0b31938639b009c9bef4b16a526ee0e9f50fcf3d43",
+      "sha256": "bd76b528232d0a3ae1834b35366ec9a89c33fb43781ac439c312a58ebb1580a0",
       "executable_bits": 0,
-      "bytes": 21855
+      "bytes": 20360
     },
     "skills/ergora-library-environment-optimization/SKILL.md": {
       "sha256": "1ad5fa3d4afff2e366814a7fe5513402b13bfb75d08e143beabfa2f5b8fd33f1",
@@ -44,14 +44,14 @@
     "review": {
       "kind": "workflow",
       "id": "ergora-delivery-review",
-      "version": "1.2.4",
-      "digest": "653b8dba06e953e60b9d6e30b7f368355bdbd846a0ed63efb096eb1d69d188a2"
+      "version": "1.2.5",
+      "digest": "dbd74724a216ee0e3fe95e496b7eeccd45a707353bcc5415e11662f273f8da1d"
     },
     "delivery": {
       "kind": "workflow",
       "id": "ergora-large-change-delivery",
-      "version": "1.5.5",
-      "digest": "2773fc7b662718ce3857d6c57335b380552a4577d2252036c04e862ada1d41df"
+      "version": "1.5.6",
+      "digest": "ba13cb6e85c63eff8fcab5f0065bf6aa6ea868cee021ffd78d16307fe48f42c3"
     },
     "root": {
       "kind": "workflow",
@@ -82,20 +82,20 @@
     "review": {
       "kind": "workflow",
       "id": "ergora-delivery-review",
-      "version": "1.3.4",
-      "digest": "da0418b50410ebfa1bf6e855837fc5587618ab153c438ca38c8ddfce45cd5611"
+      "version": "1.3.5",
+      "digest": "1a04ced6b6f654a1af71c7cb8f68acb198f5fcc6b4a9008e9ec9da5c3526212d"
     },
     "delivery": {
       "kind": "workflow",
       "id": "ergora-large-change-delivery",
-      "version": "1.6.7",
-      "digest": "b63cc2ba40587ed810738f6e1ccc978170a8e3fe821a41928cd530e09c5e45cb"
+      "version": "1.6.8",
+      "digest": "18772e247df488ae472c52fbdaef3c66917ad6eb5b61850f2cb1996d6a9a3e7b"
     },
     "root": {
       "kind": "workflow",
       "id": "ergora-selected-moe-development",
-      "version": "1.1.7",
-      "digest": "69017419e7ea0ee365455cefe7b0566e1d52895ac71091f332b5bab7ab3f5ff0"
+      "version": "1.1.8",
+      "digest": "11d94ea7a1077b78834eb8ae29c8fd5a839441a0a11c859a238dbc5651d9034f"
     }
   }
 }
