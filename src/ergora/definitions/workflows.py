@@ -209,11 +209,11 @@ class _Compilation:
         self.preview_version = 1
         self.total = {"path": "project", "limits": grant["limits"], "depth": 0, "instances": 0, "material_bytes": 0}
 
-    def _resolve(self, reference: dict, *, material: bool = False) -> dict:
-        key = (reference["kind"], reference["id"], reference["version"], reference["digest"], material)
+    def _resolve(self, reference: dict) -> dict:
+        key = (reference["kind"], reference["id"], reference["version"], reference["digest"])
         if key not in self.documents:
             source = agent_definitions.library(self.root) if reference["kind"] == "agent" else library(self.root)
-            document = source.get(reference["id"], reference["version"], material=material)
+            document = source.get(reference["id"], reference["version"], material=True)
             if document["digest"] != reference["digest"]:
                 raise ValueError(f"Definition reference digest mismatch: {reference['id']}@{reference['version']}")
             if reference["kind"] == "agent" and self.agent_admission is not None:
@@ -295,11 +295,11 @@ class _Compilation:
                     self.instances.append({"path": child_path, "parent": path, "kind": "join", "join": "all",
                                            "depends_on": dependencies, "outputs": ["result"], "permissions": permissions})
                 elif node["ref"]["kind"] == "workflow":
-                    self._workflow(self._resolve(node["ref"], material=True), child_path, materials, permissions,
+                    self._workflow(self._resolve(node["ref"]), child_path, materials, permissions,
                                    scopes, (*lineage, identity), node["inputs"], dependencies)
                 else:
                     self._count(scopes, child_path)
-                    child = self._resolve(node["ref"], material=True)
+                    child = self._resolve(node["ref"])
                     if node["role"] not in child["definition"]["roles"]:
                         raise ValueError(f"Agent role not supported at {child_path}: {node['role']}")
                     _within(node["permissions"], permissions, child_path)

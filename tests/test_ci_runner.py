@@ -59,6 +59,12 @@ def notice_row(notice):
     return json.loads(payload)
 
 
+def event_utc(filetime):
+    from datetime import datetime, timezone
+    seconds, fraction = divmod(filetime - 116444736000000000, 10000000)
+    return datetime.fromtimestamp(seconds, timezone.utc).strftime('%Y-%m-%dT%H:%M:%S') + f'.{fraction:07d}Z'
+
+
 @pytest.fixture
 def ci_runner(tmp_path, monkeypatch):
     source = Path(__file__).resolve().parents[1] / 'scripts/ci/run.py'
@@ -75,13 +81,35 @@ def ci_runner(tmp_path, monkeypatch):
         original_monitor(*args, offsets=tuple(0.05 * index for index in range(1, 9)),
                          poll_interval=0.005)
 
-    def start(script, *, fail_on_output=False):
+    def start(script, *, fail_on_output=False, windows_returncode=None):
         outcome = {}
 
         def popen(command, **options):
-            outcome['command'], outcome['options'] = command, options
+            if command[1:6] != ['-u', '-m', 'pytest', '-p', 'pytest_phases']:
+                return original_popen(command, **options)
+            outcome['command'] = command
+            outcome['options'] = {key: value for key, value in options.items() if key != 'env'}
             child = original_popen(child_command(script, directory), **options)
             children.append(child)
+            if windows_returncode is not None:
+                class WindowsOutcome:
+                    pid, stdout = child.pid, child.stdout
+
+                    def poll(self):
+                        return windows_returncode if child.poll() is not None else None
+
+                    def wait(self):
+                        outcome['actual_child_returncode'] = child.wait()
+                        return windows_returncode
+
+                    def __enter__(self):
+                        child.__enter__()
+                        return self
+
+                    def __exit__(self, *error):
+                        child.__exit__(*error)
+
+                return WindowsOutcome()
             return child
 
         def writer():
@@ -106,6 +134,9 @@ def ci_runner(tmp_path, monkeypatch):
         monkeypatch.setattr(runner, '_monitor_phases', monitor)
         monkeypatch.setattr(runner, '_stdout_writer', writer)
         monkeypatch.setattr(sys, 'argv', [str(source), '--output', str(directory), '--group', '2'])
+        if windows_returncode is not None:
+            monkeypatch.setattr(runner, 'sys', SimpleNamespace(
+                executable=r'C:\Owned Python\python.exe', platform='win32', stdout=sys.stdout))
         worker = threading.Thread(target=run, name='test-ci-runner')
         workers.append(worker)
         worker.start()
@@ -132,6 +163,247 @@ def ci_runner(tmp_path, monkeypatch):
         'runner_threads': [{'name': worker.name, 'alive': worker.is_alive()} for worker in workers],
     }, indent=2) + '\n')
     (tmp_path / 'notices.jsonl').write_text(''.join(json.dumps(notice) + '\n' for notice in notices))
+
+
+@pytest.fixture
+def windows_events(ci_runner, monkeypatch):
+    from ergora.runtime import processes
+
+    runner, directory, start, children, monitors, notices = ci_runner
+    calls, raw = [], {}
+    scenario = {'change': None, 'owner_status': 'succeeded', 'returncode': 0}
+    ordinary_owner = processes.run
+
+    def query(argv, cwd, output, timeout, **options):
+        assert children[0].poll() == 7
+        assert json.loads((directory / 'result.json').read_text())['returncode'] == 0xC0000005
+        request = json.loads((directory / 'windows-crash-events-request.json').read_text())
+        bound = request['binding']
+        if scenario.get('real_query'):
+            calls.append({'argv': argv, 'timeout': timeout, 'options': options, 'request': request})
+            return ordinary_owner(argv, cwd, output, timeout, **options)
+        event = {
+            'provider': 'Application Error', 'event_id': 1000,
+            'event_time': event_utc(bound['reaped_filetime']),
+            'ProcessId': hex(children[0].pid),
+            'ProcessCreationTime': hex((bound['launch_start_filetime'] + bound['launch_end_filetime']) // 2),
+            'AppPath': r'C:\Owned Python\python.exe', 'AppName': 'python.exe', 'AppVersion': '3.12.10.0',
+            'ModuleName': 'python312.dll', 'ModuleVersion': '3.12.10.0',
+            'ExceptionCode': 'c0000005', 'FaultingOffset': '000000000012abcd',
+        }
+        payload = {'status': 'ok', 'records': [event]}
+        if scenario['change'] is not None:
+            scenario['change'](payload, bound)
+        output.mkdir()
+        raw['stdout'] = scenario.get('raw_stdout', json.dumps(payload).encode() + b'\r\n')
+        raw['stderr'] = b'query diagnostic stderr\r\n'
+        (output / 'stdout.txt').write_bytes(raw['stdout'])
+        (output / 'stderr.txt').write_bytes(raw['stderr'])
+        if options.get('command_record') is not None:
+            Path(options['command_record']).write_text(json.dumps(argv))
+        calls.append({'argv': argv, 'timeout': timeout, 'options': options, 'request': request})
+        if scenario.get('owner_error'):
+            if scenario.get('owner_interrupt'):
+                raise KeyboardInterrupt('controlled query cleanup interruption')
+            raise RuntimeError('controlled cleanup uncertainty ' + '\u2603' * 800)
+        return {'status': scenario['owner_status'], 'returncode': scenario['returncode'], 'output': str(output)}
+
+    monkeypatch.setattr(processes, 'run', query)
+    monkeypatch.setattr(runner, 'shutil', SimpleNamespace(which=lambda name: r'C:\Windows\powershell.exe'), raising=False)
+
+    def run(*, identity=True, code=0xC0000005):
+        script = '''
+import os
+emit('identity', pid=os.getpid(), python=sys.version, executable=r'C:\\Owned Python\\python.exe')
+print('complete original stdout', flush=True)
+print('complete original stderr', file=sys.stderr, flush=True)
+raise SystemExit(7)
+'''
+        if not identity:
+            script = script.replace("emit('identity', pid=os.getpid(), python=sys.version, executable=r'C:\\Owned Python\\python.exe')", '')
+        elif isinstance(identity, str):
+            changes = {
+                'pid': ('pid=os.getpid()', 'pid=os.getpid()+1'),
+                'path': (r"executable=r'C:\Owned Python\python.exe'", r"executable=r'C:\Other Python\python.exe'"),
+                'python': ('python=sys.version', "python=''"),
+                'first-row': ("emit('identity'", "emit('phase'"),
+                'oversize': ('python=sys.version', "python='x'*9000"),
+                'partial': ("emit('identity', pid=os.getpid(), python=sys.version, executable=r'C:\\Owned Python\\python.exe')",
+                            "(directory / 'phases.jsonl').write_text('{\"event\":\"identity\"')"),
+            }
+            before, after = changes[identity]
+            assert before in script
+            script = script.replace(before, after)
+        outcome, worker = start(script, windows_returncode=code)
+        worker.join(timeout=20)
+        assert not worker.is_alive() and 'error' not in outcome
+        assert outcome['returncode'] == code and children[0].returncode == 7
+        assert (directory / 'stdout.txt').read_text() == 'complete original stdout\ncomplete original stderr\n'
+        return outcome
+
+    return runner, directory, run, calls, scenario, raw
+
+
+def test_owned_windows_event_is_bound_after_reap_without_changing_original_failure(windows_events, capsys):
+    runner, directory, run, calls, scenario, raw = windows_events
+    run()
+    assert (directory / 'windows-crash-events.json').is_file(), 'Owned crash evidence is missing after the original native outcome'
+    result = json.loads((directory / 'windows-crash-events.json').read_text())
+    assert result['status'] == 'matched' and result['cleanup_confirmed'] is True
+    assert len(result['records']) == 1 and result['records'][0]['ModuleName'] == 'python312.dll'
+    assert result['binding']['python'].startswith(sys.version.split()[0])
+    assert result['binding']['executable'] == r'C:\Owned Python\python.exe'
+    assert len(calls) == 1 and calls[0]['timeout'] == 5
+    assert calls[0]['request']['argv'] == calls[0]['argv']
+    assert calls[0]['options']['deadline'] is not None
+    assert (directory / 'windows-crash-query/stdout.txt').read_bytes() == raw['stdout']
+    assert (directory / 'windows-crash-query/stderr.txt').read_bytes() == raw['stderr']
+    assert json.loads((directory / 'result.json').read_text())['returncode'] == 0xC0000005
+    console = capsys.readouterr().out
+    assert '::error title=Native regression::' in console
+    notices = [line for line in console.splitlines() if line.startswith('::notice title=Windows crash event observation::')]
+    assert len(notices) == 1 and len(notices[0].split('::', 2)[-1]) <= 3000
+
+
+@pytest.mark.parametrize('field,change', [
+    ('ProcessId', lambda value, bound: hex(bound['pid'] + 1)),
+    ('ProcessCreationTime', lambda value, bound: str(bound['launch_start_filetime'] - 1)),
+    ('ProcessCreationTime', lambda value, bound: str(bound['launch_end_filetime'] + 1)),
+    ('event_time', lambda value, bound: event_utc(bound['launch_start_filetime'] - 1)),
+    ('event_time', lambda value, bound: event_utc(bound['reaped_filetime'] + 1)),
+    ('AppPath', lambda value, bound: r'C:\Other Python\python.exe'),
+    ('AppName', lambda value, bound: 'other.exe'),
+    ('ExceptionCode', lambda value, bound: 'c0000006'),
+    ('provider', lambda value, bound: 'Other Provider'),
+    ('event_id', lambda value, bound: 1001),
+    ('FaultingOffset', lambda value, bound: 'malformed-offset'),
+    ('ProcessCreationTime', lambda value, bound: None),
+    ('ModuleName', lambda value, bound: ''),
+    ('ModuleName', lambda value, bound: ' \t\r\n'),
+])
+def test_unmatched_or_malformed_event_cannot_be_promoted(windows_events, capsys, field, change):
+    runner, directory, run, calls, scenario, raw = windows_events
+    scenario['change'] = lambda payload, bound: payload['records'][0].update({field: change(None, bound)})
+    run()
+    result = json.loads((directory / 'windows-crash-events.json').read_text())
+    assert result['status'] == 'unknown' and result['records'] == []
+    assert result['cleanup_confirmed'] is True and len(calls) == 1
+    notices = [line.split('::', 2)[-1] for line in capsys.readouterr().out.splitlines()
+               if line.startswith('::notice title=Windows crash event observation::')]
+    assert len(notices) == 1 and json.loads(notices[0])['status'] == 'unknown'
+
+
+@pytest.mark.parametrize('identity', [False, 'pid', 'path', 'python', 'first-row', 'oversize', 'partial'])
+def test_unbound_child_identity_does_not_launch_a_machine_event_query(windows_events, identity):
+    runner, directory, run, calls, scenario, raw = windows_events
+    run(identity=identity)
+    result = json.loads((directory / 'windows-crash-events.json').read_text())
+    assert result['status'] == 'unknown' and result['records'] == []
+    assert result['owner_invoked'] is False and result['cleanup_confirmed'] is None
+    assert calls == [] and not (directory / 'windows-crash-query').exists()
+
+
+def test_unavailable_powershell_is_unknown_without_a_query(windows_events, monkeypatch):
+    runner, directory, run, calls, scenario, raw = windows_events
+    monkeypatch.setattr(runner.shutil, 'which', lambda name: None)
+    run()
+    result = json.loads((directory / 'windows-crash-events.json').read_text())
+    assert result['status'] == 'unknown' and result['reason'] == 'powershell-unavailable'
+    assert result['owner_invoked'] is False and calls == []
+
+
+@pytest.mark.parametrize('code', [0, 7])
+def test_non_native_windows_outcomes_do_not_query_events(windows_events, code):
+    runner, directory, run, calls, scenario, raw = windows_events
+    run(code=code)
+    assert calls == [] and not (directory / 'windows-crash-events.json').exists()
+    assert json.loads((directory / 'result.json').read_text())['returncode'] == code
+
+
+@pytest.mark.parametrize('count', [0, 5, 6])
+def test_matching_record_count_is_bounded_and_empty_does_not_mean_no_fault(windows_events, count):
+    runner, directory, run, calls, scenario, raw = windows_events
+    scenario['change'] = lambda payload, bound: payload.update(records=payload['records'] * count)
+    run()
+    result = json.loads((directory / 'windows-crash-events.json').read_text())
+    assert result['status'] == ('matched' if count == 5 else 'unknown')
+    assert len(result['records']) == (5 if count == 5 else 0)
+
+
+@pytest.mark.parametrize('payload', [b'{broken-json', b'x' * 131073], ids=['malformed', 'oversize'])
+def test_bad_or_oversize_query_output_keeps_original_bytes_and_unknown(windows_events, payload):
+    runner, directory, run, calls, scenario, raw = windows_events
+    scenario['raw_stdout'] = payload
+    run()
+    result = json.loads((directory / 'windows-crash-events.json').read_text())
+    assert result['status'] == 'unknown' and result['records'] == []
+    assert (directory / 'windows-crash-query/stdout.txt').read_bytes() == payload
+    assert result['stdout']['bytes'] == len(payload)
+    assert result['stdout']['complete_read'] == (len(payload) <= 131072)
+
+
+@pytest.mark.parametrize('owner_status', ['failed', 'timed_out', 'cleanup-error', 'interrupted'])
+def test_query_failure_or_unconfirmed_cleanup_never_replaces_native_outcome(windows_events, capsys, owner_status):
+    runner, directory, run, calls, scenario, raw = windows_events
+    scenario.update(owner_status=owner_status, returncode=1,
+                    owner_error=owner_status in ('cleanup-error', 'interrupted'),
+                    owner_interrupt=owner_status == 'interrupted')
+    run()
+    result = json.loads((directory / 'windows-crash-events.json').read_text())
+    assert result['status'] == 'unknown' and result['records'] == []
+    assert result['cleanup_confirmed'] == (owner_status not in ('cleanup-error', 'interrupted'))
+    assert (directory / 'windows-crash-query/stdout.txt').read_bytes() == raw['stdout']
+    assert (directory / 'windows-crash-query/stderr.txt').read_bytes() == raw['stderr']
+    assert result['stdout']['bytes'] == len(raw['stdout'])
+    notices = [line for line in capsys.readouterr().out.splitlines()
+               if line.startswith('::notice title=Windows crash event observation::')]
+    assert len(notices) == 1 and len(notices[0].split('::', 2)[-1]) <= 3000
+
+
+def test_phase_identity_records_the_actual_producer_pid(tmp_path):
+    source = Path(__file__).resolve().parents[1] / 'scripts/ci/pytest_phases.py'
+    spec = importlib.util.spec_from_file_location('owned_identity_under_test', source)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    log = module.PhaseLog(tmp_path / 'phases', None, source.with_name('linux-groups.json'))
+    log.stream.close()
+    row = json.loads((tmp_path / 'phases/phases.jsonl').read_text())
+    assert row['pid'] == os.getpid() and row['python'] == sys.version and row['executable'] == sys.executable
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Controlled substitute query process and POSIX group cleanup')
+def test_query_timeout_uses_existing_owner_and_stops_descendants(windows_events, tmp_path, monkeypatch):
+    runner, directory, run, calls, scenario, raw = windows_events
+    owned = tmp_path / 'query-pids.json'
+    descendant = tmp_path / 'query-descendant.json'
+    tool = tmp_path / 'controlled-powershell'
+    code = f'''#!{sys.executable}
+import json,os,subprocess,sys,time
+from pathlib import Path
+Path({str(owned)!r}).write_text(json.dumps({{'pid':os.getpid()}}))
+child = subprocess.Popen([sys.executable, '-B', '-I', '-c', 'import json,os,time;from pathlib import Path;Path(' + repr({str(descendant)!r}) + ').write_text(json.dumps({{"pid":os.getpid()}}));time.sleep(30)'])
+while not Path({str(descendant)!r}).exists():time.sleep(.005)
+sys.stdout.buffer.write(b'partial query stdout\\r\\n');sys.stdout.flush()
+sys.stderr.buffer.write(b'partial query stderr\\r\\n');sys.stderr.flush()
+time.sleep(30)
+'''
+    tool.write_text(code)
+    tool.chmod(0o700)
+    monkeypatch.setattr(runner.shutil, 'which', lambda name: str(tool))
+    scenario['real_query'] = True
+    started = time.monotonic()
+    run()
+    assert time.monotonic() - started < 15
+    result = json.loads((directory / 'windows-crash-events.json').read_text())
+    assert result['status'] == 'unknown' and result['reason'] == 'query-timed_out'
+    assert result['cleanup_confirmed'] is True and result['owner_result']['returncode'] is not None
+    assert (directory / 'windows-crash-query/stdout.txt').read_bytes() == b'partial query stdout\r\n'
+    assert (directory / 'windows-crash-query/stderr.txt').read_bytes() == b'partial query stderr\r\n'
+    for path in (owned, descendant):
+        pid = json.loads(path.read_text())['pid']
+        stat = Path('/proc') / str(pid) / 'stat'
+        if stat.exists():
+            assert stat.read_text().rpartition(')')[2].split()[0] == 'Z'
 
 
 def test_silent_stdout_reports_actual_phase_updates_and_preserves_runner_outputs(ci_runner, capsys):

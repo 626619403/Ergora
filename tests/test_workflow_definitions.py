@@ -429,7 +429,32 @@ def test_repeated_references_are_distinct_instances_and_preserve_ancestor_source
     assert outer["definition"]["nodes"][0]["ref"] == outer["definition"]["nodes"][1]["ref"]
 
 
-@pytest.mark.parametrize("failure", ["missing-ref", "digest", "role", "input", "output", "not-dependent", "child-input"])
+def test_compilation_resolves_each_complete_reference_once_and_rechecks_the_next_preview(base, monkeypatch):
+    state, agent, _ = base
+    sub = imported(base, definition("sub", [leaf("review", agent)]), "Complete shared child instructions.\n")
+    imported(base, definition("outer", [child("first", ref(sub, "workflow")), child("second", ref(sub, "workflow"))]))
+    library_type = type(workflows.library(state.root))
+    original = library_type.get
+    reads = []
+
+    def observed(store, identity, version, *, material=False):
+        reads.append((store.kind, identity, version, material))
+        return original(store, identity, version, material=material)
+
+    monkeypatch.setattr(library_type, "get", observed)
+    first = workflows.preview(state.root, "outer", "1.0.0", grant())
+    expected = {(item["ref"]["kind"], item["ref"]["id"], item["ref"]["version"], True)
+                for item in first["instances"] if "ref" in item}
+    assert len(reads) == len(expected) and set(reads) == expected
+    reads.clear()
+    assert workflows.preview(state.root, "outer", "1.0.0", grant()) == first
+    assert len(reads) == len(expected) and set(reads) == expected
+    (Path(sub["path"]) / "instructions.md").write_text("Changed shared child instructions.\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="SHA256 mismatch|identity changed"):
+        workflows.preview(state.root, "outer", "1.0.0", grant())
+
+
+@pytest.mark.parametrize("failure", ["missing-ref", "digest", "repeated-digest", "role", "input", "output", "not-dependent", "child-input"])
 def test_unresolvable_references_and_port_bindings_never_publish(base, failure):
     state, agent, directory = base
     doc = definition("broken", [leaf("first", agent), leaf("second", agent)])
@@ -437,6 +462,8 @@ def test_unresolvable_references_and_port_bindings_never_publish(base, failure):
         doc["nodes"][0]["ref"] = {**agent, "id": "absent"}
     elif failure == "digest":
         doc["nodes"][0]["ref"] = {**agent, "digest": "0" * 64}
+    elif failure == "repeated-digest":
+        doc["nodes"][1]["ref"] = {**agent, "digest": "0" * 64}
     elif failure == "role":
         doc["nodes"][0]["role"] = "implementer"
     elif failure == "input":
