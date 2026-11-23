@@ -49,7 +49,7 @@ def optimize(state: State, project_id: str, baseline_digest: str, suite_digest: 
                 "objective": objective, "binding": binding, "max_evaluations": max_evaluations,
                 "max_proposals": max_proposals, "timeout_seconds": timeout, "started": now(), "status": "running",
                 "metric_calls": 0, "proposals": 0, "reported_cost": 0.0, "evaluations": [], "candidates": [],
-                "output": str(directory)}
+                "reported_cost_complete": True, "output": str(directory)}
 
     def persist():
         with state.connect() as db:
@@ -63,6 +63,9 @@ def optimize(state: State, project_id: str, baseline_digest: str, suite_digest: 
     def check_budget(metric_calls=0):
         if document["status"] != "running":
             raise ValueError("Optimization has already terminated")
+        if not document["reported_cost_complete"]:
+            document["status"] = "failed"
+            raise ValueError("Reported cost coverage is incomplete")
         if time.monotonic() >= deadline or document["metric_calls"] + metric_calls > max_evaluations:
             document["status"] = "budget_exhausted"
             raise ValueError("Optimization time or metric-call budget exhausted")
@@ -94,6 +97,8 @@ def optimize(state: State, project_id: str, baseline_digest: str, suite_digest: 
                 if imported["digest"] not in document["candidates"]:
                     document["candidates"].append(imported["digest"])
                 remaining_cost = max(0.0, specification["max_reported_cost"] - document["reported_cost"])
+                document["reported_cost_complete"] = False
+                persist()
                 try:
                     result = evaluation.evaluate(state, project_id, imported["digest"], suite_digest, list(set(batch)),
                                                  deadline, remaining_cost,
@@ -103,7 +108,13 @@ def optimize(state: State, project_id: str, baseline_digest: str, suite_digest: 
                     persist()
                     raise
                 document["evaluations"].append(result["id"])
-                document["reported_cost"] += result["reported_cost"]
+                total = document["reported_cost"] + result["reported_cost"]
+                if not math.isfinite(total):
+                    document.update(status="failed", error="Reported cost total is not finite")
+                    persist()
+                    raise ValueError(document["error"])
+                document.update(reported_cost=total, reported_cost_complete=result.get("reported_cost_complete") is True)
+                persist()
                 if result["status"] != "succeeded":
                     document.update(status=result["status"], error=result.get("error", "Evaluation did not complete successfully"))
                     persist()
@@ -132,6 +143,8 @@ def optimize(state: State, project_id: str, baseline_digest: str, suite_digest: 
         if remaining <= 0:
             document["status"] = "budget_exhausted"
             raise ValueError("Optimization time budget exhausted")
+        document["reported_cost_complete"] = False
+        persist()
         outcome = processes.run(binding["proposer_argv"], Path(state.project(project_id)["repo"]),
                                 directory / f"proposal-{document['proposals']}", remaining, json.dumps(request),
                                 deadline=deadline)
@@ -146,7 +159,11 @@ def optimize(state: State, project_id: str, baseline_digest: str, suite_digest: 
         cost = response["cost"]
         if not isinstance(response["skill"], str) or type(cost) not in (int, float) or not math.isfinite(cost) or cost < 0:
             raise ValueError("Proposer requires complete skill text and a finite nonnegative cost")
-        document["reported_cost"] += cost
+        total = document["reported_cost"] + cost
+        if not math.isfinite(total):
+            raise ValueError("Reported cost total is not finite")
+        document.update(reported_cost=total, reported_cost_complete=True)
+        persist()
         parent_sha = hashlib.sha256(candidate["skill"].encode()).hexdigest()
         parents[hashlib.sha256(response["skill"].encode()).hexdigest()] = text_versions.get(parent_sha, baseline_digest)
         persist()

@@ -3,6 +3,7 @@
 import hashlib
 import errno
 import json
+import math
 from pathlib import Path
 import re
 import time
@@ -115,11 +116,16 @@ def evaluate(state: State, project_id: str, digest: str, suite_digest: str, case
     working.mkdir()
     document = {"id": run_id, "project": project_id, "skill": digest, "name": candidate["name"],
                 "suite": suite_digest, "started": now(), "status": "running", "cases": [], "reported_cost": 0.0,
-                "output": str(directory), "cost_limit": cost_limit}
+                "reported_cost_complete": True, "output": str(directory), "cost_limit": cost_limit}
     with state.connect() as db:
         db.execute("INSERT INTO evaluations VALUES (?, ?, ?)", (run_id, project_id, json.dumps(document)))
-    document["status"] = "succeeded"
+
+    def persist():
+        with state.connect() as db:
+            db.execute("UPDATE evaluations SET document=? WHERE id=?", (json.dumps(document), run_id))
+
     for index, case in enumerate(cases):
+        row = None
         try:
             current = time.monotonic()
             call_deadline = current + specification["timeout_seconds"]
@@ -134,11 +140,16 @@ def evaluate(state: State, project_id: str, digest: str, suite_digest: str, case
                 "remaining_reported_cost": max(0.0, cost_limit - document["reported_cost"]),
                 "remaining_batch_calls": len(cases) - index,
                 "unreserved_metric_calls": unreserved_metric_calls}})
-            outcome = processes.run(specification["evaluator_argv"], working, directory / "cases" / case["id"],
+            case_output = directory / "cases" / case["id"]
+            row = {"id": case["id"], "split": case["split"], "status": "running", "output": str(case_output),
+                   "reported_cost_complete": False}
+            document["cases"].append(row)
+            document["reported_cost_complete"] = False
+            persist()
+            outcome = processes.run(specification["evaluator_argv"], working, case_output,
                                     timeout, payload, deadline=call_deadline)
-            row = {"id": case["id"], "split": case["split"], **outcome}
+            row.update(outcome)
             if outcome["status"] != "succeeded":
-                document["cases"].append(row)
                 document["status"] = outcome["status"]
                 break
             output = Path(outcome["output"]) / "stdout.txt"
@@ -148,23 +159,30 @@ def evaluate(state: State, project_id: str, digest: str, suite_digest: str, case
             contracts.validate(result, contracts.EVALUATION_RESULT, "Evaluator result")
             cost = result["cost"]
             row.update({key: result[key] for key in ("score", "cost", "passed", "feedback")})
-            document["cases"].append(row)
-            document["reported_cost"] += cost
+            row["reported_cost_complete"] = True
+            total = document["reported_cost"] + cost
+            if not math.isfinite(total):
+                raise ValueError("Reported cost total is not finite")
+            document.update(reported_cost=total, reported_cost_complete=True)
+            persist()
             if document["reported_cost"] > cost_limit:
                 document["status"] = "budget_exhausted"
                 break
         except (ValueError, KeyError, OSError) as error:
             document["status"] = "failed"
             document["error"] = f"Case {case['id']}: {error}"
+            if row is not None:
+                row["error"] = str(error)
             break
+    else:
+        document["status"] = "succeeded"
     try:
         skill_assets.get(state, project_id, digest)
         suite(state, project_id, suite_digest)
     except (ValueError, OSError) as error:
         document.update(status="failed", error=str(error))
     document["finished"] = now()
-    with state.connect() as db:
-        db.execute("UPDATE evaluations SET document=? WHERE id=?", (json.dumps(document), run_id))
+    persist()
     return document
 
 
@@ -202,6 +220,10 @@ def compare(state: State, project_id: str, baseline_run: str, candidate_run: str
             reasons.append("Candidate does not meet the validation improvement gate")
         if averages["candidate"]["holdout"] < averages["baseline"]["holdout"]:
             reasons.append("Candidate regressed on the holdout split")
+    reported_cost = baseline["reported_cost"] + candidate["reported_cost"]
+    if not math.isfinite(reported_cost):
+        raise ValueError("Combined reported cost total is not finite")
     return {"baseline": baseline["skill"], "candidate": candidate["skill"], "suite": candidate["suite"],
             "eligible": not reasons, "reasons": reasons, "averages": averages,
-            "reported_cost": baseline["reported_cost"] + candidate["reported_cost"]}
+            "reported_cost": reported_cost,
+            "reported_cost_complete": all(run.get("reported_cost_complete") is True for run in (baseline, candidate))}

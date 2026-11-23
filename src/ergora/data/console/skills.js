@@ -399,7 +399,9 @@ export function skillsView(data, base) {
         data.evaluations.runs.map((item) => [
           short(item.skill),
           status(item.status),
-          item.reported_cost,
+          item.reported_cost_complete === true
+            ? item.reported_cost
+            : `${item.reported_cost} · ${item.reported_cost_complete === false ? "已报告小计；其余未知" : "完整性未记录"}`,
           button("查看记录", () => modal("评价证据", pre(item)), "text-button"),
         ]),
       ),
