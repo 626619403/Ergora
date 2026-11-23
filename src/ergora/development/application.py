@@ -23,7 +23,8 @@ from ergora.issues import identity as issue_sources
 from ergora.development import budget as reference_budget
 from ergora.development import envelopes as task_envelopes
 from ergora.development import verification
-from ergora.development.dags import RouteBlocked, WorkDelivery
+from ergora.development.dags import WorkDelivery
+from ergora.development.route_errors import RouteBlocked
 from ergora.development.envelopes import identity
 from ergora.development.runtime.creation_process import task_preparation
 from ergora.storage.assets import inventory_tree

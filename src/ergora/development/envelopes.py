@@ -11,8 +11,9 @@ import json
 
 from ergora.configuration.catalog import validate_agent_minimum
 from ergora.development.dags import (
-    ReviewDAG, RouteBlocked, WorkDelivery, preparation_members, preparation_stages, require_root_task,
+    ReviewDAG, WorkDelivery, preparation_members, preparation_stages, require_root_task,
 )
+from ergora.development.route_errors import RouteBlocked
 from ergora.issues.identity import validate_snapshot
 from ergora.development import verification as fixed_verification
 from ergora.training.materials import decode_record

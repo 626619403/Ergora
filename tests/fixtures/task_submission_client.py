@@ -94,6 +94,8 @@ class Handle:
             await asyncio.sleep(max(0, reference_budget.remaining(instance)) + .1)
         if scenario == 'lookup-unavailable':
             raise RPCError('unavailable', RPCStatusCode.UNAVAILABLE, b'')
+        if scenario == 'lookup-denied':
+            raise RPCError('denied', RPCStatusCode.PERMISSION_DENIED, b'')
         if not server.exists():
             raise RPCError('missing', RPCStatusCode.NOT_FOUND, b'')
         async def memo():

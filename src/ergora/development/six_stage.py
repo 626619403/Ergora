@@ -5,7 +5,7 @@ Admission and original-input readers use the same supported-shape contract.
 """
 
 
-from ergora.development.dags import RouteBlocked
+from ergora.development.route_errors import RouteBlocked
 
 
 def invocation(graph: dict, selection: dict, task_type: str) -> dict:
