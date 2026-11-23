@@ -173,6 +173,7 @@ class _Creation:
                 or record['repo'] != self.project['repo'] or record['execution'] != self.execution
                 or record['registration_sha256'] != self.project['registration']['sha256']):
             raise ValueError('Creation intent belongs to another project, registration or control directory')
+        task_envelopes.validate_amendment(record['definition'], self.project['id'], record['project_revision'], task_id=self.task_id)
         files = record['files']
         if set(files) != set(_FILES):
             raise ValueError('Creation intent must contain exactly the original native contracts and bindings')
@@ -320,6 +321,7 @@ class _Creation:
                 'intent_sha256': self.sha(record), 'created_revision': record['project_revision'],
                 'compiled_sha256': self.sha(record['files']['compiled.json']),
                 'agent_bindings': record['files']['agent-bindings.json'],
+                **({'amendment': record['definition']['amendment']} if 'amendment' in record['definition'] else {}),
                 **({'composition': task_envelopes.summary(record['files']['task.spec.json'])}
                    if record['schema_version'] in (2, 3, 8) else {})}
 
@@ -419,9 +421,41 @@ class _Creation:
             raise ValueError('Prepared materials differ from the original completion witness')
         return record
 
+    def amendment_payload(self, definition: dict) -> dict:
+        original = definition['amendment']['predecessor']
+        return {'task_id': original['task_id'], 'run_id': original['run_id']}
+
+    def inspect_amendment(self, definition: dict) -> None:
+        from ergora.development.native import task_reconciliation
+
+        observed = task_reconciliation(self.project, Path(self.payload['control_home']), 'inspect-amendment',
+                                       {**self.amendment_payload(definition), 'checkpointed_release': False}, timeout=20)
+        original = observed['original_definition']
+        if original['issue_id'] != definition['issue_id']:
+            raise ValueError('Amendment successor must keep the original native issue')
+        if observed['closure'] is None:
+            detail = observed.get('release_error', 'Next action is ' + observed['next_action'])
+            raise ValueError('Amendment requires confirmed original closure and durable release. ' + detail)
+        if observed['closure'] != definition['amendment']['predecessor']:
+            raise ValueError('Original closure differs from the exact amendment preview')
+        task_envelopes.amendment_delta(original, definition)
+
+    def require_amendment_release(self, definition: dict) -> None:
+        from ergora.development.native import task_reconciliation
+
+        observed = task_reconciliation(self.project, Path(self.payload['control_home']), 'inspect-amendment-release',
+                                       self.amendment_payload(definition), timeout=5)
+        if observed['issue_id'] != definition['issue_id'] or observed['closure'] != definition['amendment']['predecessor']:
+            raise ValueError('Original durable release changed after amendment preview')
+
     def prepare(self) -> dict:
         """Persist once before expensive work; an uncertain attempt never reruns."""
         definition = self.payload['definition']
+        task_envelopes.validate_amendment(definition, self.project['id'], self.project['revision'], task_id=self.task_id)
+        linked = 'amendment' in definition
+        checked_amendment = linked and self.preparation()['status'] in ('not_recorded', 'authorized')
+        if checked_amendment:
+            self.inspect_amendment(definition)
         fixed = verification.require_route(self.project, definition['schema_version'])
         if fixed is not None:
             verification.capacity({'verification': fixed, 'root_task': definition}, verification.ARTIFACT_BYTES,
@@ -429,20 +463,30 @@ class _Creation:
         owner = reference_budget.scope(self.project, Path(self.payload['control_home']), definition)
         self.lock_path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         with file_lock(self.lock_path, blocking=False):
-            status = self.preparation()
-            if status['status'] == 'not_recorded':
-                if self.intent_path.exists() or self.target.exists() or self.result_path.exists():
-                    raise ValueError('Task ID already exists; preparation cannot adopt or renew an original task')
-                instance = reference_budget.authorize(definition['budget'], owner)
-                self.core.write(self.prepare_path, instance)
+            with ExitStack() as admission:
                 status = self.preparation()
-            instance = status['budget']
-            if instance['scope'] != owner or instance['policy'] != definition['budget']:
-                raise ValueError('Task ID already has a different preparation; its original budget is retained')
-            if status['status'] != 'authorized':
-                return status
-            reference_budget.require_remaining(instance)
-            self.core.write(self.prepare_attempt, {'schema_version': 1, 'prepare_sha256': instance['sha256']})
+                if linked and status['status'] in ('not_recorded', 'authorized'):
+                    if not checked_amendment:
+                        raise ValueError('Successor preparation changed during amendment inspection')
+                    state = State(Path(self.payload['control_home']))
+                    db = admission.enter_context(state.connect())
+                    db.execute('BEGIN IMMEDIATE')
+                    if state.project(self.project['id']) != self.project:
+                        raise ValueError('Project revision changed before successor authorization')
+                    self.require_amendment_release(definition)
+                if status['status'] == 'not_recorded':
+                    if self.intent_path.exists() or self.target.exists() or self.result_path.exists():
+                        raise ValueError('Task ID already exists; preparation cannot adopt or renew an original task')
+                    instance = reference_budget.authorize(definition['budget'], owner)
+                    self.core.write(self.prepare_path, instance)
+                    status = self.preparation()
+                instance = status['budget']
+                if instance['scope'] != owner or instance['policy'] != definition['budget']:
+                    raise ValueError('Task ID already has a different preparation; its original budget is retained')
+                if status['status'] != 'authorized':
+                    return status
+                reference_budget.require_remaining(instance)
+                self.core.write(self.prepare_attempt, {'schema_version': 1, 'prepare_sha256': instance['sha256']})
             self.prepare_work.mkdir(mode=0o700)
             scratch = self.prepare_work / 'compile'
             environment = dict(os.environ, AGENTFLOW_STATE_DIR=str(scratch))
@@ -577,11 +621,16 @@ class _Creation:
                         return self.status(saved)
                 elif self.target.exists() or self.result_path.exists():
                     raise ValueError('Task ID exists without its creation intent')
+                if saved is None and 'amendment' in record['definition']:
+                    self.require_amendment_release(record['definition'])
                 self.check_budget()
                 return self.publish(record, save_intent=saved is None)
 
     def run(self, temporary: Path) -> dict:
         operation = self.payload['operation']
+        if 'definition' in self.payload:
+            task_envelopes.validate_amendment(self.payload['definition'], self.project['id'], self.project['revision'],
+                                              task_id=self.task_id)
         if self.payload.get('budgeted'):
             return self.budget_run()
         if operation == 'preparation':

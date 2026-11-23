@@ -2,7 +2,7 @@
 
 English · [Documentation](../README.md) · [简体中文](../zh-CN/review/evidence-reports.md)
 
-The `evidence-report` preset provides the read-only author `ergora-evidence-report-author@1.0.1`, workflow root `ergora-evidence-report@1.0.1`, and standalone leaf `root/author`. It organizes complete engineering, research or experiment material supplied by the operator into Markdown and static self-contained HTML, with sources, actual coverage and unverified scope. Unlike the programmatic [`review report`](materials.md), which reads original reviewer runs without an LLM call, this leaf is an explicit report-author invocation. It does not issue formal approval.
+The `evidence-report` preset provides the read-only author `ergora-evidence-report-author@1.0.2`, workflow root `ergora-evidence-report@1.0.2`, and standalone leaf `root/author`. It organizes complete engineering, research or experiment material supplied by the operator into Markdown and static self-contained HTML, with sources, actual coverage and unverified scope. Unlike the programmatic [`review report`](materials.md), which reads original reviewer runs without an LLM call, this leaf is an explicit report-author invocation. It does not issue formal approval.
 
 ## Optimization reports
 
@@ -12,7 +12,7 @@ Supply the complete original task, algorithm/computation/data-flow analysis (for
 
 ```bash
 ergora composition install-preset optimization-report
-ergora composition show ergora-evidence-report 2.0.1 --material
+ergora composition show ergora-evidence-report 2.0.2 --material
 ```
 
 Then use the grant and explicit invocation flow below, replacing the `prepare-manifest` version with `2.0.1` and choosing fresh manifest/input/output directories. Original evidence, static HTML checks and explicit result export retain the same obligations. The report does not validate the workload or establish performance acceptance.
@@ -42,7 +42,7 @@ Reuse the [complete manifest and single-leaf input](../definitions/workflows/lea
 
 ```bash
 ergora composition install-preset evidence-report
-ergora composition show ergora-evidence-report 1.0.1 --material
+ergora composition show ergora-evidence-report 1.0.2 --material
 ```
 
 Save `report-grant.json` with the new root's exact read-only ceiling:
@@ -56,7 +56,7 @@ Save `report-grant.json` with the new root's exact read-only ceiling:
 ```
 
 ```bash
-ergora composition prepare-manifest ergora-evidence-report 1.0.1 \
+ergora composition prepare-manifest ergora-evidence-report 1.0.2 \
   --grant ./report-grant.json --directory ./report-manifest
 ergora composition prepare-from-manifest ./report-manifest root/author \
   --task ./report-task.md --directory ./report-input --max-prompt-bytes 250000
@@ -67,7 +67,7 @@ ergora composition run-input my-project ./report-input --mode text-only --backen
 ergora composition inspect-run my-project RUN_ID > ./report-observation.json
 ```
 
-The full Skill is self-contained and can be inlined in text-only mode, without MCP attachments or new tool grants. `max-prompt-bytes` limits the complete UTF-8 prompt; it does not promise model capacity. The bundled author requires Codex `gpt-6.1-sol` with at least `high` reasoning effort; overrides must satisfy that definition minimum. Other-backend examples apply to custom definitions without this minimum and still require actual role/mode admission. Supply the operator's existing provider configuration through `--codex-config` when needed; templates store no provider credentials. Checking admission does not call the model or establish installation/authentication. There is no automatic failure fallback or implicit resend. Retain failed/unknown/timed-out original runs and reconcile through their original owner.
+The full Skill is self-contained and can be inlined in text-only mode, without MCP attachments or new tool grants. `max-prompt-bytes` limits the complete UTF-8 prompt; it does not promise model capacity. The bundled author requires Codex `gpt-6.2-sol` with at least `high` reasoning effort; overrides must satisfy that definition minimum. Other-backend examples apply to custom definitions without this minimum and still require actual role/mode admission. Supply the operator's existing provider configuration through `--codex-config` when needed; templates store no provider credentials. Checking admission does not call the model or establish installation/authentication. There is no automatic failure fallback or implicit resend. Retain failed/unknown/timed-out original runs and reconcile through their original owner.
 
 ## Inspect the original result and export reading views
 

@@ -20,10 +20,10 @@
         }
       },
       "ref": {
-        "digest": "934f709f3f4d27e0765729fb70a888778f7fe87b47e913c18ecc62f9ee6bc3c5",
+        "digest": "5d2566f834a7ec34379987470fd3a23a416417284bb294792b032118b73b06ef",
         "id": "ergora-structure-review",
         "kind": "workflow",
-        "version": "1.0.1"
+        "version": "1.0.2"
       }
     },
     {
@@ -35,10 +35,10 @@
         }
       },
       "ref": {
-        "digest": "a06d27f18ec66260d0586b4eeee11dc9895a5015dc18cf86d8d856fed7522cd3",
+        "digest": "f7b5e13770fd64d54b9fe8380e8c70f49b2f6ce140168f2a6eb5cf9e0f4d0ae7",
         "id": "ergora-correctness-review",
         "kind": "workflow",
-        "version": "1.0.1"
+        "version": "1.0.2"
       }
     },
     {
@@ -50,10 +50,10 @@
         }
       },
       "ref": {
-        "digest": "3a40362d4d26ef91de6cf85ceb877df01fc7ab3d2456c55cd025e42b0e3e3529",
+        "digest": "343807dd5f7d2ff3faff9587b6bb53f1e79e8c086b162b64276ec6d54cfa868e",
         "id": "ergora-test-value-review",
         "kind": "workflow",
-        "version": "1.0.1"
+        "version": "1.0.2"
       }
     },
     {
@@ -74,10 +74,10 @@
         "write": []
       },
       "ref": {
-        "digest": "34775f17c0c42d90e77aac2afe6e6c411f982229c2c57b7244ae02b452ed86a0",
+        "digest": "a71aee4a0a46e2dd4090cc6e078e92e814ae3a0143c3db6b1c5a7fc5f4ccd577",
         "id": "ergora-performance-analyst",
         "kind": "agent",
-        "version": "2.3.0"
+        "version": "2.3.1"
       },
       "review_requirement": "required",
       "role": "reviewer"
@@ -100,10 +100,10 @@
         "write": []
       },
       "ref": {
-        "digest": "b52190c95c39516425e0cde28f5ccbc711a96d95380a997dbc743a63f71edfbd",
+        "digest": "7312d12bb6cd4a1d128bbbc49bd8c8f2776850c87e2256a37ea78dbfe0602174",
         "id": "ergora-resource-lifecycle-reviewer",
         "kind": "agent",
-        "version": "1.0.0"
+        "version": "1.0.1"
       },
       "review_requirement": "required",
       "role": "reviewer"
@@ -140,9 +140,9 @@
       "id": "ergora-delivery-review-instructions",
       "kind": "instructions",
       "path": "instructions.md",
-      "sha256": "654ee1e276a0c97ac3022af2f34c43e2edc995e96f99eb6138aff209a96f52d5"
+      "sha256": "a01ca462b68b3dd03dedb51b0f577aa70bcbb0c138ca5a78c416cd67303305f8"
     }
   ],
   "schema_version": 2,
-  "version": "1.0.5"
+  "version": "1.0.6"
 }

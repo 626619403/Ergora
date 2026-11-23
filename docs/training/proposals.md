@@ -73,7 +73,7 @@ Generator-native reports are candidate materials only. Submit candidate code, fr
 
 ## Optional experiment-expert proposals
 
-`ergora composition install-preset training-optimization` imports current common root `ergora-training-proposal@4.2.9`: source mapping, cross-domain experiment design, pure performance diagnosis, kernel implementation-plan assessment and independent measurement review. All five leaves inherit library/environment selection, the [delegated execution policy](../../src/ergora/data/presets/workflows/ergora-training-proposal/skills/ergora-bottleneck-optimization/SKILL.md#specialist-execution-and-supervision) for assigned execution specialists, and original evidence contracts. Model is fixed at gpt-6.1-sol, with max for design/kernel planning and high for diagnosis/measurement review. Selected-direction specialists enter complete optimization as actual structural descendants of this common root. They help operators fill original workload/baseline/experiment contracts; they neither execute search nor grant adoption. Real CPU/GPU execution remains with original runner/evidence gates.
+`ergora composition install-preset training-optimization` imports current common root `ergora-training-proposal@4.2.10`: source mapping, cross-domain experiment design, pure performance diagnosis, kernel implementation-plan assessment and independent measurement review. All five leaves inherit library/environment selection, the [delegated execution policy](../../src/ergora/data/presets/workflows/ergora-training-proposal/skills/ergora-bottleneck-optimization/SKILL.md#specialist-execution-and-supervision) for assigned execution specialists, and original evidence contracts. Model is fixed at gpt-6.2-sol, with max for design/kernel planning and high for diagnosis/measurement review. Selected-direction specialists enter complete optimization as actual structural descendants of this common root. They help operators fill original workload/baseline/experiment contracts; they neither execute search nor grant adoption. Real CPU/GPU execution remains with original runner/evidence gates.
 
 |Leaf path|Main responsibility and required materials|Result boundary|
 |---|---|---|
@@ -90,10 +90,10 @@ Common design and measurement retain their global responsibilities; nineteen met
 
 ```bash
 ergora composition install-preset training-flow-map
-ergora composition show ergora-training-flow-map 1.1.0 --material
+ergora composition show ergora-training-flow-map 1.1.1 --material
 ```
 
-This root provides independent read-only leaf `root/map`, with Agent `ergora-training-flow-analyst@1.1.0`. Generate grant/manifest for root `ergora-training-flow-map@1.1.0` through [complete manifest and single-leaf input](../definitions/workflows/leaf-calls.md#prepare-complete-single-leaf-input), supplying complete training entry points, callers, actual configuration, requirements and existing original reports. Complete `review read` results from an [exact local package](../review/materials.md) can also serve as task. The Skill is self-contained without external attachments and supports authenticated backends' `text-only` mode.
+This root provides independent read-only leaf `root/map`, with Agent `ergora-training-flow-analyst@1.1.1`. Generate grant/manifest for root `ergora-training-flow-map@1.1.1` through [complete manifest and single-leaf input](../definitions/workflows/leaf-calls.md#prepare-complete-single-leaf-input), supplying complete training entry points, callers, actual configuration, requirements and existing original reports. Complete `review read` results from an [exact local package](../review/materials.md) can also serve as task. The Skill is self-contained without external attachments and supports authenticated backends' `text-only` mode.
 
 ```bash
 ergora composition prepare-from-manifest ./flow-map-manifest root/map \
@@ -110,10 +110,10 @@ Preserve original reference and workload/semantics first; the original runner th
 
 ```bash
 ergora composition install-preset training-optimization
-ergora composition show ergora-training-proposal 4.2.9 --material
+ergora composition show ergora-training-proposal 4.2.10 --material
 ```
 
-Current common root `ergora-training-proposal@4.2.9` combines maps and four cross-domain experts. Root Skill owns evidence, direction and library/environment selection; child Skills retain their methods. For complete specialized optimization, revise this common root to place the complete root reference returned by selected-direction installation among its actual descendants before freezing a complete manifest. The [selected MoE composition example](../../examples/composition/optimization-selected-moe/README.md) supplies the current 18-leaf native development graph and complete handoffs; its [publication.json](../../examples/composition/optimization-selected-moe/publication.json) supplies formal root identity. Use actual returned full root references and manifests. This common proposal skeleton has design/profile reading the same materials:
+Current common root `ergora-training-proposal@4.2.10` combines maps and four cross-domain experts. Root Skill owns evidence, direction and library/environment selection; child Skills retain their methods. For complete specialized optimization, revise this common root to place the complete root reference returned by selected-direction installation among its actual descendants before freezing a complete manifest. The [selected MoE composition example](../../examples/composition/optimization-selected-moe/README.md) supplies the current 18-leaf native development graph and complete handoffs; its [publication.json](../../examples/composition/optimization-selected-moe/publication.json) supplies formal root identity. Use actual returned full root references and manifests. This common proposal skeleton has design/profile reading the same materials:
 
 ```mermaid
 flowchart LR

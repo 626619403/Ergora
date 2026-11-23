@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "id": "ergora-workflow-retrospective-author",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Source-bound bounded workflow retrospective author.",
   "roles": [
     "implementer"
@@ -12,7 +12,7 @@
   ],
   "backend": {
     "tool": "codex",
-    "model": "gpt-6.1-sol",
+    "model": "gpt-6.2-sol",
     "reasoning_effort": "high"
   },
   "resources": [
@@ -24,7 +24,7 @@
     }
   ],
   "invocation_minimum": {
-    "model": "gpt-6.1-sol",
+    "model": "gpt-6.2-sol",
     "reasoning_effort": "high"
   }
 }

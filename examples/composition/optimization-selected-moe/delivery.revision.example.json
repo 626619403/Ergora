@@ -1,5 +1,5 @@
 {
-  "description": "Formal six-stage MoE development; shared policy is the complete resource snapshot of ergora-training-proposal@4.2.9 digest 9180067f3b64f32d0fd5c3cba45f5bff6c5f6ddd7440e0d2e3f0feb667a0fa01.",
+  "description": "Formal six-stage MoE development; shared policy is the complete resource snapshot of ergora-training-proposal@4.2.10 digest 1685a328488501c7ca2e37ff2fa3128aca8b321ea794808e4b6d38da50589689.",
   "id": "ergora-large-change-delivery",
   "inputs": [
     "task"
@@ -20,10 +20,10 @@
         }
       },
       "ref": {
-        "digest": "dd0838b5a46df2fe746f688730f73c4b0291334071307eb5b06b5edce5b9af87",
+        "digest": "dd73f156f6cea8a5d0a5502beb6ba786cc494acae363ab9b0bd90868cd360030",
         "id": "ergora-development-preparation",
         "kind": "workflow",
-        "version": "1.4.1"
+        "version": "1.4.2"
       }
     },
     {
@@ -35,10 +35,10 @@
         }
       },
       "ref": {
-        "digest": "0020b621d4587dae61adf81406391203c8259f3c8d3feaf64adaa9bc47b683e5",
+        "digest": "817839fb5081a9d71eecd64fef7903516e2b13a437cd399a4f6e48d9f273a1f8",
         "id": "ergora-large-change-work",
         "kind": "workflow",
-        "version": "1.1.1"
+        "version": "1.1.2"
       }
     },
     {
@@ -53,10 +53,10 @@
         }
       },
       "ref": {
-        "digest": "1a04ced6b6f654a1af71c7cb8f68acb198f5fcc6b4a9008e9ec9da5c3526212d",
+        "digest": "e497bdfa45fb1ad08404c7ac72f11a3343e9e091dc325ec87694940dbf3c2b35",
         "id": "ergora-delivery-review",
         "kind": "workflow",
-        "version": "1.3.5"
+        "version": "1.3.6"
       }
     }
   ],
@@ -82,10 +82,10 @@
       "id": "ergora-large-change-delivery-instructions",
       "kind": "instructions",
       "path": "instructions.md",
-      "sha256": "7206b39588c19c7a8d4685221a6d0dce517fdd71b6b2048318e97425e344811d"
+      "sha256": "8b94667875c6c825986db6c2a514cbaff417702e555140332aafb30cc98473ac"
     },
     {
-      "digest": "e210eee07e72d9c851b237f59d5087a451dccfe436159dc30a91994fe4340003",
+      "digest": "d8b28e5ad450a13a7052e39817b9ece149fb00cf9eff73b0fac83bcc71f7f82d",
       "id": "ergora-bottleneck-optimization-skill",
       "kind": "skill",
       "path": "skills/ergora-bottleneck-optimization"
@@ -104,5 +104,5 @@
     }
   ],
   "schema_version": 2,
-  "version": "1.6.8"
+  "version": "1.6.9"
 }

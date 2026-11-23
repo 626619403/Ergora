@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "id": "ergora-measurement-reviewer",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "Independently assess candidate-bound correctness, quality, measurement validity, uncertainty and end-to-end cost.",
   "roles": [
     "reviewer"
@@ -14,7 +14,7 @@
   ],
   "backend": {
     "tool": "codex",
-    "model": "gpt-6.1-sol",
+    "model": "gpt-6.2-sol",
     "reasoning_effort": "high"
   },
   "resources": [
@@ -32,7 +32,7 @@
     }
   ],
   "invocation_minimum": {
-    "model": "gpt-6.1-sol",
+    "model": "gpt-6.2-sol",
     "reasoning_effort": "high"
   }
 }

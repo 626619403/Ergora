@@ -102,6 +102,19 @@ def _select_context(state, definition, directory):
     definition['composition']['mode'] = 'task-mcp'
 
 
+def test_linked_preparation_refuses_a_self_link_before_launch(budget_creation):
+    from ergora.development.runtime.creation_process import task_preparation
+
+    state, registered, definition = budget_creation
+    linked = {**definition, 'amendment': {'project': 'demo', 'project_revision': 1,
+        'change': 'Changed acceptance criteria', 'definition_sha256': task_envelopes.identity(definition),
+        'predecessor': {'task_id': definition['task_id']}}}
+    with pytest.raises(ValueError, match='distinct original and successor task IDs'):
+        task_preparation(state.project('demo'), state.root, 'prepare', {'definition': linked})
+    assert not (state.root / 'operations/task-preparations').exists()
+    assert not (Path(registered['execution']['state_directory']) / 'ergora/task-creations').exists()
+
+
 @pytest.mark.parametrize('with_context', [False, True])
 @pytest.mark.parametrize('with_source', [False, True])
 def test_current_public_creation_preserves_one_frame_for_source_context_combinations(

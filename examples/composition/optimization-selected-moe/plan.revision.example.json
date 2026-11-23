@@ -31,8 +31,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-experiment-designer",
-        "version": "2.1.0",
-        "digest": "3b0ab4852241f20d62c8562129238bee89364f959c3e8d6055ce512fbfed5c1f"
+        "version": "2.1.1",
+        "digest": "90cca8c6d2b453518007043ef3fb0475b0bc62a405badcdb4cd440f6daecb3af"
       },
       "role": "planner"
     },
@@ -56,8 +56,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-opt-moe-dispatcher-expert",
-        "version": "1.1.0",
-        "digest": "a1794054d147dfc65ee3d25908a07ca0cb77ea250c86c125fe90315fdca97d89"
+        "version": "1.1.1",
+        "digest": "5969da97054f84f284220d8d765a002d13e800f92b1842ba199a1f1bcf869b42"
       },
       "role": "planner"
     },
@@ -81,8 +81,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-opt-moe-overlap-expert",
-        "version": "1.1.0",
-        "digest": "2e17ee7a519df875115fa8caf8f509a9ccff15f9513b4dec2c99657760bdd6ca"
+        "version": "1.1.1",
+        "digest": "9fbf2e3103aa605ac42b190ce3d83d56cb12bdd9a9bb6a44d0c12d2537ae0583"
       },
       "role": "planner"
     },
@@ -118,8 +118,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-kernel-designer",
-        "version": "2.2.0",
-        "digest": "05d1a0ca7e33f01945dc5f58825413ac514514059a2f60c52113bc18d50f64f1"
+        "version": "2.2.1",
+        "digest": "4a50c2dd5efab4027ad7ccb491d2c250ec850b29da8876295dfdcdf9656da50e"
       },
       "role": "planner"
     },
@@ -154,8 +154,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-development-preparer",
-        "version": "1.1.1",
-        "digest": "596c714c23358202c0ecfa57a02fcdcd2054ef92185cc9e8a67a414d698e12af"
+        "version": "1.1.2",
+        "digest": "628dc25fcb749133298382d41b091dfbe46da0c5301de2f6fd68980348bd5177"
       },
       "role": "planner"
     },
@@ -191,5 +191,5 @@
     }
   ],
   "schema_version": 2,
-  "version": "1.1.1"
+  "version": "1.1.2"
 }

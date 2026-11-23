@@ -2,6 +2,16 @@
 
 English · [Documentation](../README.md) · [简体中文](../zh-CN/development/tasks.md)
 
+## Choose the task entry point
+
+| Goal | Entry point and result |
+| --- | --- |
+| Check a proposed task's inputs and selected route | Run [task preview](#preview-and-create-formal-tasks), then stop at the digests and static admission result. This uses the registered project and needs no running services. |
+| Ask for a one-off diagnosis of supplied material | [Prepare one leaf and call it in a supported read-only mode](../definitions/workflows/leaf-calls.md#call-a-prepared-leaf). Provide the input and any prerequisite evidence directly. The result is the leaf reply and its saved invocation record. |
+| Deliver a small, reviewable code change | If the registered `repository-governance` template and project roles cover the change, use [one scoped work unit](#preview-and-create-formal-tasks). Review the exact plan, then read verification and independent review evidence for the exact candidate through the [original six-stage task](#formal-task-sequence-and-recovery). |
+
+Choose a [saved composition](../definitions/workflows/compose.md#select-a-composition-on-the-formal-task-page) when the change requires it. Keep the preparation, work and review graph to the roles and dependencies the task needs, and check admission for the selected route. Any formal delivery uses the registered trusted checks and original approval and review gates.
+
 ## Current design-workflow availability
 
 A first unified registration can store a schema2 design policy and its effective digests. It reports `execution_supported: false` and `human_channel_unavailable`; schema2 task creation and managed native execution refuse `design_policy_execution_unsupported`. Existing registrations cannot be upgraded, replaced or downgraded through that entry. See [the current registration boundary](../projects/registration.md#current-limits-of-design-policy-registration). These records provide policy storage, without executable design approval. Design source-journal storage and trusted owner/material/gate handling remain under implementation in [PLAN](../PLAN.md); plans and research do not establish delivered support. Existing schema1 task contracts remain in force.

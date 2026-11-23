@@ -8,6 +8,7 @@ import re
 
 import ergora.development.native as development_native
 import ergora.development.runtime.creation_process as creation_process
+import ergora.native.compiler as native_compiler
 import ergora.native.resources as native_resources
 import ergora.agents.backends as agent_backends
 import ergora.agents.invocation as agents
@@ -259,6 +260,43 @@ def preview(state: State, project_id: str, definition: dict, expected_revision: 
     project = _project(state, project_id)
     _revision(project, expected_revision)
     return creation_process.task_creation(project, state.root, 'preview', _definition(state, project, definition))
+
+
+def preview_amendment(state: State, project_id: str, task_id: str, definition: dict, expected_revision: int,
+                      *, run_id: str, change: str, timeout: int = 20) -> dict:
+    """Compare revised work with a pinned original run without granting execution."""
+    _run_id(run_id)
+    if type(timeout) is not int or not 1 <= timeout <= 60:
+        raise ValueError('Amendment preview timeout must be 1–60 seconds')
+    if not isinstance(change, str) or not change.strip() or len(change) > 4000:
+        raise ValueError('Amendment requires a nonempty change statement of at most 4000 characters')
+    project = _budget_project(state, project_id, definition, expected_revision)
+    if 'amendment' in definition or definition['task_id'] == task_id:
+        raise ValueError('Amendment preview requires an unlinked definition with a distinct successor task ID')
+    native_compiler.validate_input(definition['task_type'], definition['input'])
+    route = preview(state, project_id, definition, expected_revision)
+    if route['status'] != 'route-preview':
+        raise ValueError('Amendment preview requires an unused successor task ID')
+    checkpoint = development_native.task_reconciliation(project, state.root, 'inspect-amendment',
+        {'task_id': task_id, 'run_id': run_id}, timeout=timeout)
+    _revision(state.project(project_id), expected_revision)
+    original = checkpoint.pop('original_definition')
+    if definition['issue_id'] != original['issue_id']:
+        raise ValueError('Amendment successor must keep the original native issue')
+    delta = task_envelopes.amendment_delta(original, definition)
+    work = checkpoint.pop('work')
+    for key, unit in delta['work_units'].items():
+        unit['original_work'] = work.get(key, {'state': 'not_in_original'})
+    delta['successor_stages'] = ['inventory', 'plan', 'work', 'integrate', 'verify', 'review']
+    candidate = None
+    if checkpoint['closure'] is not None and route['route_admission']['status'] != 'blocked':
+        candidate = {**definition, 'amendment': {'project': project_id, 'project_revision': expected_revision,
+                     'change': change, 'definition_sha256': identity(definition), 'predecessor': checkpoint['closure']}}
+        _budget_project(state, project_id, candidate, expected_revision)
+    return {'status': 'ready' if candidate is not None else 'blocked', 'read_only': True, 'project': project_id,
+            'project_revision': expected_revision, 'task_id': task_id, 'successor_task_id': definition['task_id'],
+            'change': change, 'delta': delta, 'checkpoint': checkpoint, 'route_admission': route['route_admission'],
+            'successor_definition': candidate, 'successor_definition_sha256': identity(candidate) if candidate else None}
 
 
 def create(state: State, project_id: str, definition: dict, expected_revision: int, preview_sha256: str,

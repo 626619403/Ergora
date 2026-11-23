@@ -6,7 +6,7 @@ English · [Documentation](../README.md) · [简体中文](../zh-CN/improvement/
 
 Use this explicit path when a behavioral correction should become a persistent project rule or lesson. Select one existing Markdown file in the registered project's repository, such as its `AGENTS.md`. Ordinary documentation edits already authorized by a development task keep that task's contract. Imported chat text is reported source material. Eligible ordinary [project-native sessions](../operations/services.md#project-native-sessions) can also suggest a concrete change during their existing turn, with a project opt-out; the same exact operator application gate follows.
 
-Install the read-only proposal preset, then prepare its complete manifest and grant through the [manifest steps](../definitions/workflows/compose.md#freeze-the-current-preview-into-the-persistent-control-directory). The root is `ergora-document-correction 1.0.0`, with leaf `root/propose`, Codex `gpt-6.1-sol` high, empty write/network permissions and shell disabled. Installing/preparing a manifest makes no model call.
+Install the read-only proposal preset, then prepare its complete manifest and grant through the [manifest steps](../definitions/workflows/compose.md#freeze-the-current-preview-into-the-persistent-control-directory). The root is `ergora-document-correction 1.0.1`, with leaf `root/propose`, Codex `gpt-6.2-sol` high, empty write/network permissions and shell disabled. Installing/preparing a manifest makes no model call.
 
 ```bash
 ergora composition install-preset document-correction
@@ -103,7 +103,7 @@ Start with a registered project, verifiable handoff package and baseline Skill a
 ergora composition install-preset retrospective
 ```
 
-The new composition root is `ergora-skill-retrospective 1.0.1`, with read-only author `root/propose` and subsequent reviewer `root/review`, both using Codex gpt-6.1-sol high. Prepare this root's manifest directory through the [complete manifest steps](../definitions/workflows/compose.md#freeze-the-current-preview-into-the-persistent-control-directory). The grant must explicitly permit reading `workspace`/`definitions`, empty write/network and shell=false, and provide the root's required limits. Import, manifest creation and the preparation below send no model requests.
+The new composition root is `ergora-skill-retrospective 1.0.2`, with read-only author `root/propose` and subsequent reviewer `root/review`, both using Codex gpt-6.2-sol high. Prepare this root's manifest directory through the [complete manifest steps](../definitions/workflows/compose.md#freeze-the-current-preview-into-the-persistent-control-directory). The grant must explicitly permit reading `workspace`/`definitions`, empty write/network and shell=false, and provide the root's required limits. Import, manifest creation and the preparation below send no model requests.
 
 ```bash
 ergora retrospective prepare my-project ./task-handoff.zip --selection ./selection.json --packet-sha256 PACKET_SHA --skill SKILL_NAME --digest BASELINE_DIGEST --head-revision HEAD_REVISION --objective ./objective.txt --manifest ./retrospective-manifest --instance root/propose --directory ./retrospective-author-input --max-prompt-bytes 500000
@@ -148,7 +148,7 @@ Fill the placeholders with the exact suite digest/run IDs returned by register a
 
 ## Generate a provenance-bound memory retrospective candidate
 
-Prepare memory suggestions using the same project's complete handoff package and selection. Install `memory-retrospective`, then use the [manifest steps](../definitions/workflows/compose.md#freeze-the-current-preview-into-the-persistent-control-directory) to pin root `ergora-memory-retrospective 1.0.2` into `memory-retrospective-manifest`. Its `root/propose` and `root/review` both default to Codex gpt-6.1-sol high. Permissions and explicit invocation follow the preceding steps; all leaves read all ancestor materials.
+Prepare memory suggestions using the same project's complete handoff package and selection. Install `memory-retrospective`, then use the [manifest steps](../definitions/workflows/compose.md#freeze-the-current-preview-into-the-persistent-control-directory) to pin root `ergora-memory-retrospective 1.0.3` into `memory-retrospective-manifest`. Its `root/propose` and `root/review` both default to Codex gpt-6.2-sol high. Permissions and explicit invocation follow the preceding steps; all leaves read all ancestor materials.
 
 ```bash
 ergora composition install-preset memory-retrospective
@@ -191,7 +191,7 @@ For new memory, omit `--id` and `--revision` and use the new ID returned by the 
 
 ## Generate a provenance-bound workflow retrospective candidate
 
-Install `workflow-retrospective`, then follow the [complete manifest steps](../definitions/workflows/compose.md#freeze-the-current-preview-into-the-persistent-control-directory) to save root `ergora-workflow-retrospective 1.0.1` into `workflow-retrospective-manifest`. Separately save complete `target-manifest` for the root to improve, retaining the complete digest from its original check. The first is the author/reviewer graph; the second is the target graph. Prepare handoff, selection and objective through the [Skill-candidate steps](#generate-a-provenance-bound-skill-retrospective-candidate), all from the same project.
+Install `workflow-retrospective`, then follow the [complete manifest steps](../definitions/workflows/compose.md#freeze-the-current-preview-into-the-persistent-control-directory) to save root `ergora-workflow-retrospective 1.0.2` into `workflow-retrospective-manifest`. Separately save complete `target-manifest` for the root to improve, retaining the complete digest from its original check. The first is the author/reviewer graph; the second is the target graph. Prepare handoff, selection and objective through the [Skill-candidate steps](#generate-a-provenance-bound-skill-retrospective-candidate), all from the same project.
 
 ```bash
 ergora composition install-preset workflow-retrospective

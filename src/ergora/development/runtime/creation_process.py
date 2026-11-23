@@ -8,6 +8,7 @@ import sys
 from tempfile import TemporaryDirectory
 import uuid
 from ergora._paths import DATA_ROOT, IMPORT_ROOT
+from ergora.development import envelopes as task_envelopes
 
 
 _REFERENCE = DATA_ROOT / 'reference'
@@ -21,6 +22,9 @@ def task_preparation(project: dict, home: Path, operation: str, payload: dict) -
     """
     if sys.platform != 'linux':
         raise ValueError('Budgeted native preparation requires Linux; use WSL2')
+    if 'definition' in payload:
+        task_envelopes.validate_amendment(payload['definition'], project['id'], project['revision'],
+                                          task_id=payload.get('task_id'))
     output = home / 'operations' / 'task-preparations' / uuid.uuid4().hex
     output.mkdir(parents=True, exist_ok=False, mode=0o700)
     execution = project['registration']['definition']['execution']

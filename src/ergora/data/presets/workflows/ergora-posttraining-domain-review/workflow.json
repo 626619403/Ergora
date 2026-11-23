@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "id": "ergora-posttraining-domain-review",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Independent readonly posttraining specialist review.",
   "resources": [
     {
@@ -41,8 +41,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-posttraining-reviewer",
-        "version": "1.0.1",
-        "digest": "5a9dca682e6580526ea3a0a52db198638afd5a31bafd30f2f902d4c7aa29277b"
+        "version": "1.0.2",
+        "digest": "3033bfe20b05f80ec736fb2950b8d6085e5072ca3172318d86e3c12c70c7be24"
       },
       "role": "reviewer",
       "depends_on": [],

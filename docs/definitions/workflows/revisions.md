@@ -17,6 +17,32 @@ Unlike single-package `composition check`, `revise --check` resolves complete re
 
 HTTP `POST /api/workflow-definitions/{id}/{version}/revisions/check` and `/api/workflow-definitions/{id}/{version}/revisions` check and publish respectively, with JSON `{"base_digest": "原包的64位小写摘要", "definition": {完整的新正文}}` (the original package's 64-character lowercase digest and complete new document). CLI and HTTP share candidate digests and existing validation; neither starts models, services or tasks.
 
+### Measure a draft against its selected roots
+
+Add `--impact ./selected-roots.json` to `composition revise --check` or `--preview-resources` before publishing a shared Workflow revision. Pass the same selection as `impact` on the Workflow HTTP check or resource-preview route. Supply up to 16 exact published root references and the grant for each. For example, use the root returned from the cross-end publisher or selected MoE publisher and the grant you intend to check.
+
+```json
+{
+  "schema_version": 1,
+  "roots": [{
+    "ref": {"kind": "workflow", "id": "ergora-cross-end-template", "version": "1.0.0", "digest": "ROOT_DIGEST"},
+    "grant": {
+      "schema_version": 1,
+      "permissions": {"read": ["workspace", "definitions"], "write": ["workspace"], "shell": true, "network": []},
+      "limits": {"depth": 8, "instances": 128, "concurrency": 4, "material_bytes": 262144}
+    }
+  }]
+}
+```
+
+The report binds the checked draft digest to the selected exact roots and grants. It compares each verified baseline with a projection that substitutes the draft at its old exact references. An unavailable input is `unverified`, and a root that does not contain the base is `unaffected`. The report covers the selected roots only. Review the dependency-first parent list for each pinned reference and affected site. Only the direct replacement has a new exact digest. Parent versions and digests come from their later explicit revisions, which can affect the final rendered provenance bytes.
+
+Each leaf includes its inline resource bytes and rendered charges, with the separator charged to the resource that follows it. Each scope gives observed material bytes, the unchanged limit and remaining bytes. On failure the compiler stops at the original check. An incomplete scope gives a partial charge. A material failure includes the first over-limit scope and the attempted leaf. The CLI returns 1 for blocked or unverified analysis with the report still available as JSON.
+
+When the baseline hits a material cap, the report still checks the draft under that same cap. Compare total charges only when both traversals complete. Affected paths retain verified substitution sites. Leaf coverage marks measured and attempted leaves, as well as known draft leaves the projection failed to reach. Missing paths are confirmed absent only after a complete traversal and otherwise remain unverified.
+
+Use the normal accepted-candidate command to publish each desired version. The report creates no stored version, parent revision, canonical composition preview or manifest. A resource preview can still return the exact candidate token when the draft passes its own check and a selected parent projection fails. Publish a new root only after checking the proposed reference chain and its actual grant.
+
 Resource operations follow the same contract as [Agent resource revision](../resources.md#revise-complete-resource-files). Prepare `resource-changes/changes.json`, `files/<包相对路径>` (package-relative path), and complete `new-workflow.json` (with valid placeholder digests for new declarations). Preview first, review and save the suggested response document as `new-workflow.json`, then explicitly accept, check and publish:
 
 ```bash
@@ -34,7 +60,7 @@ Joint revision is not a cross-library atomic transaction. Interruption or parent
 
 ### Publish resource revisions through the complete dependency chain
 
-For the governance composition's structure reviewer, publication order is Agent `ergora-structure-reviewer` → `ergora-structure-review` → `ergora-delivery-review` → `ergora-governance-delivery` → root `ergora-governance-template@1.1.6`. Large changes use the same inner definitions through `ergora-large-change-delivery` → root `ergora-large-change-template@1.1.6`; the training proposal's measurement chain is Agent `ergora-measurement-reviewer` → `ergora-measurement-review` → `ergora-training-proposal`. At every level, update the parent reference with the exact version and digest from the dependency's publication receipt.
+For the governance composition's structure reviewer, publication order is Agent `ergora-structure-reviewer` → `ergora-structure-review` → `ergora-delivery-review` → `ergora-governance-delivery` → root `ergora-governance-template@1.1.7`. Large changes use the same inner definitions through `ergora-large-change-delivery` → root `ergora-large-change-template@1.1.8`; the training proposal's measurement chain is Agent `ergora-measurement-reviewer` → `ergora-measurement-review` → `ergora-training-proposal`. At every level, update the parent reference with the exact version and digest from the dependency's publication receipt.
 
 1. Save a complete manifest and required leaf inputs from the old root, retaining the original version as a comparison. Preserve existing `resources` when adding materials at each level; Skills must include their entry point, all referenced files and necessary empty directories. Ordinary undeclared attachments may also remain in the package.
 2. Starting with the Agent, raise each changed package's version and follow resource preview, explicit acceptance, checking and publication above. In the parent, set `nodes[].ref` to the newly published child's complete `kind/id/version/digest`, then publish the parent, root last. Checks refuse unpublished new dependencies or mismatched digests; do not invent predicted digests or edit old indexes.

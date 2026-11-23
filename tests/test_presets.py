@@ -3,6 +3,7 @@
 import json
 import runpy
 from copy import deepcopy
+import base64
 from pathlib import Path
 import shutil
 import subprocess
@@ -85,7 +86,7 @@ def test_engineering_specialists_use_real_roles_resources_and_review_slots(tmp_p
         assert leaf['role'] == 'reviewer' and leaf['review_requirement'] == 'required'
         assert leaf['permissions'] == root['permissions']
         floor = 'max' if path == 'root/performance' else 'high'
-        assert leaf['backend_request']['model'] == leaf['invocation_minimum']['model'] == 'gpt-6.1-sol'
+        assert leaf['backend_request']['model'] == leaf['invocation_minimum']['model'] == 'gpt-6.2-sol'
         assert leaf['backend_request']['reasoning_effort'] == leaf['invocation_minimum']['reasoning_effort'] == floor
         prepared = workflows.prepare_input_from_manifest(Path(manifest['path']), path,
             b'Complete exact original requirements, source, callers and original check artifacts.',
@@ -317,7 +318,7 @@ def test_bundled_recipe_is_restartable_and_freezes_complete_ancestors(tmp_path, 
     for item in leaves:
         if item['ref']['id'] in planners:
             assert item['backend_request']['reasoning_effort'] == item['invocation_minimum']['reasoning_effort'] == 'max'
-        assert item['backend_request']['model'] == item['invocation_minimum']['model'] == 'gpt-6.1-sol'
+        assert item['backend_request']['model'] == item['invocation_minimum']['model'] == 'gpt-6.2-sol'
         assert item['backend_request']['reasoning_effort'] == item['invocation_minimum']['reasoning_effort']
         if item['role'] in ('planner', 'experiment-planner', 'kernel-tuner') or item['ref']['id'] == 'ergora-api-contract-author':
             assert item['invocation_minimum']['reasoning_effort'] == 'max'
@@ -544,7 +545,7 @@ def test_development_preset_creates_original_unit_contract_without_starting(regi
     assert frozen['schema_version'] == 12
     preparing = frozen['composition']['preparation']['members']
     assert preparing['root/development/preparation/plan/coordinator']['binding'] == {
-        'tool': 'codex', 'model': 'gpt-6.1-sol', 'reasoning_effort': 'max'}
+        'tool': 'codex', 'model': 'gpt-6.2-sol', 'reasoning_effort': 'max'}
     task_envelopes.unwrap(frozen)
     incomplete = deepcopy(definition)
     incomplete['schema_version'] = 2
@@ -559,7 +560,7 @@ def test_development_preset_creates_original_unit_contract_without_starting(regi
                       if next(item for item in graph['instances'] if item['path'] == path)['ref']['id']
                       in ('ergora-compatibility-validator', 'ergora-architecture-test-author'))
     lowered['composition']['backend_overrides'][validation] = {
-        'binding': {'tool': 'codex', 'model': 'gpt-6.1-sol', 'reasoning_effort': 'high'},
+        'binding': {'tool': 'codex', 'model': 'gpt-6.2-sol', 'reasoning_effort': 'high'},
         'reason': 'Rejected lower request for a writer sharing the planner floor'}
     lowered['task_id'] = 'lowered-preset-task'
     rejected = tasks.prepare(state, 'demo', lowered, 1)
@@ -744,6 +745,77 @@ def test_cross_end_revision_freezes_real_experts_complete_ports_and_unchanged_de
     with pytest.raises(ValueError, match='coordinator'):
         WorkDelivery(invalid, option['execution'], option['review_instance'],
                      task['input']['work_units'], preparation=option['preparation'])
+
+
+def test_revision_impact_finds_cross_end_limit_before_shared_work_publication(tmp_path):
+    state = State(tmp_path / 'state')
+    cross_end = Path(__file__).parents[1] / 'examples/composition/development-specialists'
+    publish = runpy.run_path(str(cross_end / 'publish.py'))['publish']
+    cross = publish(state, cross_end, version='1.0.0')
+    moe_example, moe = _publish_selected_moe(state)
+    baseline = workflows.inspect_manifest(Path(cross['manifest']['path']), material=True)
+    root_def = workflows.get(state, cross['root']['id'], cross['root']['version'])['definition']
+    cross_grant = {'schema_version': 1, 'permissions': root_def['permissions'], 'limits': root_def['limits']}
+    work = next(item for item in cross['installation']['workflows'] if item['id'] == 'ergora-large-change-work')
+    original = workflows.get(state, work['id'], work['version'], material=True)
+    selection = {'schema_version': 1, 'roots': [
+        {'ref': cross['root'], 'grant': cross_grant},
+        {'ref': moe['root'], 'grant': json.loads((moe_example / 'grant.json').read_bytes())},
+    ]}
+    version = work['version'].split('.')
+    document = {**original['definition'], 'version': '.'.join([*version[:-1], str(int(version[-1]) + 1)])}
+    index = state.root / 'workflow-definitions/index.json'
+    before = index.read_bytes()
+    text = (Path(original['path']) / 'instructions.md').read_bytes()
+
+    def inspect(raw):
+        changes = {'schema_version': 1, 'operations': [
+            {'op': 'write', 'path': 'instructions.md', 'content_base64': base64.b64encode(raw).decode(),
+             'executable_bits': 0},
+        ]}
+        preview = workflows.revision_impact(state.root, work['id'], work['version'], work['digest'],
+            document, selection=selection, resource_changes=changes, preview_resources=True)
+        assert preview['impact']['candidate']['ref']['digest'] == preview['candidate']['digest']
+        assert preview['impact']['candidate']['standalone']['status'] == 'checked'
+        assert not preview['published'] and index.read_bytes() == before
+        return preview, changes
+
+    oversized, _ = inspect(text + b'An added shared instruction.\n' * 80)
+    impact = oversized['impact']
+    assert impact['status'] == 'blocked'
+    cross_result, moe_result = impact['roots']
+    assert (cross_result['status'], moe_result['status']) == ('blocked', 'checked')
+    assert all(len(row['affected_leaves']) == 4 for row in impact['roots'])
+    assert len(cross_result['baseline']['leaves']) == 17 and len(moe_result['baseline']['leaves']) == 18
+    projection = cross_result['projection']
+    blocker, project = projection['blocker'], projection['scopes'][0]
+    assert blocker['scope'] == 'project' and blocker['path'].startswith('root/')
+    assert blocker['observed_material_bytes'] == project['material_bytes'] > project['limit'] == 262144
+    assert not project['complete'] and project['remaining_bytes'] == project['limit'] - project['material_bytes']
+    assert sum(item['material_bytes'] for item in projection['leaves']) + blocker['attempted_leaf']['material_bytes'] == project['material_bytes']
+
+    valid, changes = inspect(text + b'\nRecord exact evidence.\n')
+    assert valid['impact']['status'] == 'checked'
+    predicted = valid['impact']['roots'][0]['projection']['scopes'][0]
+    assert predicted['complete'] and 0 < predicted['remaining_bytes'] < 4096
+    published = workflows.revise(state, work['id'], work['version'], work['digest'], valid['definition'],
+        resource_changes=changes, accepted_candidate=valid['candidate'], publish=True)
+    replacement = {**work, 'version': published['definition']['version'], 'digest': published['digest']}
+    for plan in valid['impact']['required_parent_revisions']:
+        previous = plan['ref']
+        if all(site['root'] != cross['root'] for site in plan['references']):
+            continue
+        parent = workflows.get(state, previous['id'], previous['version'])['definition']
+        parent['version'] = '1.0.1'
+        for node in parent['nodes']:
+            if node['id'] in {site['node'] for site in plan['references'] if site['root'] == cross['root']}:
+                node['ref'] = replacement
+        result = workflows.revise(state, previous['id'], previous['version'], previous['digest'], parent, publish=True)
+        replacement = {**previous, 'version': parent['version'], 'digest': result['digest']}
+    assert replacement['id'] == cross['root']['id']
+    actual = workflows.preview(state.root, replacement['id'], replacement['version'], cross_grant)
+    assert actual['usage']['material_bytes'] == predicted['material_bytes']
+    assert workflows.inspect_manifest(Path(cross['manifest']['path']), material=True) == baseline
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Budgeted native preparation requires Linux/WSL2')

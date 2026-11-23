@@ -81,14 +81,18 @@ def test_versions_are_immutable_idempotent_and_export_roundtrips(bundle, tmp_pat
         definitions.export(state, "kernel-implementer", "1.0.0", tmp_path / "share")
 
 
-def test_definition_default_must_satisfy_its_declared_minimum(bundle):
+@pytest.mark.parametrize("model,other", [("gpt-6.1-sol", "gpt-6.2-sol"), ("gpt-6.2-sol", "gpt-6.1-sol")])
+def test_definition_default_must_satisfy_its_declared_minimum(bundle, model, other):
     revise(bundle, lambda item: item.update(
-        backend={"tool": "codex", "model": "gpt-6.1-sol", "reasoning_effort": "high"},
-        invocation_minimum={"model": "gpt-6.1-sol", "reasoning_effort": "xhigh"}))
+        backend={"tool": "codex", "model": model, "reasoning_effort": "high"},
+        invocation_minimum={"model": model, "reasoning_effort": "xhigh"}))
     with pytest.raises(ValueError, match="at least xhigh"):
         definitions.inspect_bundle(bundle)
     revise(bundle, lambda item: item["backend"].update(reasoning_effort="max"))
     assert definitions.inspect_bundle(bundle)["definition"]["backend"]["reasoning_effort"] == "max"
+    revise(bundle, lambda item: item["backend"].update(model=other))
+    with pytest.raises(ValueError, match="requires explicit Codex model"):
+        definitions.inspect_bundle(bundle)
 
 
 def test_revision_preserves_complete_package_and_only_publishes_explicitly(bundle, tmp_path):

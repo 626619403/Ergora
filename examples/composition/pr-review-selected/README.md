@@ -2,20 +2,20 @@
 
 This example selects five required reviewers for a process/concurrency change with performance implications: the existing structure, correctness and test-value branches, plus performance and resource lifecycle. The bundled `engineering-review` default remains the three core branches. Select specialists with facts before preview/freeze; there is no automatic diff classifier. Dependency, security and measurement are installed options and do not run unless selected. Missing evidence is `blocked`, not automatically `not-applicable`.
 
-The revision uses the existing `ergora-delivery-review@1.2.5` base, digest `dbd74724a216ee0e3fe95e496b7eeccd45a707353bcc5415e11662f273f8da1d`. It publishes `ergora-selected-engineering-review@1.0.5`, digest `6abc1cd4dafef647972c0187ea7c25cbb0771054a35dc0b3380943e8145b0412`. The standard revision contains references only; inherited instructions and Skills remain in their original bundles. Old library objects and frozen tasks retain their identities.
+The revision uses the existing `ergora-delivery-review@1.2.6` base, digest `a5feee920db408384176c4db7ebd01cd4715ba025cd43ddf10cb8485ee31e372`. It publishes `ergora-selected-engineering-review@1.0.6`, digest `d1866f53cb6e1699ebd0be95fa1d8e47e78fe4662fb9250b3aab9a4e5e89ded1`. The standard revision contains references only; inherited instructions and Skills remain in their original bundles. Old library objects and frozen tasks retain their identities.
 
 From the repository root, use an explicit definition-library home. Every command below uses that same home:
 
 ```bash
 ergora --home ./review-home composition install-preset engineering-review
-ergora --home ./review-home composition revise ergora-delivery-review 1.2.5 \
-  --base-digest dbd74724a216ee0e3fe95e496b7eeccd45a707353bcc5415e11662f273f8da1d \
+ergora --home ./review-home composition revise ergora-delivery-review 1.2.6 \
+  --base-digest a5feee920db408384176c4db7ebd01cd4715ba025cd43ddf10cb8485ee31e372 \
   --document examples/composition/pr-review-selected/root.revision.example.json
-ergora --home ./review-home composition prepare-manifest ergora-selected-engineering-review 1.0.5 \
+ergora --home ./review-home composition prepare-manifest ergora-selected-engineering-review 1.0.6 \
   --grant examples/composition/pr-review-selected/grant.json --directory ./selected-review-manifest
 ```
 
-Save the returned manifest `digest`. The exact member paths are `root/structure/review`, `root/correctness/review`, `root/test-value/review`, `root/performance` and `root/resource-lifecycle`. They consume the same root task independently and all feed the existing all-join. The grant is readonly: read workspace/definitions, write none, shell false and network none. Performance keeps its existing `gpt-6.1-sol/max` minimum because it also serves planning; the other reviewers require at least `gpt-6.1-sol/high`.
+Save the returned manifest `digest`. The exact member paths are `root/structure/review`, `root/correctness/review`, `root/test-value/review`, `root/performance` and `root/resource-lifecycle`. They consume the same root task independently and all feed the existing all-join. The grant is readonly: read workspace/definitions, write none, shell false and network none. Performance keeps its existing `gpt-6.2-sol/max` minimum because it also serves planning; the other reviewers require at least `gpt-6.2-sol/high`.
 
 The supervisor retains one owner per direction and aims for 4–8 experts actively doing assigned work. The formal execution owner can run four ready reviewers under the actual concurrency cap. The explicit source loop below runs sequentially. Report actual active count and any blocker.
 

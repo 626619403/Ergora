@@ -228,6 +228,38 @@
         }
       }
     },
+    "amendment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["project", "project_revision", "change", "definition_sha256", "predecessor"],
+      "properties": {
+        "project": {"type": "string", "minLength": 1},
+        "project_revision": {"type": "integer", "minimum": 1},
+        "change": {"type": "string", "maxLength": 4000, "pattern": "\\S"},
+        "definition_sha256": {"$ref": "#/$defs/sha256"},
+        "predecessor": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["task_id", "workflow_id", "run_id", "creation_sha256", "submission_sha256", "request_sha256",
+                       "admission_sha256", "budget_sha256", "history_jobs_sha256", "evidence_sha256",
+                       "release_evidence_sha256", "plan_receipt_sha256"],
+          "properties": {
+            "task_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"},
+            "workflow_id": {"type": "string", "minLength": 1, "maxLength": 128},
+            "run_id": {"type": "string", "minLength": 1, "maxLength": 128},
+            "creation_sha256": {"$ref": "#/$defs/sha256"},
+            "submission_sha256": {"$ref": "#/$defs/sha256"},
+            "request_sha256": {"$ref": "#/$defs/sha256"},
+            "admission_sha256": {"$ref": "#/$defs/sha256"},
+            "budget_sha256": {"$ref": "#/$defs/sha256"},
+            "history_jobs_sha256": {"$ref": "#/$defs/sha256"},
+            "evidence_sha256": {"$ref": "#/$defs/sha256"},
+            "release_evidence_sha256": {"$ref": "#/$defs/sha256"},
+            "plan_receipt_sha256": {"anyOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]}
+          }
+        }
+      }
+    },
     "budget": {
       "type": "object",
       "additionalProperties": false,
@@ -340,6 +372,7 @@
   },
   "title": "Ergora budgeted native preparation DAG task",
   "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "preparation_stage": {
       "type": "object",
       "additionalProperties": false,

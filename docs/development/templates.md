@@ -8,10 +8,10 @@ Follow [source-branch selection](../install/linux.md#install-in-a-clean-environm
 
 |Template/preset|Current bundled root identity|Specialist relationships and entry points|
 |---|---|---|
-|repository-governance|`ergora-governance-template@1.1.6`|Parallel knowledge-map/boundary-test, then trusted integration/verification and structure, correctness and test-value reviews|
-|large-change|`ergora-large-change-template@1.1.6`|contract→parallel server/client→integration-tests, then trusted integration/verification and three reviews|
-|training-optimization|`ergora-training-proposal@4.2.9`|Source flow→planning/diagnosis→kernel implementation planning→measurement review; all five leaves inherit library/environment guidance, with actual experiments owned by trusted runners.|
-|refactoring|`ergora-refactoring-template@1.3.6`|Preparation→rewrite→compatibility→original trusted integration/verification→three reviews; ordinary parent references one native large-change six-stage instance|
+|repository-governance|`ergora-governance-template@1.1.7`|Parallel knowledge-map/boundary-test, then trusted integration/verification and structure, correctness and test-value reviews|
+|large-change|`ergora-large-change-template@1.1.8`|contract→parallel server/client→integration-tests, then trusted integration/verification and three reviews|
+|training-optimization|`ergora-training-proposal@4.2.10`|Source flow→planning/diagnosis→kernel implementation planning→measurement review; all five leaves inherit library/environment guidance, with actual experiments owned by trusted runners.|
+|refactoring|`ergora-refactoring-template@1.3.7`|Preparation→rewrite→compatibility→original trusted integration/verification→three reviews; ordinary parent references one native large-change six-stage instance|
 
 The supervisor retains one expert per direction and aims for 4–8 active experts with distinct assigned tasks. On completion or a blocker, record the next step and reassess ready work under the existing stage order, candidate bindings and budgets. See the [supervisor dispatch and recovery rules](../definitions/workflows/compose.md#use-bundled-domain-compositions).
 
@@ -52,7 +52,7 @@ Copy destinations must be new. Reimporting a preset with identical identity reta
 For governance, read the original root declaration first and save explicitly reviewed permissions/budget as a grant:
 
 ```bash
-ergora composition show ergora-governance-template 1.1.6 --material > "$WALKTHROUGH_HOME/root.json"
+ergora composition show ergora-governance-template 1.1.7 --material > "$WALKTHROUGH_HOME/root.json"
 python3 - "$WALKTHROUGH_HOME" <<'PY'
 import json, pathlib, sys
 directory = pathlib.Path(sys.argv[1])
@@ -60,13 +60,13 @@ definition = json.loads((directory / "root.json").read_text())["definition"]
 grant = {"schema_version": 1, "permissions": definition["permissions"], "limits": definition["limits"]}
 (directory / "grant.json").write_text(json.dumps(grant, indent=2) + "\n")
 PY
-ergora composition preview ergora-governance-template 1.1.6 --grant "$WALKTHROUGH_HOME/grant.json"
+ergora composition preview ergora-governance-template 1.1.7 --grant "$WALKTHROUGH_HOME/grant.json"
 ```
 
 Review the complete preview's instances, ancestor materials and authorization limits. Use the actual returned `preview_sha256` for `PREVIEW_SHA256` below:
 
 ```bash
-ergora composition freeze-manifest ergora-governance-template 1.1.6 --grant "$WALKTHROUGH_HOME/grant.json" --preview-sha256 PREVIEW_SHA256
+ergora composition freeze-manifest ergora-governance-template 1.1.7 --grant "$WALKTHROUGH_HOME/grant.json" --preview-sha256 PREVIEW_SHA256
 ```
 
 Retain returned complete-package `path`, package `digest` and `manifest.preview_sha256`, then run `ergora composition verify-manifest FULL_MANIFEST_DIRECTORY`. When changing domain, use its root ID above and obtain/review that root's grant again; training roots request neither shell nor write permission. The page can also preview and “Save current preview as complete manifest”. Downloaded preview JSON is for reading; sharing/backups need the complete directory. See [complete bundles](../definitions/workflows/compose.md#save-and-share-a-complete-composition).
@@ -90,10 +90,10 @@ Governance requires behavior/architecture/knowledge checks; large changes additi
 Run `ergora serve` and open local `http://127.0.0.1:8977`. Under “Formal tasks”:
 
 1. Open “Preview and create”, select a registered template and “Load selected template”. Wait for “Template input loaded” before entering task ID, issue and actual input. Changing template invalidates the old preview.
-2. Select “Complete manifest · Composition execution and review”, enter step 1's `manifest.preview_sha256` and “Read complete manifest”. Use `root/review` for review and `root/work` for execution. Under “Inventory and planning”, select `root/preparation/inventory` and `root/preparation/plan`, with repository read paths covering the work units. Both preparation specialists default to gpt-6.1-sol max.
+2. Select “Complete manifest · Composition execution and review”, enter step 1's `manifest.preview_sha256` and “Read complete manifest”. Use `root/review` for review and `root/work` for execution. Under “Inventory and planning”, select `root/preparation/inventory` and `root/preparation/plan`, with repository read paths covering the work units. Both preparation specialists default to gpt-6.2-sol max.
 3. “Load work units from current input”, assigning every unit to its complete path. Governance uses `knowledge-map`, `boundary-test`; large changes use `contract`, `server`, `client`, `integration-tests`, at `root/work/UNIT_ID`.
 4. Explicitly choose a supported backend, execution boundary and override reason for every writer. Current writable compositions prefill the template model/effort for Codex; explicitly choose “Trusted current container/user”, still requiring trusted Linux. This permits access to current-user files; permission-path checks do not provide OS isolation for individual file accesses.
-5. Keep gpt-6.1-sol high for review; overrides must meet the definition minimum. Record the reason for separate sessions on the same backend and select that diversity policy. Configure authentication in the environment starting Ergora, keeping keys in external environment/tool-authentication configuration.
+5. Keep gpt-6.2-sol high for review; overrides must meet the definition minimum. Record the reason for separate sessions on the same backend and select that diversity policy. Configure authentication in the environment starting Ergora, keeping keys in external environment/tool-authentication configuration.
 6. Use “Preview selected execution route” to check the selected stages. For a native six-stage task, authorize preparation and preview the frozen result before confirming creation. Check assignments, backends, policies, ancestor materials, paths and inputs. The page freezes inventory, planning, work and review members together; omitting preparation fails visibly. Creation publishes a contract without starting a model or task.
 
 A template can contain multiple same-responsibility specialist instances. Before adding/replacing specialists, publish separate Agents and exact workflow versions along the parent chain, then preview/freeze a new task. The graph shows published versions; dragging layout does not revise contracts. See [work-unit protocol](../definitions/workflows/contracts.md#specialist-writers-and-original-work-units) for complete CLI configuration.

@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "id": "ergora-development-preparer",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Coordinate complete specialist results into the original development inventory or execution plan.",
   "roles": [
     "inspector",
@@ -14,7 +14,7 @@
   ],
   "backend": {
     "tool": "codex",
-    "model": "gpt-6.1-sol",
+    "model": "gpt-6.2-sol",
     "reasoning_effort": "max"
   },
   "resources": [
@@ -32,7 +32,7 @@
     }
   ],
   "invocation_minimum": {
-    "model": "gpt-6.1-sol",
+    "model": "gpt-6.2-sol",
     "reasoning_effort": "max"
   }
 }

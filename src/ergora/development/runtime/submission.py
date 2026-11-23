@@ -4,7 +4,6 @@ import asyncio
 import json
 import os
 import sys
-from types import SimpleNamespace
 
 from ergora.development.runtime.creation import _Creation
 from ergora.development.inputs import execution_input
@@ -120,74 +119,45 @@ class _Submission:
         return {**common, 'status': 'prepared', 'next_action': 'resume_start'}
 
     async def dispatch(self, intent: dict) -> dict:
-        from agent_platform import cli, doctor
-        from dev_platform import runtime
+        from agent_platform.cli import start_task
+        from agent_platform.core import task_spec
+        from agent_platform.doctor import report
+        from dev_platform.runtime import DevelopmentTransport, RuntimeNotFound
         from temporalio.exceptions import WorkflowAlreadyStartedError
 
-        operation = self
-        original = runtime.DevelopmentTransport
-        original_spec = cli.task_spec
-        original_report = doctor.report
+        task_id = self.creation.task_id
+        document = self.creation.document(self.creation.target / 'task.spec.json')
+        if self.sha(document) != intent['spec_sha256']:
+            raise ValueError('Task spec changed after submission preflight; restore the original creation')
+        spec = self.input.admission_spec(task_spec, task_id)
+        if self.sha(spec) != self.sha(self.spec):
+            raise ValueError('Task spec changed after submission preflight; restore the original creation')
 
         def selected_report():
-            return operation.input.admission_report(original_report,
-                operation.creation_record['files']['agent-bindings.json'])
+            return self.input.admission_report(report, self.creation_record['files']['agent-bindings.json'])
 
-        def frozen_spec(task_id):
-            document = operation.creation.document(operation.creation.target / 'task.spec.json')
-            if operation.sha(document) != intent['spec_sha256']:
-                raise ValueError('Task spec changed after submission preflight; restore the original creation')
-            spec = operation.input.admission_spec(original_spec, task_id)
-            if operation.sha(spec) != operation.sha(operation.spec):
-                raise ValueError('Task spec changed after submission preflight; restore the original creation')
-            return spec
+        async def checkpointed_start(client, queue, frozen):
+            runtime = DevelopmentTransport(VerifiedSpecClient(client, self.input.document), queue)
+            try:
+                _, description = await runtime.lookup(frozen)
+            except RuntimeNotFound:
+                pass
+            except ValueError:
+                self.core.write(self.rejection_path, self.rejection(intent, 'lookup_rejected', None))
+                raise
+            else:
+                self.core.write(self.rejection_path, self.rejection(intent, 'preexisting_run', description.run_id))
+                raise ValueError('Workflow already exists without this submission attempt; reconcile its owner')
+            self.input.require_dispatch()
+            self.core.write(self.attempt_path, self.attempt(intent))
+            self.input.require_dispatch()
+            try:
+                return await runtime.start_once(frozen, memo={_MEMO_KEY: self.sha(intent)})
+            except WorkflowAlreadyStartedError as error:
+                self.core.write(self.rejection_path, self.rejection(intent, 'start_conflict', error.run_id))
+                raise ValueError('Workflow was already started during submission; reconcile its owner') from error
 
-        class CheckpointedTransport(original):
-            async def start(self, spec):
-                self.client = VerifiedSpecClient(self.client, operation.input.document)
-                # Refuse to adopt an independently started run. Once this
-                # checkpoint exists, resume must only look up, never start.
-                try:
-                    _, description = await self.lookup(spec)
-                except runtime.RuntimeNotFound:
-                    pass
-                except ValueError:
-                    operation.core.write(operation.rejection_path, operation.rejection(intent, 'lookup_rejected', None))
-                    raise
-                else:
-                    operation.core.write(operation.rejection_path,
-                                         operation.rejection(intent, 'preexisting_run', description.run_id))
-                    raise ValueError('Workflow already exists without this submission attempt; reconcile its owner')
-                operation.input.require_dispatch()
-                operation.core.write(operation.attempt_path, operation.attempt(intent))
-                operation.input.require_dispatch()
-                native_start = self.client.start_workflow
-
-                async def exclusive_start(*args, **kwargs):
-                    try:
-                        return await native_start(*args, memo={_MEMO_KEY: operation.sha(intent)}, **kwargs)
-                    except WorkflowAlreadyStartedError as error:
-                        # A racing entrance can win after our NOT_FOUND. Do not
-                        # let the native compatibility path adopt that run.
-                        operation.core.write(operation.rejection_path,
-                                             operation.rejection(intent, 'start_conflict', error.run_id))
-                        raise ValueError('Workflow was already started during submission; reconcile its owner') from error
-
-                self.client.start_workflow = exclusive_start
-                return await super().start(spec)
-
-        # task_action imports this port at call time. The override is confined
-        # to this dedicated process. The input owns prerequisites; native
-        # task_action still owns policy, trusted checks, connection and claim.
-        runtime.DevelopmentTransport = CheckpointedTransport
-        cli.task_spec = frozen_spec
-        doctor.report = selected_report
-        try:
-            observed = await cli.task_action(SimpleNamespace(operation='start', task_id=self.creation.task_id))
-        finally:
-            runtime.DevelopmentTransport = original
-            cli.task_spec = original_spec
-            doctor.report = original_report
+        observed = await start_task(task_id, spec, readiness=selected_report, start=checkpointed_start)
         if observed['workflow_id'] != intent['workflow_id']:
             raise ValueError('Native start returned a different workflow; reconcile the original ID')
         self.core.write(self.result_path, self.receipt(intent, observed['run_id']))

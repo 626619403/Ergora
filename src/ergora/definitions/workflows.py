@@ -20,6 +20,30 @@ from ergora._paths import DATA_ROOT
 
 
 _PRESETS = DATA_ROOT / "presets"
+_IMPACT_SELECTION = {
+    "$defs": contracts.WORKFLOW_DEFINITION["$defs"],
+    "type": "object", "additionalProperties": False, "required": ["schema_version", "roots"],
+    "properties": {
+        "schema_version": {"type": "integer", "const": 1},
+        "roots": {
+            "type": "array", "minItems": 1, "maxItems": 16, "uniqueItems": True,
+            "items": {
+                "type": "object", "additionalProperties": False, "required": ["ref", "grant"],
+                "properties": {
+                    "ref": {
+                        **contracts.WORKFLOW_DEFINITION["$defs"]["reference"],
+                        "properties": {
+                            "kind": {"const": "workflow"}, "id": {"$ref": "#/$defs/id"},
+                            "version": contracts.WORKFLOW_DEFINITION["properties"]["version"],
+                            "digest": {"$ref": "#/$defs/digest"},
+                        },
+                    },
+                    "grant": {"$ref": "#/$defs/grant"},
+                },
+            },
+        },
+    },
+}
 
 
 def _preset_catalog() -> dict:
@@ -136,16 +160,23 @@ def inspect_bundle(source: Path, *, material: bool = False) -> dict:
     return document
 
 
+def _check_bundle(root: Path, path: Path, *, material=False, inspect_revision=None) -> dict:
+    document = inspect_bundle(path, material=True)
+    definition = document["definition"]
+    grant = {"schema_version": 1, "permissions": definition["permissions"], "limits": definition["limits"]}
+    if inspect_revision is None:
+        _Compilation(root, grant, agent_admission=agent_definitions.validate_admission).compile(document)
+    else:
+        document["impact"] = inspect_revision(document, grant)
+    if not material:
+        for resource in document["resources"]:
+            del resource["text"]
+    return document
+
+
 def library(root: Path) -> definition_bundles.DefinitionLibrary:
     def checked(path, *, material=False):
-        document = inspect_bundle(path, material=True)
-        definition = document["definition"]
-        grant = {"schema_version": 1, "permissions": definition["permissions"], "limits": definition["limits"]}
-        _Compilation(root, grant, agent_admission=agent_definitions.validate_admission).compile(document)
-        if not material:
-            for resource in document["resources"]:
-                del resource["text"]
-        return document
+        return _check_bundle(root, path, material=material)
     return definition_bundles.DefinitionLibrary(root, "workflow", contracts.WORKFLOW_DEFINITION, inspect_bundle,
                                               import_inspector=checked)
 
@@ -153,6 +184,10 @@ def library(root: Path) -> definition_bundles.DefinitionLibrary:
 def _reference(document: dict, kind: str) -> dict:
     return {"kind": kind, "id": document["definition"]["id"], "version": document["definition"]["version"],
             "digest": document["digest"]}
+
+
+def _ref_key(reference: dict) -> tuple[str, ...]:
+    return tuple(reference[key] for key in ("kind", "id", "version", "digest"))
 
 
 def _materials(inherited: list[dict], document: dict, kind: str, path: str) -> list[dict]:
@@ -197,38 +232,71 @@ def _readable(materials: list[dict], permissions: dict, path: str) -> None:
                 raise ValueError(f"Required inherited resource is not readable at {path}: {source['uri']}")
 
 
+def _render_resource(item: dict) -> str:
+    return (f"Resource {','.join(item['ids'])} ({item['kind']}); sources: " +
+            json.dumps(item["sources"], sort_keys=True, ensure_ascii=False) + "\n" + item["text"])
+
+
+class _MaterialLimitExceeded(ValueError):
+    def __init__(self, leaf: dict, scope: dict):
+        super().__init__(f"Composition material_bytes budget exceeded at {leaf['path']} (scope {scope['path']})")
+        self.leaf, self.scope = leaf, scope
+
+
+class _ReferenceUnavailable(ValueError):
+    def __init__(self, reference: dict, path: str, error: Exception):
+        super().__init__(str(error))
+        self.reference, self.path = reference, path
+
+
 class _Compilation:
     """One bounded traversal owns reference, graph, inheritance and budget checks."""
 
-    def __init__(self, root: Path, grant: dict, *, agent_admission=None):
+    def __init__(self, root: Path, grant: dict, *, agent_admission=None, measure=False, replacement=None):
         contracts.validate(grant, contracts.COMPOSITION_GRANT, "Composition preview grant")
         _permissions(grant["permissions"])
         self.root, self.grant = root, grant
         self.agent_admission = agent_admission
+        self.measure, self.replacement = measure, replacement
         self.documents, self.instances = {}, []
         self.preview_version = 1
         self.total = {"path": "project", "limits": grant["limits"], "depth": 0, "instances": 0, "material_bytes": 0}
+        self.scopes = [self.total]
+        self.path = "root"
+        self.replacements_seen = set()
 
-    def _resolve(self, reference: dict) -> dict:
-        key = (reference["kind"], reference["id"], reference["version"], reference["digest"])
+    def _replaces(self, reference: dict, project: bool) -> bool:
+        return project and self.replacement is not None and reference == self.replacement[0]
+
+    def _resolve(self, reference: dict, path: str, *, project=False) -> dict:
+        if self._replaces(reference, project):
+            self.replacements_seen.add(path)
+            return self.replacement[1]
+        key = _ref_key(reference)
         if key not in self.documents:
             source = agent_definitions.library(self.root) if reference["kind"] == "agent" else library(self.root)
-            document = source.get(reference["id"], reference["version"], material=True)
-            if document["digest"] != reference["digest"]:
-                raise ValueError(f"Definition reference digest mismatch: {reference['id']}@{reference['version']}")
+            try:
+                document = source.get(reference["id"], reference["version"], material=True)
+                if document["digest"] != reference["digest"]:
+                    raise ValueError(f"Definition reference digest mismatch: {reference['id']}@{reference['version']}")
+            except (ValueError, OSError) as error:
+                if self.measure:
+                    raise _ReferenceUnavailable(reference, path, error) from error
+                raise
             if reference["kind"] == "agent" and self.agent_admission is not None:
                 self.agent_admission(document)
             self.documents[key] = document
         return self.documents[key]
 
-    def _links(self, definition: dict) -> None:
+    def _links(self, definition: dict, path: str, *, project: bool) -> None:
         nodes = {node["id"]: node for node in definition["nodes"]}
         ports = {}
         for identity, node in nodes.items():
+            self.path = f"{path}/{identity}"
             if "join" in node or node["ref"]["kind"] == "agent":
                 ports[identity] = ["result"]
             else:
-                ports[identity] = list(self._resolve(node["ref"])["definition"]["outputs"])
+                ports[identity] = list(self._resolve(node["ref"], self.path, project=project)["definition"]["outputs"])
         def binding(value, dependencies):
             if "input" in value:
                 if value["input"] not in definition["inputs"]:
@@ -239,12 +307,14 @@ class _Compilation:
         for node in nodes.values():
             if "join" in node:
                 continue
+            self.path = f"{path}/{node['id']}"
             expected = (["task"] if node["ref"]["kind"] == "agent" else
-                        self._resolve(node["ref"])["definition"]["inputs"])
+                        self._resolve(node["ref"], self.path, project=project)["definition"]["inputs"])
             if set(node["inputs"]) != set(expected):
                 raise ValueError(f"Workflow input ports differ at {node['id']}: expected {expected}")
             for value in node["inputs"].values():
                 binding(value, node["depends_on"])
+        self.path = path
         for value in definition["outputs"].values():
             binding(value, nodes)
 
@@ -259,12 +329,11 @@ class _Compilation:
 
     @staticmethod
     def _prompt(materials: list[dict]) -> str:
-        return "\n\n".join(f"Resource {','.join(item['ids'])} ({item['kind']}); sources: " +
-                             json.dumps(item["sources"], sort_keys=True, ensure_ascii=False) + "\n" + item["text"]
-                             for item in materials)
+        return "\n\n".join(_render_resource(item) for item in materials)
 
     def _workflow(self, document: dict, path: str, inherited: list[dict], ceiling: dict,
-                  scopes: list[dict], lineage: tuple, inputs: dict, dependencies: list[str]) -> None:
+                  scopes: list[dict], lineage: tuple, inputs: dict, dependencies: list[str], *, project: bool) -> None:
+        self.path = path
         definition = document["definition"]
         self.preview_version = max(self.preview_version, definition["schema_version"])
         reference = _reference(document, "workflow")
@@ -275,11 +344,14 @@ class _Compilation:
         _within(permissions, ceiling, path)
         scope = {"path": path, "limits": definition["limits"], "depth": len(path.split("/")) - 1,
                  "instances": 0, "material_bytes": 0}
+        if self.measure:
+            scope["ref"] = reference
+            self.scopes.append(scope)
         scopes = [*scopes, scope]
         self._count(scopes, path)
         materials = _materials(inherited, document, "workflow", path)
         _readable(materials, permissions, path)
-        self._links(definition)
+        self._links(definition, path, project=project)
         levels = _levels(definition)
         instance = {"path": path, "parent": path.rpartition("/")[0] or None, "kind": "workflow", "ref": reference,
                     "permissions": permissions, "inputs": inputs, "outputs": definition["outputs"], "depends_on": dependencies,
@@ -289,17 +361,20 @@ class _Compilation:
         for level in levels:
             for name in level:
                 node, child_path = nodes[name], f"{path}/{name}"
+                self.path = child_path
                 dependencies = [f"{path}/{value}" for value in node["depends_on"]]
                 if "join" in node:
                     self._count(scopes, child_path)
                     self.instances.append({"path": child_path, "parent": path, "kind": "join", "join": "all",
                                            "depends_on": dependencies, "outputs": ["result"], "permissions": permissions})
                 elif node["ref"]["kind"] == "workflow":
-                    self._workflow(self._resolve(node["ref"]), child_path, materials, permissions,
-                                   scopes, (*lineage, identity), node["inputs"], dependencies)
+                    child = self._resolve(node["ref"], child_path, project=project)
+                    self._workflow(child, child_path, materials, permissions,
+                                   scopes, (*lineage, identity), node["inputs"], dependencies,
+                                   project=project and not self._replaces(node["ref"], project))
                 else:
                     self._count(scopes, child_path)
-                    child = self._resolve(node["ref"])
+                    child = self._resolve(node["ref"], child_path)
                     if node["role"] not in child["definition"]["roles"]:
                         raise ValueError(f"Agent role not supported at {child_path}: {node['role']}")
                     _within(node["permissions"], permissions, child_path)
@@ -310,7 +385,8 @@ class _Compilation:
                     for active in scopes:
                         active["material_bytes"] += size
                         if active["material_bytes"] > active["limits"]["material_bytes"]:
-                            raise ValueError(f"Composition material_bytes budget exceeded at {child_path} (scope {active['path']})")
+                            raise _MaterialLimitExceeded({"path": child_path, "ref": node["ref"],
+                                "resources": selected, "material_bytes": size}, active)
                     self.instances.append({"path": child_path, "parent": path, "kind": "agent", "ref": node["ref"],
                                            "role": node["role"], "backend_request": child["definition"]["backend"],
                                            **({"invocation_minimum": child["definition"]["invocation_minimum"]}
@@ -324,10 +400,15 @@ class _Compilation:
                                            "concurrency_scopes": [{"path": active["path"], "limit": active["limits"]["concurrency"]}
                                                                   for active in scopes]})
         instance["usage"] = {key: scope[key] for key in ("instances", "material_bytes")}
+        scope["complete"] = True
+
+    def walk(self, document: dict, *, project=False) -> None:
+        self._workflow(document, "root", [], self.grant["permissions"], [self.total], (),
+                       {name: {"input": name} for name in document["definition"]["inputs"]}, [], project=project)
+        self.total["complete"] = True
 
     def compile(self, document: dict) -> dict:
-        self._workflow(document, "root", [], self.grant["permissions"], [self.total], (),
-                       {name: {"input": name} for name in document["definition"]["inputs"]}, [])
+        self.walk(document)
         result = {"schema_version": self.preview_version, "kind": "composition-preview", "executable": False,
                   "root": _reference(document, "workflow"), "grant": self.grant, "instances": self.instances,
                   "usage": {key: self.total[key] for key in ("instances", "material_bytes")},
@@ -342,9 +423,155 @@ def import_bundle(state: State, source: Path) -> dict:
 
 def revise(state: State, identity: str, version: str, base_digest: str, definition: dict, *, publish: bool = False,
            resource_changes: dict | None = None, accepted_candidate: dict | None = None,
-           preview_resources: bool = False) -> dict:
+           preview_resources: bool = False, impact: dict | None = None) -> dict:
+    if impact is not None:
+        if publish:
+            raise ValueError("Workflow revision impact requires a read-only revision check")
+        return revision_impact(state.root, identity, version, base_digest, definition, selection=impact,
+            resource_changes=resource_changes, accepted_candidate=accepted_candidate, preview_resources=preview_resources)
     return library(state.root).revise(identity, version, base_digest, definition, publish=publish,
         resource_changes=resource_changes, accepted_candidate=accepted_candidate, preview_resources=preview_resources)
+
+
+def _measure_leaf(leaf: dict) -> dict:
+    resources = [{
+        "ids": item["ids"], "kind": item["kind"], "content_digest": item["content_digest"],
+        "sources": item["sources"], "inline_bytes": len(item["text"].encode("utf-8")),
+        "rendered_bytes": len(_render_resource(item).encode("utf-8")) + (2 if index else 0),
+    } for index, item in enumerate(leaf["resources"])]
+    return {"path": leaf["path"], "ref": leaf["ref"], "material_bytes": leaf["material_bytes"], "resources": resources}
+
+
+def _measure(root: Path, grant: dict, *, document=None, reference=None,
+             replacement=None) -> tuple[dict, list[dict], list[str]]:
+    """Use original compiler stops, including the first failed material charge."""
+    try:
+        compilation = _Compilation(root, grant, agent_admission=agent_definitions.validate_admission,
+                                   measure=True, replacement=replacement)
+    except ValueError as error:
+        return {"status": "blocked", "scopes": [], "leaves": [],
+                "blocker": {"path": "root", "reason": str(error)}}, [], []
+    result = {"status": "checked"}
+    try:
+        if document is None:
+            document = compilation._resolve(reference, "root", project=True)
+        compilation.walk(document, project=replacement is not None and reference != replacement[0])
+    except _MaterialLimitExceeded as error:
+        result.update(status="blocked", blocker={
+            "path": error.leaf["path"], "scope": error.scope["path"], "reason": str(error),
+            "observed_material_bytes": error.scope["material_bytes"],
+            "limit": error.scope["limits"]["material_bytes"], "attempted_leaf": _measure_leaf(error.leaf),
+        })
+    except _ReferenceUnavailable as error:
+        result.update(status="unverified", blocker={"path": error.path, "reference": error.reference, "reason": str(error)})
+    except (ValueError, OSError) as error:
+        result.update(status="blocked", blocker={"path": compilation.path, "reason": str(error)})
+    result["scopes"] = [{
+        "path": item["path"], "ref": item.get("ref"), "complete": item.get("complete", False),
+        "material_bytes": item["material_bytes"], "limit": item["limits"]["material_bytes"],
+        "remaining_bytes": item["limits"]["material_bytes"] - item["material_bytes"],
+    } for item in compilation.scopes]
+    result["leaves"] = [_measure_leaf(item) for item in compilation.instances if item["kind"] == "agent"]
+    reached_replacements = [item["path"] for item in compilation.instances
+                            if item["kind"] == "workflow" and item["path"] in compilation.replacements_seen]
+    return result, compilation.instances, reached_replacements
+
+
+def _collect_parent_updates(root: dict, instances: list[dict], paths: list[str], updates: dict,
+                            base: dict, replacement: dict) -> None:
+    by_path = {item["path"]: item for item in instances}
+    for path in paths:
+        item = by_path[path]
+        while item["parent"] is not None:
+            parent = by_path[item["parent"]]
+            plan = updates.setdefault(_ref_key(parent["ref"]), {"ref": parent["ref"], "references": []})
+            site = {"root": root, "path": item["path"], "node": item["path"].rsplit("/", 1)[-1],
+                    "before": item["ref"], "replacement": replacement if item["ref"] == base else None}
+            if site not in plan["references"]:
+                plan["references"].append(site)
+            item = parent
+
+
+def _observed_leaves(phase: dict) -> dict[str, str]:
+    observed = {item["path"]: "measured" for item in phase["leaves"]}
+    attempt = phase.get("blocker", {}).get("attempted_leaf")
+    if attempt is not None:
+        observed[attempt["path"]] = "attempted"
+    return observed
+
+
+def _leaf_coverage(paths: list[str], before: dict, after: dict | None, standalone: dict) -> list[dict]:
+    old = _observed_leaves(before)
+    new = _observed_leaves(after) if after is not None else {}
+    expected = {path + leaf.removeprefix("root") for path in paths for leaf in _observed_leaves(standalone)}
+    rows = []
+    for leaf in sorted(old.keys() | new.keys() | expected):
+        if not any(leaf.startswith(path + "/") for path in paths):
+            continue
+        if after is not None and after["status"] == "checked":
+            projected = "absent"
+        else:
+            projected = "unreached" if after is not None and leaf in expected else "unverified"
+        rows.append({"path": leaf, "baseline": old.get(leaf, "absent" if before["status"] == "checked" else "unverified"),
+                     "projection": new.get(leaf, projected)})
+    return rows
+
+
+def _revision_report(root: Path, base: dict, document: dict, grant: dict, selection: dict) -> dict:
+    proposed = _reference(document, "workflow")
+    standalone, _, _ = _measure(root, grant, document=document)
+    results, updates = [], {}
+    for chosen in selection["roots"]:
+        reference, root_grant = chosen["ref"], chosen["grant"]
+        before, instances, _ = _measure(root, root_grant, reference=reference)
+        paths = [item["path"] for item in instances if item.get("ref") == base]
+        row = {**chosen, "baseline": before, "projection": None, "status": before["status"],
+               "affected_paths": paths, "affected_leaves": [], "leaf_coverage": [], "comparison_complete": False}
+        results.append(row)
+        _collect_parent_updates(reference, instances, paths, updates, base, proposed)
+        after = None
+        if before["status"] == "checked" and not paths:
+            row["status"] = "unaffected"
+        elif before["status"] == "checked" or "attempted_leaf" in before.get("blocker", {}):
+            after, projected, replacements = _measure(root, root_grant, reference=reference, replacement=(base, document))
+            row.update(status=after["status"], projection=after,
+                       comparison_complete=before["status"] == after["status"] == "checked")
+            # The reached sites were resolved from the original exact pins.
+            original_sites = [{**item, "ref": base} if item["path"] in replacements else item for item in projected]
+            _collect_parent_updates(reference, original_sites, replacements, updates, base, proposed)
+            row["affected_paths"] = list(dict.fromkeys([*paths, *replacements]))
+        coverage = _leaf_coverage(row["affected_paths"], before, after, standalone)
+        row["leaf_coverage"] = coverage
+        row["affected_leaves"] = [item["path"] for item in coverage]
+    order = TopologicalSorter({
+        owner: sorted({_ref_key(site["before"]) for site in plan["references"]} & updates.keys())
+        for owner, plan in updates.items()
+    })
+    statuses = {standalone["status"], *(item["status"] for item in results)}
+    status = "blocked" if "blocked" in statuses else "unverified" if "unverified" in statuses else "checked"
+    return {"schema_version": 1, "status": status, "executable": False, "coverage": "selected-roots",
+            "base": base, "candidate": {"ref": proposed, "standalone": standalone}, "roots": results,
+            "required_parent_revisions": [updates[key] for key in order.static_order()]}
+
+
+def revision_impact(root: Path, identity: str, version: str, base_digest: str, definition: dict, *,
+                    selection: dict, resource_changes: dict | None = None, accepted_candidate: dict | None = None,
+                    preview_resources: bool = False) -> dict:
+    """Check an exact draft and project its substitution into explicitly selected roots."""
+    contracts.validate(selection, _IMPACT_SELECTION, "Workflow revision impact selection")
+    base = {"kind": "workflow", "id": identity, "version": version, "digest": base_digest}
+
+    def inspect_revision(document, grant):
+        return _revision_report(root, base, document, grant, selection)
+
+    def inspect_check(path):
+        return _check_bundle(root, path, inspect_revision=inspect_revision)
+
+    result = library(root).revise(identity, version, base_digest, definition, resource_changes=resource_changes,
+        accepted_candidate=accepted_candidate, preview_resources=preview_resources, inspect_check=inspect_check)
+    if result["impact"]["candidate"]["standalone"]["status"] != "checked":
+        result.pop("candidate", None)
+    return result
 
 
 def read_file(state: State, identity: str, version: str, base_digest: str, path: str, *, offset: int = 0,

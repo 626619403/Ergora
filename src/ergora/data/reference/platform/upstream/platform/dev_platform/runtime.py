@@ -57,16 +57,20 @@ class DevelopmentTransport:
             raise ValueError("Workflow ID collision: original task spec differs")
         return handle, description
 
-    async def start(self, spec):
+    async def start_once(self, spec: dict, *, memo: dict[str, str] | None = None) -> str:
+        """Send the native start and let the caller handle a conflicting identity."""
         validate_spec(spec)
+        handle = await self.client.start_workflow(
+            DevelopmentWorkflow.run, spec, id=workflow_id(spec), task_queue=self.queue,
+            id_reuse_policy=WorkflowIDReusePolicy.REJECT_DUPLICATE,
+            id_conflict_policy=WorkflowIDConflictPolicy.FAIL,
+            retry_policy=RetryPolicy(maximum_attempts=1), rpc_timeout=timedelta(seconds=20), memo=memo,
+        )
+        return handle.result_run_id
+
+    async def start(self, spec):
         try:
-            handle = await self.client.start_workflow(
-                DevelopmentWorkflow.run, spec, id=workflow_id(spec), task_queue=self.queue,
-                id_reuse_policy=WorkflowIDReusePolicy.REJECT_DUPLICATE,
-                id_conflict_policy=WorkflowIDConflictPolicy.FAIL,
-                retry_policy=RetryPolicy(maximum_attempts=1), rpc_timeout=timedelta(seconds=20),
-            )
-            return handle.result_run_id
+            return await self.start_once(spec)
         except WorkflowAlreadyStartedError:
             _, description = await self.lookup(spec)
             return description.run_id

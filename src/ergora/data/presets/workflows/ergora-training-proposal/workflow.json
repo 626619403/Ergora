@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "id": "ergora-training-proposal",
-  "version": "4.2.9",
+  "version": "4.2.10",
   "description": "Readonly shared optimization policy and explicit stage handoffs; selected topic descendants inherit complete methods and environment records. Independent leaves require caller-supplied predecessors.",
   "resources": [
     {
@@ -14,7 +14,7 @@
       "id": "ergora-bottleneck-optimization-skill",
       "kind": "skill",
       "path": "skills/ergora-bottleneck-optimization",
-      "digest": "e210eee07e72d9c851b237f59d5087a451dccfe436159dc30a91994fe4340003"
+      "digest": "d8b28e5ad450a13a7052e39817b9ece149fb00cf9eff73b0fac83bcc71f7f82d"
     },
     {
       "id": "ergora-library-environment-optimization-skill",
@@ -59,8 +59,8 @@
       "ref": {
         "kind": "workflow",
         "id": "ergora-training-flow-map",
-        "version": "1.1.0",
-        "digest": "6cfb4932abedf671185eb1130818ae949bf97ae1ffcf4afb5e98872f60a126e5"
+        "version": "1.1.1",
+        "digest": "275742951ec2c6aaacbe985824c8bf3c9b996f3e6302e6d8e641bdaae84aa8b5"
       },
       "depends_on": [],
       "inputs": {
@@ -74,8 +74,8 @@
       "ref": {
         "kind": "workflow",
         "id": "ergora-training-analysis",
-        "version": "2.2.1",
-        "digest": "d99d8bb42426d642c6e82c96197c998187258dbaa55a0a71471171afd2725172"
+        "version": "2.2.2",
+        "digest": "8a888efabe4a831c881e4ad24b85f0b44acf87822407b91d934e1e0ec93c2b26"
       },
       "depends_on": [
         "flow"
@@ -91,8 +91,8 @@
       "ref": {
         "kind": "workflow",
         "id": "ergora-kernel-assessment",
-        "version": "1.2.0",
-        "digest": "66364ced49eb10e21d071d0a2557607639bfa688f33c121f4027063eaeb9bf70"
+        "version": "1.2.1",
+        "digest": "1eb98e56e7b09b5f36881ed09d8a7dae3897347b7e5cf585e691280dc1a48035"
       },
       "depends_on": [
         "analysis"
@@ -108,8 +108,8 @@
       "ref": {
         "kind": "workflow",
         "id": "ergora-measurement-review",
-        "version": "2.0.1",
-        "digest": "d8b8e8abb2dd462b32d78d0b878c15f9c702448b386162426c28f4ff871ab914"
+        "version": "2.0.2",
+        "digest": "5042a91a1a214930935c1d5df5cdf0b1d8bebe092136f3fbc9346980976ea688"
       },
       "depends_on": [
         "kernel"

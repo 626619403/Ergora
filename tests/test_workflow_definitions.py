@@ -1,6 +1,7 @@
 """Composition contracts through the public package, library and preview interfaces."""
 
 from copy import deepcopy
+import base64
 import hashlib
 import json
 import os
@@ -376,6 +377,163 @@ def test_revision_uses_complete_current_compilation_before_publication(base, pub
                          publish=publish)
     assert index.read_bytes() == before
     assert workflows.get(state, revised["id"], original["definition"]["version"]) == original
+
+
+def test_revision_impact_uses_exact_roots_and_keeps_existing_revision_identity(base, capsys, monkeypatch):
+    from ergora.interfaces import cli
+    from ergora.storage.assets import inventory_tree
+
+    state, agent, folder = base
+    original = imported(base, definition("shared-work", [leaf("review", agent)]), "Original instructions.\n")
+    middle = imported(base, definition("middle", [child("work", ref(original, "workflow"))]))
+    outer = imported(base, definition("outer", [child("first", ref(middle, "workflow")),
+                                               child("second", ref(middle, "workflow"))]))
+    outer_ref = ref(outer, "workflow")
+    before = workflows.preview(state.root, "outer", "1.0.0", grant())
+    saved = workflows.prepare_manifest(state.root, "outer", "1.0.0", grant(), folder / "original-manifest")
+    revision = {**original["definition"], "version": "1.0.1"}
+    changes = {"schema_version": 1, "operations": [
+        {"op": "write", "path": "instructions.md",
+         "content_base64": base64.b64encode("更完整的说明。\n".encode()).decode(), "executable_bits": 0},
+    ]}
+    snapshot = inventory_tree(state.root)
+    options = {"resource_changes": changes, "preview_resources": True}
+    normal = workflows.revise(state, "shared-work", "1.0.0", original["digest"], revision, **options)
+    checked = workflows.revise(state, "shared-work", "1.0.0", original["digest"], revision, **options,
+                               impact={"schema_version": 1, "roots": [{"ref": outer_ref, "grant": grant()}]})
+    assert {key: value for key, value in checked.items() if key != "impact"} == normal
+    report = checked["impact"]
+    assert report["status"] == "checked" and not report["executable"] and not checked["published"]
+    row = report["roots"][0]
+    assert row["affected_paths"] == ["root/first/work", "root/second/work"]
+    assert row["affected_leaves"] == ["root/first/work/review", "root/second/work/review"]
+    assert row["baseline"]["scopes"][0]["material_bytes"] == before["usage"]["material_bytes"]
+    for phase in (row["baseline"], row["projection"]):
+        assert phase["scopes"][0]["material_bytes"] == sum(item["material_bytes"] for item in phase["leaves"])
+        for item in phase["leaves"]:
+            assert item["material_bytes"] == sum(resource["rendered_bytes"] for resource in item["resources"])
+    updates = report["required_parent_revisions"]
+    assert [plan["ref"] for plan in updates] == [ref(middle, "workflow"), outer_ref]
+    assert [site["path"] for site in updates[0]["references"]] == row["affected_paths"]
+    assert all(site["replacement"] == report["candidate"]["ref"] for site in updates[0]["references"])
+    assert all(site["replacement"] is None for site in updates[1]["references"])
+
+    blocked = workflows.revision_impact(state.root, "shared-work", "1.0.0", original["digest"],
+        {**revision, "limits": {**revision["limits"], "material_bytes": 1}},
+        selection={"schema_version": 1, "roots": [{"ref": outer_ref, "grant": grant()}]}, **options)
+    failure = blocked["impact"]["candidate"]["standalone"]
+    assert failure["status"] == "blocked" and failure["blocker"]["path"] == "root/review"
+    assert "candidate" not in blocked
+
+    old_child = child("original", ref(original, "workflow"))
+    wrapper = {**revision, "resources": [], "nodes": [old_child],
+               "outputs": {"result": {"node": "original", "output": "result"}}}
+    wrapped = workflows.revision_impact(state.root, "shared-work", "1.0.0", original["digest"], wrapper,
+        selection={"schema_version": 1, "roots": [{"ref": outer_ref, "grant": grant()}]})
+    assert wrapped["impact"]["status"] == "checked"
+    assert [item["path"] for item in wrapped["impact"]["roots"][0]["projection"]["leaves"]] == [
+        "root/first/work/original/review", "root/second/work/original/review",
+    ]
+
+    document = folder / "revision.json"
+    document.write_text(json.dumps(revision))
+    selection = folder / "selection.json"
+    selection.write_text(json.dumps({"schema_version": 1, "roots": [
+        {"ref": outer_ref, "grant": grant()},
+        {"ref": {**outer_ref, "digest": "0" * 64}, "grant": grant()},
+        {"ref": ref(original, "workflow"), "grant": grant()},
+    ]}))
+
+    def deny_state(*args, **kwargs):
+        pytest.fail("read-only revision impact constructed State")
+
+    monkeypatch.setattr(cli, "State", deny_state)
+    arguments = ["--home", str(state.root), "composition", "revise", "shared-work", "1.0.0",
+                 "--base-digest", original["digest"], "--document", str(document), "--impact", str(selection)]
+    assert cli.main(arguments) == 2
+    assert "requires --check or --preview-resources" in capsys.readouterr().err
+    assert cli.main([*arguments, "--check"]) == 1
+    observed = json.loads(capsys.readouterr().out)["impact"]
+    assert observed["status"] == "unverified"
+    assert [row["status"] for row in observed["roots"]] == ["checked", "unverified", "checked"]
+    missing = observed["roots"][1]
+    assert missing["baseline"]["blocker"]["reference"]["digest"] == "0" * 64
+    assert missing["projection"] is None
+    assert inventory_tree(state.root) == snapshot
+    assert workflows.inspect_manifest(Path(saved["path"]), material=True)["composition"] == before
+
+
+def test_revision_impact_checks_shrink_to_fit_after_baseline_capacity_stop(base):
+    state, agent, _ = base
+    shared = imported(base, definition("shared-review", [leaf("review", agent)]), "Complete original notes.\n" * 500)
+    reference = ref(shared, "workflow")
+    root = imported(base, definition("selected-root", [
+        child("first", reference), leaf("last", agent), child("later", reference),
+    ]))
+    wide = workflows.preview(state.root, "selected-root", "1.0.0", grant())
+    leaves = {item["path"]: item["material_bytes"] for item in wide["instances"] if item["kind"] == "agent"}
+    selected_grant = grant(material_bytes=leaves["root/first/review"] + leaves["root/last"] - 1)
+    document = {**shared["definition"], "version": "1.0.1"}
+    operations = {"schema_version": 1, "operations": [
+        {"op": "write", "path": "instructions.md",
+         "content_base64": base64.b64encode(b"Small revision.\n").decode(), "executable_bits": 0},
+    ]}
+    result = workflows.revision_impact(state.root, "shared-review", "1.0.0", shared["digest"], document,
+        selection={"schema_version": 1, "roots": [{"ref": ref(root, "workflow"), "grant": selected_grant}]},
+        resource_changes=operations, preview_resources=True)
+    checked = result["impact"]
+    assert checked["status"] == "checked"
+    row = checked["roots"][0]
+    assert row["baseline"]["blocker"]["path"] == "root/last"
+    assert row["baseline"]["scopes"][0]["material_bytes"] == selected_grant["limits"]["material_bytes"] + 1
+    assert not row["baseline"]["scopes"][0]["complete"] and not row["comparison_complete"]
+    assert all(scope["path"] != "root/later" for scope in row["baseline"]["scopes"])
+    assert row["projection"]["scopes"][0]["complete"] and row["projection"]["scopes"][0]["remaining_bytes"] > 0
+    assert row["affected_paths"] == ["root/first", "root/later"]
+    assert [site["path"] for site in checked["required_parent_revisions"][0]["references"]] == row["affected_paths"]
+    assert {item["path"]: item["baseline"] for item in row["leaf_coverage"]} == {
+        "root/first/review": "measured", "root/later/review": "unverified",
+    }
+    committed = workflows.revise(state, "shared-review", "1.0.0", shared["digest"], result["definition"],
+        resource_changes=operations, accepted_candidate=result["candidate"], publish=True)
+    root_document = deepcopy(root["definition"])
+    root_document["version"] = "1.0.1"
+    for node in root_document["nodes"]:
+        if node["ref"] == reference:
+            node["ref"] = ref(committed, "workflow")
+    workflows.revise(state, "selected-root", "1.0.0", root["digest"], root_document, publish=True)
+    actual = workflows.preview(state.root, "selected-root", "1.0.1", selected_grant)
+    assert actual["usage"]["material_bytes"] == row["projection"]["scopes"][0]["material_bytes"]
+
+
+def test_revision_impact_distinguishes_unreached_and_removed_leaves(base):
+    state, agent, _ = base
+    shared = imported(base, definition("shared-review", [leaf("a", agent), leaf("removed", agent)]),
+                      "Original shared notes.\n")
+    root = imported(base, definition("selected-root", [child("shared", ref(shared, "workflow"))]))
+    wide = workflows.preview(state.root, "selected-root", "1.0.0", grant())
+    selected_grant = grant(material_bytes=wide["usage"]["material_bytes"] + 500)
+    revised = definition("shared-review", [leaf("a", agent), leaf("later", agent)])
+    revised.update(version="1.0.1", resources=shared["definition"]["resources"])
+    selection = {"schema_version": 1, "roots": [{"ref": ref(root, "workflow"), "grant": selected_grant}]}
+    changes = {"schema_version": 1, "operations": [
+        {"op": "write", "path": "instructions.md",
+         "content_base64": base64.b64encode(b"Expanded notes.\n" * 700).decode(), "executable_bits": 0},
+    ]}
+    blocked = workflows.revision_impact(state.root, "shared-review", "1.0.0", shared["digest"], revised,
+        selection=selection, resource_changes=changes, preview_resources=True)["impact"]["roots"][0]
+    assert blocked["projection"]["blocker"]["path"] == "root/shared/a"
+    assert not blocked["comparison_complete"]
+    coverage = {item["path"]: (item["baseline"], item["projection"]) for item in blocked["leaf_coverage"]}
+    assert coverage == {
+        "root/shared/a": ("measured", "attempted"),
+        "root/shared/later": ("absent", "unreached"),
+        "root/shared/removed": ("measured", "unverified"),
+    }
+    passed = workflows.revision_impact(state.root, "shared-review", "1.0.0", shared["digest"], revised,
+        selection=selection)["impact"]["roots"][0]
+    assert passed["projection"]["status"] == "checked" and passed["comparison_complete"]
+    assert next(item for item in passed["leaf_coverage"] if item["path"] == "root/shared/removed")["projection"] == "absent"
 
 
 def test_review_requirement_belongs_to_each_versioned_instance_and_survives_nested_freezing(base):

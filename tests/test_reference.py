@@ -22,9 +22,11 @@ def test_reference_public_payload_preserves_current_native_auth_sources():
     root = native_resources.ROOT / 'platform'
     builder = runpy.run_path(str(root / 'bootstrap/report/build_report.py'))
     payload = builder['payload_files'](root)
-    for module in ('setup.py', 'doctor.py', 'process_job.py', 'executor.py'):
+    for module in ('setup.py', 'doctor.py', 'process_job.py', 'executor.py', 'cli.py'):
         name = 'local/agent_platform/' + module
         assert payload[name] == payload['bootstrap/' + name] == (root / name).read_bytes()
+    runtime = 'upstream/platform/dev_platform/runtime.py'
+    assert payload[runtime] == (root / runtime).read_bytes()
 
 
 def test_template_copy_preserves_files_and_existing_destination(tmp_path):

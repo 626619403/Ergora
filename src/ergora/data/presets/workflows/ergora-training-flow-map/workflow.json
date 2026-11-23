@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "id": "ergora-training-flow-map",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Source-anchored algorithm/execution maps, lifetimes and falsifiable redundancy analysis.",
   "resources": [
     {
@@ -41,8 +41,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-training-flow-analyst",
-        "version": "1.1.0",
-        "digest": "05c4a19a35bfae8c066e2939bb5526afc900715f63a5c98d87fd21ec945d56a4"
+        "version": "1.1.1",
+        "digest": "7880aee71ddd4de1b843638ce095adf7e59f1db9dc520c16c95c6b91ac382e11"
       },
       "role": "performance-analyst",
       "depends_on": [],

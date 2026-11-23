@@ -31,8 +31,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-training-flow-analyst",
-        "version": "1.1.0",
-        "digest": "05c4a19a35bfae8c066e2939bb5526afc900715f63a5c98d87fd21ec945d56a4"
+        "version": "1.1.1",
+        "digest": "7880aee71ddd4de1b843638ce095adf7e59f1db9dc520c16c95c6b91ac382e11"
       },
       "role": "inspector"
     },
@@ -56,8 +56,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-performance-analyst",
-        "version": "2.3.0",
-        "digest": "34775f17c0c42d90e77aac2afe6e6c411f982229c2c57b7244ae02b452ed86a0"
+        "version": "2.3.1",
+        "digest": "a71aee4a0a46e2dd4090cc6e078e92e814ae3a0143c3db6b1c5a7fc5f4ccd577"
       },
       "role": "inspector"
     },
@@ -81,8 +81,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-opt-moe-dispatcher-expert",
-        "version": "1.1.0",
-        "digest": "a1794054d147dfc65ee3d25908a07ca0cb77ea250c86c125fe90315fdca97d89"
+        "version": "1.1.1",
+        "digest": "5969da97054f84f284220d8d765a002d13e800f92b1842ba199a1f1bcf869b42"
       },
       "role": "inspector"
     },
@@ -106,8 +106,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-opt-moe-overlap-expert",
-        "version": "1.1.0",
-        "digest": "2e17ee7a519df875115fa8caf8f509a9ccff15f9513b4dec2c99657760bdd6ca"
+        "version": "1.1.1",
+        "digest": "9fbf2e3103aa605ac42b190ce3d83d56cb12bdd9a9bb6a44d0c12d2537ae0583"
       },
       "role": "inspector"
     },
@@ -144,8 +144,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-development-preparer",
-        "version": "1.1.1",
-        "digest": "596c714c23358202c0ecfa57a02fcdcd2054ef92185cc9e8a67a414d698e12af"
+        "version": "1.1.2",
+        "digest": "628dc25fcb749133298382d41b091dfbe46da0c5301de2f6fd68980348bd5177"
       },
       "role": "inspector"
     },
@@ -181,5 +181,5 @@
     }
   ],
   "schema_version": 2,
-  "version": "1.1.1"
+  "version": "1.1.2"
 }

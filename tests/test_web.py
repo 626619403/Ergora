@@ -45,6 +45,27 @@ def test_local_http_boundary_and_packaged_assets(console):
     assert [item["id"] for item in client.get("/api/bootstrap").json()["projects"]] == ["demo", "other"]
 
 
+def test_workflow_revision_impact_is_available_only_on_read_only_routes(console, tmp_path):
+    from ergora.definitions import agents, workflows
+    from test_workflow_definitions import EXAMPLES, definition, grant, leaf, ref, write_bundle
+
+    client, state, _ = console
+    agent = agents.import_bundle(state, EXAMPLES / "agents/architecture-reviewer")
+    document = definition("impact-root", [leaf("review", ref(agent, "agent"))])
+    original = workflows.import_bundle(state, write_bundle(tmp_path / "impact-root", document))
+    selection = {"schema_version": 1, "roots": [{"ref": ref(original, "workflow"), "grant": grant()}]}
+    payload = {"base_digest": original["digest"], "definition": {**document, "version": "1.0.1"}, "impact": selection}
+    index = state.root / "workflow-definitions/index.json"
+    before = index.read_bytes()
+    route = "/api/workflow-definitions/impact-root/1.0.0/revisions"
+    observed = client.post(route + "/check", json=payload)
+    assert observed.status_code == 200
+    assert observed.json() == workflows.revise(state, "impact-root", "1.0.0", **payload)
+    assert observed.json()["impact"]["roots"][0]["affected_paths"] == ["root"]
+    assert client.post(route, json=payload).status_code == 422
+    assert index.read_bytes() == before
+
+
 def test_installation_profiles_match_cli_without_rewriting_projects(console):
     client, state, _ = console
     before = state.project("demo")

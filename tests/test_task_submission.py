@@ -3,6 +3,7 @@
 from concurrent.futures import ThreadPoolExecutor
 from hashlib import sha256
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -12,6 +13,7 @@ import pytest
 import subprocess
 import ergora.configuration.projects as projects
 import ergora.development.application as tasks
+from ergora._paths import IMPORT_ROOT
 from ergora.storage.state import State
 from test_registrations import installation, registration
 from test_task_creation import creation_project, _files
@@ -123,6 +125,48 @@ def test_native_start_and_retries_preserve_one_run_and_frozen_roles(creation_pro
     projects.bind(state, 'demo', 'reviewer', {'tool':'codex','model':'later-model'}, 1)
     assert tasks.resume_start(state,'demo','new-task',2,result['intent_sha256'])['run_id']=='original-run'
     assert _calls(creation).count('start')==1
+
+
+def test_direct_native_cli_preserves_trusted_checks_and_matching_run(submitted_creation):
+    state, registered, definition, _ = submitted_creation
+    task_id = definition['task_id']
+    execution = registered['execution']
+    installation = Path(execution['installation'])
+    command = Path(__file__).parent / 'fixtures/task_submission_client.py'
+    environment = dict(os.environ, AGENTFLOW_CONFIG_DIR=execution['config_directory'],
+                       AGENTFLOW_STATE_DIR=execution['state_directory'], PYTHONDONTWRITEBYTECODE='1',
+                       PYTHONPATH=os.pathsep.join(map(str, (IMPORT_ROOT, installation / 'local',
+                                                          installation / 'upstream/platform'))))
+    payload = {'operation': 'native-cli-start', 'project': state.project('demo'), 'task_id': task_id}
+
+    def start():
+        return subprocess.run([str(installation / '.venv/bin/python'), '-P', str(command)],
+                              input=json.dumps(payload), text=True, capture_output=True, env=environment, timeout=30)
+
+    root = _root(submitted_creation)
+    project_file = root / 'tasks' / task_id / 'project.json'
+    original = project_file.read_bytes()
+    changed = json.loads(original)
+    del changed['checks']['behavior']
+    project_file.write_text(json.dumps(changed), encoding='utf-8')
+    refused = start()
+    project_file.write_bytes(original)
+    assert refused.returncode == 2 and 'Configure trusted checks first: behavior' in refused.stderr
+    assert _calls(submitted_creation) == ['doctor']
+    assert not (root / 'ingress/leases.sqlite3').exists()
+
+    submitted = start()
+    assert submitted.returncode == 0, submitted.stderr
+    expected = {'workflow_id': 'dev-task/' + task_id, 'run_id': 'original-run'}
+    server = root / 'sdk-fixture/server.json'
+    original = server.read_bytes()
+    repeated = start()
+    assert repeated.returncode == 0, repeated.stderr
+    assert json.loads(submitted.stdout) == json.loads(repeated.stdout) == expected
+    assert server.read_bytes() == original
+    assert _calls(submitted_creation) == ['doctor', 'doctor', 'connect', 'start',
+                                          'doctor', 'connect', 'start', 'describe', 'history']
+    assert not (root / 'ergora/task-submissions' / (task_id + '.attempt.json')).exists()
 
 
 @pytest.mark.parametrize('scenario,match', [

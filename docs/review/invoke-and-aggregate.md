@@ -22,15 +22,15 @@ Set scope before selecting/freezing reviewers. Once a formal review graph is sel
 
 ## Hand off to domain or specialist review leaves
 
-For general engineering review, install `engineering-review`: it retains the three default structure / correctness / test-value branches, with performance, resource lifecycle, dependencies, security, or measurement explicitly selected from original requirements and diff before freezing. Selection records selected / not-applicable / blocked with factual reasons; it does not run everything automatically. See the [PR selection example](../../examples/composition/pr-review-selected/README.md) for a complete five-leaf revision, read-only grant, per-leaf invocation, and exact report list. Performance reuses the existing expert with a minimum effort of max; other reviewers require at least gpt-6.1-sol/high. Use actually supported task-mcp for Skill attachments; text-only does not provide complete attachment access.
+For general engineering review, install `engineering-review`: it retains the three default structure / correctness / test-value branches, with performance, resource lifecycle, dependencies, security, or measurement explicitly selected from original requirements and diff before freezing. Selection records selected / not-applicable / blocked with factual reasons; it does not run everything automatically. See the [PR selection example](../../examples/composition/pr-review-selected/README.md) for a complete five-leaf revision, read-only grant, per-leaf invocation, and exact report list. Performance reuses the existing expert with a minimum effort of max; other reviewers require at least gpt-6.2-sol/high. Use actually supported task-mcp for Skill attachments; text-only does not provide complete attachment access.
 
 First install `pretraining-review` or `posttraining-review` using the [domain review manual](training.md), and prepare the selected complete manifest and explicit grant. Import custom review compositions through the [definition manual](../definitions/workflows/compose.md), without modifying Python. Each leaf's expertise, ancestor Skills, context, MCP declarations, and progressively narrowed permissions come from this frozen composition; choose backends per leaf at invocation time.
 
-This example uses a local packet and the pretraining root `ergora-pretraining-review@1.1.5`. `review-grant.json` should contain the selected root's `permissions` and `limits`; see [composition sharing](../definitions/workflows/compose.md#save-and-share-a-complete-composition) for its format. Take `MANIFEST_DIGEST` from the prepare-manifest receipt's `digest`, and `PACKET_SHA256` from the original material receipt; verify both explicitly.
+This example uses a local packet and the pretraining root `ergora-pretraining-review@1.1.6`. `review-grant.json` should contain the selected root's `permissions` and `limits`; see [composition sharing](../definitions/workflows/compose.md#save-and-share-a-complete-composition) for its format. Take `MANIFEST_DIGEST` from the prepare-manifest receipt's `digest`, and `PACKET_SHA256` from the original material receipt; verify both explicitly.
 
 ```bash
 ergora composition install-preset pretraining-review
-ergora composition prepare-manifest ergora-pretraining-review 1.1.5 \
+ergora composition prepare-manifest ergora-pretraining-review 1.1.6 \
   --grant ./review-grant.json --directory ./reviews/pretraining-manifest
 
 ergora review prepare-input ./reviews/candidate-01 \
@@ -45,7 +45,7 @@ ergora review verify-input ./reviews/candidate-01 \
   --input ./reviews/domain-input --input-digest INPUT_DIGEST
 ```
 
-For external PRs / MRs, replace the material directory with the entire external source directory and use `--source-kind external --source-sha256 SOURCE_SHA256`, retaining the complete observation and its internal source packet. The post-training root is `ergora-posttraining-review@1.1.5`, with the same domain path `root/domain/review`; general leaves in both roots are `root/general/structure/review`, `root/general/correctness/review`, and `root/general/test-value/review`. One prepare operation prepares only the selected leaf and does not run other branches or all-join.
+For external PRs / MRs, replace the material directory with the entire external source directory and use `--source-kind external --source-sha256 SOURCE_SHA256`, retaining the complete observation and its internal source packet. The post-training root is `ergora-posttraining-review@1.1.6`, with the same domain path `root/domain/review`; general leaves in both roots are `root/general/structure/review`, `root/general/correctness/review`, and `root/general/test-value/review`. One prepare operation prepares only the selected leaf and does not run other branches or all-join.
 
 The new directory is a complete composition input in the original format. `task.txt` contains original requirements, all source / explicit context / ancestor standards / checks, external observations, and selected source and manifest identities; `prompt.txt` adds complete ancestor template materials. Take `input_digest` from the new receipt; the complete prompt (including JSON encoding and materials) is limited to 1,000,000B, and `--max-prompt-bytes` can set a smaller limit. Exceeding the limit fails visibly without truncating materials. Leaves requiring unrun predecessors, possessing write / shell / network permissions, or lacking permission to read any source file in the packet are also rejected.
 

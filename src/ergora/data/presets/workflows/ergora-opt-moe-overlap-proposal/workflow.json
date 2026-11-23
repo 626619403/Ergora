@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "id": "ergora-opt-moe-overlap-proposal",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Limited readonly moe overlap proposal; complete optimization requires a shared training-proposal ancestor.",
   "resources": [
     {
@@ -41,8 +41,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-opt-moe-overlap-expert",
-        "version": "1.1.0",
-        "digest": "2e17ee7a519df875115fa8caf8f509a9ccff15f9513b4dec2c99657760bdd6ca"
+        "version": "1.1.1",
+        "digest": "9fbf2e3103aa605ac42b190ce3d83d56cb12bdd9a9bb6a44d0c12d2537ae0583"
       },
       "role": "performance-analyst",
       "depends_on": [],
@@ -66,8 +66,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-experiment-designer",
-        "version": "2.1.0",
-        "digest": "3b0ab4852241f20d62c8562129238bee89364f959c3e8d6055ce512fbfed5c1f"
+        "version": "2.1.1",
+        "digest": "90cca8c6d2b453518007043ef3fb0475b0bc62a405badcdb4cd440f6daecb3af"
       },
       "role": "experiment-planner",
       "depends_on": [],
@@ -99,8 +99,8 @@
       "ref": {
         "kind": "workflow",
         "id": "ergora-measurement-review",
-        "version": "2.0.1",
-        "digest": "d8b8e8abb2dd462b32d78d0b878c15f9c702448b386162426c28f4ff871ab914"
+        "version": "2.0.2",
+        "digest": "5042a91a1a214930935c1d5df5cdf0b1d8bebe092136f3fbc9346980976ea688"
       },
       "depends_on": [
         "analysis-results"
