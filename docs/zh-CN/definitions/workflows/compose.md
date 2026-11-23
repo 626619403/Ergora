@@ -26,7 +26,7 @@ ergora composition install-preset evidence-report
 ergora composition install-preset optimization-report
 ergora composition install-preset pretraining-review
 ergora composition install-preset posttraining-review
-ergora composition show ergora-large-change-delivery 1.5.3 --material
+ergora composition show ergora-large-change-delivery 1.5.4 --material
 ergora agent definition show ergora-server-implementer 2.0.1 --material
 ```
 
@@ -38,18 +38,22 @@ ergora agent definition show ergora-server-implementer 2.0.1 --material
 
 监管者在原项目／工作负载／优化周期内按方向保留一位专家，相关任务进入该方向专家的队列；忙碌时完成当前工作，不按新任务、后端或方法重复启动专家。同时启动至少四位来自不同方向的专家；冻结前显式选择足够的独立方向。模板保留十九个方法入口和十九个逻辑专家角色，即[十六个优化方向专家与三个支持专家](../../../../src/ergora/data/presets/workflows/ergora-training-proposal/skills/ergora-bottleneck-optimization/SKILL.md#sixteen-optimization-directions-and-three-support-roles)。通信相关的三个既有专长保持独立；Efficient SDPA 是内核／注意力方向的具体任务。每轮按可信 profile 和源码瓶颈证据选择最需要的方向子集，不默认启用全部方向或填充无关方向；当前方向约定任务、配对测量和清理完成后，按剩余瓶颈交接给下一方向对应的另一位专家，旧专家继续保留原方向。下一轮选择仍须在冻结前明确，保留原质量门槛、时钟、预算和停止状态。现有较窄阶段或三路审查不代表满足四人并行；受依赖、实际并发上限、工具或资源限制时，明确报告实际活跃人数和阻碍，保留原候选、时钟、预算、停止与清理契约。
 
+AI 子代理限制保留原监管者按需并行启动方向专家的职责：其他 AI agent 在原项目／优化周期内至多创建一个不同的直接助手，该助手不能再创建 AI 子代理。继续同一助手仍消耗原预算；任务编号、名称、重试、工具／后端别名或助手已结束都不能重置名额。更多需求回交原监管者准入或排队。此限制不缩减训练 rank、DataLoader worker、普通系统进程或可信执行者已冻结的图分支，也不授予新的启动工具或宣称运行时已强制执行。
+
+审查以[当前阶段／目标与可整合批次](../../../review/invoke-and-aggregate.md#choose-review-scope-and-granularity)为单位：日常由方向专家按需自检，优化阶段关注正确性、真实性能证据、资源与停止边界，不为无关风格／目录／抽象打磨额外阻塞试验。准备、环境绑定、文档或小修不各自安排常驻审查者；整合／合并时才按需审查完整目标批次，原生 FinalReviewDAG 是该批次的一套门禁，不再叠加同轴外部审查。保留实际必需测试、质量与证据契约，同批次修复／复核后释放审查者，状态记录不递归审查。
+
 |组合|当前随包根身份|默认关系与使用范围|
 |---|---|---|
-|repository-governance|`ergora-governance-template@1.1.3`|知识地图、架构回归两个专家并行，再经可信integrate/verify接三审查；包含独立盘点／规划与原工作／审查阶段|
-|large-change|`ergora-large-change-template@1.1.3`|接口合同 → 服务端与客户端并行 → 集成/兼容验证 → 三审查；包含独立盘点／规划与原工作／审查阶段|
-|training-optimization|`ergora-training-proposal@4.2.6`|源码流程 → 并行规划／诊断 → kernel实施方案评估 → 测量审查；全部五叶继承库／环境选择规则，只读建议与手工完整交接|
-|refactoring|`ergora-refactoring-template@1.3.3`|普通父 → 原生六阶段：准备 → rewrite／compatibility串行工作 → 三类独立审查；正式task type沿用large-change，显式schema8／input12|
+|repository-governance|`ergora-governance-template@1.1.4`|知识地图、架构回归两个专家并行，再经可信integrate/verify接三审查；包含独立盘点／规划与原工作／审查阶段|
+|large-change|`ergora-large-change-template@1.1.4`|接口合同 → 服务端与客户端并行 → 集成/兼容验证 → 三审查；包含独立盘点／规划与原工作／审查阶段|
+|training-optimization|`ergora-training-proposal@4.2.7`|源码流程 → 并行规划／诊断 → kernel实施方案评估 → 测量审查；全部五叶继承库／环境选择规则，只读建议与手工完整交接|
+|refactoring|`ergora-refactoring-template@1.3.4`|普通父 → 原生六阶段：准备 → rewrite／compatibility串行工作 → 三类独立审查；正式task type沿用large-change，显式schema8／input12|
 |optimization-performance-diagnosis|`ergora-opt-performance-diagnosis-proposal@1.2.1`|同症状复现与兼容报告 reader；只读 design／profile→measurement 提案叶，原 runner 保留实验执行|
 |training-flow-map|`ergora-training-flow-map@1.1.0`|只读 `root/map` 分别产出算法／执行依赖图、状态生命周期和可证伪冗余假设；不自动运行后续专家或训练|
 |evidence-report|`ergora-evidence-report@1.0.1`|只读 `root/author` 生成来源绑定的 Markdown／静态 HTML 报告；原证据、运行记录与独立审查／release 保持|
 |optimization-report|`ergora-evidence-report@2.0.1`|原只读作者接口，新增专门优化 Skill 与完整模板 context：源码流程／冗余 → 可比结果 → 诊断／决定；仅使用明确提供的证据|
-|pretraining-review|`ergora-pretraining-review@1.1.2`|原通用三路与预训练专家并列 required／all-join；共享后端说明由四叶继承；领域叶可独立调用|
-|posttraining-review|`ergora-posttraining-review@1.1.2`|原通用三路与后训练专家并列 required／all-join；共享后端说明由四叶继承；领域叶可独立调用|
+|pretraining-review|`ergora-pretraining-review@1.1.3`|原通用三路与预训练专家并列 required／all-join；共享后端说明由四叶继承；领域叶可独立调用|
+|posttraining-review|`ergora-posttraining-review@1.1.3`|原通用三路与后训练专家并列 required／all-join；共享后端说明由四叶继承；领域叶可独立调用|
 
 开发delivery祖先提供语义归属、当前接口、可达失败验证、最小提交范围和候选绑定证据的共同规则；各写者在返回前复核自己的改动。开发组合共用 `ergora-delivery-review`，它引用结构、正确性、测试价值三份可单独使用的子模板。每份专家有独立初始指令、专长和Skill，沿自己的结构父链完整装载资料。全部内置专家默认Codex gpt-6.1-sol并按[定义下限](../agents.md)验证model／effort；逐实例覆盖须满足下限。实际可用性和认证仍由调用准入核验；同后端选择需遵守多样性政策并记录原因。
 

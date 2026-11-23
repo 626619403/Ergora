@@ -62,7 +62,7 @@ The [improvement workflow](improvement/workflow.md) connects [source-bound retro
 
 ## Understand and change the implementation
 
-Read the [architecture overview](architecture/current.md), [source ownership map](architecture/module-map.md), [component change protocols](architecture/component-change-protocols.md) and [domain glossary](../CONTEXT.md).
+Start with the [whole-framework implementation tour](architecture/framework-tour.md), then read the [architecture overview](architecture/current.md), [source ownership map](architecture/module-map.md), [component change protocols](architecture/component-change-protocols.md) and [domain glossary](../CONTEXT.md).
 
 |Reference|Purpose|
 |---|---|
