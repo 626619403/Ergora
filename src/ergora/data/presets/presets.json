@@ -57,7 +57,7 @@
       ]
     },
     "training-optimization": {
-      "description": "Shared readonly optimization policy, scoped topic composition and complete explicit stage handoffs; independent leaves do not automatically execute the graph or experiments.",
+      "description": "Shared readonly optimization proposals and delegated experiment policy for assigned execution specialists; complete explicit handoffs retain original execution owners.",
       "runtime": "proposal-leaves",
       "root": "ergora-training-proposal",
       "agents": [

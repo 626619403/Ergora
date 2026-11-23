@@ -240,7 +240,9 @@ def test_selected_moe_revision_freezes_shared_policy_for_every_actual_leaf(tmp_p
     assert len(leaves) == 18
     common = [resource for resource in original['resources'] if resource['kind'] != 'instructions']
     policy = next(resource for resource in common if resource['id'] == 'ergora-bottleneck-optimization-skill')
-    assert policy['digest'] == '90aaeb7c6041ac0f10fa8eebae48978a504a1cb213fafc0a537078fb8961ea17'
+    source_policy = next(resource for resource in original['definition']['resources']
+                         if resource['id'] == policy['id'])
+    assert policy['digest'] == source_policy['digest']
     for name, details in publication['policy_files'].items():
         delivery_ref = publication['published']['delivery']
         current = workflows.get(state, delivery_ref['id'], delivery_ref['version'])

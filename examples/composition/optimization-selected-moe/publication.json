@@ -2,14 +2,14 @@
   "policy_source": {
     "kind": "workflow",
     "id": "ergora-training-proposal",
-    "version": "4.2.2",
-    "digest": "3947a032ce495c3c7728a19fc2e48c92f889e5deb1e7ea6c10e9395943768733"
+    "version": "4.2.3",
+    "digest": "f503bea6cd30d1879799426c4e2a7c665d592d71cf24502eb81739520e635657"
   },
   "policy_files": {
     "skills/ergora-bottleneck-optimization/SKILL.md": {
-      "sha256": "e0b27e21eed6c739441249daa9c301b4895a3b7d228a06fecf331d37ea324fc3",
+      "sha256": "23b7b5bb06d5aa8e142ea88fea778773a5f03b1c5216ba2dd25931f88bcba4a9",
       "executable_bits": 0,
-      "bytes": 10099
+      "bytes": 10986
     },
     "skills/ergora-library-environment-optimization/SKILL.md": {
       "sha256": "0f132d0ed3931be397d5a19b5350aef48398f9e273a0d3e479556039c6cb4db5",
@@ -88,14 +88,14 @@
     "delivery": {
       "kind": "workflow",
       "id": "ergora-large-change-delivery",
-      "version": "1.6.1",
-      "digest": "91f2694b96b90588c400a75bb5942c22cdcdbf320d9296d25fe60701c2d3e75e"
+      "version": "1.6.2",
+      "digest": "1d82ac957fc7451d2c7d882bc9c478d28aa03abee92b5febbbf94a1d4b2a63e2"
     },
     "root": {
       "kind": "workflow",
       "id": "ergora-selected-moe-development",
-      "version": "1.1.1",
-      "digest": "5ec00e782d04bac2ee5d5b498bf2c3f8c2826072bb56f7445e5dfb2484e12ea7"
+      "version": "1.1.2",
+      "digest": "7ebf0729be6a94801ffce40d04528d79bb8ab690d45b4d48af1e574c5391cd26"
     }
   }
 }
