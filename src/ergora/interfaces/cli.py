@@ -116,6 +116,19 @@ def parser() -> argparse.ArgumentParser:
         else:
             operation.add_argument("--input", type=Path, required=True)
             operation.add_argument("--input-digest", required=True)
+    finding = operations.add_parser("prepare-finding", help="Prepare a read-only input for one exact original review finding")
+    finding.add_argument("project")
+    finding.add_argument("source", type=Path)
+    finding.add_argument("--source-kind", choices=("local", "external"), required=True)
+    finding.add_argument("--source-sha256", required=True)
+    finding.add_argument("--manifest", type=Path, required=True)
+    finding.add_argument("--manifest-digest", required=True)
+    finding.add_argument("--finding", type=Path, required=True, help="JSON selector for one original review response span")
+    finding.add_argument("--validator-manifest", type=Path, required=True)
+    finding.add_argument("--validator-manifest-digest", required=True)
+    finding.add_argument("--max-prompt-bytes", type=int, required=True)
+    finding.add_argument("--directory", type=Path, required=True)
+    finding.add_argument("--max-result-bytes", type=int, default=8_388_608)
     for name in ("verify", "read"):
         operation = operations.add_parser(name, help="Offline integrity check; does not authenticate Git origin or checks")
         operation.add_argument("directory", type=Path)
@@ -128,6 +141,7 @@ def parser() -> argparse.ArgumentParser:
     reporting.add_argument("--manifest", type=Path, required=True)
     reporting.add_argument("--manifest-digest", required=True)
     reporting.add_argument("--runs", type=Path, required=True, help="JSON object mapping exact instance paths to original run IDs; omitted members stay incomplete")
+    reporting.add_argument("--finding-validation", type=Path, help="JSON selection of one finding and its original validation run")
     reporting.add_argument("--max-result-bytes", type=int, default=8_388_608)
     reporting.add_argument("--format", choices=("json", "markdown"), default="json")
     handoff = commands.add_parser("handoff", help="Verify portable evidence without services or local state")
@@ -287,6 +301,7 @@ def parser() -> argparse.ArgumentParser:
                                          "Independent restricted leaf call; no workflow ports or formal approval")
         operation.add_argument("project")
         operation.add_argument("directory", type=Path)
+        operation.add_argument("--input-digest", help="Require this complete input digest before admission")
         operation.add_argument("--mode", choices=("text-only", "task-mcp"), default="text-only")
         operation.add_argument("--backend", choices=sorted({tool for choices in agents.CHOICES.values() for tool in choices}),
                                help="Registered Agent backend; unsupported role/mode/configuration fails admission")
@@ -1035,13 +1050,19 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "review":
             import ergora.development.review.packets as review_packets
 
-            if args.operation in ("prepare-input", "verify-input", "report"):
+            if args.operation in ("prepare-input", "prepare-finding", "verify-input", "report"):
                 import ergora.development.review.requests as review_requests
 
                 if args.operation == "prepare-input":
                     output = review_requests.prepare(args.source, source_kind=args.source_kind, source_sha256=args.source_sha256,
                         manifest=args.manifest, manifest_digest=args.manifest_digest, instance=args.instance,
                         destination=args.directory, max_prompt_bytes=args.max_prompt_bytes)
+                elif args.operation == "prepare-finding":
+                    output = review_requests.prepare_finding(State(args.home), args.project, args.source,
+                        source_kind=args.source_kind, source_sha256=args.source_sha256, manifest=args.manifest,
+                        manifest_digest=args.manifest_digest, finding=definition_bundles.read_json(args.finding),
+                        validator_manifest=args.validator_manifest, validator_manifest_digest=args.validator_manifest_digest,
+                        destination=args.directory, max_prompt_bytes=args.max_prompt_bytes, max_result_bytes=args.max_result_bytes)
                 elif args.operation == "verify-input":
                     output = review_requests.verify(args.input, input_digest=args.input_digest, source=args.source,
                         source_kind=args.source_kind, source_sha256=args.source_sha256, manifest_digest=args.manifest_digest)
@@ -1049,7 +1070,7 @@ def main(argv: list[str] | None = None) -> int:
                     output = review_requests.report(State(args.home), args.project, args.source,
                         source_kind=args.source_kind, source_sha256=args.source_sha256, manifest=args.manifest,
                         manifest_digest=args.manifest_digest, runs=definition_bundles.read_json(args.runs),
-                        max_result_bytes=args.max_result_bytes)
+                        max_result_bytes=args.max_result_bytes, finding_validation=args.finding_validation)
                     if args.format == "markdown":
                         print(review_requests.markdown(output), end="")
                         return 0
@@ -1445,10 +1466,12 @@ def main(argv: list[str] | None = None) -> int:
                 output = workflow_definitions.inspect_manifest(args.directory, material=args.material)
             elif args.operation == "check-input":
                 output = agent_runs.check_input(State(args.home), args.project, args.directory,
-                    backend=args.backend, model=args.model, reason=args.backend_reason, mode=args.mode, codex_config=args.codex_config)
+                    backend=args.backend, model=args.model, reason=args.backend_reason, mode=args.mode, codex_config=args.codex_config,
+                    input_digest=args.input_digest)
             elif args.operation == "run-input":
                 output = agent_runs.run_input(State(args.home), args.project, args.directory, args.timeout,
-                    backend=args.backend, model=args.model, reason=args.backend_reason, codex_config=args.codex_config, mode=args.mode)
+                    backend=args.backend, model=args.model, reason=args.backend_reason, codex_config=args.codex_config,
+                    mode=args.mode, input_digest=args.input_digest)
             elif args.operation == "inspect-run":
                 output = agent_runs.inspect_run(State(args.home), args.project, args.id, max_result_bytes=args.max_result_bytes)
             else:

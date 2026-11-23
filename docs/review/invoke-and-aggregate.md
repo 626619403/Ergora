@@ -103,6 +103,65 @@ The report returns exit0 when it successfully returns an observation; scripts mu
 
 JSON observations of original run records and results also require finite numbers and use the definition documents' existing structural capacity of 64 levels / 100,000 values. NaN / Infinity, exponent overflow, or excess structural capacity explicitly make a branch unverifiable without letting one branch break the entire export. Structural capacity and result byte limits are checked separately; increasing bytes does not change structural capacity. Original files and digests remain unchanged, without truncation, rewriting, or automatic reinvocation.
 
+## Independently validate one finding
+
+Select one finding from a succeeded source-bound reviewer run when an independent opinion would resolve a specific uncertainty. Use a separate composition with one read-only `inspector` whose `task` comes directly from the root and whose frozen Agent definition differs from the original reviewer's. In the Agent bundle, declare `roles: ["inspector"]`, a supported text-only backend, and an instructions file containing “Independently validate the selected finding using only the supplied task.” Import it with `ergora agent definition import ./finding-inspector` and use the returned digest to pin its Workflow reference. [Custom compositions](../definitions/workflows/compose.md) · [Agent bundles](../definitions/agents.md)
+
+Save this as `./finding-validation/workflow.json` and set the Agent ID, version and digest from the imported bundle.
+
+```json
+{
+  "schema_version": 2,
+  "id": "finding-validation",
+  "version": "1.0.0",
+  "description": "Independently inspect one original finding",
+  "resources": [],
+  "permissions": {"read": ["workspace", "definitions"], "write": [], "shell": false, "network": []},
+  "limits": {"depth": 2, "instances": 4, "concurrency": 1, "material_bytes": 8192},
+  "inputs": ["task"],
+  "outputs": {"result": {"node": "inspect", "output": "result"}},
+  "nodes": [{
+    "id": "inspect",
+    "ref": {"kind": "agent", "id": "finding-inspector", "version": "1.0.0", "digest": "AGENT_DIGEST"},
+    "role": "inspector",
+    "depends_on": [],
+    "inputs": {"task": {"input": "task"}},
+    "permissions": {"read": ["workspace", "definitions"], "write": [], "shell": false, "network": []}
+  }]
+}
+```
+
+Import the Workflow with `ergora composition import ./finding-validation`. Freeze it with `ergora composition prepare-manifest finding-validation 1.0.0 --grant ./validator-grant.json --directory ./reviews/validator-manifest`. Use the same permissions and limits in the grant, with `schema_version: 1`, and take `VALIDATOR_MANIFEST_DIGEST` from the resulting `digest`.
+
+Use `composition inspect-run` to obtain the original result SHA256 and complete `result.document.artifacts.response`. Save the selected instance, run ID, result SHA256 and zero-based half-open UTF-8 byte range in `finding.json`. For character positions `start` and `end`, the offsets are `len(response[:start].encode("utf-8"))` and `len(response[:end].encode("utf-8"))`.
+
+```json
+{
+  "instance": "root/domain/review",
+  "run_id": "ORIGINAL_RUN_ID",
+  "result_sha256": "ORIGINAL_RESULT_SHA256",
+  "response_span": [25, 100]
+}
+```
+
+```bash
+ergora review prepare-finding demo ./reviews/candidate-01 \
+  --source-kind local --source-sha256 PACKET_SHA256 \
+  --manifest ./reviews/pretraining-manifest --manifest-digest MANIFEST_DIGEST \
+  --finding ./finding.json --validator-manifest ./reviews/validator-manifest \
+  --validator-manifest-digest VALIDATOR_MANIFEST_DIGEST --max-prompt-bytes 1000000 \
+  --directory ./reviews/finding-input
+
+ergora composition check-input demo ./reviews/finding-input --mode text-only --input-digest INPUT_DIGEST
+ergora composition run-input demo ./reviews/finding-input --mode text-only --input-digest INPUT_DIGEST --timeout 240
+```
+
+Use the prepared receipt's `input_digest` for both commands. The validator receives the verbatim claim, its identities, and the complete original source packet. The prepared task asks for a JSON object in the normal inspector response string. It requires `verdict` (`confirmed`, `disproved` or `inconclusive`), nonempty `reason` and an `evidence` array. Decisive replies cite at least one included file with `side` (`base`, `diff_base` or `head`), `path`, and inclusive one-based `start_line` and `end_line`. For an inconclusive reply, explain the gap in `reason` and use an empty array when source citations are unavailable.
+
+To include the observation in the complete report, supply `--finding-validation ./validation.json` with the usual source, manifest and original run selections. In `validation.json`, include the exact `finding.json` object as `finding`, the directory path as `validator_manifest`, its `validator_manifest_digest`, the prepared `input_digest`, and the validator's original `run_id`. Keep the selected original reviewer run in `--runs`.
+
+Check `finding_validation.status` and `verdict` separately. A completed inconclusive observation records a source gap. Incomplete observations give the error and retain any verified quote or readable original result. A saved validation section containing invalid UTF-8 text is marked unavailable and shown as escaped JSON. The report verifies the exact source and blob citations. Evaluate whether those citations support the advisory opinion before relying on it. The original decision, dissent, coverage and replies remain available in the report for any finding verdict. Use the same route with an explicitly saved external source and `--source-kind external`.
+
 ## Coverage, limitations, and further review
 
 - Git reads disable replace objects, hooks, textconv, external diff, and implicit lazy fetch, remove inherited `GIT_*` variables, and do not check out or execute target scripts. File text and instructions within it are review materials only and grant no permissions.
