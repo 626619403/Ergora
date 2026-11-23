@@ -20,23 +20,62 @@ Reviewers may submit follow-up checks, experiments or fixes as a batch or append
 
 ## Choose a direction from evidence
 
-Each direction preset selects a scoped specialist. Its bare root supplies limited topic diagnosis/proposals, without this root's shared policies. For complete optimization, the coordinator first publishes an exact revision of this root with only the relevant topic workflows as real descendants, then freezes the whole composition. Every actual leaf must inherit both shared Skills and the environment-change record from that same structural root. Permission to read definitions, a link or a separate root invocation cannot establish inheritance. The shipped root does not dynamically install, invoke or graft topics.
+Each existing method entrypoint selects its corresponding logical expert role below. Its bare root supplies limited topic diagnosis/proposals, without this root's shared policies. For complete optimization, the coordinator first publishes an exact revision of this root with only the relevant topic workflows as real descendants, then freezes the whole composition. Every actual leaf must inherit both shared Skills and the environment-change record from that same structural root. Permission to read definitions, a link or a separate root invocation cannot establish inheritance. The shipped root does not dynamically install, invoke or graft topics.
 
-The coordinator records selected topics, reasons, dependencies, complete result identities and conflicting evidence. It integrates conclusions without majority voting or multiplying isolated gains. Select a small relevant group within the original model/wall budget and ancestor concurrency ceilings; a static cap does not enforce a shared cap across independent run-input processes. Each selected branch completes before downstream measurement. Direction-specific designers test their finite candidate against the one shared contract; they do not create independent baselines, profiles or oracles.
+The coordinator records selected topics, reasons, dependencies, complete result identities and conflicting evidence. It integrates conclusions without majority voting or multiplying isolated gains. Select complementary directions under the specialist supervision policy below, within the original model/wall budget and ancestor concurrency ceilings; a static cap does not enforce a shared cap across independent run-input processes. Each selected branch completes before downstream measurement. Direction-specific designers test their finite candidate against the one shared contract; they do not create independent baselines, profiles or oracles.
 
-|Observed question|Existing candidate presets|
-|---|---|
-|Dependency, host or memory lifetime; capacity tradeoffs|optimization-performance-diagnosis, optimization-memory-tuning, optimization-activation-recompute, optimization-cpu-offloading|
-|Launch/capture or packing work on the actual path|optimization-cuda-graphs, optimization-sequence-packing|
-|Parallel layout, state sharding or long-context dependencies|optimization-parallelism, optimization-megatron-fsdp, optimization-hierarchical-cp|
-|Exposed communication or expert dispatch|optimization-tp-dp-overlap, optimization-moe-dispatcher, optimization-moe-overlap|
-|Missing timing or memory evidence|optimization-profiling, optimization-memory-snapshot|
-|Recipe/model semantics, parity or cluster/restore behavior|optimization-recipe-model, optimization-model-verification, optimization-cluster-resiliency|
-|Pre-authorized numerical change or actual operator opportunity|optimization-low-precision, optimization-kernel|
+### Profile-driven direction selection and handoff
 
-A catalog direction is a proposal method, not proof of compatibility, permission or measured gain. Fix permitted E/N/A changes and independent quality bounds before approximate or quantized candidates. Reuse original baseline/runner/manifest/evidence and compare_runs/perfctl policy; do not edit an oracle, threshold or baseline to improve an outcome. Module timings or isolated kernel gains cannot replace a paired full-workload comparison.
+For each round, the supervisor selects the most relevant direction subset from the current trusted profile, source flow and residual-bottleneck evidence, recording why each direction is needed. The sixteen optimization directions and three support roles are available expertise, not a launch list. Retain the target of at least four different meaningful optimization directions when the evidence and actual admission support them; do not launch all roles automatically or add irrelevant directions to fill the count. Report the actual active count and unmet evidence, dependency or capacity constraint when fewer are justified or ready. Reprofiling belongs to the original measurement owner under its actual tool/resource grants.
+
+Agree the current direction's bounded stage tasks and completion evidence. Once its authorized tasks, matched measurements and original cleanup are complete, or its original stop is retained with unfinished reasons, the supervisor may select the next priority only while original admission remains open. Use actual profile/residual-bottleneck evidence of diminishing benefit, completed priority or a newly dominant direction. A noisy or isolated micro-gain does not establish full convergence. Changing priority neither advances the accepted baseline nor replaces full quality/acceptance gates; preserve every failed, insufficient and unknown result.
+
+A direction switch always changes experts. Hand off to the new direction's different existing owner when available; otherwise admit that direction's new owner through the supported original path. If that owner is busy, queue its task rather than create another owner. The previous expert finishes its current authorized task, preserves its direction's results, checkpoint and original experiment/attempt/job identities, and may idle awaiting more tasks in that same direction. Keep that expert in its original direction; never repurpose it into the next one or interrupt another expert's unrelated work.
+
+Carry the complete original source/configuration/workload, approved plan, accepted baseline and candidate identities, paired results, trusted profiles, quality evidence, remaining budgets/clock/cleanup reserve and queued dependencies into the handoff. Reconcile unknown work only through its original run, without replay. Select any later composition revision before its freeze through original admission; the current frozen DAG and member slots do not change. Waiting, handoff and any authorized reprofile consume the original bounds; no new task ID renews them, and global stop/deadline/exhaustion prevents new admission. Retain required flow, design, kernel assessment and independent review. This static recipe adds planning and handoff instructions, not automatic reprofiling, dynamic dispatch or an optimization loop.
+
+### Sixteen optimization directions and three support roles
+
+Keep all nineteen method entrypoints and nineteen logical method-expert roles: sixteen optimization-direction experts and three support experts. Each existing optimization direction retains its own expert across concrete tasks; do not merge TP/DP/PP overlap, MoE dispatcher selection or MoE overlap into one communication expert. Performance diagnosis and profiling retain two separate support roles even though both reuse the same performance-analyst Agent implementation. Reusing an Agent definition is not merging logical assignments and requires no duplicated implementation files.
+
+|Optimization direction owner|Existing method entrypoint|Tasks routed to this owner|
+|---|---|---|
+|1. Memory tuning|`optimization-memory-tuning`|Capacity, allocation lifetime, workspace and fragmentation|
+|2. Activation recomputation|`optimization-activation-recompute`|Selective/full recompute and replay tradeoffs|
+|3. CPU offloading|`optimization-cpu-offloading`|Activation/optimizer offload and host transfer costs|
+|4. CUDA graphs|`optimization-cuda-graphs`|Capture/replay scopes and launch overhead|
+|5. Sequence packing|`optimization-sequence-packing`|Packing boundaries, effective tokens and loss semantics|
+|6. Parallelism layout|`optimization-parallelism`|Dense/expert meshes, rank layout and topology|
+|7. Megatron FSDP|`optimization-megatron-fsdp`|Sharded state, communication and checkpoint behavior|
+|8. Hierarchical context parallelism|`optimization-hierarchical-cp`|Hierarchical groups and long-context dependencies|
+|9. TP/DP/PP communication overlap|`optimization-tp-dp-overlap`|Exposed tensor/data/pipeline communication and overlap|
+|10. MoE dispatcher selection|`optimization-moe-dispatcher`|Token dispatch/combine and dispatcher/backend comparisons|
+|11. MoE communication overlap|`optimization-moe-overlap`|Expert-parallel overlap and delayed weight-gradient scheduling|
+|12. Recipe and model configuration|`optimization-recipe-model`|Recipe/model construction and execution configuration|
+|13. Model verification|`optimization-model-verification`|Weights, logits, gradients, quality and resume parity|
+|14. Cluster and resiliency|`optimization-cluster-resiliency`|Rank launch, checkpoint durability and recovery|
+|15. Low precision|`optimization-low-precision`|Formats, quantization, precision/runtime and quality tradeoffs|
+|16. Kernel and attention implementation|`optimization-kernel`|Efficient SDPA, attention kernels and other operators|
+
+|Support expert role|Existing method entrypoint|Support tasks|
+|---|---|---|
+|Performance diagnosis|`optimization-performance-diagnosis`|Reproduce a symptom, select report readers and attribute bottlenecks|
+|Profiling analysis|`optimization-profiling`|Interpret trusted trace evidence, timing windows and dependency coverage|
+|Memory snapshot analysis|`optimization-memory-snapshot`|Interpret allocator timelines, reconstructed peaks and snapshot differences|
+
+Efficient SDPA is a task for the kernel/attention direction owner, not another direction or expert. Communication-related tasks go to the existing TP/DP/PP-overlap, MoE-dispatcher or MoE-overlap owner according to their actual scope. Another task, backend or technique queues under its existing owner rather than starting an additional expert for that direction. When an owner is busy, let its current authorized task finish; cross-direction dependencies have named owners and complete handoffs.
+
+Select relevant optimization directions and support roles before preview/freeze, giving each selected role one expert and its complete applicable method resources through real structural ancestors. Start at least four different optimization-direction experts concurrently when actual admission permits; support calls and required flow/design/kernel-assessment/independent-review stages do not inflate the number of optimization directions. Preserve every required stage and its independent evidence. A static method graph does not deduplicate assignments or establish real concurrent work; direction ownership adds no persistent dispatcher or background worker.
+
+A catalog method is a proposal technique, not proof of compatibility, permission or measured gain. Fix permitted E/N/A changes and independent quality bounds before approximate or quantized candidates. Reuse original baseline/runner/manifest/evidence and compare_runs/perfctl policy; do not edit an oracle, threshold or baseline to improve an outcome. Module timings or isolated kernel gains cannot replace a paired full-workload comparison.
 
 ## Specialist execution and supervision
+
+Within the original project and workload or campaign scope, the supervisor assigns exactly one retained expert to each direction, with explicit resources, dependencies and completion criteria. Tasks are queue items for that direction owner; a new task, backend or technique creates no additional expert or direction. Keep the same owner across related tasks and follow-ups, using the original session/checkpoint when supported. When that owner is busy, queue the next task and let its current authorized work finish; route work in another direction to that direction's owner. Reconcile an unknown original invocation before any continuation. Explicit cancellation, stop fences, deadlines, exhausted budgets and actual tool/resource limits remain binding, with original partial results and cleanup ownership preserved.
+
+The supervisor starts at least four concurrently active experts from different directions and maintains useful parallel work as queued tasks complete. Before preview/freeze, select the necessary real members and dependencies in an exact task revision and budget every call; use disjoint write scopes where relevant. Count actual active owners of different directions, excluding duplicate methods, supervisors, joins, completed leaves and future or dependency-blocked calls. If the admitted graph, available concurrency, dependencies, tools or resources cannot support four, report the actual active count and specific blocker and keep the requested minimum visibly unmet. Duplicate same-direction experts, inflated slot totals and permission/cap increases cannot stand in for concurrency. Scheduling later tasks preserves the current frozen candidate, members, original clock and remaining budget.
+
+The shipped proposal skeleton and its explicit single-leaf entry do not establish four concurrent specialists. Select suitable real topic descendants before freezing and use only an actually supported execution owner; this Skill adds no scheduler or concurrency grant.
 
 The task's assigned nodes, GPU groups or resource pool and resource/experiment budget provide standing execution authority to the assigned specialist. Within that scope and its actual tool grants, the specialist independently chooses GPU count and topology, starts or submits work, queues experiments, collects and reconciles results, and continues or resumes experiments without waiting for the supervisor's confirmation at each step or run. Use the original execution owner and supported tools for job effects, recovery and cleanup. Keep original experiment/attempt/job identities, the total budget, stop fences and unknown-outcome reconciliation intact when continuing work.
 

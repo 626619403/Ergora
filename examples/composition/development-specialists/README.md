@@ -6,6 +6,8 @@ This fixed example revises large-change for an actual cross-end interface change
 
 Inventory runs contract, server, client and validation inspectors independently. Planning starts contract and validation planners from the canonical inventory; server and client planners wait for and consume the complete contract output. In each group, `expert-results` joins all four experts, the coordinator consumes that complete join, and `done` explicitly joins all four experts and the coordinator. The original Executor supplies canonical inventory to every planner; the preparation wrapper keeps its two root-task inputs independent. The coordinator reconciles the proposed contract with validation obligations and records unresolved conflicts before owner approval.
 
+The inherited supervisor policy retains one owner per direction across related tasks and requires at least four active experts from different directions. This fixed example has four independent inventory experts, while planning and work have at most two independent experts and final review has three. Its 17 total slots do not establish four-way concurrency throughout. Select suitable additional assignments before freezing when the real task supports them, and report the actual active count and blocker otherwise; preserve the existing dependencies and original budget.
+
 Run from the repository root using the current Ergora Python environment and an explicit definition-library home:
 
 ```bash
