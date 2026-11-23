@@ -51,9 +51,9 @@ def test_selected_specialist_floor_rejects_lower_override_before_any_native_call
     workflows.prepare_input(state.root, root["id"], root["version"], "root/" + name, grant,
                             b"Complete exact review source and original requirements.", destination, 1_000_000)
     monkeypatch.setattr(processes, "run", lambda *args, **kwargs: pytest.fail("Rejected review must not invoke a model"))
-    with pytest.raises(ValueError, match="requires"):
+    with pytest.raises(ValueError, match="at least"):
         agent_runs.run_input(state, "demo", destination,
-            binding_override={"tool": "codex", "model": "gpt-6.1-sol", "reasoning_effort": effort})
+            binding_override={"tool": "codex", "model": "gpt-6.2-sol", "reasoning_effort": effort})
     assert agent_runs.runs(state, "demo") == []
 
 
@@ -543,7 +543,7 @@ def test_provisional_analysis_cannot_satisfy_default_native_reader_without_origi
 
 @pytest.mark.parametrize("floor,effort", [("medium", "medium"), ("high", "xhigh"), ("xhigh", "max"), ("max", "ultra")])
 def test_explicit_minimum_reaches_native_command_without_replacing_provider(prepared, tmp_path, monkeypatch, floor, effort):
-    requested = {"tool": "codex", "model": "gpt-6.1-sol", "reasoning_effort": floor}
+    requested = {"tool": "codex", "model": "gpt-6.2-sol", "reasoning_effort": floor}
     state, _, source = prepared(binding=requested,
         minimum={"model": requested["model"], "reasoning_effort": floor})
     config = tmp_path / "inference.toml"
@@ -582,13 +582,13 @@ def test_explicit_minimum_reaches_native_command_without_replacing_provider(prep
 
 @pytest.mark.parametrize("binding", [
     {"tool": "codex", "reasoning_effort": "high"},
-    {"tool": "codex", "model": "gpt-6-sol", "reasoning_effort": "ultra"},
-    {"tool": "codex", "model": "gpt-6.1-sol"},
-    {"tool": "codex", "model": "gpt-6.1-sol", "reasoning_effort": "medium"},
-    {"tool": "claude-code", "model": "gpt-6.1-sol", "effort": "high"},
+    {"tool": "codex", "model": "gpt-6.1-sol", "reasoning_effort": "ultra"},
+    {"tool": "codex", "model": "gpt-6.2-sol"},
+    {"tool": "codex", "model": "gpt-6.2-sol", "reasoning_effort": "medium"},
+    {"tool": "claude-code", "model": "gpt-6.2-sol", "effort": "high"},
 ])
 def test_actual_binding_below_minimum_is_rejected_before_run(prepared, monkeypatch, binding):
-    requested = {"tool": "codex", "model": "gpt-6.1-sol", "reasoning_effort": "high"}
+    requested = {"tool": "codex", "model": "gpt-6.2-sol", "reasoning_effort": "high"}
     state, _, source = prepared(binding=requested,
         minimum={"model": requested["model"], "reasoning_effort": requested["reasoning_effort"]})
     monkeypatch.setattr(processes, "run", lambda *args, **kwargs: pytest.fail("Rejected calls must not run"))

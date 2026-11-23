@@ -123,14 +123,14 @@ ergora task create my-project --definition task-definition.json --revision 1 --p
 
 ```bash
 ergora composition install-preset refactoring
-ergora composition prepare-manifest ergora-refactoring-template 1.3.6 \
+ergora composition prepare-manifest ergora-refactoring-template 1.3.7 \
   --grant examples/composition/refactoring/grant.json \
   --directory ./refactoring-manifest
 ```
 
 示例位于仓库[refactoring目录](../../../examples/composition/refactoring/README.md)；wheel中已含全部Agent和子模板，使用自己的grant时无需examples。将[task.example.json](../../../examples/composition/refactoring/task.example.json)复制成任务定义，填写真实工单、task ID、baseline、manifest路径／摘要及项目内实际模块／caller；同时核完整资料范围、行为不变量、迁移和隔离回退检查。随后沿原`task preview → prepare → preview → create`的双摘要确认与start／计划批准流程。有效JSON或prepare成功只证明合同可装配，行为保持由实际检查和审查证据支持。
 
-全部内置专家使用Codex gpt-6.1-sol：规划max，跨文件重构xhigh，兼容验证与独立审查high。完整`backend_overrides`须保留满足定义最低线的model／reasoning_effort；writer仍需明确选择current-container。`prefer-distinct`同后端选择须记录`diversity.reason`，`require-distinct`继续拒绝同后端。兼容性工作单元不替代独立最终审查。
+全部内置专家使用Codex gpt-6.2-sol：规划max，跨文件重构xhigh，兼容验证与独立审查high。完整`backend_overrides`须保留满足定义最低线的model／reasoning_effort；writer仍需明确选择current-container。`prefer-distinct`同后端选择须记录`diversity.reason`，`require-distinct`继续拒绝同后端。兼容性工作单元不替代独立最终审查。
 
 父模板直接包含标准[`ergora-codebase-quality`](../../../src/ergora/data/presets/workflows/ergora-refactoring-template/skills/ergora-codebase-quality/SKILL.md)，所有后代继承完整Skill，依目标仓库适用规范、配置、真实调用者和测试接缝工作。原任务／预算／候选身份及恢复owner保持；安装和静态preview不批准业务迁移。
 

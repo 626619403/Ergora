@@ -10,7 +10,7 @@ Agent 定义包保存一名专家的职能、专长、后端、初始指令、�
 
 定义导入、静态关系图预览和已保存manifest不证明后端已安装、已认证、模型具备能力或获准执行。Skill与上下文沿完整结构祖先链累积，子权限必须始终处于父权限及项目授权范围内。新定义或绑定不改写任务已冻结的后端、资源或合同；已有任务须沿原身份恢复。
 
-内置专家显式选择 Codex `gpt-6.1-sol`：规划、契约与 kernel 候选设计用 `max`，跨文件实现用 `xhigh`，审查、文档、兼容验证与纯诊断用 `high`。定义的可选 `invocation_minimum` 固定模型和最低 `reasoning_effort`；同模型上调允许，低于下限、缺省模型／强度或其他无法比较的后端／模型会在调用及正式任务冻结校验处拒绝。明确短程自定义定义可以声明 `medium`；当前没有独立短程内置模板。普通自定义定义可不声明下限。请求值与真实后端执行仍分别核验，统一planner／automatic选型未实现。
+内置专家显式选择 Codex `gpt-6.2-sol`：规划、契约与 kernel 候选设计用 `max`，跨文件实现用 `xhigh`，审查、文档、兼容验证与纯诊断用 `high`。定义的可选 `invocation_minimum` 固定模型和最低 `reasoning_effort`；同模型上调允许，低于下限、缺省模型／强度或其他无法比较的后端／模型会在调用及正式任务冻结校验处拒绝。明确短程自定义定义可以声明 `medium`；当前没有独立短程内置模板。普通自定义定义可不声明下限。请求值与真实后端执行仍分别核验，统一planner／automatic选型未实现。
 
 受限组合调用禁用环境中的用户配置。使用自定义provider时，由操作者通过`--codex-config ./inference.toml`提供原推理配置，凭据只引用环境变量；模板不保存provider或私有路径。显式模型／强度覆盖该文件对应项，其余provider配置保留。不指定`--backend`时继承模板binding；选择同一backend也保留模板未覆盖字段。
 
@@ -52,7 +52,7 @@ ergora agent definition export architecture-reviewer 1.0.0 ./shared-architecture
 |`roles`|可担任的现有职能；逐项复用后端能力校验。|
 |`specialties`|专长标签，用于 `list --specialty`；不授予权限或证明模型能力。|
 |`backend`|现有工具 binding；复用组件配置，不执行可用性探测，也不安装或认证后端。|
-|`invocation_minimum`|可选模型与推理下限：`{"model":"gpt-6.1-sol","reasoning_effort":"high"}`；默认backend及实际override必须满足。|
+|`invocation_minimum`|可选模型与推理下限：`{"model":"gpt-6.2-sol","reasoning_effort":"high"}`；默认backend及实际override必须满足。|
 |`resources`|有序资源清单；每个逻辑ID唯一，必须且只能有一份 `instructions`。|
 
 `resources` 的每项都有 `id`、`kind` 和 `path`。`instructions`、`context` 指向非空文本文件，必须附 `sha256`；`skill` 指向带合法 `SKILL.md` 的完整目录，必须附 `digest`，目录名须等于 frontmatter 的 name。Skill 的全部文件都进入摘要，查看材料时返回完整 `SKILL.md` 指令；脚本和其他按需资源保持文件形式。

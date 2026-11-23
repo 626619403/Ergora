@@ -86,7 +86,7 @@
         "binding": {
           "tool": "codex",
           "sandbox": "current-container",
-          "model": "gpt-6.1-sol",
+          "model": "gpt-6.2-sol",
           "reasoning_effort": "max"
         },
         "reason": "Explicit trusted-container selection for the scoped refactoring writer."
@@ -95,7 +95,7 @@
         "binding": {
           "tool": "codex",
           "sandbox": "current-container",
-          "model": "gpt-6.1-sol",
+          "model": "gpt-6.2-sol",
           "reasoning_effort": "max"
         },
         "reason": "Explicit trusted-container selection for the scoped compatibility validation unit."
@@ -103,7 +103,7 @@
     },
     "diversity": {
       "policy": "prefer-distinct",
-      "reason": "Use gpt-6.1-sol for separate implementation and review sessions under the declared model minimum."
+      "reason": "Use gpt-6.2-sol for separate implementation and review sessions under the declared model minimum."
     }
   },
   "budget": {

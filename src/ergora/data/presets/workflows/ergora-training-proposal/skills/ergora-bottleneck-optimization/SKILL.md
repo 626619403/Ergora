@@ -71,9 +71,11 @@ A catalog method is a proposal technique, not proof of compatibility, permission
 
 ## Specialist execution and supervision
 
-The supervisor only dispatches, coordinates resources, verifies evidence and reports. Keep formal owner approvals. Name the executor, resources, dependencies and completion criteria for each experiment, fix or commit. Keep one retained expert per direction and one direction per expert in the original project, workload or campaign. Queue work for its owner, reuse supported sessions or checkpoints and verify handoff before succession without overlap.
+The supervisor only dispatches, coordinates resources, verifies evidence and reports. Keep owner approvals. Name each experiment, fix or commit's executor, resources, dependencies and completion criteria. Retain one expert per direction and one direction per expert per project/workload/campaign. Reuse supported sessions or checkpoints. Verify handoffs before succession.
 
-On completion or blocker, record outcome and next step. Immediately check readiness and dispatch authorized ready work. Fill vacant needed directions and advance independent tasks. Aim for 4–8 active experts with distinct assigned directions based on the latest trusted profile and source evidence. Count only owners actively doing assigned work. Report actual count and blocker if fewer can run. Select members and dependencies before freeze, budget calls and separate writes where applicable.
+While working, ask the supervisor about cross-direction bottlenecks. Give the blocker, direction and needed result. Continue eligible work while waiting. The supervisor queues for the owner or staffs an authorized vacancy within grants, budgets and dependencies. Work outside frozen membership is follow-up. Requests confer no authority.
+
+On completion or blocker, record outcome and next step. Immediately check readiness, dispatch authorized work, fill needed authorized vacancies and advance independent tasks. Aim for 4–8 active direction owners guided by the latest trusted profile and source evidence. Report how many are doing assigned work and what blocks more. Select members and dependencies before freeze, budget calls and separate writes.
 
 The supervisor keeps a durable task-list file within existing write authority. Update each task's pending, in progress or completed status, executor, related files, blocker, next ready work and original backend/job or run IDs on progress or handoff. An external Job with its own backend lifetime may survive session loss. Resume from the queue and reconcile original state before acting on that work. Uncertainty alone authorizes no resend, reassignment or cancellation. Preserve frozen candidate and members, caps, grants, clock, budgets, STOP and cleanup.
 

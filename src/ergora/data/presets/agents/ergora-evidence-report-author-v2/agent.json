@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "id": "ergora-evidence-report-author",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "Readonly progressive optimization reports with source flow, comparable trial tables, full configurations and evidence-linked Markdown/static HTML.",
   "roles": [
     "implementer"
@@ -16,7 +16,7 @@
   ],
   "backend": {
     "tool": "codex",
-    "model": "gpt-6.1-sol",
+    "model": "gpt-6.2-sol",
     "reasoning_effort": "high"
   },
   "resources": [
@@ -46,7 +46,7 @@
     }
   ],
   "invocation_minimum": {
-    "model": "gpt-6.1-sol",
+    "model": "gpt-6.2-sol",
     "reasoning_effort": "high"
   }
 }

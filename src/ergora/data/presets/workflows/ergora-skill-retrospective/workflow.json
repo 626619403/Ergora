@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "id": "ergora-skill-retrospective",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Source-bound Skill candidate author followed by complementary readonly evidence review; evaluation and adoption remain explicit.",
   "resources": [
     {
@@ -47,8 +47,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-retrospective-author",
-        "version": "1.0.1",
-        "digest": "e9dda2feb3db2e4068ab504b7a2131558117f34dd62232f83fb29beed2523a5a"
+        "version": "1.0.2",
+        "digest": "bea8b09341087c82c7a17f941075cd7166c0bf1b68f5f5f1c9f19dc57351446a"
       },
       "role": "implementer",
       "depends_on": [],
@@ -72,8 +72,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-retrospective-reviewer",
-        "version": "1.0.1",
-        "digest": "f94fa0990dafefa7737c5018e4b5e0a84576bb72462e220261f5ed90c45501b2"
+        "version": "1.0.2",
+        "digest": "a5f8750e2c746a79eea558521f4aef9877ab16ac668f0ac868de4a0c56172f71"
       },
       "role": "reviewer",
       "depends_on": [

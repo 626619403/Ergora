@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+from collections.abc import Awaitable, Callable
 import getpass
 import json
 import os
@@ -9,36 +10,54 @@ from pathlib import Path
 import subprocess
 import sys
 import time
+from typing import TYPE_CHECKING
 import uuid
 
 from .core import Blocked, CONFIG, PYTHON, ROOT, STATE, environment, project, projects, read, require, slug, task_spec, write
+
+if TYPE_CHECKING:
+    from temporalio.client import Client
 
 
 def supervisor(*args: str) -> int:
     return subprocess.call([str(ROOT / ".venv/bin/supervisorctl"), "-c", str(CONFIG / "supervisord.ini"), *args], env=environment())
 
 
+async def start_task(task_id: str, spec: dict, *, readiness: Callable[[], dict],
+                     start: Callable[[Client, str, dict], Awaitable[str]]) -> dict:
+    """Admit the selected task and start it through the caller's native transport."""
+    from dev_platform.connection import connect, task_queue
+    from dev_platform.contracts import validate_spec
+    from dev_platform.workflow import workflow_id
+    from .ingress import claim
+    from .projects import check_task_type
+
+    validate_spec(spec)
+    request = spec["request"]
+    require(request["task_id"] == task_id, "Task spec differs from the selected task ID")
+    require(readiness()["ready_for_real_tasks"], "Real execution prerequisites are incomplete; run agentflow doctor")
+    p = read(STATE / "tasks" / task_id / "project.json")
+    check_task_type(p["name"], request["task_type"])
+    missing = set(spec["profile"]["required_checks"]) - {"scope", "baseline-regression"} - set(p["checks"])
+    require(not missing, "Configure trusted checks first: " + ", ".join(sorted(missing)))
+    client = await connect()
+    queue = task_queue()
+    claim(spec)
+    return {"workflow_id": workflow_id(spec), "run_id": await start(client, queue, spec)}
+
+
 async def task_action(args) -> dict:
     from dev_platform.connection import connect, task_queue
     from dev_platform.runtime import DevelopmentTransport
-    from dev_platform.workflow import DevelopmentWorkflow, workflow_id
+    from dev_platform.workflow import DevelopmentWorkflow
     from dev_platform.adapter import publish
     spec = task_spec(args.task_id)
     if args.operation == "start":
         from .doctor import report
-        doctor = report()
-        require(doctor["ready_for_real_tasks"], "Real execution prerequisites are incomplete; run agentflow doctor")
-        p = read(STATE / "tasks" / args.task_id / "project.json")
-        from .projects import check_task_type
-        check_task_type(p['name'], spec['request']['task_type'])
-        missing = set(spec["profile"]["required_checks"]) - {"scope", "baseline-regression"} - set(p["checks"])
-        require(not missing, "Configure trusted checks first: " + ", ".join(sorted(missing)))
-    client = await connect()
-    runtime = DevelopmentTransport(client, task_queue())
-    if args.operation == "start":
-        from .ingress import claim
-        claim(spec)
-        return {"workflow_id": workflow_id(spec), "run_id": await runtime.start(spec)}
+
+        return await start_task(args.task_id, spec, readiness=report,
+                                start=lambda client, queue, frozen: DevelopmentTransport(client, queue).start(frozen))
+    runtime = DevelopmentTransport(await connect(), task_queue())
     handle, description = await runtime.lookup(spec)
     if args.operation == "status":
         return await handle.query(DevelopmentWorkflow.status)

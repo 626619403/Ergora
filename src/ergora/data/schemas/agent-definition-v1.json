@@ -16,7 +16,7 @@
       "type": "object", "additionalProperties": false,
       "required": ["model", "reasoning_effort"],
       "properties": {
-        "model": {"const": "gpt-6.1-sol"},
+        "model": {"type": "string", "minLength": 1, "pattern": "\\S", "not": {"pattern": "\u0000"}},
         "reasoning_effort": {"enum": ["medium", "high", "xhigh", "max", "ultra"]}
       }
     },

@@ -21,6 +21,7 @@ from ergora.development.inputs import execution_input
 payload = json.load(sys.stdin)
 sys.stdin = io.StringIO(json.dumps(payload))
 scenario = os.environ.get('ERGORA_TEST_SUBMISSION_SCENARIO', 'normal')
+direct_start = payload['operation'] == 'native-cli-start'
 selected_input = core.task_spec(payload['task_id']).get('schema_version') in (7, 12)
 fixture = Path(payload['project']['registration']['definition']['execution']['state_directory']) / 'sdk-fixture'
 fixture.mkdir(exist_ok=True)
@@ -132,12 +133,18 @@ class Client:
         assert kwargs['id_reuse_policy'] == WorkflowIDReusePolicy.REJECT_DUPLICATE
         assert kwargs['id_conflict_policy'] == WorkflowIDConflictPolicy.FAIL
         assert kwargs['retry_policy'].maximum_attempts == 1
-        assert not server.exists(), 'Second start was attempted against an existing run'
-        assert len(kwargs['memo']['ergora.submission_sha256']) == 64
+        if direct_start:
+            assert kwargs.get('memo') is None
+            if server.exists():
+                run_id = json.loads(server.read_text())['run_id']
+                raise WorkflowAlreadyStartedError(kwargs['id'], 'DevelopmentWorkflow', run_id=run_id)
+        else:
+            assert not server.exists(), 'Second start was attempted against an existing run'
+            assert len(kwargs['memo']['ergora.submission_sha256']) == 64
         if scenario in ('race-foreign-run', 'race-rejection-lost'):
             server.write_text(json.dumps({'run_id': 'race-foreign-run', 'spec': spec, 'memo': {}}), encoding='utf-8')
             raise WorkflowAlreadyStartedError(kwargs['id'], 'DevelopmentWorkflow', run_id='race-foreign-run')
-        server.write_text(json.dumps({'run_id': 'original-run', 'spec': spec, 'memo': kwargs['memo']}), encoding='utf-8')
+        server.write_text(json.dumps({'run_id': 'original-run', 'spec': spec, 'memo': kwargs.get('memo') or {}}), encoding='utf-8')
         if scenario == 'lost-response':
             raise TimeoutError('Fixture response was lost after the server accepted start')
         return SimpleNamespace(result_run_id='original-run')
@@ -178,5 +185,11 @@ def initialize(self, *args):
     self.core.write = interrupted
 
 
-_Submission.__init__ = initialize
-main()
+if direct_start:
+    from agent_platform.cli import main as native_cli
+
+    sys.argv = ['agentflow', 'task', 'start', payload['task_id']]
+    native_cli()
+else:
+    _Submission.__init__ = initialize
+    main()

@@ -4,13 +4,13 @@ English · [Documentation](../README.md)
 
 ## General performance diagnosis
 
-Ergora maintains performance-analysis, experiment-design, kernel-design and measurement-review definitions/compositions; see [integration guide](../improvement/workflow.md) and [Agent definitions](../definitions/agents.md#built-in-specialists). The nineteen method entrypoints retain nineteen logical method-expert roles: [sixteen optimization-direction experts and three support experts](../../src/ergora/data/presets/workflows/ergora-training-proposal/skills/ergora-bottleneck-optimization/SKILL.md#sixteen-optimization-directions-and-three-support-roles). Profiling and performance-diagnosis are separate logical support roles reusing `ergora-performance-analyst@2.3.0`; kernel topics reuse kernel-designer; common experiment design and measurement review remain independent. Citing papers/Skills does not import complete native Agent workflows. Tools such as Forge still require separate adaptation/admission.
+Ergora maintains performance-analysis, experiment-design, kernel-design and measurement-review definitions/compositions; see [integration guide](../improvement/workflow.md) and [Agent definitions](../definitions/agents.md#built-in-specialists). The nineteen method entrypoints retain nineteen logical method-expert roles: [sixteen optimization-direction experts and three support experts](../../src/ergora/data/presets/workflows/ergora-training-proposal/skills/ergora-bottleneck-optimization/SKILL.md#sixteen-optimization-directions-and-three-support-roles). Profiling and performance-diagnosis are separate logical support roles reusing `ergora-performance-analyst@2.3.1`; kernel topics reuse kernel-designer; common experiment design and measurement review remain independent. Citing papers/Skills does not import complete native Agent workflows. Tools such as Forge still require separate adaptation/admission.
 
 ```bash
 ergora composition install-preset optimization-performance-diagnosis
 ```
 
-Prepare manifests with the complete `root` reference returned by installation. Root is `ergora-opt-performance-diagnosis-proposal@1.2.1`; `root/specialist` binds `ergora-performance-analyst@2.3.0`, alongside `root/design` and `root/measurement/review`. The diagnosis expert supplies standard [`ergora-performance-diagnosis`](../../src/ergora/data/presets/agents/ergora-performance-analyst/skills/ergora-performance-diagnosis/SKILL.md): first fix a feedback command reproducing the same symptom, then select existing report readers by actual format, version, phase and hardware. Without comparable evidence, retain unknown and request bounded additional measurements from the original runner.
+Prepare manifests with the complete `root` reference returned by installation. Root is `ergora-opt-performance-diagnosis-proposal@1.2.2`; `root/specialist` binds `ergora-performance-analyst@2.3.1`, alongside `root/design` and `root/measurement/review`. The diagnosis expert supplies standard [`ergora-performance-diagnosis`](../../src/ergora/data/presets/agents/ergora-performance-analyst/skills/ergora-performance-diagnosis/SKILL.md): first fix a feedback command reproducing the same symptom, then select existing report readers by actual format, version, phase and hardware. Without comparable evidence, retain unknown and request bounded additional measurements from the original runner.
 
 Prepare grants/manifests for this exact root through [single-leaf input and invocation](../definitions/workflows/leaf-calls.md#prepare-complete-single-leaf-input), invoke `root/specialist` and `root/design` separately, then pass both complete original results to `root/measurement/review`. Independent direction roots perform bounded topic analysis only; complete optimization inherits policy/environment records through the common root. Permissions remain read-only without shell/network. Verify tool installation, availability and authorization separately; accept real gains through original runner/evidence gates.
 
@@ -56,8 +56,8 @@ For capacity diagnosis, for example, first prepare project, backend, root grant 
 
 ```bash
 ergora composition install-preset optimization-memory-tuning
-ergora composition show ergora-opt-memory-tuning-proposal 1.2.1
-ergora composition prepare-manifest ergora-opt-memory-tuning-proposal 1.2.1 --grant ./grant.json --directory ./memory-manifest
+ergora composition show ergora-opt-memory-tuning-proposal 1.2.2
+ergora composition prepare-manifest ergora-opt-memory-tuning-proposal 1.2.2 --grant ./grant.json --directory ./memory-manifest
 ergora composition prepare-from-manifest ./memory-manifest root/specialist --task ./memory-task.txt --directory ./memory-specialist --max-prompt-bytes 100000
 ergora composition check-input PROJECT_ID ./memory-specialist --mode task-mcp --backend codex --backend-reason "Explicit specialist backend"
 ergora composition run-input PROJECT_ID ./memory-specialist --mode task-mcp --backend codex --backend-reason "Explicit specialist backend" --timeout 600

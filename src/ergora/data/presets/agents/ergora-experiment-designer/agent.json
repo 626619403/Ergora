@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "id": "ergora-experiment-designer",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "Design bounded cross-domain optimization experiments from a fixed workload, baseline and quality contract.",
   "roles": [
     "experiment-planner",
@@ -15,7 +15,7 @@
   ],
   "backend": {
     "tool": "codex",
-    "model": "gpt-6.1-sol",
+    "model": "gpt-6.2-sol",
     "reasoning_effort": "max"
   },
   "resources": [
@@ -33,7 +33,7 @@
     }
   ],
   "invocation_minimum": {
-    "model": "gpt-6.1-sol",
+    "model": "gpt-6.2-sol",
     "reasoning_effort": "max"
   }
 }

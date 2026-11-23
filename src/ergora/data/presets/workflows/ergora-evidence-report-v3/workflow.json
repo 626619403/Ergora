@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "id": "ergora-evidence-report",
-  "version": "3.0.1",
+  "version": "3.0.2",
   "description": "Readonly explicitly selected concise optimization-report author with six-section evidence-linked template; collection, quality acceptance and adoption remain separately owned.",
   "resources": [
     {
@@ -40,8 +40,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-evidence-report-author",
-        "version": "3.0.1",
-        "digest": "7c85d891871bbf7fa840dde4ba2993b7054ad839cebc39820ba408e0bf393f33"
+        "version": "3.0.2",
+        "digest": "7fd8b7105deda92383e7478e9407d477f9e060368e5ab9e8e5d007ad8a02f80a"
       },
       "role": "implementer",
       "depends_on": [],

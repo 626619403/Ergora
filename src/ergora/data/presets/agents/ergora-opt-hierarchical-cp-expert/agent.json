@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "id": "ergora-opt-hierarchical-cp-expert",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Readonly hierarchical cp specialist: Identify active hierarchical CP process groups, transports, topology and long-context data dependencies in the selected implementation.",
   "roles": [
     "performance-analyst",
@@ -13,7 +13,7 @@
   ],
   "backend": {
     "tool": "codex",
-    "model": "gpt-6.1-sol",
+    "model": "gpt-6.2-sol",
     "reasoning_effort": "max"
   },
   "resources": [
@@ -31,7 +31,7 @@
     }
   ],
   "invocation_minimum": {
-    "model": "gpt-6.1-sol",
+    "model": "gpt-6.2-sol",
     "reasoning_effort": "max"
   }
 }

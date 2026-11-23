@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "id": "ergora-document-correction",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "One explicit read-only project-document proposal; the original host owns preview, consent and application.",
   "resources": [
     {
@@ -41,8 +41,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-document-correction-author",
-        "version": "1.0.0",
-        "digest": "e52f8815e15a43c7584933731bb697ec77d740c353f8f219f3109543a50580ae"
+        "version": "1.0.1",
+        "digest": "cf318e7724f3e72e3cd23f95762690052cca84f6ab667b685e0f1ac12d33b3ba"
       },
       "role": "implementer",
       "depends_on": [],

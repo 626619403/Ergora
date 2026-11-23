@@ -149,14 +149,14 @@ In “Formal tasks → Preview and create,” select the native six stages and r
 
 ```bash
 ergora composition install-preset refactoring
-ergora composition prepare-manifest ergora-refactoring-template 1.3.6 \
+ergora composition prepare-manifest ergora-refactoring-template 1.3.7 \
   --grant examples/composition/refactoring/grant.json \
   --directory ./refactoring-manifest
 ```
 
 The example is in the repository's [refactoring directory](../../examples/composition/refactoring/README.md). The wheel contains all Agents and subtemplates; examples are unnecessary when using your own grant. Copy [task.example.json](../../examples/composition/refactoring/task.example.json) into a task definition and enter the real issue, task ID, baseline, manifest path/digest and actual project modules/callers. Also check the complete material scope, behavior invariants, migration and isolated rollback checks. Then follow the original `task preview → prepare → preview → create` sequence with two-digest confirmation, followed by start/plan approval. Valid JSON or successful prepare proves only that the contract can be assembled. Actual checks and review evidence support behavior preservation.
 
-The shared module/validation/coordinator inventory and planning groups each contain three real calls. With the two refactoring work units and three independent final reviewers, this default needs 11 model slots. These reusable development Agents use Codex gpt-6.1-sol/max in every role because their Agent-level minimum also covers planning; independent reviewers and pure documentation Agents use at least high. Complete `backend_overrides` must retain model/reasoning_effort values satisfying the definition minimum; writers also explicitly select current-container. Same-backend selection under `prefer-distinct` requires `diversity.reason`; `require-distinct` continues to reject it. The compatibility work unit does not replace final independent review.
+The shared module/validation/coordinator inventory and planning groups each contain three real calls. With the two refactoring work units and three independent final reviewers, this default needs 11 model slots. These reusable development Agents use Codex gpt-6.2-sol/max in every role because their Agent-level minimum also covers planning; independent reviewers and pure documentation Agents use at least high. Complete `backend_overrides` must retain model/reasoning_effort values satisfying the definition minimum; writers also explicitly select current-container. Same-backend selection under `prefer-distinct` requires `diversity.reason`; `require-distinct` continues to reject it. The compatibility work unit does not replace final independent review.
 
 The parent directly includes [`ergora-codebase-quality`](../../src/ergora/data/presets/workflows/ergora-refactoring-template/skills/ergora-codebase-quality/SKILL.md). All descendants inherit complete guidance on the target repository conventions, actual callers and testing seams. Original task/budget/candidate identities and recovery owners remain; installation and static preview do not approve a business migration.
 

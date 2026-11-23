@@ -178,6 +178,10 @@ class DefinitionRevisionPayload(Payload):
     accepted_candidate: dict | None = None
 
 
+class WorkflowRevisionCheckPayload(DefinitionRevisionPayload):
+    impact: dict | None = None
+
+
 class DefinitionFilePayload(Payload):
     base_digest: str = Field(pattern=r"^[a-f0-9]{64}$")
     path: str
@@ -585,7 +589,7 @@ def create_app(home: Path | None = None) -> FastAPI:
         return workflow_definitions.get(state, identity, version, material=True)
 
     @application.post("/api/workflow-definitions/{identity}/{version}/revisions/check")
-    def check_workflow_revision(identity: str, version: str, body: DefinitionRevisionPayload):
+    def check_workflow_revision(identity: str, version: str, body: WorkflowRevisionCheckPayload):
         return workflow_definitions.revise(state, identity, version, **body.model_dump())
 
     @application.post("/api/workflow-definitions/{identity}/{version}/revisions")
@@ -593,7 +597,7 @@ def create_app(home: Path | None = None) -> FastAPI:
         return workflow_definitions.revise(state, identity, version, **body.model_dump(), publish=True)
 
     @application.post("/api/workflow-definitions/{identity}/{version}/revisions/preview-resources")
-    def preview_workflow_resources(identity: str, version: str, body: DefinitionRevisionPayload):
+    def preview_workflow_resources(identity: str, version: str, body: WorkflowRevisionCheckPayload):
         return workflow_definitions.revise(state, identity, version, **body.model_dump(), preview_resources=True)
 
     @application.post("/api/workflow-definitions/{identity}/{version}/files/read")

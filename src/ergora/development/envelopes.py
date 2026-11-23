@@ -8,6 +8,7 @@ import base64
 from collections.abc import Collection
 import hashlib
 import json
+import re
 
 from ergora.configuration.catalog import validate_agent_minimum
 from ergora.development.dags import (
@@ -66,6 +67,57 @@ def decode_job(raw: bytes) -> dict:
 def identity(value: dict) -> str:
     return hashlib.sha256(json.dumps(value, ensure_ascii=False, sort_keys=True,
         separators=(',', ':'), allow_nan=False).encode('utf-8')).hexdigest()
+
+
+def validate_amendment(definition: dict, project: str, revision: int, *, task_id: str | None = None) -> None:
+    """Check the frozen amendment header before entering task preparation."""
+    if 'amendment' not in definition:
+        return
+    link = definition['amendment']
+    if (definition['schema_version'] != 8 or not isinstance(link, dict)
+            or set(link) != {'project', 'project_revision', 'change', 'definition_sha256', 'predecessor'}
+            or link['project'] != project or type(link['project_revision']) is not int
+            or link['project_revision'] != revision or not isinstance(link['change'], str)
+            or not link['change'].strip() or len(link['change']) > 4000
+            or not isinstance(link['predecessor'], dict)):
+        raise ValueError('Amendment must bind the current project and exact successor definition')
+    predecessor = link['predecessor'].get('task_id')
+    if not isinstance(predecessor, str) or re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_-]{0,79}', predecessor) is None:
+        raise ValueError('Amendment requires a valid original task ID')
+    successor = definition['task_id']
+    if predecessor == successor or (task_id is not None and successor != task_id):
+        raise ValueError('Amendment requires distinct original and successor task IDs')
+    if identity({key: value for key, value in definition.items() if key != 'amendment'}) != link['definition_sha256']:
+        raise ValueError('Successor definition changed after amendment preview')
+
+
+def _amendment_fields(original: dict, revised: dict, *, omit: tuple) -> dict:
+    return {key: {'before': original.get(key), 'after': revised.get(key)}
+            for key in sorted((original.keys() | revised.keys()) - set(omit))
+            if original.get(key) != revised.get(key)}
+
+
+def amendment_delta(original: dict, revised: dict) -> dict:
+    """Give preview and preparation the same substantive change requirement."""
+    old_input, new_input = original['input'], revised['input']
+    old_units, new_units = ({unit['id']: unit for unit in item['work_units']} for item in (old_input, new_input))
+    old_route, new_route = original['composition'], revised['composition']
+    old_assignments, new_assignments = (item['execution']['assignments'] for item in (old_route, new_route))
+    units = {}
+    for key in sorted(old_units.keys() | new_units.keys()):
+        before, after = old_units.get(key), new_units.get(key)
+        old_member, new_member = old_assignments.get(key), new_assignments.get(key)
+        old_binding = old_route.get('backend_overrides', {}).get(old_member)
+        new_binding = new_route.get('backend_overrides', {}).get(new_member)
+        changed = (before, old_member, old_binding) != (after, new_member, new_binding)
+        units[key] = {'state': 'added' if before is None else 'removed' if after is None else 'changed' if changed else 'retained',
+                      'before': before, 'after': after, 'assignment': {'before': old_member, 'after': new_member}}
+    fields = _amendment_fields(original, revised, omit=('task_id', 'input', 'composition', 'budget', 'amendment'))
+    inputs = _amendment_fields(old_input, new_input, omit=('work_units',))
+    composition = _amendment_fields(old_route, new_route, omit=('manifest',))
+    if not (fields or inputs or composition or any(unit['state'] != 'retained' for unit in units.values())):
+        raise ValueError('Amendment requires a substantive change to the original task definition')
+    return {'definition': fields, 'input': inputs, 'composition': composition, 'work_units': units}
 
 
 def matches_context(spec: dict, context: dict, admission: dict | None = None) -> bool:

@@ -83,25 +83,25 @@
     "native": {"protocol": "six-stage-v1", "instance": "root/development"},
     "backend_overrides": {
       "root/development/work/contract": {
-        "binding": {"tool": "codex", "sandbox": "current-container", "model": "gpt-6.1-sol", "reasoning_effort": "max"},
+        "binding": {"tool": "codex", "sandbox": "current-container", "model": "gpt-6.2-sol", "reasoning_effort": "max"},
         "reason": "Explicit trusted-container selection for the sole current-contract and fixture writer."
       },
       "root/development/work/server": {
-        "binding": {"tool": "codex", "sandbox": "current-container", "model": "gpt-6.1-sol", "reasoning_effort": "max"},
+        "binding": {"tool": "codex", "sandbox": "current-container", "model": "gpt-6.2-sol", "reasoning_effort": "max"},
         "reason": "Explicit trusted-container selection for the scoped server writer."
       },
       "root/development/work/client": {
-        "binding": {"tool": "codex", "sandbox": "current-container", "model": "gpt-6.1-sol", "reasoning_effort": "max"},
+        "binding": {"tool": "codex", "sandbox": "current-container", "model": "gpt-6.2-sol", "reasoning_effort": "max"},
         "reason": "Explicit trusted-container selection for the scoped client writer."
       },
       "root/development/work/integration-tests": {
-        "binding": {"tool": "codex", "sandbox": "current-container", "model": "gpt-6.1-sol", "reasoning_effort": "max"},
+        "binding": {"tool": "codex", "sandbox": "current-container", "model": "gpt-6.2-sol", "reasoning_effort": "max"},
         "reason": "Explicit trusted-container selection for the scoped validation writer."
       }
     },
     "diversity": {
       "policy": "prefer-distinct",
-      "reason": "Use separate gpt-6.1-sol implementation and review sessions satisfying each definition's model minimum."
+      "reason": "Use separate gpt-6.2-sol implementation and review sessions satisfying each definition's model minimum."
     }
   },
   "budget": {"wall_seconds": 3600, "cleanup_seconds": 30, "model_invocations": 17}

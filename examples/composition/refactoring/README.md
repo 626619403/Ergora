@@ -8,7 +8,7 @@ This example requires a registered Linux/WSL2 project with the original executio
 
    ```bash
    ergora composition install-preset refactoring
-   ergora composition prepare-manifest ergora-refactoring-template 1.3.6 \
+   ergora composition prepare-manifest ergora-refactoring-template 1.3.7 \
      --grant examples/composition/refactoring/grant.json \
      --directory ./refactoring-manifest
    ```
@@ -23,6 +23,6 @@ This example requires a registered Linux/WSL2 project with the original executio
 
 The default needs 3 inventory + 3 plan + 2 work + 3 review = 11 model slots, including both coordinators. Use the existing definition revision and exact-reference mechanisms to change members, expertise or dependencies, and update original work-unit assignments accordingly. The [specialist selection example](../development-specialists/README.md) shows a complete publication chain with real dependency receipts. One writer covers each original unit; both preparation groups use complete expert-results and terminal all-joins. Added required or explicitly advisory reviewers consume additional slots. Original task/profile and material limits apply.
 
-All specialists select Codex gpt-6.1-sol: the reusable preparation and work Agents require max, including both writer overrides; final review requires at least high. `backend_overrides` supplies complete bindings satisfying those Agent-level minimums; the example also selects current-container for writers. Same-backend review retains separate sessions and the declared `diversity.reason`; `require-distinct` rejects it. Actual provider configuration and environment credential references come from the operator's inference configuration, outside the template.
+All specialists select Codex gpt-6.2-sol: the reusable preparation and work Agents require max, including both writer overrides; final review requires at least high. `backend_overrides` supplies complete bindings satisfying those Agent-level minimums; the example also selects current-container for writers. Same-backend review retains separate sessions and the declared `diversity.reason`; `require-distinct` rejects it. Actual provider configuration and environment credential references come from the operator's inference configuration, outside the template.
 
 The parent includes repository conventions, real caller and test-seam guidance through its complete inherited Skill. Recover a started task through its original task/run identity.

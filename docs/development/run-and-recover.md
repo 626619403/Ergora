@@ -31,6 +31,26 @@ ergora task work-priority my-project TASK_ID DECISION_ID --run-id RUN_ID
 
 The task saves the exact attempt beside its submission records before sending one Temporal Update to the original run. After a lost response, `task work-priority` reads that decision's outcome under the same run and update IDs. Repeating the same decision also only reads that outcome. An unavailable outcome remains `unknown`. A rejection or unavailable worker before the attempt leaves no attempt. An update that races a dispatch, cancellation or cutoff may return a recorded rejection. Use workers that support this Update for all runs on the updated queue throughout execution and recovery.
 
+## Preview a substantive amendment and prepare its successor
+
+Use a new task ID and an edited schema-8 definition for the same registered project, repository and native issue. Include the revised requirements and the new budget policy in that file. Start with a comparison against the exact original budgeted run.
+
+```bash
+ergora task preview-amendment my-project ORIGINAL_TASK --run-id ORIGINAL_RUN \
+  --revision REVISION --definition revised.json --change 'Describe the revised work' > amendment.json
+```
+
+The read-only preview shows changed requirements, work membership, instructions, scope, assignments and dependencies, plus the observed state of original jobs and Plan. During a live run, a unit absent from the visible history is `not_observed`. An unconfirmed checkpoint returns `status: blocked` and a null `successor_definition`. Check the original submission, request cancellation if needed, and reconcile closure through the existing commands. The successor requires evidence of stopped jobs and a matched release in the original ingress ledger. An interrupted reconciliation with only `confirmed` state needs recovery using its original intent. An active SQLite WAL, rollback journal or changing ledger leaves the preview unconfirmed until it can read a stable checkpoint.
+
+When the preview returns `status: ready`, save the complete `successor_definition` object. `jq` is one way to extract it.
+
+```bash
+jq -e '.successor_definition | select(. != null)' amendment.json > successor.json
+ergora task prepare my-project --revision REVISION --definition successor.json
+```
+
+The ordinary `prepare` command verifies the exact original closed run, matching fence and terminal job evidence, and the durable release in the original ingress ledger before it authorizes the successor. It recomputes the substantive difference from the original definition. A new ID or budget alone leaves the work definition unchanged. Run the preview again after editing the proposed work or changing the project revision. Continue with the ordinary `task preview`, `create` and `start`, then inspect and approve the successor's own exact Plan. `task creation` includes its pinned amendment link. The successor has its own clock, model slots and six-stage evidence. Earlier work remains readable by its original identity. An intervening task may still own the issue when the successor tries to start.
+
 ## Read original-run events in pages
 
 For a task created through the unified entry point with its original submission receipt saved, pin that receipt's run ID and read event metadata:

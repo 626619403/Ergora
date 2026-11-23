@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "id": "ergora-opt-recipe-model-proposal",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Limited readonly recipe model proposal; complete optimization requires a shared training-proposal ancestor.",
   "resources": [
     {
@@ -41,8 +41,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-opt-recipe-model-expert",
-        "version": "1.1.0",
-        "digest": "15f9111ce686f71b01c80427fa9b00739327b2685637c308cd689a74c2639606"
+        "version": "1.1.1",
+        "digest": "40a28067270befaf6a43ea455db6fbbd60cf45c5c6330b5963e2cd2612ddf614"
       },
       "role": "performance-analyst",
       "depends_on": [],
@@ -66,8 +66,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-experiment-designer",
-        "version": "2.1.0",
-        "digest": "3b0ab4852241f20d62c8562129238bee89364f959c3e8d6055ce512fbfed5c1f"
+        "version": "2.1.1",
+        "digest": "90cca8c6d2b453518007043ef3fb0475b0bc62a405badcdb4cd440f6daecb3af"
       },
       "role": "experiment-planner",
       "depends_on": [],
@@ -99,8 +99,8 @@
       "ref": {
         "kind": "workflow",
         "id": "ergora-measurement-review",
-        "version": "2.0.1",
-        "digest": "d8b8e8abb2dd462b32d78d0b878c15f9c702448b386162426c28f4ff871ab914"
+        "version": "2.0.2",
+        "digest": "5042a91a1a214930935c1d5df5cdf0b1d8bebe092136f3fbc9346980976ea688"
       },
       "depends_on": [
         "analysis-results"

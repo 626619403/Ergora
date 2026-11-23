@@ -353,7 +353,9 @@ def task_reconciliation(project: dict, home: Path, operation: str, payload: dict
 
 def _task_operation(project: dict, home: Path, component: str, operation: str, payload: dict, timeout: int) -> dict:
     inspection = {'inspect-plan': 'Plan', 'inspect-events': 'Task event', 'inspect-job': 'Job evidence',
-                  'inspect-index': 'Task evidence index', 'export-handoff': 'Task handoff'}.get(operation)
+                  'inspect-index': 'Task evidence index', 'inspect-amendment': 'Amendment checkpoint',
+                  'inspect-amendment-release': 'Amendment release',
+                  'export-handoff': 'Task handoff'}.get(operation)
     if sys.platform != 'linux':
         raise ValueError(f'Formal task {component} requires Linux; use the registered Linux runtime in WSL2')
     execution = project['registration']['definition']['execution']

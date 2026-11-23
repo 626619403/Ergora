@@ -29,6 +29,26 @@ ergora task work-priority my-project TASK_ID DECISION_ID --run-id RUN_ID
 
 系统把尝试记录保存在原提交记录目录中，再向原运行发送 Temporal Update。请求回执丢失时，用 `task work-priority` 按原运行和决定 ID 查询。重复提交同一决定也只读取结果。结果暂不可查时，状态保留为 `unknown`。发送前检测到拒绝或 Worker 未提供此操作时，不会保存尝试记录。若请求与派发、取消或预算耗尽同时发生，原工作流可能返回一条已记录的拒绝结果。运行和恢复期间，更新后的队列使用支持此 Update 的 Worker。
 
+## 预览需求修订并准备后续任务
+
+为同一登记项目、仓库和原生工单写一份修订后的 schema-8 定义。使用新任务 ID，在定义中明确修订后的要求和新预算。按原任务和运行 ID 预览差异。
+
+```bash
+ergora task preview-amendment my-project ORIGINAL_TASK --run-id ORIGINAL_RUN \
+  --revision REVISION --definition revised.json --change '说明本次修订内容' > amendment.json
+```
+
+只读预览展示需求、工作单元、执行分配和依赖的差异，以及原计划和原作业已观察到的状态。`status: blocked` 时没有可用于准备的后续任务定义。按原 ID 确认任务提交、按需发起协作停止，再通过原对账入口核实终态作业和持久化释放结果。预览从原占用数据库核对实际释放记录。遇到 SQLite WAL、回滚日志或数据库正在变化时，暂缓确认，直到能读取稳定的检查点。
+
+预览返回 `status: ready` 后，将完整的 `successor_definition` 保存为 JSON，再显式执行现有准备命令。
+
+```bash
+jq -e '.successor_definition | select(. != null)' amendment.json > successor.json
+ergora task prepare my-project --revision REVISION --definition successor.json
+```
+
+`prepare` 在发放预算前核对原运行的关闭、围栏、作业终态和原工单占用的释放，并重新对比任务定义。只换任务 ID 或预算没有形成实质性修订。修改拟议工作或项目修订号后需要重新预览。后续任务继续走普通的预览、创建、提交和精确计划审批，独立执行六阶段。`task creation` 可查看绑定的原任务及证据。期间其他任务取得工单占用时，后续任务提交仍会按原规则拒绝。
+
 ## 分段读取原运行事件
 
 对统一创建且已保存原提交回执的任务，固定该回执的run ID，读取事件元数据：

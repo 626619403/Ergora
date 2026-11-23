@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "id": "ergora-api-contract-author",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "Inspect, plan or implement one current interface and migration of its real consumers.",
   "roles": [
     "inspector",
@@ -15,7 +15,7 @@
   ],
   "backend": {
     "tool": "codex",
-    "model": "gpt-6.1-sol",
+    "model": "gpt-6.2-sol",
     "reasoning_effort": "max"
   },
   "resources": [
@@ -33,7 +33,7 @@
     }
   ],
   "invocation_minimum": {
-    "model": "gpt-6.1-sol",
+    "model": "gpt-6.2-sol",
     "reasoning_effort": "max"
   }
 }

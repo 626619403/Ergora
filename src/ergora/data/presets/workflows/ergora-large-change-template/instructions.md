@@ -1,1 +1,1 @@
-Forward the original task to the single development child. The original six-stage owner retains stage order, exact plan approval, trusted checks, candidate evidence, budget and cleanup.
+Forward the original task to the sole development child. The six-stage owner retains stage order and exact plan approval.

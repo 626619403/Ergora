@@ -2,7 +2,7 @@
 
 简体中文 · [English](../../review/evidence-reports.md) · [文档目录](../../README.zh-CN.md)
 
-`evidence-report` 提供只读报告作者 `ergora-evidence-report-author@1.0.1`，根为 `ergora-evidence-report@1.0.1`，独立叶为 `root/author`。它把操作者完整提供的工程、研究或实验材料整理为 Markdown 和静态自包含 HTML，给出来源、实际覆盖与未验证范围。它与 [`review report`](../../review/materials.md) 的程序汇总不同：后者读取原 reviewer runs，不调用 LLM；本叶是一次明确的报告作者调用，不产生正式批准。
+`evidence-report` 提供只读报告作者 `ergora-evidence-report-author@1.0.2`，根为 `ergora-evidence-report@1.0.2`，独立叶为 `root/author`。它把操作者完整提供的工程、研究或实验材料整理为 Markdown 和静态自包含 HTML，给出来源、实际覆盖与未验证范围。它与 [`review report`](../../review/materials.md) 的程序汇总不同：后者读取原 reviewer runs，不调用 LLM；本叶是一次明确的报告作者调用，不产生正式批准。
 
 ## 优化报告
 
@@ -12,7 +12,7 @@
 
 ```bash
 ergora composition install-preset optimization-report
-ergora composition show ergora-evidence-report 2.0.1 --material
+ergora composition show ergora-evidence-report 2.0.2 --material
 ```
 
 然后沿下文 grant 与显式调用流程，把 `prepare-manifest` 版本换成 `2.0.1`，选择新的 manifest／input／output 目录。原证据、静态 HTML 检查和显式导出义务保持。报告不代替工作负载验证或性能验收。
@@ -40,7 +40,7 @@ ergora composition show ergora-evidence-report 2.0.1 --material
 
 ```bash
 ergora composition install-preset evidence-report
-ergora composition show ergora-evidence-report 1.0.1 --material
+ergora composition show ergora-evidence-report 1.0.2 --material
 ```
 
 保存 `report-grant.json`；此处与新根的精确只读上限一致：
@@ -54,7 +54,7 @@ ergora composition show ergora-evidence-report 1.0.1 --material
 ```
 
 ```bash
-ergora composition prepare-manifest ergora-evidence-report 1.0.1 \
+ergora composition prepare-manifest ergora-evidence-report 1.0.2 \
   --grant ./report-grant.json --directory ./report-manifest
 ergora composition prepare-from-manifest ./report-manifest root/author \
   --task ./report-task.md --directory ./report-input --max-prompt-bytes 250000
@@ -65,7 +65,7 @@ ergora composition run-input my-project ./report-input --mode text-only --backen
 ergora composition inspect-run my-project RUN_ID > ./report-observation.json
 ```
 
-Skill 全文自包含，text-only 内联读取即可，无需 MCP 附件或新工具授权。`max-prompt-bytes` 约束完整提示 UTF-8 字节，不承诺模型容量。内置作者要求 Codex `gpt-6.1-sol` 且推理强度至少 `high`，覆盖须满足定义下限。其他后端示例仅适用于未声明该下限的自定义定义，并仍须通过实际职能／模式准入。自定义provider按需通过`--codex-config`提供操作者原推理配置，模板不保存provider凭据。检查不会调用模型，也不证明安装／认证。没有自动失败回退或隐式重发；失败、unknown 或超时先保留原 run 并按原 owner 对账。
+Skill 全文自包含，text-only 内联读取即可，无需 MCP 附件或新工具授权。`max-prompt-bytes` 约束完整提示 UTF-8 字节，不承诺模型容量。内置作者要求 Codex `gpt-6.2-sol` 且推理强度至少 `high`，覆盖须满足定义下限。其他后端示例仅适用于未声明该下限的自定义定义，并仍须通过实际职能／模式准入。自定义provider按需通过`--codex-config`提供操作者原推理配置，模板不保存provider凭据。检查不会调用模型，也不证明安装／认证。没有自动失败回退或隐式重发；失败、unknown 或超时先保留原 run 并按原 owner 对账。
 
 ## 查看原结果并导出阅读视图
 

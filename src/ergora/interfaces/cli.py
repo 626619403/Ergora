@@ -35,7 +35,7 @@ from ergora.configuration import validation as contracts
 from ergora.storage.state import State, resolve_home
 
 
-def _definition_edit_parsers(operations) -> None:
+def _definition_edit_parsers(operations, *, workflow=False) -> None:
     revision = operations.add_parser("revise", help="Derive an immutable version from a pinned complete package")
     revision.add_argument("id")
     revision.add_argument("version", help="Exact base version")
@@ -46,6 +46,8 @@ def _definition_edit_parsers(operations) -> None:
     revision.add_argument("--resources", type=Path, help="Local changes.json and files/<package path> directory")
     revision.add_argument("--preview-resources", action="store_true", help="Suggest resource hashes and candidate identity without publishing")
     revision.add_argument("--accept-candidate", type=Path, help="Saved resource preview response explicitly accepted for this candidate")
+    if workflow:
+        revision.add_argument("--impact", type=Path, help="Measure this draft against explicit root references and grants in JSON")
     file = operations.add_parser("file", help="Read a bounded byte window of a pinned package file")
     file.add_argument("id")
     file.add_argument("version")
@@ -237,7 +239,7 @@ def parser() -> argparse.ArgumentParser:
     workflow.add_argument("arguments", nargs=argparse.REMAINDER)
     composition = commands.add_parser("composition", help="Check nested definitions, prepare inputs or explicitly invoke a leaf")
     operations = composition.add_subparsers(dest="operation", required=True)
-    _definition_edit_parsers(operations)
+    _definition_edit_parsers(operations, workflow=True)
     operations.add_parser("presets", help="List bundled domain recipes and their actual execution scope")
     preset = operations.add_parser("install-preset", help="Import a bundled recipe's exact dependencies; does not authorize execution")
     preset.add_argument("id", help="Bundled recipe ID from composition presets")
@@ -448,6 +450,14 @@ def parser() -> argparse.ArgumentParser:
         if name == "create":
             operation.add_argument("--preview-sha256", required=True)
             operation.add_argument("--prepare-sha256", help="Required for a budgeted v5–v7 task's original authorization")
+    amendment = operations.add_parser("preview-amendment", help="Compare a revised successor with the original task and closure evidence")
+    amendment.add_argument("project")
+    amendment.add_argument("task_id")
+    amendment.add_argument("--run-id", required=True)
+    amendment.add_argument("--definition", type=Path, required=True)
+    amendment.add_argument("--revision", type=int, required=True)
+    amendment.add_argument("--change", required=True)
+    amendment.add_argument("--timeout", type=int, default=20)
     for name in ("preparation", "creation", "resume-create"):
         operation = operations.add_parser(name)
         operation.add_argument("project")
@@ -1252,6 +1262,12 @@ def main(argv: list[str] | None = None) -> int:
             elif args.operation == "plan":
                 output = tasks.plan(state, args.project, args.task_id, run_id=args.run_id,
                                     plan_sha256=args.plan_sha256, timeout=args.timeout)
+            elif args.operation == "preview-amendment":
+                definition = json.loads(args.definition.read_text(encoding="utf-8-sig"))
+                output = tasks.preview_amendment(state, args.project, args.task_id, definition, args.revision,
+                    run_id=args.run_id, change=args.change, timeout=args.timeout)
+                print(json.dumps(output, ensure_ascii=False, indent=2))
+                return 0 if output['status'] == 'ready' else 1
             elif args.operation == "design":
                 if args.source_operation == "inspect":
                     output = tasks.design(state, args.project, args.task_id, run_id=args.run_id,
@@ -1371,6 +1387,14 @@ def main(argv: list[str] | None = None) -> int:
                 output = workflow_definitions.install_preset(State(args.home), args.id)
             elif args.operation == "check":
                 output = workflow_definitions.inspect_bundle(args.directory, material=args.material)
+            elif args.operation == "revise" and args.impact:
+                options = _definition_revision_options(args)
+                if options.pop("publish"):
+                    raise ValueError("--impact requires --check or --preview-resources")
+                output = workflow_definitions.revision_impact(resolve_home(args.home), args.id, args.version,
+                    args.base_digest, selection=definition_bundles.read_json(args.impact), **options)
+                print(json.dumps(output, ensure_ascii=False, indent=2))
+                return 0 if output["impact"]["status"] == "checked" else 1
             elif args.operation == "preview":
                 output = workflow_definitions.preview(resolve_home(args.home), args.id, args.version,
                                                        definition_bundles.read_json(args.grant))

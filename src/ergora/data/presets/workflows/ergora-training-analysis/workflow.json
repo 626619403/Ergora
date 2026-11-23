@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "id": "ergora-training-analysis",
-  "version": "2.2.1",
+  "version": "2.2.2",
   "description": "Develop independent experiment-design and evidence-based performance hypotheses from the same fixed workload.",
   "resources": [
     {
@@ -41,8 +41,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-experiment-designer",
-        "version": "2.1.0",
-        "digest": "3b0ab4852241f20d62c8562129238bee89364f959c3e8d6055ce512fbfed5c1f"
+        "version": "2.1.1",
+        "digest": "90cca8c6d2b453518007043ef3fb0475b0bc62a405badcdb4cd440f6daecb3af"
       },
       "role": "experiment-planner",
       "depends_on": [],
@@ -66,8 +66,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-performance-analyst",
-        "version": "2.3.0",
-        "digest": "34775f17c0c42d90e77aac2afe6e6c411f982229c2c57b7244ae02b452ed86a0"
+        "version": "2.3.1",
+        "digest": "a71aee4a0a46e2dd4090cc6e078e92e814ae3a0143c3db6b1c5a7fc5f4ccd577"
       },
       "role": "performance-analyst",
       "depends_on": [],

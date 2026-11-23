@@ -1,6 +1,18 @@
-# 当前设计流程的可用范围
+# 创建正式开发任务
 
 简体中文 · [English](../../development/tasks.md) · [文档目录](../../README.zh-CN.md)
+
+## 选择任务入口
+
+|目标|入口与结果|
+|---|---|
+|核对拟提交任务的输入和所选执行路径|运行 [task preview](#预览与创建正式任务)，读取摘要和静态准入结果即可。使用已登记项目，无需启动服务。|
+|针对已提供的材料做一次独立诊断|[准备单个叶子的输入，使用受支持的只读模式调用](../definitions/workflows/leaf-calls.md#调用一个准备好的叶子)。直接提供输入和所需前置证据，读取叶子回复与保存的本次调用记录。|
+|交付可独立审阅的小型代码改动|如果已登记的 `repository-governance` 模板和项目角色覆盖该改动，使用[一个限定范围的工作单元](#预览与创建正式任务)。沿[原六阶段任务](#正式任务的操作顺序与恢复)审阅精确计划，并查看精确候选的验证和独立评审证据。|
+
+任务确有组合需求时，选择[已保存的组合](../definitions/workflows/compose.md#在正式任务页面选择组合)。准备、实施和评审图只纳入任务需要的角色与依赖，并核对所选执行路径的准入。正式交付沿用登记的可信检查及原批准和评审门禁。
+
+## 当前设计流程的可用范围
 
 首次统一登记可以保存schema2设计policy及其有效摘要，并显示 `execution_supported: false` 与 `human_channel_unavailable`；schema2任务出生与受管native执行均以 `design_policy_execution_unsupported` 拒绝。已有登记不能通过该入口升级、替换或降级，详见[当前登记边界](../../projects/registration.md#current-limits-of-design-policy-registration)。这只提供policy存储，不是可执行设计批准；设计来源journal存取、可信owner／materials／gate处理仍按[PLAN](../../PLAN.md)实施，计划与调研不是已交付支持的证明。原schema1任务合同保留。
 

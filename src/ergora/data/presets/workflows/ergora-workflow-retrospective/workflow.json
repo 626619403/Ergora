@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "id": "ergora-workflow-retrospective",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Source-bound root workflow proposal and complementary readonly review; original import and manifest selection remain separate.",
   "resources": [
     {
@@ -47,8 +47,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-workflow-retrospective-author",
-        "version": "1.0.1",
-        "digest": "5936a0ac8fb5785d70b079a3058dcfb99f2585625f9c80386c866c3eea1d1b37"
+        "version": "1.0.2",
+        "digest": "449931355938b767db245f1ed49d7500399a8b249a10d6bbeba2bc44402e07a7"
       },
       "role": "implementer",
       "depends_on": [],
@@ -72,8 +72,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-workflow-retrospective-reviewer",
-        "version": "1.0.1",
-        "digest": "ff76f81b645b759456fae2bd150e3ce35c5e1d6fdf8790a81ca161e70214f1b9"
+        "version": "1.0.2",
+        "digest": "1fd38588e9099160db65c2461d1fab3041edf3c48c03224c452ba801ddec5f4a"
       },
       "role": "reviewer",
       "depends_on": [

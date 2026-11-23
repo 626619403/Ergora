@@ -429,8 +429,10 @@ class DefinitionLibrary:
 
     def revise(self, identity: str, version: str, base_digest: str, definition: dict, *, publish: bool = False,
                resource_changes: dict | None = None, accepted_candidate: dict | None = None,
-               preview_resources: bool = False) -> dict:
+               preview_resources: bool = False, inspect_check=None) -> dict:
         """Derive a complete candidate from a pinned historical package, without editing it."""
+        if publish and inspect_check is not None:
+            raise ValueError("A read-only revision inspector cannot publish")
         if resource_changes is None and (preview_resources or accepted_candidate is not None):
             raise ValueError("Resource preview/acceptance requires resource_changes")
         if preview_resources and (publish or accepted_candidate is not None):
@@ -441,7 +443,7 @@ class DefinitionLibrary:
                     "digest": self.schema["$defs"]["digest"],
                     "directories": {"type": "array", "maxItems": 500, "uniqueItems": True,
                                     "items": {"type": "string"}}}}, "Accepted resource candidate")
-        with tempfile.TemporaryDirectory(prefix=f".{self.kind}-revision-", dir=self.root) as temporary:
+        with tempfile.TemporaryDirectory(prefix=f".{self.kind}-revision-", dir=self.root if publish else None) as temporary:
             copy = Path(temporary) / "bundle"
             original = self.export(identity, version, copy)
             if original["digest"] != base_digest:
@@ -479,7 +481,7 @@ class DefinitionLibrary:
                          "directory_changes": {"added": sorted(set(directories) - set(old_directories)),
                                                "removed": sorted(set(old_directories) - set(directories))}}
             candidate = (self.import_bundle(copy, expected_directories=extra.get("candidate", {}).get("directories"))
-                         if publish else self.inspect_import(copy))
+                         if publish else (inspect_check or self.inspect_import)(copy))
             return {**{key: value for key, value in candidate.items() if key != "path"},
                     **extra,
                     "base": {"kind": self.kind, "id": identity, "version": version, "digest": base_digest},
