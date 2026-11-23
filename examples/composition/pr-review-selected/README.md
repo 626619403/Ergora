@@ -2,16 +2,16 @@
 
 This example selects five required reviewers for a process/concurrency change with performance implications: the existing structure, correctness and test-value branches, plus performance and resource lifecycle. The bundled `engineering-review` default remains the three core branches. Select specialists with facts before preview/freeze; there is no automatic diff classifier. Dependency, security and measurement are installed options and do not run unless selected. Missing evidence is `blocked`, not automatically `not-applicable`.
 
-The revision uses the existing `ergora-delivery-review@1.2.3` base, digest `97eeca3db1ad34f767e70763044447ccb6c0f8379ee0c377f2b17897fc45c450`. It publishes `ergora-selected-engineering-review@1.0.3`, digest `312cbaaca8dc4a83465fe0c03c44e21f81c897d9471a4a951c8a69a5948dd698`. The standard revision contains references only; inherited instructions and Skills remain in their original bundles. Old library objects and frozen tasks retain their identities.
+The revision uses the existing `ergora-delivery-review@1.2.4` base, digest `653b8dba06e953e60b9d6e30b7f368355bdbd846a0ed63efb096eb1d69d188a2`. It publishes `ergora-selected-engineering-review@1.0.4`, digest `1965dc2752381bdd60bd27d800b1bcd98009d84eebbdda0d6c9ee79b2847024e`. The standard revision contains references only; inherited instructions and Skills remain in their original bundles. Old library objects and frozen tasks retain their identities.
 
 From the repository root, use an explicit definition-library home. Every command below uses that same home:
 
 ```bash
 ergora --home ./review-home composition install-preset engineering-review
-ergora --home ./review-home composition revise ergora-delivery-review 1.2.3 \
-  --base-digest 97eeca3db1ad34f767e70763044447ccb6c0f8379ee0c377f2b17897fc45c450 \
+ergora --home ./review-home composition revise ergora-delivery-review 1.2.4 \
+  --base-digest 653b8dba06e953e60b9d6e30b7f368355bdbd846a0ed63efb096eb1d69d188a2 \
   --document examples/composition/pr-review-selected/root.revision.example.json
-ergora --home ./review-home composition prepare-manifest ergora-selected-engineering-review 1.0.3 \
+ergora --home ./review-home composition prepare-manifest ergora-selected-engineering-review 1.0.4 \
   --grant examples/composition/pr-review-selected/grant.json --directory ./selected-review-manifest
 ```
 

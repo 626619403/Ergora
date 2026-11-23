@@ -140,9 +140,9 @@
       "id": "ergora-delivery-review-instructions",
       "kind": "instructions",
       "path": "instructions.md",
-      "sha256": "09e19f1d3c1516535d8343ea001a57a5bfec822eb1b99a9b6f7ff35b734b425e"
+      "sha256": "7f17ca7666fb6fd973ccf78a09515960678d3e97262de350c856ea2d8a84c01b"
     }
   ],
   "schema_version": 2,
-  "version": "1.0.3"
+  "version": "1.0.4"
 }

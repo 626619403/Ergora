@@ -22,8 +22,8 @@
       "ref": {
         "kind": "workflow",
         "id": "ergora-large-change-delivery",
-        "version": "1.6.6",
-        "digest": "4328940873a637cad98e193cf175c01a877dca5f68c02b9a73cfafe7c0b089f3"
+        "version": "1.6.7",
+        "digest": "b63cc2ba40587ed810738f6e1ccc978170a8e3fe821a41928cd530e09c5e45cb"
       }
     }
   ],
@@ -53,5 +53,5 @@
     }
   ],
   "schema_version": 2,
-  "version": "1.1.6"
+  "version": "1.1.7"
 }
