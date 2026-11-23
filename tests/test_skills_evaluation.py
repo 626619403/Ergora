@@ -100,6 +100,43 @@ def test_holdout_regression_partial_evidence_and_mutation_are_rejected(skill_pro
         skill_assets.get(state, "demo", candidate["digest"])
 
 
+def test_selected_evaluation_archive_omits_unselected_case_material(skill_project):
+    state, _, _, baseline, suite = skill_project
+    manifest = suite["manifest"]
+    digest = suite["digest"]
+    full_run = evaluation.evaluate(state, "demo", baseline["digest"], digest)
+    full_path = Path(full_run["output"], "suite.json")
+    complete_snapshot = json.dumps(manifest, ensure_ascii=False, indent=2).encode("utf-8")
+    assert full_run["status"] == "succeeded" and full_path.read_bytes() == complete_snapshot
+    holdout = manifest["cases"][-1]
+    assert json.loads(Path(full_run["cases"][-1]["output"], "stdin.txt").read_bytes())["case"] == holdout["input"]
+
+    partial = evaluation.evaluate(state, "demo", baseline["digest"], digest, ["validation", "train", "validation"])
+    assert partial["status"] == "succeeded" and partial["suite"] == digest
+    output = Path(partial["output"])
+    raw = (output / "suite.json").read_bytes()
+    holdout_id = json.dumps(holdout["id"]).encode("utf-8")
+    holdout_value = holdout["input"]["data"].encode("utf-8")
+    assert holdout_id not in raw and holdout_value not in raw
+    selected = manifest["cases"][:2]
+    assert json.loads(raw) == {**manifest, "cases": selected, "partial": True, "suite_digest": digest}
+    assert [case["id"] for case in partial["cases"]] == [case["id"] for case in selected]
+    for row, case, full_row in zip(partial["cases"], selected, full_run["cases"][:2], strict=True):
+        request = json.loads(Path(row["output"], "stdin.txt").read_bytes())
+        assert set(request) == {"skill_dir", "case", "budget"}
+        assert request["skill_dir"] == baseline["path"] and request["case"] == case["input"]
+        assert (row["score"], row["passed"], row["cost"]) == (full_row["score"], full_row["passed"], full_row["cost"])
+    for file in output.rglob("*"):
+        if file.is_file():
+            raw = file.read_bytes()
+            assert holdout_id not in raw and holdout_value not in raw, file
+
+    reopened = State(state.root)
+    assert evaluation.get(reopened, "demo", partial["id"]) == partial
+    assert evaluation.suite(reopened, "demo", digest) == suite and evaluation.manifest_sha256(manifest) == digest
+    assert full_path.read_bytes() == complete_snapshot
+
+
 def test_missing_selected_asset_is_rejected_before_agent_or_evaluator_runs(skill_project):
     state, _, _, baseline, suite = skill_project
     Path(baseline["path"], "SKILL.md").unlink()
@@ -274,7 +311,12 @@ print(json.dumps({"skill":request["candidate"]["skill"].replace("BASELINE","IMPR
     assert skill_assets.versions(state, "demo")["active"][0]["digest"] == baseline["digest"]
     assert "SECRET_HELDOUT_VALUE" not in repo.joinpath("seen-proposer.json").read_text()
     for run_id in result["evaluations"]:
-        assert all(c["split"] != "holdout" for c in evaluation.get(state, "demo", run_id)["cases"])
+        run = evaluation.get(state, "demo", run_id)
+        assert all(c["split"] != "holdout" for c in run["cases"])
+        snapshot = json.loads(Path(run["output"], "suite.json").read_bytes())
+        assert snapshot["partial"] is True and snapshot["suite_digest"] == run["suite"] == suite["digest"]
+        assert [case["id"] for case in snapshot["cases"]] == [case["id"] for case in run["cases"]]
+        assert all(case["split"] != "holdout" for case in snapshot["cases"])
 
 
 def test_real_gepa_retains_failed_proposer_and_cost_budget_evidence(skill_project):
