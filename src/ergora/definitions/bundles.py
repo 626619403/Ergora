@@ -256,10 +256,17 @@ class DefinitionLibrary:
 
     @staticmethod
     def _publish_index(store: Path, index: dict) -> None:
+        destination = store / "index.json"
+        try:
+            mode = stat.S_IMODE(destination.stat().st_mode)
+        except FileNotFoundError:
+            mode = None
         with tempfile.TemporaryDirectory(prefix=".index-", dir=store) as temporary:
             path = Path(temporary) / "index.json"
             path.write_text(json.dumps(index, sort_keys=True, indent=2) + "\n", encoding="utf-8")
-            path.replace(store / "index.json")
+            if mode is not None:
+                path.chmod(mode)
+            path.replace(destination)
 
     def import_bundle(self, source: Path, *, expected_directories: list[str] | None = None) -> dict:
         original = self.inspect_import(source)

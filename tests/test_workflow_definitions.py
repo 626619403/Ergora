@@ -3,6 +3,7 @@
 from copy import deepcopy
 import hashlib
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -296,6 +297,35 @@ def imported(base, document, text=None):
     state, _, directory = base
     source = write_bundle(directory / (document["id"] + "-" + document["version"]), document, text)
     return workflows.import_bundle(state, source)
+
+
+@pytest.mark.skipif(os.name != "posix", reason="requires POSIX permission modes and umask")
+@pytest.mark.parametrize("kind", ["agent", "workflow"])
+@pytest.mark.parametrize("mode", [0o600, 0o664])
+def test_import_and_revision_preserve_existing_index_mode(tmp_path, kind, mode):
+    previous_umask = os.umask(0o002)
+    try:
+        state = State(tmp_path / "state")
+        agent = agent_definitions.import_bundle(state, EXAMPLES / "agents/architecture-reviewer")
+        owner = agent_definitions if kind == "agent" else workflows
+        original = agent if kind == "agent" else workflows.import_bundle(state, write_bundle(
+            tmp_path / "workflow", definition("mode-preservation", [leaf("review", ref(agent, "agent"))])))
+        index = state.root / f"{kind}-definitions/index.json"
+        assert index.stat().st_mode & 0o7777 == 0o664
+        before = json.loads(index.read_bytes())
+        index.chmod(mode)
+        updated = {**original["definition"], "version": "1.0.1"}
+        published = owner.revise(state, updated["id"], original["definition"]["version"],
+                                 original["digest"], updated, publish=True)
+        assert index.stat().st_mode & 0o7777 == mode
+        after = json.loads(index.read_bytes())
+        expected = deepcopy(before)
+        expected["definitions"][updated["id"]][updated["version"]] = published["digest"]
+        assert after == expected
+        assert owner.get(state, updated["id"], original["definition"]["version"]) == original
+        assert owner.get(state, updated["id"], updated["version"])["digest"] == published["digest"]
+    finally:
+        os.umask(previous_umask)
 
 
 def test_examples_expand_serial_and_parallel_all_join_without_dependency_inheritance(tmp_path):
