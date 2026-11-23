@@ -16,7 +16,9 @@ ergora task status my-project TASK_ID --run-id RUN_ID --timeout 20
 
 ## 提高待派发工作单元的优先级
 
-原计划批准后，监管者可以通过已登记的 Linux/WSL2 CLI 指定一个待派发的工作单元。任务须有 `task start` 的原提交回执。先查询原运行，取得 `status.work_priority.pending_work_unit_ids`、`plan_sha256` 和项目修订号。当前带预算的准备工作流需要由支持此操作的 Worker 执行，且查询显示 `work_priority.available`。为本次决定指定唯一的决定 ID。
+原计划批准后，监管者可以指定一个待派发的工作单元。任务须有 `task start` 的原提交回执。先查询原运行，取得 `status.work_priority.pending_work_unit_ids`、`plan_sha256` 和项目修订号。当前 Linux/WSL2 带预算的准备工作流需要由支持此操作的 Worker 执行，且查询显示 `work_priority.available`。为本次决定指定唯一的决定 ID。
+
+在正式任务页点击“读取原运行”，再点击“优先待派发工作单元”。从返回的列表中选择单元，填写并核对优先决定 ID。核对原 run ID、已批准计划 SHA256 和项目修订后，再确认此单元的优先级。结果未确认时，在同一任务中使用“按原 ID 读取优先决定”。运行闭合后仍可打开查询，也可输入通过 CLI 或 API 记录的决定 ID。
 
 ```bash
 ergora task status my-project TASK_ID --run-id RUN_ID
@@ -25,9 +27,11 @@ ergora task prioritize-work my-project TASK_ID UNIT_ID --revision REVISION \
 ergora task work-priority my-project TASK_ID DECISION_ID --run-id RUN_ID
 ```
 
+同源 API 使用 `POST /api/projects/ID/tasks/TASK_ID/work-priority/DECISION_ID`，请求头为 `X-Ergora-Request: 1`，JSON 正文包含 `revision`、`run_id`、`plan_sha256`、`work_unit_id`、`confirm: true` 和可选的 `timeout`。通过 `GET /api/projects/ID/tasks/TASK_ID/work-priority/DECISION_ID?run_id=RUN_ID&timeout=20` 读取原结果。
+
 `applied` 表示工作流已记录优先级。原前置工作完成且原并发限额允许时，该单元优先派发。等待期间，其他已就绪的单元仍可派发。后续决定可以改变优先项。每个单元沿用原输入、执行者和 Job ID，继续使用原计划审批、预算截止时间、集成、验证和审查流程。
 
-系统把尝试记录保存在原提交记录目录中，再向原运行发送 Temporal Update。请求回执丢失时，用 `task work-priority` 按原运行和决定 ID 查询。重复提交同一决定也只读取结果。结果暂不可查时，状态保留为 `unknown`。发送前检测到拒绝或 Worker 未提供此操作时，不会保存尝试记录。若请求与派发、取消或预算耗尽同时发生，原工作流可能返回一条已记录的拒绝结果。运行和恢复期间，更新后的队列使用支持此 Update 的 Worker。
+系统把尝试记录保存在原提交记录目录中，再向原运行发送 Temporal Update。请求回执丢失时，通过控制台的只读操作、API 或 `task work-priority` 按原运行和决定 ID 查询。重复提交已保存的决定只会读取原结果。结果暂不可查时，状态保留为 `unknown`。发送前检测到拒绝或 Worker 未提供此操作时，不会保存尝试记录。若请求与派发、取消或预算耗尽同时发生，原工作流可能返回一条已记录的拒绝结果。运行和恢复期间，更新后的队列使用支持此 Update 的 Worker。
 
 ## 预览需求修订并准备后续任务
 

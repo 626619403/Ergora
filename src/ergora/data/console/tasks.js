@@ -69,6 +69,7 @@ export function tasksView(data, base, { sourceSnapshot = "" } = {}) {
 
   const selectionKey = `ergora-task:${data.project.id}`;
   const preparationKey = `ergora-preparation:${data.project.id}`;
+  const controlDirectory = app.bootstrap.state_directory;
   const previousSelection = sessionStorage.getItem(selectionKey) || "";
   let selected = taskIdPattern.test(previousSelection) ? previousSelection : "";
   let listSequence = 0;
@@ -1050,6 +1051,112 @@ export function tasksView(data, base, { sourceSnapshot = "" } = {}) {
       if (decisionInput.value) await read();
     }
 
+    function workPriorityDialog(runId, selection = null, selectedRunSequence = null) {
+      const isSelected = () => view.isConnected && sequence === detailSequence &&
+        app.project === data.project.id && app.bootstrap.state_directory === controlDirectory &&
+        saved?.status === "submitted" && saved.run_id === runId &&
+        (!selection || selectedRunSequence === runSequence);
+      if (!isSelected()) return;
+      const decisionKey = `ergora-work-priority:${JSON.stringify([controlDirectory, data.project.id, taskId, runId])}`;
+      const decisionField = field("优先决定 ID", "decision_id", selection ? "" : sessionStorage.getItem(decisionKey) || "", "text", {
+        required: true, maxlength: 80, autocomplete: "off",
+      });
+      const unitField = selection ? select([["", "请选择待派发单元"], ...selection.pending], "", "work_unit_id") : null;
+      if (unitField) unitField.required = true;
+      const query = new URLSearchParams({ run_id: runId, timeout: "20" });
+      const controls = node("div");
+      const result = node("div", { "aria-live": "polite" });
+      const content = node("div", {},
+        facts([["原 run ID", runId], ...(selection ? [["已批准计划 SHA256", selection.plan], ["项目修订", selection.revision]] : [])]),
+        node("p", {}, selection
+          ? "优先级影响原队列下一次符合条件的派发，继续遵守已批准计划、前置依赖、并发限制与原预算。请保留本次决定 ID。"
+          : "按原决定 ID 读取结果，原运行闭合后也可查询。"),
+        controls, result,
+      );
+      const active = () => isSelected() && content.isConnected && $("#dialog").open;
+      let readingSequence = 0;
+      const decisionPath = (id) => `${path}/work-priority/${encodeURIComponent(id)}`;
+      const attemptKey = (id) => `${decisionKey}:attempted:${id}`;
+      controls.append(form([unitField ? node("label", {}, "待派发单元", unitField) : null, decisionField],
+        selection ? "核对优先决定 ID" : "读取原优先决定", read));
+      controls.addEventListener("input", () => {
+        readingSequence++;
+        result.replaceChildren();
+      });
+
+      function show(record, decisionId) {
+        if (record.project !== data.project.id || record.task_id !== taskId || record.run_id !== runId ||
+            record.decision_id !== decisionId) throw new Error("返回结果与原任务、运行或决定 ID 不符。");
+        const explanations = {
+          applied: "原工作流已记录此优先决定。单元符合原条件时优先派发。",
+          rejected: "原优先请求已被拒绝。",
+          unsupported: "原运行的 Worker 未提供工作优先级操作。",
+          unknown: "结果尚未确认。请按原决定 ID 读取结果。",
+          not_recorded: "未找到此决定的尝试记录。",
+        };
+        result.replaceChildren(panel(`工作优先决定：${record.status}`, explanations[record.status],
+          facts([["优先决定 ID", record.decision_id], ["原 run ID", record.run_id],
+            ["工作单元", record.work_unit_id], ["计划 SHA256", record.plan_sha256],
+            ["项目修订", record.project_revision], ["已保存的尝试", record.attempt_saved ? "有" : "无"]]),
+          record.reason ? node("p", {}, record.reason) : null,
+          disclosure("完整原优先决定", record),
+        ));
+      }
+
+      async function prioritize(decisionId, unitId, current) {
+        if (!current() || sessionStorage.getItem(attemptKey(decisionId))) return;
+        sessionStorage.setItem(decisionKey, decisionId);
+        sessionStorage.setItem(attemptKey(decisionId), "1");
+        controls.replaceChildren();
+        result.replaceChildren(empty(`正在提交原优先决定 ${decisionId}。`));
+        try {
+          const outcome = await api(decisionPath(decisionId), { run_id: runId, plan_sha256: selection.plan,
+            revision: selection.revision, work_unit_id: unitId, confirm: true, timeout: 20 });
+          if (!current()) return;
+          if (outcome.attempt_saved && (outcome.work_unit_id !== unitId || outcome.plan_sha256 !== selection.plan ||
+              outcome.project_revision !== selection.revision)) throw new Error("返回结果与提交的单元、计划或项目修订不符。");
+          show(outcome, decisionId);
+        } catch (error) {
+          if (current()) result.replaceChildren(panel("工作优先结果尚未确认", error.message,
+            node("p", {}, `请按原决定 ID ${decisionId} 查询结果。`)));
+        }
+        if (current()) result.append(button("按原 ID 读取优先决定", () => workPriorityDialog(runId)));
+      }
+
+      async function read(values) {
+        if (!active()) return;
+        const decisionId = values.get("decision_id");
+        const unitId = values.get("work_unit_id");
+        if (typeof decisionId !== "string" || !taskIdPattern.test(decisionId)) {
+          result.replaceChildren(panel("优先决定 ID 无效", "请输入 1–80 个字符，以英文字母或数字开头，其余字符可为英文字母、数字、连字符或下划线。"));
+          return;
+        }
+        if (selection && !selection.pending.includes(unitId)) return;
+        const reading = ++readingSequence;
+        const current = () => active() && reading === readingSequence;
+        result.replaceChildren(empty(`正在读取原优先决定 ${decisionId}…`));
+        try {
+          const record = await api(`${decisionPath(decisionId)}?${query}`);
+          if (!current()) return;
+          show(record, decisionId);
+          if (record.status !== "not_recorded") return;
+          if (sessionStorage.getItem(attemptKey(decisionId))) {
+            result.append(empty("此会话已尝试提交此决定，原请求可能仍在处理。请继续按原决定 ID 读取结果。"));
+            return;
+          }
+          if (!selection) return;
+          result.append(panel("确认本次优先决定", null,
+            facts([["待派发单元", unitId], ["优先决定 ID", decisionId]]),
+            form([], "确认优先此工作单元", () => prioritize(decisionId, unitId, current)),
+          ));
+        } catch (error) {
+          if (current()) result.replaceChildren(panel("原优先决定读取失败", error.message));
+        }
+      }
+
+      modal(selection ? "优先待派发工作单元" : "按原 ID 读取优先决定", content);
+    }
+
     async function cancellationDialog(runId = null, selectedRunSequence = null) {
       if (!view.isConnected || sequence !== detailSequence ||
           runId && selectedRunSequence !== runSequence) return;
@@ -1473,6 +1580,16 @@ export function tasksView(data, base, { sourceSnapshot = "" } = {}) {
       if (!view.isConnected || sequence !== detailSequence || reading !== runSequence) return;
       const state = observed.status || observed.outcome;
       const currentStage = observed.terminal ? null : stageForPhase[observed.phase];
+      const originalImplementation = saved?.status === "submitted" && saved.run_id === runId &&
+        observed.project === data.project.id && observed.task_id === taskId &&
+        observed.run_id === runId && observed.workflow_id === saved.workflow_id &&
+        observed.runtime_status === "queried" && observed.terminal === false && observed.phase === "IMPLEMENTING";
+      const priority = originalImplementation ? state?.work_priority : null;
+      const pending = priority?.pending_work_unit_ids;
+      const canPrioritize = priority?.available === true && Array.isArray(pending) && pending.length > 0 &&
+        pending.every((id) => typeof id === "string" && taskIdPattern.test(id)) &&
+        typeof state.plan_sha256 === "string" && /^[0-9a-f]{64}$/.test(state.plan_sha256) &&
+        Number.isSafeInteger(observed.project_revision) && observed.project_revision > 0;
       runtime.replaceChildren(...[
         row(badge(observed.runtime_status), observed.phase ? badge(observed.phase) : null),
         observed.runtime_status === "not_found"
@@ -1491,6 +1608,11 @@ export function tasksView(data, base, { sourceSnapshot = "" } = {}) {
             if (!view.isConnected || sequence !== detailSequence || reading !== runSequence) return;
             return approvalDialog({ run_id: observed.run_id, plan_sha256: observed.status.plan_sha256 }, reading);
           }, "primary") : null,
+        canPrioritize ? button("优先待派发工作单元", () => workPriorityDialog(runId, {
+          pending, plan: state.plan_sha256, revision: observed.project_revision,
+        }, reading)) : null,
+        originalImplementation && !canPrioritize ? empty(priority?.unavailable_reason ??
+          "本次原运行状态未提供可确认的工作优先级操作。") : null,
         !observed.terminal && observed.runtime_status === "queried"
           ? button("请求取消此运行", () => cancellationDialog(observed.run_id, reading)) : null,
         observed.terminal && observed.runtime_status === "queried"
@@ -1538,6 +1660,7 @@ export function tasksView(data, base, { sourceSnapshot = "" } = {}) {
         runtime,
         saved?.status === "submitted" ? row(
           button("按原 ID 检查批准记录", () => approvalDialog()),
+          button("按原 ID 读取优先决定", () => workPriorityDialog(saved.run_id)),
           button("按原 ID 检查取消记录", () => cancellationDialog()),
           button("检查原对账记录与恢复", () => reconciliationDialog()),
           button("检查原导出记录与恢复", () => exportDialog()),
