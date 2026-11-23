@@ -889,6 +889,103 @@ def test_changed_snapshot_fails_before_model_call_and_keeps_durable_failure(prep
     assert not (state.root / "runs" / (run["id"] + ".protocol")).exists()
 
 
+@pytest.mark.skipif(sys.platform != 'linux', reason='Original supervised cleanup requires Linux')
+def test_independent_call_stop_during_snapshot_confirms_preparation_cleanup(prepared, monkeypatch):
+    state, _, source = prepared()
+    copy = shutil.copy2
+    stopped = False
+
+    def stop_copy(*args, **kwargs):
+        nonlocal stopped
+        result = copy(*args, **kwargs)
+        stopped = True
+        return result
+
+    monkeypatch.setattr(shutil, 'copy2', stop_copy)
+    monkeypatch.setattr(processes, 'prepare_supervised', lambda: None)
+    monkeypatch.setattr(processes, '_reap_children', lambda: [])
+    monkeypatch.setattr(agents, 'invoke', lambda *a, **k: pytest.fail('Stopped snapshot cannot invoke'))
+    run = agent_runs.run_input(state, 'demo', source, supervised=True, record_lifecycle=True,
+                              stop_requested=lambda: stopped)
+    assert run['status'] == 'failed' and 'parent stopped' in run['error']
+    cleanup = state.root / 'runs' / (run['id'] + '.preparation-cleanup') / 'record.json'
+    assert json.loads(cleanup.read_bytes())['kind'] == 'composition-preparation-cleanup'
+    assert agent_runs.runs(State(state.root), 'demo')[0] == run
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Task MCP fixed-resource descriptors require Linux')
+def test_independent_call_mcp_preparation_stop_fences_native(prepared, monkeypatch):
+    import ergora.agents.mcp as task_mcp
+    state, _, source = prepared()
+    stopped = False
+    monkeypatch.setattr(task_mcp, 'check_available', lambda: None)
+
+    async def stop_probe(*args, **kwargs):
+        nonlocal stopped
+        assert kwargs['remaining']() == .125
+        stopped = True
+        assert kwargs['stop_requested']()
+        raise ValueError('Original parent stopped inside MCP preflight')
+
+    monkeypatch.setattr(task_mcp, 'probe', stop_probe)
+    monkeypatch.setattr(agents, 'invoke', lambda *a, **k: pytest.fail('Stopped MCP cannot invoke'))
+    run = agent_runs.run_input(state, 'demo', source, mode='task-mcp',
+                              stop_requested=lambda: stopped, remaining=lambda: .125)
+    assert run['status'] == 'failed' and 'inside MCP' in run['error']
+    assert not (state.root / 'runs' / (run['id'] + '.protocol')).exists()
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Original supervised cleanup requires Linux')
+def test_independent_call_fractional_allowance_reaches_original_process_lifecycle(prepared, monkeypatch):
+    state, _, source = prepared()
+    monkeypatch.setattr(processes, 'prepare_supervised', lambda: None)
+    monkeypatch.setattr(processes, '_reap_children', lambda: pytest.fail('Native lifecycle already returned'))
+    calls = []
+
+    def native(argv, cwd, output, timeout, stdin, env, **options):
+        calls.append(timeout)
+        assert options['supervised'] and options['record_lifecycle'] and not options['stop_requested']()
+        output.mkdir()
+        (output / 'process-cleanup.json').write_text('{}')
+        Path(argv[argv.index('--output-last-message') + 1]).write_text(json.dumps(
+            {'summary': 'Review', 'artifacts': {'response': 'Evidence'}, 'decision': 'approve'}))
+        return {'status': 'succeeded', 'returncode': 0, 'output': str(output)}
+
+    monkeypatch.setattr(processes, 'run', native)
+    run = agent_runs.run_input(state, 'demo', source, timeout=7, supervised=True, record_lifecycle=True,
+                              stop_requested=lambda: False, remaining=lambda: .125)
+    assert run['status'] == 'succeeded' and calls == [.125]
+    assert not (state.root / 'runs' / (run['id'] + '.preparation-cleanup')).exists()
+
+
+@pytest.mark.parametrize('boundary', ['command', 'result'])
+def test_independent_call_original_stop_fences_final_spawn_and_result(prepared, monkeypatch, boundary):
+    state, _, source = prepared()
+    stopped, calls = False, []
+    method = 'command' if boundary == 'command' else 'read_result'
+    original = getattr(agent_backends.CodexBackend, method)
+
+    def stop_boundary(*args, **kwargs):
+        nonlocal stopped
+        result = original(*args, **kwargs)
+        stopped = True
+        return result
+
+    def native(argv, cwd, output, *args, **kwargs):
+        calls.append(argv)
+        output.mkdir()
+        Path(argv[argv.index('--output-last-message') + 1]).write_text(json.dumps(
+            {'summary': 'Review', 'artifacts': {'response': 'Evidence'}, 'decision': 'approve'}))
+        return {'status': 'succeeded', 'returncode': 0, 'output': str(output)}
+
+    monkeypatch.setattr(agent_backends.CodexBackend, method, stop_boundary)
+    monkeypatch.setattr(processes, 'run', native)
+    run = agent_runs.run_input(state, 'demo', source, stop_requested=lambda: stopped)
+    assert run['status'] == 'failed' and 'result' not in run
+    assert len(calls) == (0 if boundary == 'command' else 1)
+    assert agent_runs.runs(State(state.root), 'demo')[0] == run
+
+
 @pytest.mark.parametrize("failure", ["timed_out", "invalid-result", "deep-json"])
 def test_unsuccessful_calls_are_visible_in_cli_and_durable_record(prepared, monkeypatch, capsys, failure):
     state, _, source = prepared()
