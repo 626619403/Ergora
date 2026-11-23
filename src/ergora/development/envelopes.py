@@ -5,11 +5,14 @@ static manifest bytes and selections to the unchanged legacy execution spec.
 """
 
 import base64
+from collections.abc import Collection
 import hashlib
 import json
 
 from ergora.configuration.catalog import validate_agent_minimum
-from ergora.development.dags import ReviewDAG, WorkDelivery, preparation_members, preparation_stages, require_root_task
+from ergora.development.dags import (
+    ReviewDAG, RouteBlocked, WorkDelivery, preparation_members, preparation_stages, require_root_task,
+)
 from ergora.issues.identity import validate_snapshot
 from ergora.development import verification as fixed_verification
 from ergora.training.materials import decode_record
@@ -274,8 +277,8 @@ def manifest_graph(snapshot: dict) -> dict:
 def review_members(composition: dict) -> dict:
     """Select direct-input reviewers and the bounded explicit parallel shape.
 
-    Creation and history may retain other valid static graphs. Submission and
-    the executor share this narrower support contract; backend/resource checks
+    Saved history may contain other valid static graphs. Task preview, creation,
+    submission and the executor share this support contract; backend/resource checks
     still belong to the actual execution admission.
     """
     graph = manifest_graph(composition['manifest'])
@@ -298,7 +301,7 @@ def review_members(composition: dict) -> dict:
     for leaf in members.values():
         if (leaf['role'] != 'reviewer' or leaf['permissions']['write']
                 or leaf['permissions']['shell'] or leaf['permissions']['network']):
-            raise ValueError('Composition review requires a read-only reviewer without shell or network')
+            raise RouteBlocked(leaf['path'], 'Composition review requires a read-only reviewer without shell or network')
         require_root_task(instances, leaf)
     if len(members) == 1 and graph['schema_version'] == 1:
         return members
@@ -307,22 +310,22 @@ def review_members(composition: dict) -> dict:
 
     def coverage(path: str, port: str, active: frozenset) -> set:
         if path in active:
-            raise ValueError('Composition review output cycle')
+            raise RouteBlocked(path, 'Composition review output cycle')
         if (path, port) in covered:
             return covered[path, port]
         node = instances[path]
         if port not in node['outputs']:
-            raise ValueError('Composition review has an unknown output port')
+            raise RouteBlocked(path, 'Composition review has an unknown output port')
         if node['kind'] == 'agent':
             result = {path}
         elif node['kind'] == 'workflow':
             origin = node['outputs'][port]
             if 'input' in origin:
-                raise ValueError('Composition review output must refer to an executed reviewer')
+                raise RouteBlocked(path, 'Composition review output must refer to an executed reviewer')
             result = coverage(path + '/' + origin['node'], origin['output'], active | {path})
         else:
             if node['join'] != 'all' or not node['depends_on']:
-                raise ValueError('Composition review requires a nonempty all-join')
+                raise RouteBlocked(path, 'Composition review requires a nonempty all-join')
             result = set()
             for dependency in node['depends_on']:
                 for output in instances[dependency]['outputs']:
@@ -332,14 +335,14 @@ def review_members(composition: dict) -> dict:
 
     selected = instances[composition['review_instance']]
     if len(selected['outputs']) != 1:
-        raise ValueError('Parallel composition review requires one explicit all-join output')
+        raise RouteBlocked(selected['path'], 'Parallel composition review requires one explicit all-join output')
     origin = next(iter(selected['outputs'].values()))
     if 'input' in origin:
-        raise ValueError('Parallel composition review output must refer to an explicit all-join')
+        raise RouteBlocked(selected['path'], 'Parallel composition review output must refer to an explicit all-join')
     terminal = instances[selected['path'] + '/' + origin['node']]
     if (terminal['kind'] != 'join' or terminal['join'] != 'all'
             or coverage(selected['path'], next(iter(selected['outputs'])), frozenset()) != members.keys()):
-        raise ValueError('Parallel composition review requires an explicit all-join covering every reviewer leaf')
+        raise RouteBlocked(selected['path'], 'Parallel composition review requires an explicit all-join covering every reviewer leaf')
     scopes = {}
     for leaf in members.values():
         for scope in leaf['concurrency_scopes']:
@@ -393,6 +396,26 @@ def outcome_reference_state(outcome: dict | None, job: dict) -> str:
     if job['receipt'] is None:
         return 'unavailable'
     return 'matches' if reference['receipt_sha256'] == job['receipt_sha256'] else 'differs'
+
+
+def require_skill_attachment_mode(instances: dict, composition: dict, manifest_files: Collection[str]) -> None:
+    """Require a fixed resource reader when selected leaves inherit Skill attachments."""
+    # SKILL.md and ordinary resources are already complete inline text.
+    # Other Skill files require the fixed MCP resource reader; naming an
+    # attachment in a prompt is not byte delivery in text-only mode.
+    selected = {**composition['members'], **composition['execution']['members'], **composition['preparation']['members']}
+    for path, member in selected.items():
+        if member['mode'] != 'text-only':
+            continue
+        for resource in instances[path]['resources']:
+            if resource['kind'] != 'skill':
+                continue
+            for origin in resource['sources']:
+                ref = origin['definition']
+                prefix = 'assets/' + ref['kind'] + '-definitions/objects/' + ref['digest'] + '/' + origin['path'] + '/'
+                if any(name.startswith(prefix) and name != prefix + 'SKILL.md'
+                       for name in manifest_files):
+                    raise RouteBlocked(path, 'Complete Skill attachments require task-mcp mode')
 
 
 def unwrap(document: dict) -> tuple[dict, dict | None]:
@@ -544,22 +567,7 @@ def unwrap(document: dict) -> tuple[dict, dict | None]:
     if document['schema_version'] in (4, 5, 6, 7, 12):
         review_members(composition)
     if document['schema_version'] == 12:
-        # SKILL.md and ordinary resources are already complete inline text.
-        # Other Skill files require the fixed MCP resource reader; naming an
-        # attachment in a prompt is not byte delivery in text-only mode.
-        selected = {**members, **composition['execution']['members'], **composition['preparation']['members']}
-        for path, member in selected.items():
-            if member['mode'] != 'text-only':
-                continue
-            for resource in instances[path]['resources']:
-                if resource['kind'] != 'skill':
-                    continue
-                for origin in resource['sources']:
-                    ref = origin['definition']
-                    prefix = 'assets/' + ref['kind'] + '-definitions/objects/' + ref['digest'] + '/' + origin['path'] + '/'
-                    if any(name.startswith(prefix) and name != prefix + 'SKILL.md'
-                           for name in composition['manifest']['files']):
-                        raise ValueError('Complete Skill attachments require task-mcp mode: ' + path)
+        require_skill_attachment_mode(instances, composition, composition['manifest']['files'])
     if 'issue_source' in document:
         saved = document['issue_source']
         validate_snapshot(saved)
@@ -625,22 +633,44 @@ def _initial_context(document: dict, expected_sha: str | None, stage: str, ports
     return context
 
 
+def route_admission(composition: dict | None, error: ValueError | None = None) -> dict:
+    """Present a static check alongside, and outside, the frozen task identity."""
+    if composition is None:
+        route, instance = 'project-roles', None
+    elif 'native' in composition:
+        route, instance = 'native-six-stage', composition['native']['instance']
+    elif 'execution' in composition:
+        route, instance = 'work-delivery', composition['execution']['instance']
+    else:
+        route, instance = 'formal-review', composition['review_instance']
+    result = {'route': route, 'status': 'blocked' if error is not None else 'admitted',
+              'graph_status': 'not_selected' if composition is None else 'valid'}
+    if isinstance(error, RouteBlocked):
+        instance = error.instance
+    if instance is not None:
+        result['instance'] = instance
+    if error is not None:
+        result['reason'] = error.reason if isinstance(error, RouteBlocked) else str(error)
+    return result
+
+
 def summary(document: dict) -> dict:
     """Summarize verified history; runtime support describes shape, not readiness."""
     composition = document['composition']
     try:
         review_members(composition)
-    except ValueError:
-        supported = False
+    except ValueError as error:
+        admission = route_admission(composition, error)
     else:
-        supported = True
+        admission = route_admission(composition)
     return {'envelope_sha256': document['sha256'], 'manifest_digest': composition['manifest']['digest'],
             'root': composition['root'], 'review_instance': composition['review_instance'],
             **({'review_protocol': composition['review_protocol']} if 'review_protocol' in composition else {}),
             **({'execution': composition['execution']} if 'execution' in composition else {}),
             **({'preparation': composition['preparation']} if 'preparation' in composition else {}),
             **({'native': composition['native']} if 'native' in composition else {}),
-            'members': composition['members'], 'diversity': composition['diversity'], 'runtime_supported': supported,
+            'members': composition['members'], 'diversity': composition['diversity'],
+            'runtime_supported': admission['status'] == 'admitted', 'route_admission': admission,
             **({'budget': document['budget']}
                if 'budget' in document else {}),
             **({'context': document['context']} if 'context' in document else {}),

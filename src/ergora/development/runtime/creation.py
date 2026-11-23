@@ -138,6 +138,26 @@ class _Creation:
         return record
 
     @staticmethod
+    def require_selected_route(record: dict) -> None:
+        composition = record['files']['task.spec.json'].get('composition')
+        if composition is not None:
+            # Work, preparation and native invocation have already been checked
+            # when validating the record. Older review shapes may still be read.
+            task_envelopes.review_members(composition)
+
+    def preview_result(self, record: dict, **extra) -> dict:
+        composition = record['files']['task.spec.json'].get('composition')
+        try:
+            self.require_selected_route(record)
+        except ValueError as error:
+            admission = task_envelopes.route_admission(composition, error)
+        else:
+            admission = task_envelopes.route_admission(composition)
+        return {**record, **extra, 'preview_sha256': self.sha(record), 'status': 'preview',
+                'route_admission': admission, 'runtime_status': 'not_queried',
+                'execution_started_by_operation': False}
+
+    @staticmethod
     def check_size(value: dict, limit: int, name: str) -> None:
         raw = (json.dumps(value, ensure_ascii=False, indent=2, allow_nan=False) + '\n').encode('utf-8')
         if len(raw) > limit:
@@ -332,13 +352,22 @@ class _Creation:
         if self.active_budget is not None:
             reference_budget.require_remaining(self.active_budget)
 
-    def preparation(self) -> dict:
-        """Read only the original authorization and its small completion witness."""
+    def preparation(self, *, require_unused_id: bool = False) -> dict:
+        """Read the original authorization and verify absence when previewing a fresh task."""
         instance = self.optional(self.prepare_path)
         result = {'project': self.project['id'], 'task_id': self.task_id,
                   'runtime_status': 'not_queried', 'execution_started_by_operation': False}
         if instance is None:
-            return {**result, 'status': 'not_recorded'}
+            evidence = (self.prepare_attempt, self.prepare_result, self.prepared_path, self.prepare_work)
+            if require_unused_id:
+                evidence += (self.target, self.intent_path, self.result_path)
+            if not any(path.exists() for path in evidence):
+                return {**result, 'status': 'not_recorded'}
+            # A concurrent owner can publish authorization and later evidence
+            # between the two reads. Only that original authorization can bind them.
+            instance = self.optional(self.prepare_path)
+            if instance is None:
+                raise ValueError('Original task or preparation evidence exists without its budget authorization')
         reference_budget.validate(instance)
         owner = instance['scope']
         if (owner['control_home'] != self.payload['control_home'] or owner['project'] != self.project['id']
@@ -380,8 +409,7 @@ class _Creation:
                 'budget_status': budget_status,
                 **({'outcome': outcome} if outcome else {})}
 
-    def prepared_record(self) -> dict:
-        status = self.preparation()
+    def prepared_record(self, status: dict) -> dict:
         if status['status'] != 'prepared':
             raise ValueError('No confirmed complete preparation; inspect preparation for the original task ID')
         record = self.document(self.prepared_path, _INTENT_LIMIT)
@@ -510,7 +538,13 @@ class _Creation:
                 if (current['revision'] != self.project['revision']
                         or current.get('registration') != self.project['registration']):
                     raise ValueError('Project revision changed before budget publication')
-            record = self.prepared_record() if operation in ('preview', 'create') else self.load()
+            if operation in ('preview', 'create'):
+                status = self.preparation(require_unused_id=operation == 'preview')
+                if operation == 'preview' and status['status'] == 'not_recorded':
+                    return {'status': 'not_prepared'}
+                record = self.prepared_record(status)
+            else:
+                record = self.load()
             if record is None or record['schema_version'] != 8:
                 raise ValueError('Budget operation requires the original budgeted preparation')
             instance = record['files']['task.spec.json']['budget']['instance']
@@ -523,8 +557,7 @@ class _Creation:
             if operation == 'preview':
                 if 'context' in record['files']['task.spec.json']:
                     task_context.require_current(State(Path(record['control_home'])), record['project'], record['files']['task.spec.json'])
-                return {**record, 'prepare_sha256': instance['sha256'], 'preview_sha256': self.sha(record),
-                        'status': 'preview', 'runtime_status': 'not_queried', 'execution_started_by_operation': False}
+                return self.preview_result(record, prepare_sha256=instance['sha256'])
             if operation == 'create' and (self.payload['prepare_sha256'] != instance['sha256']
                     or self.payload['preview_sha256'] != self.sha(record)):
                 raise ValueError('Preparation or preview changed; inspect the original preparation')
@@ -560,10 +593,10 @@ class _Creation:
         if operation in ('preview', 'create'):
             record = self.compile(temporary)
             if operation == 'preview':
-                return {**record, 'preview_sha256': self.sha(record), 'status': 'preview',
-                        'runtime_status': 'not_queried', 'execution_started_by_operation': False}
+                return self.preview_result(record)
             if self.payload['preview_sha256'] != self.sha(record):
                 raise ValueError('Task preview changed; inspect a fresh preview before creating')
+            self.require_selected_route(record)
         elif operation == 'status':
             return self.status(self.load())
         elif operation == 'published':
@@ -604,9 +637,8 @@ def preparation_worker() -> None:
     if reference_budget.scope(project, state.root, payload['definition']) != instance['scope']:
         raise ValueError('Project or definition changed after original preparation authorization')
     selected = tasks._definition(state, project, payload['definition'], working_directory=STATE)
-    budget = {'instance': instance, 'slots': reference_budget.call_slots(selected['composition'])}
-    if len(budget['slots']) > instance['policy']['model_invocations']:
-        raise ValueError('Known model call slots exceed the original invocation cap')
+    slots = reference_budget.call_slots(selected['composition'], invocation_cap=instance['policy']['model_invocations'])
+    budget = {'instance': instance, 'slots': slots}
     reference_budget.require_remaining(instance)
     record = _Creation({**payload, **selected, 'budget': budget}).compile(STATE)
     reference_budget.require_remaining(instance)

@@ -202,7 +202,7 @@ export function tasksView(data, base, { sourceSnapshot = "" } = {}) {
     let preparationPending = false;
     const compositionEditor = taskComposition({
       tools: app.bootstrap.tools, projectId: data.project.id, base,
-      input: () => JSON.parse(input.value), active: () => active(), invalidate, prepare: prepareNative,
+      input: () => JSON.parse(input.value), active: () => active(), invalidate,
     });
     const fields = node("fieldset", { className: "task-creation-fields" },
       node("label", {}, "已登记开发模板", kind),
@@ -236,62 +236,92 @@ export function tasksView(data, base, { sourceSnapshot = "" } = {}) {
       if (values.get("starting_sha")) definition.starting_sha = values.get("starting_sha");
       return definition;
     }
-    function prepareNative() {
-      if (!active() || creationLocked || preparationPending || !editor.reportValidity()) return;
-      invalidate();
-      const reading = sequence;
-      let definition;
-      try {
-        definition = definitionFrom(new FormData(editor));
-        if (!definition.budget) throw new Error("请先选择完整 manifest 的原生六阶段入口并填写准备与预算配置。");
-      } catch (error) {
-        result.replaceChildren(panel("准备配置失败", error.message));
-        return;
-      }
-      result.replaceChildren(panel("授权准备前确认", "确认后保存此输入并开始预算计时，只冻结材料；模型执行仍需创建并另外启动。输入一旦授权不得在同一任务 ID 下修改。",
-        disclosure("将授权的完整输入", definition),
-        row(button("下载完整授权输入", () => download(`${definition.task_id}.authorized-definition.json`, JSON.stringify(definition, null, 2) + "\n", "application/json"))),
-        node("p", {}, "关闭或刷新页面会释放此表单；请先下载。原ID查询只读准备状态，CLI可用下载文件继续预览和创建，预算仍按原期限计算。"),
-        form([], "确认授权准备（开始预算计时）", async () => {
+    function admissionFacts(snapshot) {
+      const admission = snapshot.route_admission;
+      const routes = {
+        "project-roles": "项目角色", "formal-review": "正式审查",
+        "work-delivery": "组合执行与审查", "native-six-stage": "原生六阶段",
+      };
+      return facts([
+        ["组合图", admission.graph_status === "valid" ? "有效" : "未选择组合"],
+        ["执行路线", routes[admission.route]],
+        ["静态准入", admission.status === "admitted" ? "通过" : "受阻"],
+        ...(admission.instance ? [["实例", admission.instance]] : []),
+        ...(admission.reason ? [["阻塞原因", admission.reason]] : []),
+        ["运行环境", "未查询"],
+      ]);
+    }
+    function showNativePreparation(snapshot, definition, reading) {
+      const downloadDefinition = () => download(`${definition.task_id}.authorized-definition.json`,
+        JSON.stringify(definition, null, 2) + "\n", "application/json");
+      const admitted = snapshot.route_admission.status === "admitted";
+      result.replaceChildren(panel(admitted ? "核对静态路线与准备授权" : "所选路线受阻",
+        "此预览检查已保存的基础图与所选阶段。来源、追加资料与完整冻结输入在原授权准备中核对。",
+        admissionFacts(snapshot),
+        facts([
+          ["项目修订", snapshot.project_revision], ["任务 ID", snapshot.task_id],
+          ["图预览 SHA256", snapshot.graph_preview_sha256], ["manifest SHA256", snapshot.manifest_digest],
+          ["定义 SHA256", snapshot.definition_sha256],
+        ]),
+        admitted ? node("p", {}, "确认后保存此输入并开始预算计时。模型执行仍需创建并另外启动。输入一旦授权不得在同一任务 ID 下修改。") : null,
+        admitted ? disclosure("将授权的完整输入", definition) : null,
+        admitted ? row(button("下载完整授权输入", downloadDefinition)) : null,
+        admitted ? node("p", {}, "关闭或刷新页面前请下载授权输入。可按原 ID 读取准备状态，或使用下载文件通过 CLI 继续。") : null,
+        admitted ? form([], "确认授权准备（开始预算计时）", async () => {
           if (!current(reading) || creationLocked || preparationPending) return;
           preparationPending = true;
           fields.disabled = true;
           sessionStorage.setItem(preparationKey, definition.task_id);
           result.replaceChildren(empty(`正在准备 ${definition.task_id}；请保留此原任务 ID，关闭页面不会撤销授权。`));
           try {
-            const record = await api(`${base}/tasks/prepare`, { definition, revision: data.project.revision });
+            const record = await api(`${base}/tasks/prepare`, { definition, revision: snapshot.project_revision });
             if (current(reading)) result.replaceChildren(panel(`准备记录：${record.status}`,
               "预算已开始计时。prepared 后可预览原输入，再明确创建；预览不会续期。失败时保留原记录，修订输入须换新任务 ID。",
               disclosure("完整准备与预算记录", record),
-              row(button("下载完整授权输入", () => download(`${definition.task_id}.authorized-definition.json`, JSON.stringify(definition, null, 2) + "\n", "application/json"))),
+              row(button("下载完整授权输入", downloadDefinition)),
               row(button("读取原准备记录", () => { if (current(reading)) readPreparation(definition.task_id, result, () => current(reading)); }))));
           } catch (error) {
             if (current(reading)) result.replaceChildren(panel("准备结果尚未确认", error.message,
               node("p", {}, `请按原任务 ID ${definition.task_id} 读取准备记录；页面不会自动重发授权。`),
-              row(button("下载完整授权输入", () => download(`${definition.task_id}.authorized-definition.json`, JSON.stringify(definition, null, 2) + "\n", "application/json"))),
+              row(button("下载完整授权输入", downloadDefinition)),
               row(button("读取原准备记录", () => { if (current(reading)) readPreparation(definition.task_id, result, () => current(reading)); }))));
           } finally {
             preparationPending = false;
             if (active() && !creationLocked) fields.disabled = false;
           }
-        })));
+        }) : null));
     }
-    const editor = form([fields], "预览冻结合同", async (values) => {
+    async function previewTask(values) {
       if (!active() || creationLocked || preparationPending) return;
       const reading = ++sequence;
-      result.replaceChildren(empty("正在编译预览…"));
+      result.replaceChildren(empty("正在核对所选执行路线…"));
+      let definition;
       let snapshot;
       try {
-        const definition = definitionFrom(values);
+        definition = definitionFrom(values);
         snapshot = await api(`${base}/tasks/preview`, { definition, revision: data.project.revision });
       } catch (error) {
         if (current(reading)) result.replaceChildren(panel("预览失败", error.message));
         return;
       }
       if (!current(reading)) return;
+      if (snapshot.status === "route-preview") {
+        showNativePreparation(snapshot, definition, reading);
+        return;
+      }
+      if (snapshot.route_admission.status === "blocked") {
+        result.replaceChildren(panel("所选路线受阻", "请调整所选阶段或组合后重新预览。", admissionFacts(snapshot),
+          facts([
+            ["项目修订", snapshot.project_revision], ["任务 ID", snapshot.definition.task_id],
+            ["预览 SHA256", snapshot.preview_sha256],
+          ]),
+          disclosure("完整服务端预览", snapshot)));
+        return;
+      }
       const bindings = snapshot.files["agent-bindings.json"];
       const frozen = snapshot.files["task.spec.json"].composition;
-      result.replaceChildren(panel("审阅冻结预览", "确认后只发布此合同，启动运行另行操作。",
+      result.replaceChildren(panel("审阅冻结预览", "确认后发布此合同，启动运行另行操作。",
+        admissionFacts(snapshot),
         facts([
           ["项目修订", snapshot.project_revision], ["任务 ID", snapshot.definition.task_id],
           ["模板", snapshot.definition.task_type], ["工单", snapshot.definition.issue_id],
@@ -339,7 +369,8 @@ export function tasksView(data, base, { sourceSnapshot = "" } = {}) {
           selectPublished(record);
         }),
       ));
-    });
+    }
+    const editor = form([fields], "预览所选执行路线", previewTask);
     const content = node("div", {},
       node("p", {}, "载入模板或兼容的已保存草稿，再编辑输入。可保留项目角色，或明确选择已保存的完整组合。修改字段会废弃旧预览；训练优化使用独立入口。"),
       editor, result,

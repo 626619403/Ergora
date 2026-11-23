@@ -14,6 +14,21 @@ ergora task status my-project TASK_ID --run-id RUN_ID --timeout 20
 
 `terminal: true`只表示Temporal运行已闭合；outcome仍可能是CANCEL_UNCONFIRMED，或phase为NEEDS_RECONCILIATION，均须沿原ID对账。该入口使用登记的参考环境连接规则（目前是本机127.0.0.1:7233/default），项目scheduler绑定的地址/队列只用于资料研究调度。1–60秒timeout约束网络查询；子进程另留5秒启动/回收预算，本地合同预检和安装身份检查另计。SDK缺失会明确提示，不自动安装或从本地COMPILED/服务RUNNING推断运行状态。完整六阶段执行仍使用Linux/WSL2。
 
+## 提高待派发工作单元的优先级
+
+原计划批准后，监管者可以通过已登记的 Linux/WSL2 CLI 指定一个待派发的工作单元。任务须有 `task start` 的原提交回执。先查询原运行，取得 `status.work_priority.pending_work_unit_ids`、`plan_sha256` 和项目修订号。当前带预算的准备工作流需要由支持此操作的 Worker 执行，且查询显示 `work_priority.available`。为本次决定指定唯一的决定 ID。
+
+```bash
+ergora task status my-project TASK_ID --run-id RUN_ID
+ergora task prioritize-work my-project TASK_ID UNIT_ID --revision REVISION \
+  --run-id RUN_ID --plan-sha256 PLAN_SHA --decision-id DECISION_ID --confirm
+ergora task work-priority my-project TASK_ID DECISION_ID --run-id RUN_ID
+```
+
+`applied` 表示工作流已记录优先级。原前置工作完成且原并发限额允许时，该单元优先派发。等待期间，其他已就绪的单元仍可派发。后续决定可以改变优先项。每个单元沿用原输入、执行者和 Job ID，继续使用原计划审批、预算截止时间、集成、验证和审查流程。
+
+系统把尝试记录保存在原提交记录目录中，再向原运行发送 Temporal Update。请求回执丢失时，用 `task work-priority` 按原运行和决定 ID 查询。重复提交同一决定也只读取结果。结果暂不可查时，状态保留为 `unknown`。发送前检测到拒绝或 Worker 未提供此操作时，不会保存尝试记录。若请求与派发、取消或预算耗尽同时发生，原工作流可能返回一条已记录的拒绝结果。运行和恢复期间，更新后的队列使用支持此 Update 的 Worker。
+
 ## 分段读取原运行事件
 
 对统一创建且已保存原提交回执的任务，固定该回执的run ID，读取事件元数据：

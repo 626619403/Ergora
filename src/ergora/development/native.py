@@ -322,6 +322,10 @@ def task_cancellation(project: dict, home: Path, operation: str, payload: dict, 
     return _task_operation(project, home, 'cancellation', operation, payload, timeout)
 
 
+def task_work_priority(project: dict, home: Path, operation: str, payload: dict, *, timeout: int) -> dict:
+    return _task_operation(project, home, 'work_priority', operation, payload, timeout)
+
+
 def task_export(project: dict, home: Path, operation: str, payload: dict, *, timeout: int) -> dict:
     """Export the original run's candidate through its recoverable native boundary."""
     return _task_operation(project, home, 'export', operation, payload, timeout)
@@ -375,6 +379,8 @@ def _task_operation(project: dict, home: Path, component: str, operation: str, p
             raise ValueError('Task handoff process timed out; inspect the output file before collecting again') from error
         if inspection:
             raise ValueError(inspection + ' inspection process timed out; query the original run before inspecting again') from error
+        if component == 'work_priority':
+            raise ValueError('Work priority process timed out; inspect the original decision with task work-priority') from error
         raise ValueError(f'Task {component} process timed out; inspect task {component} and resume its original intent') from error
     if result.returncode:
         lines = result.stderr.strip().splitlines()
@@ -382,6 +388,8 @@ def _task_operation(project: dict, home: Path, component: str, operation: str, p
         if operation.startswith('source-'):
             raise ValueError(detail + '; inspect task design operation before recovering its original intent')
         if inspection:
+            raise ValueError(detail)
+        if component == 'work_priority':
             raise ValueError(detail)
         raise ValueError(detail + f'; inspect task {component} before any recovery')
     return json.loads(result.stdout)

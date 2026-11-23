@@ -527,6 +527,22 @@ def parser() -> argparse.ArgumentParser:
             operation.add_argument("--intent-sha256", required=True)
             operation.add_argument("--confirm", action="store_true", required=True)
             operation.add_argument("--timeout", type=int, default=20)
+    prioritize = operations.add_parser("prioritize-work", help="Prioritize one pending unit in the original approved work queue")
+    prioritize.add_argument("project")
+    prioritize.add_argument("task_id")
+    prioritize.add_argument("work_unit_id")
+    prioritize.add_argument("--revision", type=int, required=True)
+    prioritize.add_argument("--run-id", required=True)
+    prioritize.add_argument("--plan-sha256", required=True)
+    prioritize.add_argument("--decision-id", required=True)
+    prioritize.add_argument("--confirm", action="store_true", required=True)
+    prioritize.add_argument("--timeout", type=int, default=20)
+    priority_status = operations.add_parser("work-priority", help="Read the original work priority outcome without another send")
+    priority_status.add_argument("project")
+    priority_status.add_argument("task_id")
+    priority_status.add_argument("decision_id")
+    priority_status.add_argument("--run-id", required=True)
+    priority_status.add_argument("--timeout", type=int, default=20)
     external = operations.add_parser("external-status", help="Inspect a closed original run's external job evidence")
     external.add_argument("project")
     external.add_argument("task_id")
@@ -1309,6 +1325,15 @@ def main(argv: list[str] | None = None) -> int:
                 return 0 if output["status"] == "requested" else 1
             elif args.operation == "cancellation":
                 output = tasks.cancellation(state, args.project, args.task_id, args.request_id)
+            elif args.operation == "prioritize-work":
+                output = tasks.prioritize_work_unit(state, args.project, args.task_id, args.work_unit_id, args.revision,
+                    run_id=args.run_id, plan_sha256=args.plan_sha256, decision_id=args.decision_id,
+                    confirm=args.confirm, timeout=args.timeout)
+                print(json.dumps(output, ensure_ascii=False, indent=2))
+                return 0 if output["status"] == "applied" else 1
+            elif args.operation == "work-priority":
+                output = tasks.work_priority(state, args.project, args.task_id, args.decision_id,
+                                             run_id=args.run_id, timeout=args.timeout)
             elif args.operation in ("cancel", "resume-cancel"):
                 output = (tasks.cancel(state, args.project, args.task_id, args.request_id, args.revision,
                                        run_id=args.run_id, reason=args.reason, confirm=args.confirm, timeout=args.timeout)
@@ -1325,6 +1350,8 @@ def main(argv: list[str] | None = None) -> int:
                     return 0 if output['status'] == 'prepared' else 1
                 elif args.operation == "preview":
                     output = tasks.preview(state, args.project, definition, args.revision)
+                    print(json.dumps(output, ensure_ascii=False, indent=2))
+                    return 1 if output["route_admission"]["status"] == "blocked" else 0
                 else:
                     output = tasks.create(state, args.project, definition, args.revision, args.preview_sha256,
                                           prepare_sha256=args.prepare_sha256)

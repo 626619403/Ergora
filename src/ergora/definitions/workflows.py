@@ -407,7 +407,7 @@ def _manifest_fields(composition: dict) -> dict:
             "root": composition["root"], "grant": composition["grant"], "preview_sha256": composition["preview_sha256"]}
 
 
-def _inspect_snapshot(source: Path, *, leaf_input: bool, material: bool) -> dict:
+def _inspect_snapshot(source: Path, *, leaf_input: bool, material: bool, include_inventory: bool = False) -> dict:
     """One complete-tree verifier for a static graph and its prepared leaf inputs."""
     source = source.expanduser().absolute()
     before = inventory_tree(source, label="Composition bundle", max_directories=1000, max_depth=48)
@@ -449,6 +449,7 @@ def _inspect_snapshot(source: Path, *, leaf_input: bool, material: bool) -> dict
         raise ValueError("Composition bundle changed during verification; retry a stable directory")
     return {"digest": digest, "request" if leaf_input else "manifest": request, "path": str(source),
             **({"composition": composition} if material else {}),
+            **({"inventory": files} if include_inventory else {}),
             **({"prompt": prompt.decode("utf-8")} if material and leaf_input else {})}
 
 
@@ -457,9 +458,9 @@ def inspect_input(source: Path, *, material: bool = False) -> dict:
     return _inspect_snapshot(source, leaf_input=True, material=material)
 
 
-def inspect_manifest(source: Path, *, material: bool = False) -> dict:
-    """Verify a complete static graph; no current admission, model or authorization."""
-    return _inspect_snapshot(source, leaf_input=False, material=material)
+def inspect_manifest(source: Path, *, material: bool = False, include_inventory: bool = False) -> dict:
+    """Verify a complete static graph and optionally return its verified file inventory."""
+    return _inspect_snapshot(source, leaf_input=False, material=material, include_inventory=include_inventory)
 
 
 def restore_manifest(snapshot: dict, destination: Path) -> dict:
