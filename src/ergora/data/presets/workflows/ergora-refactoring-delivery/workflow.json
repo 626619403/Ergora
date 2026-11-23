@@ -1,14 +1,14 @@
 {
   "schema_version": 2,
   "id": "ergora-refactoring-delivery",
-  "version": "1.2.4",
+  "version": "1.2.5",
   "description": "Use the original large-change six-stage owner with preparation, scoped refactoring and independent review.",
   "resources": [
     {
       "id": "ergora-refactoring-delivery-instructions",
       "kind": "instructions",
       "path": "instructions.md",
-      "sha256": "ee77249812097f41106c0afffff07dfbd203f68e90a439e559b0314b17cd9b68"
+      "sha256": "15768bb7fa67ccd71271d9b28883735c855ff1586c602c1b15c903d6269f5f2e"
     }
   ],
   "permissions": {
@@ -73,8 +73,8 @@
       "ref": {
         "kind": "workflow",
         "id": "ergora-delivery-review",
-        "version": "1.2.3",
-        "digest": "97eeca3db1ad34f767e70763044447ccb6c0f8379ee0c377f2b17897fc45c450"
+        "version": "1.2.4",
+        "digest": "653b8dba06e953e60b9d6e30b7f368355bdbd846a0ed63efb096eb1d69d188a2"
       },
       "depends_on": [
         "work"
