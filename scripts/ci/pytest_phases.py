@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import os
 from pathlib import Path
 import sys
 import time
@@ -28,7 +29,7 @@ class PhaseLog:
         self.groups_file = groups_file
         self.started = time.monotonic()
         self.stream = (directory / 'phases.jsonl').open('x', encoding='utf-8', buffering=1)
-        self.emit('identity', python=sys.version, executable=sys.executable, group=group,
+        self.emit('identity', python=sys.version, executable=sys.executable, pid=os.getpid(), group=group,
                   plugin_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest())
 
     def emit(self, event, **fields):
