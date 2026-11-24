@@ -300,6 +300,7 @@ def test_project_sessions_http_and_cli_preserve_exact_operation_inputs(console, 
     root = {"id": "session-root", "project": "demo", "status": "succeeded", "session": {"id": "session-root"}}
     page = {"sessions": [{"id": root["id"], "birth_intent": "birth-once"}], "next_after": None}
     detail = {"id": root["id"], "turns": [root], "next_after": None}
+    receipt = {"run_id": root["id"], "dispatch": "accepted", "run": root}
     stopped = {"run_id": "exact-turn", "stop_requested": True, "notification": "unconfirmed", "run": root}
 
     def start(control, project, role, prompt, timeout, skill_names, recall, template, **options):
@@ -318,6 +319,10 @@ def test_project_sessions_http_and_cli_preserve_exact_operation_inputs(console, 
         calls.append((control.root, project, session, parent, prompt, options))
         return root
 
+    def inspect_continuation(control, project, session, parent, intent):
+        calls.append((control.root, project, session, parent, intent))
+        return receipt
+
     def stop(control, project, session, run, **options):
         calls.append((control.root, project, session, run, options))
         return stopped
@@ -325,6 +330,7 @@ def test_project_sessions_http_and_cli_preserve_exact_operation_inputs(console, 
     monkeypatch.setattr(agent_runs, "run_agent", start)
     monkeypatch.setattr(agent_runs, "sessions", listing)
     monkeypatch.setattr(agent_runs, "inspect_session", inspect)
+    monkeypatch.setattr(agent_runs, "continuation_receipt", inspect_continuation)
     monkeypatch.setattr(agent_runs, "continue_session", followup)
     monkeypatch.setattr(agent_runs, "stop_session", stop)
     prompt = tmp_path / "prompt.md"
@@ -363,6 +369,12 @@ def test_project_sessions_http_and_cli_preserve_exact_operation_inputs(console, 
     assert cli.main(prefix + ["continue", "demo", "session-root", "--parent", "exact-parent", "--prompt", str(prompt),
         "--revision", "3", "--intent", "continue-once", "--timeout", "83"]) == 0
     assert calls.pop() == followup_call and json.loads(capsys.readouterr().out) == root
+    assert client.get(url + "/continuations/continue-once", params={"parent_run_id": "exact-parent"}).json() == receipt
+    receipt_call = calls.pop()
+    assert receipt_call == (state.root, "demo", "session-root", "exact-parent", "continue-once")
+    assert cli.main(prefix + ["continuation-receipt", "demo", "session-root", "--parent", "exact-parent",
+        "--intent", "continue-once"]) == 0
+    assert calls.pop() == receipt_call and json.loads(capsys.readouterr().out) == receipt
     assert client.post(url + "/stop", json={"run_id": "exact-turn", "intent_id": "stop-once"}).json() == stopped
     stop_call = calls.pop()
     assert stop_call == (state.root, "demo", "session-root", "exact-turn", {"intent_id": "stop-once"})
@@ -409,8 +421,17 @@ def test_project_native_session_http_and_cli_share_original_development_chain(na
         assert session["can_continue"] and (repo / "turn-1.txt").read_text() == "HTTP first change"
         assert client.get(base, params={"intent_id": "unrelated-birth"}).json()["sessions"] == []
         assert client.get(base.replace("/demo/", "/other/")).status_code == 400
-        second = client.post(f"{base}/{session['id']}/continue", json={"parent_run_id": session["latest_run"],
-            "prompt": "HTTP second change", "expected_revision": revision, "intent_id": "http-next", "timeout": 10}).json()
+        continuation_url = f"{base}/{session['id']}/continuations/http-next"
+        parent = {"parent_run_id": session["latest_run"]}
+        assert client.get(continuation_url, params=parent).json()["dispatch"] == "unrecorded"
+        response = client.post(f"{base}/{session['id']}/continue", json={**parent, "prompt": "HTTP second change",
+            "expected_revision": revision, "intent_id": "http-next", "timeout": 10})
+        assert response.status_code == 200
+        del response
+        receipt = client.get(continuation_url, params=parent).json()
+        assert receipt["dispatch"] == "accepted" and receipt["intent_id"] == "http-next"
+        assert client.get(continuation_url, params={"parent_run_id": "another-parent"}).status_code == 400
+        second = receipt["run"]
         assert second["status"] == "succeeded", second
         assert second["session"]["parent_run"] == session["latest_run"]
         assert second["formal_execution_authorized"] is False

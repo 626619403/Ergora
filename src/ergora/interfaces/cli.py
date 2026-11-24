@@ -682,6 +682,11 @@ def parser() -> argparse.ArgumentParser:
             listing.add_argument("--intent", help="Observe the exact original birth intent without invoking an Agent")
         listing.add_argument("--after", type=int, default=0)
         listing.add_argument("--limit", type=int, default=20)
+    receipt = operations.add_parser("continuation-receipt", help="Read one original continuation without dispatching it")
+    receipt.add_argument("project")
+    receipt.add_argument("id")
+    receipt.add_argument("--parent", required=True)
+    receipt.add_argument("--intent", required=True)
     continuation = operations.add_parser("continue", help="Continue an exact project session with a new prompt")
     continuation.add_argument("project")
     continuation.add_argument("id")
@@ -1514,6 +1519,8 @@ def main(argv: list[str] | None = None) -> int:
                     output = agent_runs.sessions(state, args.project, after=args.after, limit=args.limit, intent_id=args.intent)
                 elif args.operation == "session":
                     output = agent_runs.inspect_session(state, args.project, args.id, after=args.after, limit=args.limit)
+                elif args.operation == "continuation-receipt":
+                    output = agent_runs.continuation_receipt(state, args.project, args.id, args.parent, args.intent)
                 elif args.operation == "continue":
                     output = agent_runs.continue_session(state, args.project, args.id, args.parent,
                         args.prompt.read_text(encoding="utf-8-sig"), expected_revision=args.revision,

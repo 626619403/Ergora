@@ -675,6 +675,89 @@ def test_session_missing_final_is_unknown_and_never_replays(native_session_case)
     assert len((repo / 'native-calls.jsonl').read_text().splitlines()) == 1
 
 
+def test_continuation_receipt_distinguishes_original_dispatch_evidence(native_session_case, monkeypatch):
+    state, repo, config, runs = native_session_case
+    revision = state.project('demo')['revision']
+    first = runs.run_agent(state, 'demo', 'implementer', 'first', timeout=10,
+                          session_intent='first-receipt', expected_revision=revision, codex_config=config)
+    selection = (state, 'demo', first['id'], first['id'], 'one-continuation')
+    absent = runs.continuation_receipt(*selection)
+    assert absent['dispatch'] == 'unrecorded' and absent['run'] is None
+    publish = runs._publish_session_packet
+    before_launch = []
+
+    def observe_attempt(path, values):
+        if path.name == 'attempt':
+            before_launch.append(runs.continuation_receipt(*selection)['dispatch'])
+        publish(path, values)
+        if path.name == 'attempt':
+            before_launch.append(runs.continuation_receipt(*selection)['dispatch'])
+
+    with monkeypatch.context() as patch:
+        patch.setattr(runs, '_publish_session_packet', observe_attempt)
+        run = runs.continue_session(state, 'demo', first['id'], first['id'], 'next', expected_revision=revision,
+                                    intent_id=selection[-1], timeout=10)
+    assert before_launch == ['reserved', 'attempted']
+    assert run['status'] == 'succeeded' and run['id'] == absent['run_id']
+    receipt = runs.continuation_receipt(*selection)
+    assert receipt['dispatch'] == 'accepted' and receipt['run']['status'] == 'succeeded'
+    with pytest.raises(ValueError, match='selected session, parent or intent'):
+        runs.continuation_receipt(state, 'demo', first['id'], 'other-parent', selection[-1])
+    with state.connect() as db:
+        original_run, = db.execute('SELECT document FROM agent_runs WHERE id=?', (run['id'],)).fetchone()
+        db.execute("UPDATE agent_runs SET document='null' WHERE id=?", (run['id'],))
+    with pytest.raises(ValueError, match='Saved native session run differs'):
+        runs.continuation_receipt(*selection)
+    with state.connect() as db:
+        db.execute('UPDATE agent_runs SET document=? WHERE id=?', (original_run, run['id']))
+
+    folder = state.root / 'runs' / (run['id'] + '.session-turn')
+    result = state.root / 'runs' / run['id'] / 'result.txt'
+    retained = result.with_name('retained-result.txt')
+    result.rename(retained)
+    receipt = runs.continuation_receipt(*selection)
+    assert receipt['dispatch'] == 'accepted' and receipt['run']['status'] == 'unknown'
+    assert 'Original outcome unavailable' in receipt['run']['error']
+    retained.rename(result)
+    final = folder / 'final' / 'record.json'
+    original = final.read_bytes()
+    final.write_text('[]', encoding='utf-8')
+    receipt = runs.continuation_receipt(*selection)
+    assert receipt['dispatch'] == 'accepted' and receipt['run']['status'] == 'unknown'
+    final.write_bytes(original)
+    for name in ('owner', 'attempt'):
+        (folder / name).rename(folder / ('retained-' + name))
+    receipt = runs.continuation_receipt(*selection)
+    assert receipt['dispatch'] == 'incomplete' and receipt['run']['status'] == 'succeeded'
+    assert 'no original attempt' in receipt['dispatch_error']
+    for name in ('owner', 'attempt'):
+        (folder / ('retained-' + name)).rename(folder / name)
+    (folder / 'owner').rename(folder / 'retained-owner')
+    final.write_text(json.dumps({**json.loads(original), 'status': 'unknown'}), encoding='utf-8')
+    receipt = runs.continuation_receipt(*selection)
+    assert receipt['dispatch'] == 'incomplete' and receipt['run']['status'] == 'unknown'
+    assert 'no original owner' in receipt['dispatch_error']
+    (folder / 'retained-owner').rename(folder / 'owner')
+    final.write_bytes(original)
+    attempt_record = folder / 'attempt' / 'record.json'
+    attempt_record.rename(attempt_record.with_name('retained.json'))
+    assert 'attempt receipt is incomplete' in runs.continuation_receipt(*selection)['dispatch_error']
+    attempt_record.with_name('retained.json').rename(attempt_record)
+    assert runs.continuation_receipt(*selection)['run']['status'] == 'succeeded'
+
+    # A supervisor launch failure follows the attempt and has no owner.
+    def refuse_launch(*args, **kwargs):
+        raise OSError('fixture owner launch refused')
+
+    with monkeypatch.context() as patch:
+        patch.setattr(runs.subprocess, 'Popen', refuse_launch)
+        failed = runs.continue_session(state, 'demo', first['id'], run['id'], 'failed launcher',
+                                      expected_revision=revision, intent_id='failed-launch', timeout=10)
+    receipt = runs.continuation_receipt(state, 'demo', first['id'], run['id'], 'failed-launch')
+    assert failed['status'] == receipt['run']['status'] == 'failed' and receipt['dispatch'] == 'attempted'
+    assert len((repo / 'native-calls.jsonl').read_text().splitlines()) == 2
+
+
 def test_session_reservation_survives_attempt_publication_failure_without_dispatch(native_session_case, monkeypatch):
     state, repo, config, runs = native_session_case
     publish = runs._publish_session_packet
