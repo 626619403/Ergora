@@ -13,7 +13,7 @@ src/ergora/
   _paths.py
   configuration/       catalog, bindings, projects, registrations, validation
   storage/             SQLite, immutable assets, complete local Git objects
-  agents/              backend interface, invocation, runs, MCP, stage driver
+  agents/              standalone graphs, runs and sessions, backend invocation, MCP
   definitions/         Agent/Workflow packages, bundles, Skill assets
   issues/              identity, backends, observations, use cases, writebacks
   development/         task contracts, context, review material, native client
@@ -33,7 +33,7 @@ src/ergora/
 |---|---|
 |Configuration|[catalog](../../src/ergora/configuration/catalog.py), [bindings](../../src/ergora/configuration/bindings.py), [projects](../../src/ergora/configuration/projects.py), [registrations](../../src/ergora/configuration/registrations.py), [validation](../../src/ergora/configuration/validation.py). Domain use cases consume normalized configuration and project revisions; metadata does not implement a backend.|
 |Durable storage|[State](../../src/ergora/storage/state.py), [asset trees](../../src/ergora/storage/assets.py), [bounded Git material](../../src/ergora/storage/git.py). Definitions, review collection, backups and runtime evidence reuse these existing owners.|
-|Agents|[backend contract/factory](../../src/ergora/agents/backends.py), [invocation](../../src/ergora/agents/invocation.py), [runs/sessions](../../src/ergora/agents/runs.py), [original source readers](../../src/ergora/agents/native_sources.py), [fixed MCP](../../src/ergora/agents/mcp.py), [stage entry](../../src/ergora/agents/stage_driver.py). Definitions and actual calls share mode/role admission.|
+|Agents|[standalone graphs](../../src/ergora/agents/graphs.py), [backend contract/factory](../../src/ergora/agents/backends.py), [invocation](../../src/ergora/agents/invocation.py), [runs/sessions](../../src/ergora/agents/runs.py), [original source readers](../../src/ergora/agents/native_sources.py), [fixed MCP](../../src/ergora/agents/mcp.py), [stage entry](../../src/ergora/agents/stage_driver.py). Standalone graphs dispatch through the same leaf-run owner as independent calls.|
 |Definitions|[Agent admission](../../src/ergora/definitions/agents.py), [Workflow compilation](../../src/ergora/definitions/workflows.py), [complete bundles](../../src/ergora/definitions/bundles.py), [Skill assets](../../src/ergora/definitions/skills.py). Agent calls, task preparation and review consume exact immutable versions.|
 |Issue sources|[identity](../../src/ergora/issues/identity.py), [backend contract/factory](../../src/ergora/issues/backends.py), [snapshots](../../src/ergora/issues/snapshots.py), [use cases](../../src/ergora/issues/application.py), [writebacks](../../src/ergora/issues/writebacks.py). Native observations, local context and external attempts retain distinct records.|
 |Development|[task use cases](../../src/ergora/development/application.py), [envelopes](../../src/ergora/development/envelopes.py), [input interfaces](../../src/ergora/development/inputs.py), [context](../../src/ergora/development/context.py), [native client](../../src/ergora/development/native.py), [runtime](../../src/ergora/development/runtime), [review material](../../src/ergora/development/review). These own task preparation, original operations and candidate-bound evidence.|
@@ -52,9 +52,9 @@ Transport parses input; domain use cases own identity, permission, revision and 
 
 Formal development goes through `development.application` → `development.native` → the selected dedicated operation process and original Temporal workflow. [Execution details](execution/development.md) cover complete materials, preparation, one budget and the sole finalizer. Work/review data comes from declared producers and original receipts; a dependency edge grants no extra resource access.
 
-### Independent calls, improvement and training
+### Graphs, independent calls, improvement and training
 
-`agents.runs` owns explicit leaf/session execution; `agents.invocation` owns actual backend invocation and results. `agents.native_sources` reads original bounded records/material and retains native packet serialization. Both the runner and document-correction owner use it; the document owner never imports the runner. Its readers cannot construct State, invoke a model or publish a proposal. An independent call does not schedule graph predecessors or provide formal candidate acceptance. Definitions supply complete frozen ancestor resources through their supported mode.
+`agents.graphs` owns standalone graph evaluation and its operation record. `agents.runs` owns original leaf runs and native session continuations. `agents.invocation` owns backend invocation and results. `agents.native_sources` reads original bounded records and retains native packet serialization for the runner and document-correction owner. Definitions supply complete frozen ancestor resources through the admitted mode. [Execution routes and continuation receipts](framework-tour.md#definitions-and-execution-routes)
 
 Improvement generation, trusted evaluation, adoption/rollback and new-task material freezing are separate use cases. `training.application` uses its own native client and original runtime processes; an evidence index or proposal neither launches an experiment nor advances a baseline. Read [training execution](execution/training.md) before changing its authorization, clock, stop or recovery behavior.
 
