@@ -9,6 +9,7 @@ import signal
 import subprocess
 import sys
 import tempfile
+from threading import Thread
 from pathlib import Path
 import shutil
 import stat
@@ -1076,13 +1077,35 @@ def _continuation_run_id(session_id: str, intent_id: str) -> str:
     return uuid.uuid5(uuid.NAMESPACE_URL, 'ergora:native-turn:' + session_id + ':' + intent_id).hex
 
 
+def _dispatch_packet(folder: Path, name: str, request_digest: str) -> dict | None:
+    path = folder / name
+    try:
+        packet = native_sources.packet(path, confirm_durable=name == 'native-start')
+    except FileNotFoundError as error:
+        if error.filename == str(path):
+            return None
+        raise ValueError(f'Continuation {name} receipt is incomplete') from error
+    if not isinstance(packet, dict) or packet.get('request_sha256') != request_digest:
+        raise ValueError(f'Continuation {name} differs from its original request')
+    return packet
+
+
+def _process_identity(value) -> bool:
+    if (not isinstance(value, dict) or value.keys() != {'pid', 'start_ticks', 'boot_id'}
+            or type(value['pid']) is not int or value['pid'] <= 0):
+        return False
+    ticks, boot_id = value.get('start_ticks'), value.get('boot_id')
+    return (isinstance(ticks, str) and len(ticks) <= 20 and ticks.isascii() and ticks.isdecimal()
+            and isinstance(boot_id, str) and len(boot_id) == 36)
+
+
 def continuation_receipt(state: State, project_id: str, session_id: str, parent_run_id: str, intent_id: str) -> dict:
     """Observe one continuation and its existing dispatch evidence without sending it."""
     ident = _continuation_run_id(session_id, intent_id)
     native_sources.session_id(parent_run_id, 'Parent run')
     state.project(project_id)
     receipt = {'session_id': session_id, 'parent_run_id': parent_run_id, 'intent_id': intent_id,
-               'run_id': ident, 'dispatch': 'unrecorded', 'run': None}
+               'run_id': ident, 'dispatch': 'unrecorded', 'native_start': {'status': 'unrecorded'}, 'run': None}
     saved = native_sources.find_run(state, project_id, ident)
     if saved is None:
         return receipt
@@ -1099,24 +1122,23 @@ def continuation_receipt(state: State, project_id: str, session_id: str, parent_
         run = dict(saved, status='unknown', execution_stopped=False, error='Original outcome unavailable: ' + str(error))
         final_verified = False
     receipt['run'] = run
-    # The owner is published after the attempt. Read in reverse order so a
-    # live publication between reads cannot look like an owner without an attempt.
+    # Start, owner and attempt receipts are read in reverse publication order.
+    # A racing publication cannot appear to have skipped its predecessor.
+    start = None
+    try:
+        start = _dispatch_packet(folder, 'native-start', saved['request_sha256'])
+    except (OSError, ValueError) as error:
+        receipt['native_start'] = {'status': 'incomplete', 'error': str(error)}
     evidence = set()
+    owner = None
     try:
         for name in ('owner', 'attempt'):
-            path = folder / name
-            try:
-                packet = native_sources.packet(path)
-            except FileNotFoundError as error:
-                if error.filename != str(path):
-                    raise ValueError(f'Continuation {name} receipt is incomplete') from error
+            packet = _dispatch_packet(folder, name, saved['request_sha256'])
+            if packet is None:
                 continue
-            if not isinstance(packet, dict) or packet.get('request_sha256') != saved['request_sha256']:
-                raise ValueError(f'Continuation {name} differs from its original request')
             if name == 'owner':
-                identity = packet.get('identity')
-                if (not isinstance(identity, dict) or type(identity.get('pid')) is not int or identity['pid'] < 1
-                        or not all(isinstance(identity.get(key), str) and identity[key] for key in ('start_ticks', 'boot_id'))):
+                owner = packet.get('identity')
+                if not _process_identity(owner):
                     raise ValueError('Continuation owner receipt lacks its process identity')
             evidence.add(name)
         if 'attempt' not in evidence and ('owner' in evidence or final_verified or saved.get('finished') is not None):
@@ -1127,8 +1149,29 @@ def continuation_receipt(state: State, project_id: str, session_id: str, parent_
                 and (run['status'] != 'failed' or 'output' in run or 'returncode' in run)):
             raise ValueError('Continuation outcome has no original owner receipt')
     except (OSError, ValueError) as error:
-        return {**receipt, 'dispatch': 'incomplete', 'dispatch_error': str(error)}
-    return {**receipt, 'dispatch': 'accepted' if 'owner' in evidence else 'attempted' if evidence else 'reserved'}
+        receipt.update(dispatch='incomplete', dispatch_error=str(error))
+    else:
+        receipt['dispatch'] = 'accepted' if 'owner' in evidence else 'attempted' if evidence else 'reserved'
+    if start is not None:
+        process = start.get('process')
+        binding = {key: start.get(key) for key in ('request_sha256', 'owner', 'process')}
+        if (evidence != {'attempt', 'owner'} or start.get('owner') != owner or not _process_identity(process)
+                or process['pid'] == owner['pid'] or process['boot_id'] != owner['boot_id']
+                or int(process['start_ticks']) < int(owner['start_ticks'])
+                or start.get('receipt_sha256') != native_sources.sha(binding)):
+            receipt['native_start'] = {'status': 'incomplete', 'error': 'Native start differs from its original attempt or owner'}
+        else:
+            try:
+                active = processes.identity(process['pid']) == process
+            except (OSError, ValueError):
+                active = False
+            if active and final_verified and run['execution_stopped']:
+                receipt['native_start'] = {'status': 'incomplete', 'error': 'Live child differs from the original stopped outcome'}
+            else:
+                receipt['native_start'] = {'status': 'running' if active else 'started', 'process': process}
+    elif receipt['native_start']['status'] == 'unrecorded' and run.get('native_start_error'):
+        receipt['native_start'] = {'status': 'incomplete', 'error': run['native_start_error']}
+    return receipt
 
 
 def continue_session(state: State, project_id: str, session_id: str, parent_run_id: str, prompt: str, *,
@@ -1293,10 +1336,13 @@ def session_main():
     if (native_sources.sha(request) != document['request_sha256']
             or native_sources.packet(folder / 'attempt')['request_sha256'] != document['request_sha256']):
         raise ValueError('Session effect differs from its consumed attempt')
+    owner = processes.identity(os.getpid())
     _publish_session_packet(folder / 'owner', {'record.json': native_sources.encode({
-        'identity': processes.identity(os.getpid()), 'request_sha256': document['request_sha256']})})
+        'identity': owner, 'request_sha256': document['request_sha256']})})
     stopping = False
     expired = False
+    start_writer = None
+    start_error = None
 
     def cancel(_signum, _frame):
         nonlocal stopping
@@ -1314,6 +1360,26 @@ def session_main():
             expired = True
         return stopping or expired or (folder / 'stop').exists()
 
+    def publish_native_start(process):
+        nonlocal start_writer, start_error
+        binding = {'request_sha256': document['request_sha256'], 'owner': owner, 'process': process}
+
+        def persist():
+            nonlocal start_error
+            try:
+                _publish_session_packet(folder / 'native-start', {'record.json': native_sources.encode({
+                    **binding, 'receipt_sha256': native_sources.sha(binding)})})
+            except (OSError, ValueError) as error:
+                start_error = str(error)
+
+        # The sole native reaper must keep polling even while storage stalls.
+        try:
+            start_writer = Thread(target=persist, daemon=True)
+            start_writer.start()
+        except RuntimeError as error:
+            start_writer = None
+            start_error = str(error)
+
     invocation_entered = False
     document['execution_stopped'] = False
     try:
@@ -1328,13 +1394,21 @@ def session_main():
             invocation_entered = True
             document.update(agents.invoke(context['binding'], context['role'], request['prompt'], Path(context['repo']),
                 state.root / 'runs' / ident, remaining,
-                request['schema'], env=environment, supervised=True, lock_fd=fd, session=native, stop_requested=should_stop))
+                request['schema'], env=environment, supervised=True, lock_fd=fd, session=native, stop_requested=should_stop,
+                on_start=publish_native_start if request['session']['parent_run'] is not None else None))
         if expired:
             document['status'] = 'timed_out'
         document['execution_stopped'] = True
     except (OSError, ValueError, TypeError, KeyError) as error:
         document.update(status='unknown' if invocation_entered else 'failed', error=str(error),
                         execution_stopped=not invocation_entered)
+    if start_writer is not None:
+        while start_writer.is_alive() and not should_stop():
+            start_writer.join(timeout=.2)
+        if start_writer.is_alive():
+            start_error = 'Original native start receipt publication remained pending at stop or deadline'
+    if start_error is not None:
+        document['native_start_error'] = start_error
     if document['execution_stopped']:
         try:
             # The native owner has returned from its only reaper. Persist only our
