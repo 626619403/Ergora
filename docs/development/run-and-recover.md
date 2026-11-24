@@ -131,6 +131,58 @@ Each check's wall allowance is the minimum of its declared cap, the original ver
 
 An original process request/started record without a confirmed terminal remains unknown, even after the outer owner confirms that its descendants were reaped. The original job retains occupancy and cannot rerun a script to fill missing evidence. An unrelated unfinished process publication does not block this job's recovery. Recovery may collect complete saved pending evidence when collection has never been attempted; an uncertain collection remains unknown. Keep original process records, output/source/input bytes, scope and baseline evidence, and the complete check artifact with the task's existing budget and creation records. Do not replace missing output, renew a clock or change IDs to obtain a passing result.
 
+## Run registered fixed checks on an exported candidate
+
+On Linux/WSL2, use the registered reference runtime and the same control home throughout. Read `task export-status PROJECT SOURCE_TASK_ID` to obtain the saved `exported` receipt, source run ID, full SHA-1 candidate and export intent digest. Prepare a local review packet with that same candidate as its head, and retain `packet_sha256`. Obtain the current `revision` and `verification.snapshot_sha256` from `project registration PROJECT`. [Export a candidate](evidence-and-export.md#export-an-exact-candidate-and-recover-its-receipt) · [Prepare a local review packet](../review/materials.md#prepare-materials)
+
+Freeze a complete review manifest and retain its `digest`. Select a read-only reviewer leaf directly beneath the pinned `ergora-correctness-review@1.0.2` subworkflow. The bundled `engineering-review` preset provides `root/correctness/review` in `ergora-delivery-review@1.2.6`. The leaf must receive the root task directly and have read scope for the packet's paths. [Freeze an exact manifest](../definitions/workflows/compose.md#save-and-share-a-complete-composition)
+
+Save the following fields in `candidate-check.json`, replacing placeholders with the original values and absolute packet and manifest directory paths. Set integer allowances with `1 <= cleanup_seconds < wall_seconds <= 3600`. Cleanup is reserved within the wall allowance.
+
+```json
+{
+  "task_id": "SOURCE_TASK_ID",
+  "run_id": "SOURCE_RUN_ID",
+  "candidate_sha": "CANDIDATE_SHA",
+  "export_intent_sha256": "EXPORT_INTENT_SHA256",
+  "verification_sha256": "VERIFICATION_SHA256",
+  "packet": "/absolute/path/to/review-packet",
+  "packet_sha256": "PACKET_SHA256",
+  "manifest": "/absolute/path/to/review-manifest",
+  "manifest_digest": "MANIFEST_DIGEST",
+  "instance": "root/correctness/review",
+  "wall_seconds": 300,
+  "cleanup_seconds": 20
+}
+```
+
+Review the exact request bytes. Hash that file and explicitly confirm one stable operation ID.
+
+```bash
+REQUEST_SHA256=$(sha256sum ./candidate-check.json | cut -d ' ' -f 1)
+ergora task candidate-check PROJECT OPERATION_ID --request ./candidate-check.json \
+  --request-sha256 "$REQUEST_SHA256" --revision CURRENT_REVISION --confirm
+ergora task candidate-check-status PROJECT OPERATION_ID
+```
+
+The registered executor watcher can consume the saved request. Direct execution uses the same executor lock. For single-request mode, set `JOB_ID` to the returned `job_id` and `EXECUTION_STATE` to `registration.definition.execution.state_directory` from `project show PROJECT`. Use the saved envelope in place.
+
+```bash
+ergora reference executor --project PROJECT \
+  --request "$EXECUTION_STATE/requests/fixed-candidate-check/${JOB_ID%-*}/$JOB_ID.json"
+```
+
+After a lost reply, use `candidate-check-status` with the same operation ID to read its original Job. Supply its returned SHA256 to pin subsequent reads or request a stop.
+
+```bash
+ergora task candidate-check-status PROJECT OPERATION_ID --job-sha256 JOB_SHA256
+ergora task candidate-check-stop PROJECT OPERATION_ID --job-sha256 JOB_SHA256 --confirm
+```
+
+A stop fences only that check Job. `stop_requested` records the fence. The final checker launch and successful terminal publication use the same scoped admission gate. When the original clock is unusable before work, a durable `body_started: false` observation supports finalizing that original refusal without resubmitting a checker or claiming descendant cleanup. If an original checker terminal is missing, the Job can remain `unknown` even with `outer_cleanup_confirmed: true`. Repeating an existing operation ID with the identical authorization only reads the original records, including `request_not_observed` if its saved permit has no visible request. The original attempt and clock still apply.
+
+A verified terminal receipt supplies `receipt_sha256`. When present, `fixed_results_sha256` identifies the report of registered fixed checks, observations and comparisons for the candidate. The separate Job covers fixed checks only. The source task's formal verification, review and candidate release retain their original evidence and authority.
+
 ## Request cancellation and recover unknown delivery
 
 Tasks created through the unified entry point with their original submission receipt saved can request cooperative cancellation pinned to the original run. As with approval, use the current project revision, a stable request ID and explicit confirmation. The reason must be nonempty and at most 1000 characters:

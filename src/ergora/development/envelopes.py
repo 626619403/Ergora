@@ -21,6 +21,7 @@ from ergora.training.materials import decode_record
 
 
 _KIND = 'composition-task-admission'
+FIXED_CANDIDATE_CHECK = 'fixed-candidate-check'
 COMPOSITION_SUBMIT = 'ergora_composition_submit'
 REQUIREMENTS_SUBMIT = 'ergora_requirements_submit'
 REQUIREMENTS_POLL = 'ergora_requirements_poll'

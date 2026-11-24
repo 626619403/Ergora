@@ -2,6 +2,7 @@
 
 import asyncio
 from datetime import datetime, timezone
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -299,8 +300,9 @@ async def _exercise(root, case, app, activities, adapter, installation, state, r
     if method is not None:
         app.plan_sha256 = plan_sha
     app.approved_plan = {'plan_sha256': plan_sha, 'receipt': plan, 'approval': authorization}
-    result = await original_work(root, case if case.startswith('fixed-') else 'materials-specialists' if selected else ('materials-issue-source' if case == 'issue-source' else 'materials'), app, activities,
-        installation, state, runtime, requests, records)
+    work_case = ('fixed-good' if case == 'fixed-candidate-check' else case if case.startswith('fixed-') else
+                 'materials-specialists' if selected else 'materials-issue-source' if case == 'issue-source' else 'materials')
+    result = await original_work(root, work_case, app, activities, installation, state, runtime, requests, records)
     if case == 'fixed-bad' or case.startswith('fixed-review-'):
         assert result['fixed_rejected' if case == 'fixed-bad' else 'review_rejected']
         if case == 'fixed-bad':
@@ -390,4 +392,207 @@ async def _exercise(root, case, app, activities, adapter, installation, state, r
         assert len(calls) == len(app.admission['budget']['slots'])
         result.update(selected_context_calls=calls, canonical_changed_after_intent=True,
                       original_input_sha256=task_envelopes.identity(app.admission))
+    if case == 'fixed-candidate-check':
+        result['independent_check'] = await _candidate_check(root, state, runtime, app.spec, result['candidate'], records)
     return {**result, 'case': case, 'complete_preparation': True, 'model_intervals': model_intervals}
+
+
+async def _candidate_check(root, state, runtime, spec, candidate, records):
+    """Recheck a real formal candidate and fence a live checker by its original job."""
+    from types import SimpleNamespace
+
+    from agent_platform.core import read, write
+    from temporalio.client import WorkflowExecutionStatus
+    from ergora.development import verification
+    from ergora.development.review import packets, requests
+    from ergora.development.runtime.export import _Export
+    from ergora.development.runtime.submission import _Submission
+    from ergora.runtime import processes
+
+    project = state.project('demo')
+    original = {'project': project, 'control_home': str(state.root), 'task_id': 'task-1'}
+    submission = _Submission(original)
+    submission.prepare()
+    run_id = 'controlled-candidate-check-origin'
+    write(submission.intent_path, submission.expected)
+    write(submission.attempt_path, submission.attempt(submission.expected))
+    write(submission.result_path, submission.receipt(submission.expected, run_id))
+    export = {**original, 'run_id': run_id, 'candidate_sha': candidate, 'branch': 'fixture-export'}
+    prepared = await _Export({**export, 'operation': 'prepare'}).run()
+    exporter = _Export({**export, 'operation': 'dispatch', 'intent_sha256': prepared['export']['intent_sha256']})
+    base = spec['request']['repository']['base_sha']
+    verify = records['verify']
+    assert verify['state'] == 'SUCCEEDED' and all(receipt['state'] == 'SUCCEEDED'
+                                                 for stage, receipt in records.items() if stage.startswith('review:'))
+
+    async def lookup(saved, selected):
+        assert saved == submission.expected and selected == run_id
+
+        async def result(*, follow_runs, rpc_timeout):
+            assert follow_runs is False
+            return {'status': 'REVIEW_READY', 'task_id': 'task-1', 'task_type': spec['request']['task_type'],
+                    'request_sha256': spec['request_sha256'], 'profile_sha256': spec['profile_sha256'],
+                    'base_sha': base, 'candidate_sha': candidate}
+
+        return SimpleNamespace(result=result), SimpleNamespace(status=WorkflowExecutionStatus.COMPLETED), None
+
+    exporter.submission.lookup_run = lookup
+    exported = await exporter.run()
+    assert exported['status'] == 'exported' and exported['candidate_sha'] == candidate
+
+    installed = workflows.install_preset(state, 'engineering-review')
+    ref, = (item for item in installed['workflows'] if item['id'] == 'ergora-correctness-review')
+    selected = workflows.get(state, ref['id'], ref['version'])['definition']
+    wrapper = root / 'candidate-check-wrapper'
+    wrapper.mkdir()
+    write(wrapper / 'workflow.json', {'schema_version': 2, 'id': 'candidate-check-wrapper', 'version': '1.0.0',
+        'description': 'Review one exported candidate.', 'resources': [],
+        'permissions': selected['permissions'], 'limits': selected['limits'], 'inputs': ['task'],
+        'nodes': [{'id': 'correctness', 'ref': {key: ref[key] for key in ('kind', 'id', 'version', 'digest')},
+                   'depends_on': [], 'inputs': {'task': {'input': 'task'}}}],
+        'outputs': {'result': {'node': 'correctness', 'output': 'result'}}})
+    workflows.import_bundle(state, wrapper)
+    manifest = workflows.prepare_manifest(state.root, 'candidate-check-wrapper', '1.0.0',
+        {'schema_version': 1, 'permissions': selected['permissions'], 'limits': selected['limits']}, root / 'check-manifest')
+    requirements, packet = root / 'check-requirements.md', root / 'check-packet'
+    requirements.write_text('Review the exact exported fixture candidate.', encoding='utf-8')
+    material = packets.prepare(Path(project['repo']), repository_id='fixture/local', base=base, head=candidate,
+                               requirements=requirements, destination=packet)
+    instance = 'root/correctness/review'
+    input_record = requests.prepare(packet, source_kind='local', source_sha256=material['packet_sha256'],
+        manifest=Path(manifest['path']), manifest_digest=manifest['digest'], instance=instance,
+        destination=root / 'candidate-review-input', max_prompt_bytes=100_000)
+    assert input_record['execution_authorized'] is False
+    source = {'task_id': 'task-1', 'run_id': run_id, 'candidate_sha': candidate,
+              'export_intent_sha256': exported['intent_sha256'],
+              'verification_sha256': verification.snapshot(project)['sha256'],
+              'packet': str(packet), 'packet_sha256': material['packet_sha256'],
+              'manifest': manifest['path'], 'manifest_digest': manifest['digest'], 'instance': instance,
+              'wall_seconds': 70, 'cleanup_seconds': 8}
+    source_path = root / 'candidate-check.json'
+    source_raw = (json.dumps(source, ensure_ascii=False) + '\r\n').encode('utf-8')
+    source_path.write_bytes(source_raw)
+    source_sha = hashlib.sha256(source_raw).hexdigest()
+    cli = [sys.executable, '-P', '-c', 'from ergora.interfaces.cli import main;raise SystemExit(main())', '--home', str(state.root)]
+    command = ['task', 'candidate-check', 'demo']
+    options = ['--request', str(source_path), '--revision', str(project['revision']), '--request-sha256', source_sha]
+    original_approvals = {path.name: path.read_bytes() for path in (runtime / 'approvals').glob('*.json')}
+    original_runs = agent_runs.runs(state, 'demo')
+
+    async def call(*args, code=0):
+        result = await asyncio.to_thread(subprocess.run, [*cli, *args], capture_output=True, text=True, timeout=30)
+        assert result.returncode == code, (args, result.returncode, result.stdout, result.stderr)
+        return json.loads(result.stdout) if result.stdout else result.stderr
+
+    def locations(queued):
+        kind = 'fixed-candidate-check'
+        job_id = queued['job_id']
+        scope = job_id.rsplit('-', 1)[0]
+        request = runtime / 'requests' / kind / scope / (job_id + '.json')
+        permit = runtime / 'approvals' / kind / (scope + '.json')
+        workspace = runtime / 'workspaces' / kind / scope / 'jobs' / job_id
+        return request, permit, workspace
+
+    assert 'explicit operator confirmation' in await call(*command, 'pass-check', *options, code=2)
+    assert not list((runtime / 'approvals/fixed-candidate-check').glob('*.json'))
+    queued = await call(*command, 'pass-check', *options, '--confirm')
+    request, permit, workspace = locations(queued)
+    original_permit, original_request = permit.read_bytes(), request.read_bytes()
+    admission = read(permit)
+    assert admission['request_text'].encode('utf-8') == source_raw and queued['request_file_sha256'] == source_sha
+    assert 'approved_plan' not in read(request)['context'] and 'policy' not in admission['budget']
+    assert await call(*command, 'pass-check', *options, '--confirm') == queued
+    changed = root / 'candidate-check-changed.json'
+    changed.write_bytes(source_raw + b' ')
+    changed_options = ['--request', str(changed), '--revision', str(project['revision']), '--request-sha256']
+    assert 'bytes differ' in await call(*command, 'pass-check', *changed_options, source_sha, '--confirm', code=2)
+    changed_sha = hashlib.sha256(changed.read_bytes()).hexdigest()
+    assert 'different original authorization' in await call(*command, 'pass-check', *changed_options, changed_sha, '--confirm', code=2)
+    assert permit.read_bytes() == original_permit and request.read_bytes() == original_request
+
+    executor = ['reference', 'executor', '--project', 'demo', '--request']
+    receipt = await call(*executor, str(request))
+    passed = await call('task', 'candidate-check-status', 'demo', 'pass-check', '--job-sha256', queued['job_sha256'])
+    assert receipt['state'] == 'SUCCEEDED' and passed['status'] == 'succeeded' and passed['cleanup_confirmed']
+    assert passed['fixed_check_ids'] == ['configuration-integrity', 'follow-up']
+    assert await call(*command, 'pass-check', *options, '--confirm') == passed
+    assert permit.read_bytes() == original_permit and request.read_bytes() == original_request
+    assert not (workspace / 'budget/model-attempt.json').exists()
+    formal_artifact = next(item for item in verify['artifacts'] if item['name'] == 'check-results')
+    scoped = read(runtime / 'artifacts/fixed-candidate-check' / receipt['artifacts'][0]['path'])
+    formal = read(runtime / 'artifacts' / formal_artifact['path'])
+    assert set(scoped) == {'schema_version', 'kind', 'candidate_sha', 'verification'}
+    assert formal['candidate_sha'] == scoped['candidate_sha'] == candidate
+    for ident, observed in scoped['verification']['checks'].items():
+        expected = formal['verification']['checks'][ident]
+        assert observed['input']['repository'] == expected['input']['repository']
+        assert observed['input']['cases'] == expected['input']['cases']
+        assert observed['input']['subject']['check_sha256'] == expected['input']['subject']['check_sha256']
+        assert observed['process']['name'] != expected['process']['name']
+        assert observed['observations'] == expected['observations']
+
+    queued = await call(*command, 'stop-check', *options, '--confirm')
+    request, _, workspace = locations(queued)
+    (root / 'hold-candidate-check').write_text(queued['job_sha256'], encoding='utf-8')
+    stop = ['task', 'candidate-check-stop', 'demo', 'stop-check', '--job-sha256', queued['job_sha256'], '--confirm']
+    native = runtime / 'processes'
+    owner = workspace / 'budget'
+    with (root / 'live-check.stdout').open('wb') as out, (root / 'live-check.stderr').open('wb') as err:
+        live = subprocess.Popen([*cli, *executor, str(request)], stdout=out, stderr=err)
+        try:
+            async with asyncio.timeout(12):
+                while True:
+                    markers = list(root.glob('checker-start-*.json'))
+                    monitors = list(native.glob('af-oracle-' + queued['job_sha256'] + '-*'))
+                    if markers and monitors and (monitors[0] / 'pid.json').exists():
+                        break
+                    assert live.poll() is None, 'Original check exited before its live witness'
+                    await asyncio.sleep(.01)
+            marker, = markers
+            monitor, = monitors
+            checker = read(marker)
+            assert processes.identity(checker['pid']) == checker
+            started = read(monitor / 'started.json')
+            subject = started['binding']['subject']
+            assert subject['job_sha256'] == queued['job_sha256'] and subject['check_id'] == 'configuration-integrity'
+            monitor_identity = processes.identity(started['monitor_pid'])
+            command_identity = read(monitor / 'pid.json')
+            assert processes.identity(command_identity['pid']) == command_identity
+            assert len({item['pid'] for item in (checker, monitor_identity, command_identity)}) == 3
+            request_bytes, started_bytes = (monitor / 'request.json').read_bytes(), (monitor / 'started.json').read_bytes()
+            assert (await call(*stop))['stop_requested']
+        finally:
+            if live.poll() is None and not (runtime / 'fences/fixed-candidate-check' / (request.parent.name + '.json')).exists():
+                await call(*stop)
+            await asyncio.to_thread(live.wait, 35)
+
+    finished = await call('task', 'candidate-check-status', 'demo', 'stop-check')
+    assert finished['stop_requested'] and finished['status'] in ('cancelled', 'unknown')
+    assert finished['status'] == ('unknown' if live.returncode == 2 else 'cancelled') and live.returncode in (1, 2)
+    stopped = read(owner / 'stopped.json')
+    assert stopped['cleanup_confirmed'] is True and stopped['job_sha256'] == queued['job_sha256']
+    if finished['status'] == 'cancelled':
+        assert finished['cleanup_confirmed'] is True
+    else:
+        assert finished['outer_cleanup_confirmed'] is True and finished['cleanup_confirmed'] is None
+    identities = [checker, monitor_identity, command_identity]
+    for original_identity in identities:
+        try:
+            observed = processes.identity(original_identity['pid'])
+        except (OSError, ValueError):
+            continue
+        assert observed != original_identity, 'Original checker or monitor remains alive'
+    assert not list(workspace.glob('output/*/observations.json'))
+    assert await call(*command, 'stop-check', *options, '--confirm') == finished
+    await call(*executor, str(request), code=live.returncode)
+    assert (monitor / 'request.json').read_bytes() == request_bytes
+    assert (monitor / 'started.json').read_bytes() == started_bytes
+    assert list(root.glob('checker-start-*.json')) == [marker]
+    assert list(native.glob('af-oracle-' + queued['job_sha256'] + '-*')) == [monitor]
+    assert not (runtime / 'fences/task-1.json').exists()
+    assert agent_runs.runs(state, 'demo') == original_runs
+    assert {path.name: path.read_bytes() for path in (runtime / 'approvals').glob('*.json')} == original_approvals
+    return {'same_observations': True, 'passing_receipt': passed, 'stop': finished, 'original_starts': 1,
+            'stopped_identities': identities, 'outer_cleanup_confirmed': stopped['cleanup_confirmed'],
+            'native_started_sha256': hashlib.sha256(started_bytes).hexdigest(), 'request_file_sha256': source_sha,
+            'owner_stopped_sha256': hashlib.sha256((owner / 'stopped.json').read_bytes()).hexdigest()}

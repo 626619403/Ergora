@@ -374,9 +374,33 @@ def validate_report(report: dict, verification: dict, expected_subject: dict, *,
     validate_snapshot(verification)
     capacity(report, ARTIFACT_BYTES, 'Complete check-results', compact=True)
     _ordinary_report(report, verification, expected_subject, process_root.parent, require_pass)
-    fixed = report['verification']
+    if report['candidate_sha'] != expected_subject['candidate_sha']:
+        raise ValueError('Fixed results differ from the required checks or original subject')
+    state = process_root.parent
+    base = state / 'workspaces' / expected_subject['task_id'] / 'jobs' / expected_subject['job_id']
+    fence = state / 'fences' / (expected_subject['task_id'] + '.json')
+    _validate_fixed_results(report['verification'], verification, expected_subject, process_root, base, fence, require_pass)
+    return report
+
+
+def validate_fixed_report(report: dict, verification: dict, expected_subject: dict, *,
+                          process_root: Path, workspace: Path, fence: Path, require_pass: bool = True) -> dict:
+    """Validate a report whose receipt covers only the authorized fixed checks."""
+    _fields(report, ('schema_version', 'kind', 'candidate_sha', 'verification'), 'Independent fixed check results')
+    if (type(report['schema_version']) is not int or report['schema_version'] != 1
+            or report['kind'] != 'fixed-candidate-check-results'
+            or report['candidate_sha'] != expected_subject['candidate_sha']):
+        raise ValueError('Independent fixed results differ from the exact candidate')
+    validate_snapshot(verification)
+    # The original immutable JSON publisher includes a trailing newline.
+    capacity(report, ARTIFACT_BYTES, 'Independent fixed check results', reserve=1, compact=True)
+    _validate_fixed_results(report['verification'], verification, expected_subject, process_root, workspace, fence, require_pass)
+    return report
+
+
+def _validate_fixed_results(fixed, verification, expected_subject, process_root, base, fence, require_pass):
     _fields(fixed, ('subject', 'required_checks', 'checks', 'passed'), 'Fixed verification results')
-    if (report['candidate_sha'] != expected_subject['candidate_sha'] or fixed['subject'] != expected_subject
+    if (fixed['subject'] != expected_subject
             or fixed['required_checks'] != sorted(verification['checks']) or set(fixed['checks']) != set(verification['checks'])):
         raise ValueError('Fixed results differ from the required checks or original subject')
     total = 0
@@ -405,10 +429,8 @@ def validate_report(report: dict, verification: dict, expected_subject: dict, *,
                 or type(request['timeout']) not in (int, float) or not 1 <= request['timeout'] <= check['wall_seconds']):
             raise ValueError('Fixed process lost its original request/input binding')
         output = Path(request['output'])
-        state = process_root.parent
-        base = state / 'workspaces' / expected_subject['task_id'] / 'jobs' / expected_subject['job_id']
         if (output != base / 'output' / name or Path(request['checkout']) != base / 'checkout'
-                or request['fence'] != str(state / 'fences' / (expected_subject['task_id'] + '.json'))):
+                or request['fence'] != str(fence)):
             raise ValueError('Fixed process moved outside its original verify Job')
         owner = decode_record(read_raw(base / 'budget/owner.json'))
         if (request['deadline'] != owner['verification_deadline']
@@ -437,7 +459,6 @@ def validate_report(report: dict, verification: dict, expected_subject: dict, *,
     passed = all(item['observations']['passed'] for item in fixed['checks'].values())
     if type(fixed['passed']) is not bool or fixed['passed'] != passed or (require_pass and not passed):
         raise ValueError('Required fixed verification did not pass')
-    return report
 
 
 def job_subject(document: dict, job: dict, state: Path) -> dict:

@@ -994,3 +994,231 @@ BudgetedJob.supervise = lost
             if service is not None and service.poll() is None:
                 service.kill()
                 service.communicate(timeout=5)
+
+
+@pytest.mark.parametrize('case', ['stop-first-terminal', 'link-first', 'stop-first-checker',
+                                  'spawn-first', 'cross-boot', 'clock-discontinuity'])
+def test_scoped_candidate_check_launch_and_terminal_boundaries(tmp_path, case):
+    """Real scope gate and job owner with controlled order at the last effect."""
+    pytest.importorskip('temporalio')
+    environment = dict(os.environ, AGENTFLOW_CONFIG_DIR=str(tmp_path / 'config'),
+                       AGENTFLOW_STATE_DIR=str(tmp_path / 'runtime'),
+                       PYTHONPATH=os.pathsep.join(map(str, (IMPORT_ROOT, native_resources.ROOT / 'platform/local',
+                                                            native_resources.ROOT / 'platform/upstream/platform'))))
+    source = '''
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import closing, contextmanager
+import hashlib
+import json
+import os
+from pathlib import Path
+import signal
+import subprocess
+import sys
+from threading import Event
+import time
+from unittest.mock import patch
+
+from agent_platform import executor as original, process_job
+from agent_platform.core import CONFIG, STATE
+from dev_platform.adapter import publish
+from dev_platform.contracts import canonical_sha
+from ergora.development import verification
+from ergora.development.runtime import candidate_checks, fixed_checks, jobs
+from ergora.runtime import budget_clock
+from ergora.storage.assets import manifest_digest
+
+case = sys.argv[1]
+home = STATE.parent / 'control'
+CONFIG.mkdir()
+home.mkdir()
+publish(CONFIG / 'adapter.json', {'trusted_receipts': True, **{key: str(STATE / key)
+        for key in ('requests', 'receipts', 'artifacts', 'approvals', 'fences')}})
+publish(CONFIG / 'platform.json', {'stage_walltime_seconds': 30, 'max_parallel_jobs': 1})
+adapter = fixed_checks.check_adapter()
+checker = {'text': 'pass\\n', 'sha256': hashlib.sha256(b'pass\\n').hexdigest(), 'executable_bits': 0}
+checks = {'test': {'format': 'fixed-text-observations-v1', 'coverage': 'Test the original owner boundary',
+    'entrypoint': 'probe.py', 'source': {'files': {'probe.py': checker},
+        'digest': manifest_digest({'probe.py': {key: checker[key] for key in ('sha256', 'executable_bits')}})},
+    'runtime': verification.runtime_identity(Path(sys.executable)), 'candidate_paths': ['probe.json'],
+    'cases': [{'id': 'fixed', 'input': None, 'expected': None}], 'wall_seconds': 8}}
+project = {'id': 'demo', 'revision': 1}
+registration = 'a' * 64
+fixed = verification.snapshot({**project, 'registration': {'sha256': registration, 'definition': {'trusted_checks': checks}}})
+source = {'task_id': 'origin', 'run_id': 'original-run', 'candidate_sha': 'b' * 40,
+          'export_intent_sha256': 'c' * 64, 'verification_sha256': fixed['sha256'],
+          'packet': str(home / 'packet'), 'packet_sha256': 'd' * 64, 'manifest': str(home / 'manifest'),
+          'manifest_digest': 'e' * 64, 'instance': 'root/correctness/review', 'wall_seconds': 60, 'cleanup_seconds': 8}
+raw = json.dumps(source)
+clock = budget_clock.authorize(60)
+if case == 'cross-boot':
+    clock['boot_id'] = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'
+if case == 'clock-discontinuity':
+    clock['boottime_ns'] += 120_000_000_000
+admission = {'schema_version': 1, 'kind': fixed_checks.KIND, 'project': 'demo', 'project_revision': 1,
+    'registration_sha256': registration, 'execution': {}, 'repo': str(home / 'repo'), 'control_home': str(home),
+    'operation_id': case, 'actor_id': 'fixture-operator', 'request': source, 'request_text': raw,
+    'request_file_sha256': hashlib.sha256(raw.encode()).hexdigest(), 'verification': fixed,
+    'export_receipt_sha256': 'f' * 64, 'budget': {**clock, 'sha256': canonical_sha(clock)}}
+admission['sha256'] = canonical_sha(admission)
+context = fixed_checks.check_context(admission)
+publish(adapter.path('approvals', context['task_id'] + '.json'), admission)
+original_request = asyncio.run(adapter.submit(context))
+envelope = {key: original_request[key] for key in ('job_id', 'job_sha256', 'context')}
+envelope['schema_version'] = 1
+path = adapter.path('requests', context['task_id'] + '/' + context['job_id'] + '.json')
+job = jobs.CandidateCheckJob(path, home, envelope)
+payload = {'project': project, 'control_home': str(home), 'operation_id': case,
+           'job_sha256': envelope['job_sha256'], 'confirm': True}
+def operate(operation):
+    return asyncio.run(candidate_checks._operate(dict(payload, operation=operation)))
+def stop():
+    return operate('stop-fixed-check')
+def ledger_state():
+    with closing(original.ledger()) as db:
+        return db.execute('SELECT state FROM jobs WHERE id=?', (job.job_id,)).fetchone()[0]
+
+if case in ('cross-boot', 'clock-discontinuity'):
+    if case == 'cross-boot':
+        with patch.object(job, 'finalize', side_effect=InterruptedError('Lost reply before no-body terminal')):
+            try:
+                job.own()
+            except InterruptedError:
+                pass
+            else:
+                raise AssertionError('Original no-body disposition lost its interruption')
+        observed = operate('status-fixed-check')
+        assert observed['status'] == 'not_started' and observed['body_started'] is False
+        assert observed['receipt_sha256'] is None and not job.terminal.exists()
+        # Retain the launch reservation and rejection a lost watcher receives.
+        with closing(original.ledger()) as db, db:
+            db.execute("UPDATE jobs SET state='OWNED' WHERE id=?", (job.job_id,))
+        rejected = STATE / 'rejected-envelopes' / (hashlib.sha256(str(path).encode()).hexdigest() + '.json')
+        publish(rejected, {'request_file': str(path), 'detail': 'Lost prior owner observation'})
+        watcher = subprocess.Popen([sys.executable, '-P', '-c',
+            'from pathlib import Path;from ergora.development.runtime.executor import main;main(Path(' + repr(str(home)) + '))'])
+        try:
+            deadline = time.monotonic() + 8
+            while ledger_state() == 'OWNED':
+                assert watcher.poll() is None and time.monotonic() < deadline
+                time.sleep(.05)
+            assert ledger_state() == 'CANCELLED' and rejected.exists()
+        finally:
+            if watcher.poll() is None:
+                watcher.send_signal(signal.SIGINT)
+                watcher.wait(timeout=6)
+    terminal = job.run()
+    assert terminal['state'] == ledger_state() == 'CANCELLED'
+    assert ('across boot' if case == 'cross-boot' else 'clock discontinuity') in terminal['detail']
+    status = operate('status-fixed-check')
+    assert status['status'] == 'cancelled' and status['body_started'] is False
+    assert status['cleanup_confirmed'] is None
+    assert not any((job.folder / name).exists() for name in ('attempt.json', 'owner.json', 'body', 'stopped.json'))
+    raw_witness = (job.folder / 'not-started.json').read_bytes()
+    assert job.run() == terminal and (job.folder / 'not-started.json').read_bytes() == raw_witness
+    assert not list((STATE / 'processes').glob('*'))
+    print(case, terminal['state'], 'no body and original ledger released')
+    sys.exit()
+
+if case in ('stop-first-terminal', 'link-first'):
+    job.cancelled = False
+    job.session = original.claim(job.job_id, envelope['job_sha256'])
+    receipt = job._receipt('SUCCEEDED', 'Controlled collected success for the publication boundary')
+    if case == 'stop-first-terminal':
+        write = jobs.write
+        def stop_before_gate(path, value):
+            write(path, value)
+            if path.parent.name == 'finalizations' and not job.fence.exists():
+                assert stop()['stop_requested']
+                assert not job.terminal.exists()
+        with patch.object(jobs, 'write', side_effect=stop_before_gate):
+            result = job.finalize(receipt)
+        assert result['state'] == ledger_state() == 'CANCELLED' and job.fence.exists()
+    else:
+        entered = Event()
+        gate = candidate_checks.candidate_check_gate
+        link = os.link
+        @contextmanager
+        def entering(fence):
+            entered.set()
+            with gate(fence):
+                yield
+        # The synthetic receipt isolates the publication guard. Its full report
+        # validation is exercised by the real CLI candidate-check fixture.
+        async def observe_receipt(*args):
+            return job.read_published_terminal()
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            stops = []
+            def pause_link(source_path, target_path, **kwargs):
+                if target_path == job.terminal:
+                    stops.append(pool.submit(stop))
+                    assert entered.wait(3) and not job.fence.exists() and not job.terminal.exists()
+                    assert not stops[0].done()
+                return link(source_path, target_path, **kwargs)
+            with patch.object(candidate_checks, 'candidate_check_gate', entering), \
+                 patch.object(candidate_checks, '_status', observe_receipt), patch.object(jobs.os, 'link', pause_link):
+                result = job.finalize(receipt)
+                assert stops[0].result(5) == receipt
+        assert result == job.read_published_terminal() == receipt and ledger_state() == 'SUCCEEDED'
+        assert not job.fence.exists()
+    print(case, result['state'], 'scope gate ordered stop and publication')
+    sys.exit()
+
+subject = fixed_checks.check_subject(envelope)
+binding = verification.process_binding({'subject': subject})
+name = verification.process_name(binding)
+folder = STATE / 'processes' / name
+checkout = job.workspace / 'checkout'
+checkout.mkdir(parents=True)
+marker = STATE / 'child-marker'
+command = [sys.executable, '-I', '-S', '-c', 'import signal,sys;from pathlib import Path;'
+           'Path(sys.argv[1]).write_text("started");signal.pause()', str(marker)]
+publish(folder / 'request.json', {'schema_version': 1, 'name': name, 'checkout': str(checkout),
+    'output': str(job.workspace / 'output'), 'command': command, 'writable': False, 'fence': str(job.fence),
+    'timeout': 8, 'model': None, 'protocol': None, 'policy': None, 'binding': binding,
+    'deadline': {'monotonic': time.monotonic() + 12, 'boot_id': clock['boot_id']}})
+if case == 'stop-first-checker':
+    original_gate = process_job.candidate_check_gate
+    @contextmanager
+    def stop_before_gate(fence):
+        assert stop()['stop_requested'] and not marker.exists()
+        with original_gate(fence):
+            yield
+    with patch.object(process_job, 'snapshot', return_value=('same', '', 'none')), \
+         patch.object(process_job, 'candidate_check_gate', stop_before_gate), \
+         patch.object(process_job.subprocess, 'Popen', side_effect=AssertionError('Stopped checker spawned')):
+        process_job.run(folder)
+    assert not marker.exists() and not (folder / 'pid.json').exists()
+    assert 'Cancelled at original last process admission' in fixed_checks.read_record(folder / 'terminal.json')['detail']
+else:
+    entered = Event()
+    gate = candidate_checks.candidate_check_gate
+    real_popen = subprocess.Popen
+    @contextmanager
+    def entering(fence):
+        entered.set()
+        with gate(fence):
+            yield
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        stops = []
+        def pause_launch(argv, **kwargs):
+            stops.append(pool.submit(stop))
+            assert entered.wait(3) and not job.fence.exists() and not marker.exists() and not stops[0].done()
+            child = real_popen(argv, **kwargs)
+            deadline = time.monotonic() + 2
+            while time.monotonic() < deadline and not marker.exists() and child.poll() is None:
+                time.sleep(.01)
+            assert marker.read_text() == 'started' and not job.fence.exists()
+            return child
+        with patch.object(process_job, 'snapshot', return_value=('same', '', 'none')), \
+             patch.object(candidate_checks, 'candidate_check_gate', entering), \
+             patch.object(process_job.subprocess, 'Popen', pause_launch):
+            process_job.run(folder)
+            assert stops[0].result(5)['stop_requested']
+    assert fixed_checks.read_record(folder / 'terminal.json')['detail'] == 'Cancellation fence observed'
+print(case, 'scope gate ordered stop and native Popen')
+'''
+    result = subprocess.run([sys.executable, '-P', '-c', source, case], env=environment,
+                            capture_output=True, text=True, timeout=22)
+    assert result.returncode == 0, result.stdout + result.stderr

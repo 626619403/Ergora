@@ -6,7 +6,7 @@ processes have been reaped. An uncertain attempt is never executed again.
 """
 
 from abc import ABC, abstractmethod
-from contextlib import closing
+from contextlib import closing, nullcontext
 import fcntl
 import hashlib
 import json
@@ -20,22 +20,29 @@ import uuid
 from datetime import datetime, timezone
 
 from agent_platform import executor as original
-from agent_platform.core import Blocked, CONFIG, ROOT, STATE, UPSTREAM, read, require, settings, slug, write
+from agent_platform.core import Blocked, CONFIG, ROOT, STATE, UPSTREAM, git, read, require, settings, slug, write
+from agent_platform.process_job import candidate_check_gate
 from dev_platform.adapter import FileAdapter, MAX_RECEIPT_BYTES, identifier, publish, read_raw
 from dev_platform.contracts import canonical_sha
 
 from ergora.runtime import processes
 from ergora.development import budget as reference_budget
 from ergora.development import envelopes as task_envelopes
+from ergora.development import verification
+from ergora.development.runtime import fixed_checks
 from ergora._paths import IMPORT_ROOT
 
 
 class Job(ABC):
     def __init__(self, path: Path, home: Path, document: dict):
+        envelope = task_envelopes.decode_job(read_raw(path.resolve(), task_envelopes.WIRE_LIMIT))
+        self.bind(path, home, document, envelope, envelope['context']['spec']['request']['task_id'])
+
+    def bind(self, path: Path, home: Path, document: dict, envelope: dict, task_id: str) -> None:
         self.path, self.home, self.document = path.resolve(), home, document
-        self.envelope = task_envelopes.decode_job(read_raw(self.path, task_envelopes.WIRE_LIMIT))
-        self.context = self.envelope['context']
-        self.task_id = slug(self.context['spec']['request']['task_id'])
+        self.envelope = envelope
+        self.context = envelope['context']
+        self.task_id = slug(task_id)
         self.job_id = identifier(self.envelope['job_id'])
         require(self.envelope['job_sha256'] == original.sha(self.context)
                 and self.job_id == self.context['job_id']
@@ -69,10 +76,19 @@ class DirectJob(Job):
 class BudgetedJob(Job):
     def __init__(self, path: Path, home: Path, document: dict):
         super().__init__(path, home, document)
-        self.instance = document['budget']['instance']
-        self.folder = STATE / 'workspaces' / self.task_id / 'jobs' / self.job_id / 'budget'
+        instance = document['budget']['instance']
+        self.bind_budget(instance, instance['policy']['wall_seconds'],
+                         fixed_verification='verification' in document and self.context['stage'] == 'verify')
+
+    def bind_budget(self, instance: dict, wall_seconds: int, *, fixed_verification: bool,
+                    workspace: Path | None = None, fence: Path | None = None) -> None:
+        self.instance = instance
+        self.wall_seconds = wall_seconds
+        self.fixed_verification = fixed_verification
+        self.folder = (workspace or STATE / 'workspaces' / self.task_id / 'jobs' / self.job_id) / 'budget'
+        self.fence = fence or STATE / 'fences' / (self.task_id + '.json')
         self.identity = {'schema_version': 1, 'job_id': self.job_id,
-            'job_sha256': self.envelope['job_sha256'], 'admission_sha256': document['sha256'],
+            'job_sha256': self.envelope['job_sha256'], 'admission_sha256': self.document['sha256'],
             'budget_sha256': self.instance['sha256']}
 
     def run(self) -> dict:
@@ -116,7 +132,7 @@ class BudgetedJob(Job):
 
     def unconfirmed_checks(self) -> bool:
         """Nested process outcomes and outer subtree cleanup are separate facts."""
-        if 'verification' not in self.document or self.context['stage'] != 'verify':
+        if not self.fixed_verification:
             return False
         for folder in (STATE / 'processes').glob('af-oracle-' + self.identity['job_sha256'] + '-*'):
             try:
@@ -157,9 +173,9 @@ class BudgetedJob(Job):
 
     def supervise(self, phase: str, command: list[str], payload: dict, lock, *, cleanup=False) -> dict:
         def stopped():
-            if not cleanup and (self.cancelled or (STATE / 'fences' / (self.task_id + '.json')).exists()):
+            if not cleanup and (self.cancelled or self.fence.exists()):
                 return True
-            if not cleanup and self.context['stage'] == 'verify' and 'verification' in self.document:
+            if not cleanup and self.fixed_verification:
                 cutoff = read(self.folder / 'owner.json')['verification_deadline']
                 if (cutoff['boot_id'] != Path('/proc/sys/kernel/random/boot_id').read_text().strip()
                         or time.monotonic() >= cutoff['monotonic']):
@@ -172,7 +188,7 @@ class BudgetedJob(Job):
 
         environment = dict(os.environ, ERGORA_REFERENCE_JOB_OWNER=str(self.folder),
                            ERGORA_REFERENCE_JOB_LOCK_FD=str(lock.fileno()))
-        return processes.run(command, self.home, self.folder / phase, self.instance['policy']['wall_seconds'],
+        return processes.run(command, self.home, self.folder / phase, self.wall_seconds,
             json.dumps(payload), environment, supervised=True, lock_fd=lock.fileno(), stop_requested=stopped)
 
     def own(self) -> dict:
@@ -186,18 +202,9 @@ class BudgetedJob(Job):
             if attempt.exists():
                 require(read(attempt) == self.identity, 'Original budget job identity changed')
                 return self.reconcile(lock)
-            require(not self.terminal.exists(), 'Budget owner cannot adopt an independently published terminal')
-            write(attempt, self.identity)
-            ticks = Path('/proc/self/stat').read_text().rsplit(')', 1)[1].split()[19]
-            boot_id = Path('/proc/sys/kernel/random/boot_id').read_text().strip()
-            deadline = {}
-            if self.context['stage'] == 'verify' and 'verification' in self.document:
-                task_sampled = time.monotonic()
-                remaining = self.remaining()
-                deadline['verification_deadline'] = {'monotonic': min(stage_started + settings()['stage_walltime_seconds'],
-                    task_sampled + remaining), 'boot_id': boot_id}
-            write(self.folder / 'owner.json', {**self.identity, 'pid': os.getpid(), 'start_ticks': ticks,
-                'boot_id': boot_id, **deadline})
+            disposition = self.start_attempt(attempt, stage_started)
+            if disposition is not None:
+                return disposition
             def cancel(signum, frame):
                 self.cancelled = True
 
@@ -218,6 +225,23 @@ class BudgetedJob(Job):
                 receipt = self.failure('Budget work stopped or evidence collection was not confirmed; pending evidence retained')
             return self.finalize(receipt)
 
+    def start_attempt(self, attempt: Path, stage_started: float) -> dict | None:
+        require(not self.terminal.exists(), 'Budget owner cannot adopt an independently published terminal')
+        write(attempt, self.identity)
+        write(self.folder / 'owner.json', self.owner_record(stage_started))
+        return None
+
+    def owner_record(self, stage_started: float) -> dict:
+        ticks = Path('/proc/self/stat').read_text().rsplit(')', 1)[1].split()[19]
+        boot_id = Path('/proc/sys/kernel/random/boot_id').read_text().strip()
+        record = {**self.identity, 'pid': os.getpid(), 'start_ticks': ticks, 'boot_id': boot_id}
+        if self.fixed_verification:
+            task_sampled = time.monotonic()
+            remaining = self.remaining()
+            record['verification_deadline'] = {'monotonic': min(stage_started + settings()['stage_walltime_seconds'],
+                                                               task_sampled + remaining), 'boot_id': boot_id}
+        return record
+
     def collect_pending(self, lock) -> dict | None:
         collected = self.supervise('collection', [sys.executable, '-P', '-c',
             'from ergora.development.runtime.jobs import collect;collect()'],
@@ -228,21 +252,28 @@ class BudgetedJob(Job):
         if collected['status'] == 'succeeded':
             return json.loads(read_raw(self.folder / 'collected.json', MAX_RECEIPT_BYTES))
 
-    def finalize(self, receipt: dict) -> dict:
+    def terminal_gate(self):
+        return nullcontext()
+
+    def finalize(self, receipt: dict, *, cleanup_confirmed: bool | None = True) -> dict:
         # Hashing was supervised after the business tree stopped. Fallbacks
         # were verified by failure(), without rereading large artifacts here.
         while True:
             candidate = self.folder / 'candidates' / (canonical_sha(receipt) + '.json')
             publish(candidate, receipt)
-            try:
-                remaining, clock_error = self.remaining(cleanup=True), None
-            except ValueError as error:
-                remaining, clock_error = None, str(error)
-            cancelled = self.cancelled or (STATE / 'fences' / (self.task_id + '.json')).exists()
+            if cleanup_confirmed is None:
+                require(receipt['state'] == 'CANCELLED', 'A no-body disposition cannot publish success')
+                remaining, clock_error = None, receipt['detail']
+            else:
+                try:
+                    remaining, clock_error = self.remaining(cleanup=True), None
+                except ValueError as error:
+                    remaining, clock_error = None, str(error)
+            cancelled = self.cancelled or self.fence.exists()
             if receipt['state'] == 'SUCCEEDED' and (remaining is None or remaining <= 0 or cancelled):
                 receipt = self.failure('Original total budget expired or cancellation was observed before terminal publication')
                 continue
-            outcome = {**self.identity, 'cleanup_confirmed': True,
+            outcome = {**self.identity, 'cleanup_confirmed': cleanup_confirmed,
                 'candidate_sha256': hashlib.sha256(read_raw(candidate)).hexdigest(),
                 'candidate_file': candidate.relative_to(self.folder).as_posix(),
                 'recorded_at': datetime.now(timezone.utc).isoformat(),
@@ -250,23 +281,31 @@ class BudgetedJob(Job):
                 'overrun_seconds': max(0, -remaining) if remaining is not None else None,
                 'clock_error': clock_error, 'cancel_requested': cancelled}
             write(self.folder / 'finalizations' / (uuid.uuid4().hex + '.json'), outcome)
-            if receipt['state'] == 'SUCCEEDED':
-                # Observation persistence consumes the same authorization. A
-                # slow fsync can only change success to a failure candidate.
-                try:
-                    reference_budget.require_remaining(self.instance, cleanup=True)
-                    authorized = not self.cancelled and not (STATE / 'fences' / (self.task_id + '.json')).exists()
-                except ValueError:
-                    authorized = False
-                if not authorized:
-                    receipt = self.failure('Original total budget expired or cancellation was observed before terminal publication')
-                    continue
             self.terminal.parent.mkdir(parents=True, exist_ok=True)
-            try:
-                os.link(candidate, self.terminal)
-            except FileExistsError:
-                require(read_raw(self.terminal) == read_raw(candidate), 'Budget terminal publication conflicts with original evidence')
+            with self.terminal_gate():
+                if receipt['state'] == 'SUCCEEDED':
+                    # Recheck the original allowance after durable preparation, under
+                    # the same gate that accepts a scoped stop.
+                    try:
+                        authorized = self.remaining(cleanup=True) > 0 and not self.cancelled and not self.fence.exists()
+                    except ValueError:
+                        authorized = False
+                    if not authorized:
+                        receipt = self.failure('Original total budget expired or cancellation was observed before terminal publication')
+                        continue
+                try:
+                    os.link(candidate, self.terminal)
+                except FileExistsError:
+                    require(read_raw(self.terminal) == read_raw(candidate), 'Budget terminal publication conflicts with original evidence')
             return self.record_terminal(receipt)
+
+    def read_published_terminal(self) -> dict:
+        raw = read_raw(self.terminal, MAX_RECEIPT_BYTES)
+        receipt = json.loads(raw)
+        candidate = self.folder / 'candidates' / (canonical_sha(receipt) + '.json')
+        require(candidate.exists() and read_raw(candidate) == raw,
+                'Published budget receipt has no original finalized candidate')
+        return receipt
 
     def reconcile(self, lock) -> dict:
         if not (self.folder / 'stopped.json').exists():
@@ -277,13 +316,9 @@ class BudgetedJob(Job):
         if self.unconfirmed_checks():
             return self.unknown(nested=True)
         if self.terminal.exists():
-            raw = read_raw(self.terminal, MAX_RECEIPT_BYTES)
             # The single owner may have been interrupted after linking its
             # late fallback but before updating the original jobs ledger.
-            candidate = self.folder / 'candidates' / (canonical_sha(json.loads(raw)) + '.json')
-            require(candidate.exists() and read_raw(candidate) == raw,
-                    'Published budget receipt has no original finalized candidate')
-            return self.record_terminal(json.loads(raw))
+            return self.record_terminal(self.read_published_terminal())
         # Resume finalization from a confirmed collection, never its body or
         # an uncertain collection attempt. All original phase evidence stays.
         collection = self.folder / 'collection-stopped.json'
@@ -293,7 +328,7 @@ class BudgetedJob(Job):
             # If nested outcomes arrived after the outer tree stopped, collect
             # its complete saved pending receipt once. An existing collection
             # directory is an original attempt and cannot be executed again.
-            if ('verification' in self.document and self.context['stage'] == 'verify'
+            if (self.fixed_verification
                     and not (self.folder / 'collection').exists() and (self.folder / 'pending.json').exists()):
                 receipt = self.collect_pending(lock)
                 return self.finalize(receipt if receipt is not None else
@@ -308,13 +343,137 @@ class BudgetedJob(Job):
         return self.finalize(json.loads(read_raw(self.folder / 'collected.json', MAX_RECEIPT_BYTES)))
 
 
+class CandidateCheckJob(BudgetedJob):
+    def __init__(self, path: Path, home: Path, envelope: dict):
+        adapter = fixed_checks.check_adapter()
+        admission = fixed_checks.authorized(adapter, envelope)
+        context = envelope['context']
+        relative = context['task_id'] + '/' + envelope['job_id'] + '.json'
+        require(path == adapter.path('requests', relative), 'Candidate check job was moved from its original request')
+        require(str(home) == admission['control_home'], 'Candidate check job belongs to another control directory')
+        self.bind(path, home, admission, envelope, context['task_id'])
+        self.adapter = adapter
+        self.terminal = adapter.path('receipts', relative)
+        self.workspace = fixed_checks.check_workspace(context)
+        self.bind_budget(admission['budget'], admission['request']['wall_seconds'], fixed_verification=True,
+                         workspace=self.workspace, fence=adapter.path('fences', self.task_id + '.json'))
+
+    def remaining(self, *, cleanup=False) -> float:
+        return fixed_checks.work_remaining(self.document, cleanup=cleanup)
+
+    def terminal_gate(self):
+        return candidate_check_gate(self.fence)
+
+    def start_attempt(self, attempt: Path, stage_started: float) -> dict | None:
+        disposition = self.folder / 'not-started.json'
+        if disposition.exists():
+            receipt = self.read_not_started()
+            require(receipt['actor']['session_id'] == self.session, 'Unstarted check differs from its original job session')
+            if self.terminal.exists():
+                require(self.read_published_terminal() == receipt, 'Unstarted check terminal differs from its original disposition')
+                return self.record_terminal(receipt)
+            return self.finalize(receipt, cleanup_confirmed=None)
+
+        require(not self.terminal.exists(), 'Budget owner cannot adopt an independently published terminal')
+        try:
+            record = self.owner_record(stage_started)
+        except (OSError, ValueError) as error:
+            receipt = self.failure('Candidate check could not admit a body under its original clock: ' + str(error)[:1300])
+            publish(disposition, {**self.identity, 'body_started': False, 'receipt': receipt})
+            return self.finalize(self.read_not_started(), cleanup_confirmed=None)
+        write(attempt, self.identity)
+        write(self.folder / 'owner.json', record)
+        return None
+
+    def read_not_started(self) -> dict:
+        witness = fixed_checks.read_record(self.folder / 'not-started.json')
+        receipt = witness['receipt']
+        require(witness == {**self.identity, 'body_started': False, 'receipt': receipt}
+                and receipt['state'] == 'CANCELLED' and not receipt['artifacts'] and not receipt['checks']
+                and not any((self.folder / name).exists() for name in
+                            ('attempt.json', 'owner.json', 'body', 'pending.json', 'stopped.json'))
+                and not any((STATE / 'processes').glob('af-oracle-' + self.identity['job_sha256'] + '-*')),
+                'Candidate check no-body disposition conflicts with original evidence')
+        self.adapter.verify_receipt(self.envelope, receipt)
+        fixed_checks.validate_receipt(self.adapter, self.envelope, receipt)
+        return receipt
+
+    def _receipt(self, state: str, detail: str, *, artifacts=(), checks=()):
+        return {'schema_version': 1, 'job_id': self.job_id, 'job_sha256': self.envelope['job_sha256'],
+                'state': state, 'actor': {'id': 'local-ci', 'kind': 'ci', 'role': 'fixed-checker', 'session_id': self.session},
+                'candidate_sha': self.document['request']['candidate_sha'], 'artifacts': list(artifacts),
+                'checks': list(checks), 'detail': detail}
+
+    def failure(self, detail: str) -> dict:
+        return self.adapter.verify_receipt(self.envelope, self._receipt('CANCELLED', detail))
+
+    def execute(self) -> dict:
+        from agent_platform.sandbox import Sandbox
+        from ergora.storage.git import GitMaterials
+        from ergora.storage.state import State
+        from ergora.training.materials import read_raw as read_fixed_raw
+
+        folder = require_budget_owner(self.document['sha256'], self.instance['sha256'], self.envelope)
+        require(folder == self.folder, 'Candidate check differs from its original workspace owner')
+        owner = fixed_checks.read_record(folder / 'owner.json')
+        deadline = owner['verification_deadline']
+        self.session = original.claim(self.job_id, self.envelope['job_sha256'])
+
+        def remaining():
+            require(not self.fence.exists() and deadline['boot_id'] == self.instance['boot_id']
+                    and min(self.remaining(), deadline['monotonic'] - time.monotonic()) > 0,
+                    'Candidate check stopped or original work allowance expired')
+
+        try:
+            remaining()
+            project = State(self.home).project(self.document['project'])
+            fixed_checks.check_project(project, self.home, self.document)
+            sandbox = Sandbox()
+            require(sandbox.probe()['available'], 'Candidate check requires the registered current-container trust boundary')
+            candidate = self.document['request']['candidate_sha']
+            repository = Path(self.document['repo'])
+            materials = GitMaterials(repository, git='/usr/bin/git', scratch=self.workspace)
+            require(materials.read('cat-file', '-t', candidate).strip() == b'commit', 'Candidate is not an original local Git commit')
+            checkout, scratch, mirror = (self.workspace / name for name in ('checkout', 'output', 'repo.git'))
+            scratch.mkdir(mode=0o700)
+            remaining()
+            git(self.workspace, 'init', '--bare', str(mirror))
+            remaining()
+            git(mirror, '-c', 'protocol.allow=never', '-c', 'protocol.file.allow=always', 'fetch',
+                '--no-tags', '--no-write-fetch-head', str(repository), candidate)
+            remaining()
+            git(mirror, 'worktree', 'add', '--detach', str(checkout), candidate)
+            remaining()
+            subject = fixed_checks.check_subject(self.envelope)
+            report = {'schema_version': 1, 'kind': 'fixed-candidate-check-results', 'candidate_sha': candidate}
+            report['verification'] = fixed_checks.run_fixed_checks(self.document['verification'], subject, report,
+                checkout=checkout, scratch=scratch, materials=materials, sandbox=sandbox,
+                fence=self.fence, mirror=mirror, deadline=deadline, require_remaining=remaining)
+            verification.validate_fixed_report(report, self.document['verification'], subject, process_root=STATE / 'processes',
+                                               workspace=self.workspace, fence=self.fence, require_pass=False)
+            remaining()
+            relative = f'{self.task_id}/{self.job_id}/fixed-check-results.json'
+            publish(self.adapter.path('artifacts', relative), report)
+            raw = read_fixed_raw(self.adapter.path('artifacts', relative), verification.ARTIFACT_BYTES)
+            artifact = {'name': 'fixed-check-results', 'path': relative, 'sha256': hashlib.sha256(raw).hexdigest()}
+            passed = report['verification']['passed']
+            return self._receipt('SUCCEEDED' if passed else 'FAILED', 'Independent registered fixed checks completed',
+                                 artifacts=[artifact], checks=fixed_checks.check_rows(report['verification']['checks']))
+        except (Blocked, OSError, ValueError, KeyError, TypeError) as error:
+            return self._receipt('CANCELLED' if self.fence.exists() else 'FAILED', str(error)[:1500])
+
+
 def require_owner(document: dict, envelope: dict | None = None) -> Path:
+    return require_budget_owner(document['sha256'], document['budget']['instance']['sha256'], envelope)
+
+
+def require_budget_owner(admission_sha256: str, budget_sha256: str, envelope: dict | None) -> Path:
     require('ERGORA_REFERENCE_JOB_OWNER' in os.environ, 'Budget executor requires its original dedicated owner')
     folder = Path(os.environ.get('ERGORA_REFERENCE_JOB_OWNER', '/nonexistent-budget-owner'))
     owner = read(folder / 'owner.json')
     parent = os.getppid()
-    require(owner['pid'] == parent and owner['budget_sha256'] == document['budget']['instance']['sha256']
-            and owner['admission_sha256'] == document['sha256'], 'Budget executor requires its original dedicated owner')
+    require(owner['pid'] == parent and owner['budget_sha256'] == budget_sha256
+            and owner['admission_sha256'] == admission_sha256, 'Budget executor requires its original dedicated owner')
     if envelope is not None:
         require(owner['job_id'] == envelope['job_id'] and owner['job_sha256'] == envelope['job_sha256'],
                 'Budget executor differs from its original owned job')
@@ -349,7 +508,12 @@ def collect() -> None:
     payload = json.load(sys.stdin)
     envelope = task_envelopes.decode_job(read_raw(Path(payload['request']), task_envelopes.WIRE_LIMIT))
     receipt = json.loads(read_raw(Path(payload['pending']), MAX_RECEIPT_BYTES))
-    FileAdapter(read(CONFIG / 'adapter.json')).verify_receipt(envelope, receipt)
+    if envelope['context'].get('kind') == task_envelopes.FIXED_CANDIDATE_CHECK:
+        adapter = fixed_checks.check_adapter()
+        adapter.verify_receipt(envelope, receipt)
+        fixed_checks.validate_receipt(adapter, envelope, receipt)
+    else:
+        FileAdapter(read(CONFIG / 'adapter.json')).verify_receipt(envelope, receipt)
     publish(Path(payload['output']), receipt)
 
 
@@ -357,8 +521,12 @@ def main() -> None:
     payload = json.load(sys.stdin)
     path, home = Path(payload['request']), Path(payload['home'])
     envelope = task_envelopes.decode_job(read_raw(path, task_envelopes.WIRE_LIMIT))
-    task_id = slug(envelope['context']['spec']['request']['task_id'])
-    document = task_envelopes.decode_admission(read_raw(STATE / 'tasks' / task_id / 'task.spec.json', task_envelopes.WIRE_LIMIT))
-    job = BudgetedJob(path, home, document)
+    if envelope['context'].get('kind') == task_envelopes.FIXED_CANDIDATE_CHECK:
+        job = CandidateCheckJob(path, home, envelope)
+    else:
+        task_id = slug(envelope['context']['spec']['request']['task_id'])
+        document = task_envelopes.decode_admission(read_raw(
+            STATE / 'tasks' / task_id / 'task.spec.json', task_envelopes.WIRE_LIMIT))
+        job = BudgetedJob(path, home, document)
     require(all(payload[key] == value for key, value in job.identity.items()), 'Budget owner received a different original job')
     print(json.dumps(job.own(), ensure_ascii=False, allow_nan=False))

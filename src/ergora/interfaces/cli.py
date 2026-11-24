@@ -471,6 +471,20 @@ def parser() -> argparse.ArgumentParser:
     job.add_argument("--offset", type=int, default=0, help="Unicode character offset in the original text")
     job.add_argument("--limit", type=int, default=8192, help="Maximum Unicode characters in one window (1–16384)")
     job.add_argument("--timeout", type=int, default=20)
+    check_candidate = operations.add_parser("candidate-check", help="Authorize one independent registered fixed check run")
+    check_candidate.add_argument("project")
+    check_candidate.add_argument("operation_id")
+    check_candidate.add_argument("--request", type=Path, required=True)
+    check_candidate.add_argument("--request-sha256", required=True, help="Digest of the exact confirmed request file")
+    check_candidate.add_argument("--revision", type=int, required=True)
+    check_candidate.add_argument("--confirm", action="store_true")
+    for name in ("candidate-check-status", "candidate-check-stop"):
+        operation = operations.add_parser(name)
+        operation.add_argument("project")
+        operation.add_argument("operation_id")
+        operation.add_argument("--job-sha256", required=name == "candidate-check-stop")
+        if name == "candidate-check-stop":
+            operation.add_argument("--confirm", action="store_true")
     for name in ("prepare", "preview", "create"):
         operation = operations.add_parser(name)
         operation.add_argument("project")
@@ -1318,6 +1332,13 @@ def main(argv: list[str] | None = None) -> int:
                 output = tasks.job(state, args.project, args.task_id, run_id=args.run_id, event_id=args.event_id,
                                    artifact=args.artifact, receipt_sha256=args.receipt_sha256,
                                    offset=args.offset, limit=args.limit, timeout=args.timeout)
+            elif args.operation == "candidate-check":
+                output = tasks.authorize_candidate_check(state, args.project, args.operation_id, args.revision,
+                                                         args.request, args.request_sha256, confirm=args.confirm)
+            elif args.operation == "candidate-check-status":
+                output = tasks.candidate_check_status(state, args.project, args.operation_id, job_sha256=args.job_sha256)
+            elif args.operation == "candidate-check-stop":
+                output = tasks.stop_candidate_check(state, args.project, args.operation_id, args.job_sha256, confirm=args.confirm)
             elif args.operation == "plan":
                 options = {'methods': _method_file(args.method_addendum)} if args.method_addendum else {}
                 output = tasks.plan(state, args.project, args.task_id, run_id=args.run_id,

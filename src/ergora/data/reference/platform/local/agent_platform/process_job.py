@@ -304,6 +304,20 @@ def _cpu_training_module(command, output, process_folder, process_request):
 
 
 
+@contextlib.contextmanager
+def candidate_check_gate(fence: Path):
+    """Serialize a scoped stop with checker admission and terminal publication."""
+    require(fence is not None and fence.parent == STATE / 'fences/fixed-candidate-check'
+            and re.fullmatch(r'check-[a-f0-9]{40}\.json', fence.name), 'Invalid candidate check fence scope')
+    fence.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    gate = fence.with_suffix('.lock')
+    descriptor = os.open(gate, os.O_WRONLY | os.O_CREAT | os.O_NOFOLLOW, 0o600)
+    with os.fdopen(descriptor, 'wb') as lock:
+        require(stat.S_ISREG(os.fstat(lock.fileno()).st_mode), 'Invalid candidate check gate')
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        yield
+
+
 def run(folder: Path) -> None:
     require(folder.resolve().is_relative_to((STATE / 'processes').resolve()), 'Job is outside the process registry')
     with (folder / 'lock').open('a') as lock:
@@ -353,16 +367,18 @@ def run(folder: Path) -> None:
                 child_env = child_environment(request['model'])
                 if cpu_module is not None:
                     cpu_module.cpu_process_last_admission(cpu_owned)
-                require(fence is None or not fence.exists(), 'Cancelled at original last process admission')
-                if cutoff is not None:
-                    cutoff = process_deadline(request['deadline'])
-                remaining = request['timeout'] if cutoff is None else min(request['timeout'], cutoff - time.monotonic())
-                require(remaining > 0, 'Original process deadline expired at last process admission')
-                process = subprocess.Popen(['/usr/bin/timeout', '--signal=TERM', '--kill-after=5',
-                                            str(remaining), *command], cwd=checkout,
-                                           stdin=stdin, stdout=stdout, stderr=log,
-                                           env=child_env, start_new_session=True,
-                                           pass_fds=(lock.fileno(),))
+                scoped = fence is not None and fence.parent == STATE / 'fences/fixed-candidate-check'
+                with (candidate_check_gate(fence) if scoped else contextlib.nullcontext()):
+                    require(fence is None or not fence.exists(), 'Cancelled at original last process admission')
+                    if cutoff is not None:
+                        cutoff = process_deadline(request['deadline'])
+                    remaining = request['timeout'] if cutoff is None else min(request['timeout'], cutoff - time.monotonic())
+                    require(remaining > 0, 'Original process deadline expired at last process admission')
+                    process = subprocess.Popen(['/usr/bin/timeout', '--signal=TERM', '--kill-after=5',
+                                                str(remaining), *command], cwd=checkout,
+                                               stdin=stdin, stdout=stdout, stderr=log,
+                                               env=child_env, start_new_session=True,
+                                               pass_fds=(lock.fileno(),))
                 stat = Path(f'/proc/{process.pid}/stat').read_text().rsplit(')', 1)[1].split()
                 write(folder / 'pid.json', {'pid': process.pid, 'start_ticks': stat[19],
                                           'boot_id': Path('/proc/sys/kernel/random/boot_id').read_text().strip()})

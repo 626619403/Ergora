@@ -464,6 +464,43 @@ def read_candidate_verification(state: State, project_id: str, source: dict, *, 
                                                           stop_requested=stop_requested)
 
 
+def authorize_candidate_check(state: State, project_id: str, operation_id: str, expected_revision: int,
+                              request: Path, request_sha256: str, *, confirm: bool = False) -> dict:
+    """Authorize one bounded registered fixed-check run against an exported candidate."""
+    from ergora.training.materials import read_raw
+
+    if confirm is not True:
+        raise ValueError('Candidate checks require explicit operator confirmation')
+    _digest(request_sha256, 'Selected candidate check request')
+    raw = read_raw(request.expanduser().absolute(), 65_536)
+    if hashlib.sha256(raw).hexdigest() != request_sha256:
+        raise ValueError('Candidate check request bytes differ from the confirmed digest')
+    project = _project(state, project_id)
+    _revision(project, expected_revision)
+    return development_native.task_fixed_candidate_check(project, state.root, 'authorize-fixed-check',
+        {'operation_id': operation_id, 'expected_revision': expected_revision, 'request_text': raw.decode('utf-8'),
+         'request_file_sha256': request_sha256, 'confirm': confirm})
+
+
+def candidate_check_status(state: State, project_id: str, operation_id: str, *, job_sha256: str | None = None) -> dict:
+    """Observe the original permitted check operation by its stable operator-selected ID."""
+    if job_sha256 is not None:
+        _digest(job_sha256, 'Candidate check job')
+    project = _project(state, project_id)
+    return development_native.task_fixed_candidate_check(project, state.root, 'status-fixed-check',
+        {'operation_id': operation_id, 'job_sha256': job_sha256})
+
+
+def stop_candidate_check(state: State, project_id: str, operation_id: str, job_sha256: str, *, confirm: bool = False) -> dict:
+    """Fence one original operation without stopping the source formal task."""
+    if confirm is not True:
+        raise ValueError('Stopping a candidate check requires explicit confirmation of its original job')
+    _digest(job_sha256, 'Candidate check job')
+    project = _project(state, project_id)
+    return development_native.task_fixed_candidate_check(project, state.root, 'stop-fixed-check',
+        {'operation_id': operation_id, 'job_sha256': job_sha256, 'confirm': confirm})
+
+
 def submission(state: State, project_id: str, task_id: str) -> dict:
     """Inspect local submission facts without connecting to Temporal or reissuing work."""
     project = _project(state, project_id)

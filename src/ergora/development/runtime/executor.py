@@ -33,12 +33,11 @@ import ergora.definitions.workflows as workflow_definitions
 from ergora.development import envelopes as task_envelopes
 from ergora.storage.git import GitMaterials
 from ergora.development.runtime.creation_process import task_creation
+from ergora.development.runtime.fixed_checks import run_fixed_checks
 from ergora.development.inputs import execution_input, request_roots
 from ergora.development.runtime.review_opinions import review_observation
 from ergora.development.dags import preparation_stages
 from ergora.storage.state import State
-from ergora.storage.assets import inventory_tree
-from ergora.training.materials import read_raw as read_fixed_raw
 from ergora.development import plan_methods, verification
 from ergora.development import budget as reference_budget
 
@@ -278,96 +277,14 @@ class Executor(original.Executor):
         return remaining
 
     def _fixed_checks(self, document, ordinary, deadline):
-        fixed = document['verification']
-        verification.validate_checks(fixed['checks'], installation=ROOT, live=True)
-        require(self.candidate == self.context['expected_candidate_sha']
-                and original.git(self.checkout, 'rev-parse', 'HEAD').stdout.strip() == self.candidate,
+        require(self.candidate == self.context['expected_candidate_sha'],
                 'Fixed verification checkout differs from the exact expected candidate')
-        before = original.git(self.checkout, 'status', '--porcelain=v1', '-z', '--untracked-files=all').stdout
-        require(not before, 'Fixed verification requires an unchanged candidate checkout')
-        subject = verification.subject(document, self.job_id, self.envelope['job_sha256'], self.candidate, self.creation_sha256)
-        result = {'subject': subject, 'required_checks': sorted(fixed['checks']), 'checks': {}, 'passed': False}
-        inputs, candidate_files, requests = {}, {}, {}
-        for ident, check in sorted(fixed['checks'].items()):
-            self._fixed_remaining(document, deadline)
-            repository = self.materials.repository_sources({'candidate': self.candidate}, check['candidate_paths'])
-            inputs[ident] = verification.script_input(ident, check, subject, repository)
-            binding = verification.process_binding(inputs[ident])
-            name = verification.process_name(binding)
-            output = safe_file(self.scratch, name)
-            command = [check['runtime']['executable'], '-I', '-S', str(output / 'source' / check['entrypoint']),
-                       str(output / 'input.json'), str(output / 'observations.json')]
-            requests[ident] = self.sandbox.request(name, self.checkout, output, command,
-                writable=False, fence=self.fence, timeout=check['wall_seconds'], binding=binding, deadline=deadline)
-            for name, item in repository['candidate']['files'].items():
-                candidate_files[name] = repository['blobs'][item['git_object']]['text']
-        require(sum(len(text.encode('utf-8')) for text in candidate_files.values()) <= verification.CANDIDATE_BYTES,
-                'Fixed candidate text exceeds aggregate capacity')
-        # All exact inputs are known before the first process request. Include
-        # ordinary logs and reserve the maximum escaped observation/comparison
-        # contribution; the actual complete report is checked again below.
-        verification.capacity({'ordinary': ordinary, 'verification': fixed, 'inputs': inputs, 'requests': requests},
-            verification.ARTIFACT_BYTES, 'Fixed verification execution', reserve=verification.RESULT_RESERVE, compact=True)
-        raw_total = 0
-        for ident, check in sorted(fixed['checks'].items()):
-            self._fixed_remaining(document, deadline)
-            input_value = inputs[ident]
-            binding = verification.process_binding(input_value)
-            name = verification.process_name(binding)
-            output = safe_file(self.scratch, name)
-            source = safe_file(output, 'source')
-            process_folder = STATE / 'processes' / name
-            require(not (output / 'observations.json').exists() or (process_folder / 'terminal.json').exists(),
-                    'Fixed observations exist without their original completed process')
-            source.mkdir(parents=True, exist_ok=True, mode=0o700)
-            for relative, item in check['source']['files'].items():
-                path = safe_file(source, relative)
-                path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-                raw = item['text'].encode('utf-8')
-                if not path.exists():
-                    with path.open('xb') as stream:
-                        stream.write(raw)
-                        stream.flush()
-                        os.fsync(stream.fileno())
-                    path.chmod(0o600 | item['executable_bits'])
-                require(read_fixed_raw(path, verification.SOURCE_BYTES) == raw, 'Frozen fixed source bytes changed')
-            require(inventory_tree(source, label='Fixed source')[0] == check['source']['digest'],
-                    'Materialized fixed source inventory changed')
-            write(output / 'input.json', input_value)
-            require(verification.sha(json.loads(read_fixed_raw(output / 'input.json'))) == verification.sha(input_value),
-                    'Materialized fixed script input changed')
-            verification.validate_checks({ident: check}, installation=ROOT, live=True)
-            self._fixed_remaining(document, deadline)
-            timeout, original_deadline = check['wall_seconds'], deadline
-            if (process_folder / 'request.json').exists():
-                saved = read(process_folder / 'request.json')
-                timeout, original_deadline = saved['timeout'], saved['deadline']
-                require(original_deadline == deadline, 'Original fixed process cutoff differs from its Job owner')
-            command = [check['runtime']['executable'], '-I', '-S', str(source / check['entrypoint']),
-                       str(output / 'input.json'), str(output / 'observations.json')]
-            code = self.sandbox.run(name, self.checkout, output, command, writable=False, fence=self.fence,
-                timeout=timeout, gitdir=self.mirror, binding=binding, deadline=original_deadline)
-            process = {'name': name, **{key: json.loads(read_fixed_raw(process_folder / (key + '.json')))
-                                      for key in ('request', 'started', 'terminal')}}
-            try:
-                raw = read_fixed_raw(output / 'observations.json', verification.OBSERVATION_BYTES - raw_total)
-            except FileNotFoundError:
-                raw = None
-            raw_total += len(raw) if raw is not None else 0
-            observed = verification.observations(check, raw, code)
-            result['checks'][ident] = {'input': input_value, 'input_sha256': verification.sha(input_value),
-                                      'process': process, 'observations': observed}
-            require(inventory_tree(source, label='Fixed source')[0] == check['source']['digest']
-                    and verification.sha(json.loads(read_fixed_raw(output / 'input.json'))) == verification.sha(input_value),
-                    'Fixed source or input drifted during execution')
-            verification.validate_checks({ident: check}, installation=ROOT, live=True)
-        require(original.git(self.checkout, 'rev-parse', 'HEAD').stdout.strip() == self.candidate
-                and original.git(self.checkout, 'status', '--porcelain=v1', '-z', '--untracked-files=all').stdout == before,
-                'Fixed verification changed its candidate checkout')
-        result['passed'] = all(item['observations']['passed'] for item in result['checks'].values())
-        verification.capacity({**ordinary, 'verification': result}, verification.ARTIFACT_BYTES,
-            'Complete check-results', compact=True)
-        return result
+        subject = verification.subject(document, self.job_id, self.envelope['job_sha256'],
+                                       self.candidate, self.creation_sha256)
+        return run_fixed_checks(document['verification'], subject, ordinary,
+            checkout=self.checkout, scratch=self.scratch, materials=self.materials,
+            sandbox=self.sandbox, fence=self.fence, mirror=self.mirror, deadline=deadline,
+            require_remaining=lambda: self._fixed_remaining(document, deadline))
 
     def _repository(self, commits: dict, paths: list[str], read_scope: list[str]) -> dict:
         return self.materials.repository_sources(commits, paths,
@@ -1057,6 +974,10 @@ def _execute(envelope: dict, home: Path) -> dict:
 
 def process(path: Path, home: Path) -> dict:
     envelope = task_envelopes.decode_job(read_raw(path, task_envelopes.WIRE_LIMIT))
+    if envelope['context'].get('kind') == task_envelopes.FIXED_CANDIDATE_CHECK:
+        from ergora.development.runtime.jobs import CandidateCheckJob
+
+        return CandidateCheckJob(path, home, envelope).run()
     spec = validate_spec(envelope['context']['spec'])
     # BudgetedJob.run claims before constructing Executor in another process;
     # direct Executor callers independently retain their own pre-claim guard.
@@ -1071,7 +992,12 @@ def pending_job() -> None:
     """Dedicated budget worker: constructor, Git, commands and model stay here."""
     payload = json.load(sys.stdin)
     envelope = task_envelopes.decode_job(read_raw(Path(payload['request']), task_envelopes.WIRE_LIMIT))
-    receipt = _execute(envelope, Path(payload['home']))
+    if envelope['context'].get('kind') == task_envelopes.FIXED_CANDIDATE_CHECK:
+        from ergora.development.runtime.jobs import CandidateCheckJob
+
+        receipt = CandidateCheckJob(Path(payload['request']), Path(payload['home']), envelope).execute()
+    else:
+        receipt = _execute(envelope, Path(payload['home']))
     publish(Path(payload['pending']), receipt)
 
 
@@ -1103,14 +1029,22 @@ def main(home: Path, request: Path | None = None) -> dict | None:
                         del active[path]
                 retained = retained_jobs()
                 occupied = retained | {path.stem for path in active}
-                for path in sorted(path for root in request_roots(STATE / "requests") for path in root.glob("*/*.json")):
-                    receipt = STATE / "receipts" / path.parent.name / path.name
+                check_namespace = task_envelopes.FIXED_CANDIDATE_CHECK
+                requests = (*request_roots(STATE / 'requests'), STATE / 'requests' / check_namespace)
+                for path in sorted(path for root in requests for path in root.glob('*/*.json')):
+                    receipts = STATE / 'receipts'
+                    scoped = path.parent.parent == requests[-1]
+                    if scoped:
+                        receipts /= check_namespace
+                    receipt = receipts / path.parent.name / path.name
                     rejected = STATE / "rejected-envelopes" / (hashlib.sha256(str(path).encode()).hexdigest() + ".json")
-                    # A finalizer can lose its ledger update after linking the
-                    # receipt. Recover that original terminal even if the old
-                    # observer recorded a rejection; never execute its body.
-                    recover_terminal = path.stem in retained and receipt.exists()
-                    if path not in active and (recover_terminal or (not receipt.exists() and not rejected.exists())):
+                    # The owner can recover a linked terminal or finish its
+                    # recorded no-body disposition after losing the observer.
+                    # It revalidates either witness before releasing capacity.
+                    no_body = (STATE / 'workspaces' / check_namespace / path.parent.name
+                               / 'jobs' / path.stem / 'budget/not-started.json')
+                    recover_owned = path.stem in retained and (receipt.exists() or (scoped and no_body.exists()))
+                    if path not in active and (recover_owned or (not receipt.exists() and not rejected.exists())):
                         # Recover already-owned jobs even at capacity. Their
                         # owner lock/attempt permits observation, never a new
                         # body. A rejected/unknown future does not refund them.

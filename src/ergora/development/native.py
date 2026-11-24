@@ -332,6 +332,11 @@ def task_candidate_verification(project: dict, home: Path, source: dict, *, dead
                            stop_requested=stop_requested)
 
 
+def task_fixed_candidate_check(project: dict, home: Path, operation: str, payload: dict) -> dict:
+    """Use the registered native runtime for one independent fixed-check operation."""
+    return _task_operation(project, home, 'candidate_checks', operation, payload, 20)
+
+
 def task_cancellation(project: dict, home: Path, operation: str, payload: dict, *, timeout: int) -> dict:
     """Use the native cancellation guard and preserve signal delivery uncertainty."""
     return _task_operation(project, home, 'cancellation', operation, payload, timeout)
@@ -426,6 +431,8 @@ def _task_operation(project: dict, home: Path, component: str, operation: str, p
             raise ValueError(inspection + ' inspection process timed out; query the original run before inspecting again') from error
         if component == 'work_priority':
             raise ValueError('Work priority process timed out; inspect the original decision with task work-priority') from error
+        if component == 'candidate_checks':
+            raise ValueError('Candidate check response timed out; inspect its original operation with task candidate-check-status') from error
         raise ValueError(f'Task {component} process timed out; inspect task {component} and resume its original intent') from error
     if result.returncode:
         lines = result.stderr.strip().splitlines()
@@ -434,7 +441,7 @@ def _task_operation(project: dict, home: Path, component: str, operation: str, p
             raise ValueError(detail + '; inspect task design operation before recovering its original intent')
         if inspection:
             raise ValueError(detail)
-        if component == 'work_priority':
+        if component in ('work_priority', 'candidate_checks'):
             raise ValueError(detail)
         raise ValueError(detail + f'; inspect task {component} before any recovery')
     decoded = json.loads(result.stdout)

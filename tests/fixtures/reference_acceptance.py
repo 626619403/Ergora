@@ -163,9 +163,34 @@ async def main():
             source = check['source']['files']['oracle.py']
             source['text'] = source['text'].replace('"value": valid}',
                 '"value": valid if case["id"] == "integrity" else case["input"]}')
+            if mode == 'composition-work-materials-fixed-candidate-check':
+                check['wall_seconds'] = 18
+                gate = root / 'hold-candidate-check'
+                waiting = f"""
+gate = pathlib.Path({str(gate)!r})
+if (document["subject"]["check_id"] == "configuration-integrity"
+        and gate.is_file() and gate.read_text() == document["subject"]["job_sha256"]):
+    import os
+    import signal
+    pid = os.getpid()
+    fields = pathlib.Path(f"/proc/{{pid}}/stat").read_text().rsplit(")", 1)[1].split()
+    identity = {{"pid": pid, "start_ticks": fields[19],
+                "boot_id": pathlib.Path("/proc/sys/kernel/random/boot_id").read_text().strip()}}
+    start = gate.with_name(f"checker-start-{{pid}}.json")
+    pending = start.with_suffix(".pending")
+    pending.write_text(json.dumps(identity))
+    pending.replace(start)
+    signal.pause()
+"""
+                source['text'] = source['text'].replace('repository = document["repository"]',
+                                                         waiting + 'repository = document["repository"]')
             source['sha256'] = hashlib.sha256(source['text'].encode()).hexdigest()
             check['source']['digest'] = manifest_digest({'oracle.py': {key: source[key]
                 for key in ('sha256', 'executable_bits')}})
+            if mode == 'composition-work-materials-fixed-candidate-check':
+                # The passing run covers both checks. The stopped run must
+                # keep the later check from reaching its process namespace.
+                definition['trusted_checks']['follow-up'] = deepcopy(check)
         if mode == "imported-registration":
             register("demo", repo, "github", "fixtures/demo", ["src"], root / "checks.json")
             sources = {path: (config / path).read_bytes() for path in ("projects/demo.json", "policies/demo/scope.json")}
