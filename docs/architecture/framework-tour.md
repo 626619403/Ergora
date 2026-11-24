@@ -4,7 +4,7 @@ English · [Documentation](../README.md) · [Architecture contract](current.md)
 
 Ergora is a control plane for project-bound specialist Agents, workflow composition, formal software delivery, training experiments and reusable improvements. Definitions describe reusable behavior. Each operation freezes its own inputs, checks its execution authority and produces evidence under its original identity.
 
-This tour describes runtime revision `a2b3fd1b8328f5597666beb94cf37744f8ba5efe` and its `src` tree `89caa65ce2c1aa1a61230f906e5068d4022d2b21`. Packages, installed applications and local definition libraries have separate identities. The [current plan](../PLAN.md) and its delivery records track CI and installation status.
+This tour uses candidate runtime revision `6e8b9b870df3e4f274ba9396f460f0da8ea12e00` and its `src` tree `f21b263266914a0b363a927142c8871a11ec31cd` as the exact source reference. Packages, installed applications and local definition libraries have separate identities. The [current plan](../PLAN.md) and its delivery records track review, CI and installation status.
 
 ## The whole system
 
@@ -30,7 +30,7 @@ flowchart TB
   Graph --> Gate["verify-fixed-check<br/>Receipt gate before advisory review"]
   CheckJob -. "receipt or bounded wait" .-> Gate
   Gate --> GraphProof
-  Graph -. "eligible Agent graph" .-> Resume["Opt-in resume-graph<br/>Original boot, directory, clock and lock"]
+  Graph -. "Agent graph or completed locator with saved proof" .-> Resume["Opt-in resume-graph<br/>Original boot, directory, cutoffs and lock"]
   Resume --> GraphProof
   Session --> Turn["Original leaf result or Codex turn receipts"]
   Dev --> Six["Original Temporal six stages<br/>Exact approval and candidate evidence"]
@@ -63,7 +63,9 @@ Development's [workflow extensions](../../src/ergora/development/runtime/workflo
 
 After an interrupted run, `composition inspect-graph` uses the original directory and manifest digest and opens the existing control database read-only. It reports the saved graph status and attempts alongside the observed original Agent input, prompt and result identities. A corroborated route matches the frozen branches and original analyzer evidence. Saved verification references show native receipts as `not_queried`, and process start and cleanup remain `unknown`. Use `composition inspect-run` on the exact original leaf run ID for complete result content. [Graph observation](../definitions/workflows/compose.md#observe-an-original-graph-run) · [Original leaf readback](../definitions/workflows/leaf-calls.md#read-an-original-composition-run-by-exact-id)
 
-On Linux/WSL2, graphs with read-only, text-only Agent leaves, nested Workflows, all-joins and `choose-agent` can opt into recovery at launch with `run-graph --recoverable`. `resume-graph` opens the same directory and control home on the original boot under the saved coordinator lock and deadline. It verifies original reservations and successful Agent results to reconstruct the graph's ports. Saved typed choices must match the original analyzer result. If a choice is missing and its dependent work has yet to be prepared or reserved, the coordinator records the same branch or `none` before proceeding. Only previously unreserved, ready Agent leaves can start. Active, stopped, terminal, expired or unresolved runs are refused. Graphs with verification gates use ordinary standalone execution. [Standalone recovery](../definitions/workflows/compose.md#resume-an-interrupted-graph)
+On Linux/WSL2, graphs with read-only, text-only Agent leaves, nested Workflows, all-joins and `choose-agent` can opt into recovery at launch with `run-graph --recoverable`. `resume-graph` opens the same directory and control home on the original boot under the saved coordinator lock and deadline. It verifies original reservations and successful Agent results to reconstruct the graph's ports. Saved typed choices must match the original analyzer result. If a choice is missing and its dependent work has yet to be prepared or reserved, the coordinator records the same branch or `none` before proceeding. Only previously unreserved, ready Agent leaves can start. Active, stopped, terminal, expired or unresolved runs are refused. [Standalone recovery](../definitions/workflows/compose.md#resume-an-interrupted-graph)
+
+The pinned correctness-review graph can opt in with the locator of an already-completed fixed check. Resume requires the durable passing proof, which the original native reader revalidates against the original Job receipt and report within the first gate read's saved cutoff and the graph deadline. A surviving reader can hold the original coordinator lock after an interruption. The original executor retains ownership of the Job. Wait-mode `verify-fixed-check` and formal `verify-evidence` use ordinary standalone execution. [Fixed-check-gated recovery](../definitions/workflows/compose.md#resume-a-fixed-check-gated-review)
 
 ### Separately authorized fixed checks
 
