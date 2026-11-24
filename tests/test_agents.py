@@ -701,6 +701,7 @@ def test_continuation_receipt_distinguishes_original_dispatch_evidence(native_se
     assert run['status'] == 'succeeded' and run['id'] == absent['run_id']
     receipt = runs.continuation_receipt(*selection)
     assert receipt['dispatch'] == 'accepted' and receipt['run']['status'] == 'succeeded'
+    assert receipt['native_start']['status'] == 'started'
     with pytest.raises(ValueError, match='selected session, parent or intent'):
         runs.continuation_receipt(state, 'demo', first['id'], 'other-parent', selection[-1])
     with state.connect() as db:
@@ -712,6 +713,17 @@ def test_continuation_receipt_distinguishes_original_dispatch_evidence(native_se
         db.execute('UPDATE agent_runs SET document=? WHERE id=?', (original_run, run['id']))
 
     folder = state.root / 'runs' / (run['id'] + '.session-turn')
+    native_start = folder / 'native-start' / 'record.json'
+    original_start = native_start.read_bytes()
+    start_record = json.loads(original_start)
+    earlier_ticks = str(int(start_record['owner']['start_ticks']) - 1)
+    for change in ({'request_sha256': 'f' * 64}, {'process': {**start_record['process'], 'start_ticks': 'damaged'}},
+                   {'process': {**start_record['process'], 'start_ticks': earlier_ticks}}):
+        native_start.write_text(json.dumps({**start_record, **change}), encoding='utf-8')
+        receipt = runs.continuation_receipt(*selection)
+        assert receipt['dispatch'] == 'accepted' and receipt['run']['status'] == 'succeeded'
+        assert receipt['native_start']['status'] == 'incomplete'
+    native_start.write_bytes(original_start)
     result = state.root / 'runs' / run['id'] / 'result.txt'
     retained = result.with_name('retained-result.txt')
     result.rename(retained)
@@ -755,7 +767,123 @@ def test_continuation_receipt_distinguishes_original_dispatch_evidence(native_se
                                       expected_revision=revision, intent_id='failed-launch', timeout=10)
     receipt = runs.continuation_receipt(state, 'demo', first['id'], run['id'], 'failed-launch')
     assert failed['status'] == receipt['run']['status'] == 'failed' and receipt['dispatch'] == 'attempted'
+    assert receipt['native_start']['status'] == 'unrecorded'
     assert len((repo / 'native-calls.jsonl').read_text().splitlines()) == 2
+
+
+@pytest.mark.parametrize('end', ['stop', 'deadline', 'stalled-receipt'])
+def test_continuation_receipt_identifies_live_native_process_until_original_stop(native_session_case, monkeypatch, tmp_path, end):
+    from concurrent.futures import ThreadPoolExecutor
+
+    state, repo, config, runs = native_session_case
+    revision = state.project('demo')['revision']
+    first = runs.run_agent(state, 'demo', 'implementer', 'first', timeout=10,
+                          session_intent='native-start-parent', expected_revision=revision, codex_config=config)
+    gate, witness = tmp_path / 'allow-native-start', tmp_path / 'start-witness.json'
+    code = f'''import time
+from pathlib import Path
+from ergora.agents import runs
+invoke = runs.agents.invoke
+def wait_before_native(*args, **kwargs):
+    while not Path({str(gate)!r}).exists() and not kwargs['stop_requested']():
+        time.sleep(.01)
+    return invoke(*args, **kwargs)
+runs.agents.invoke = wait_before_native
+publish = runs._publish_session_packet
+def maybe_stall(path, values):
+    if {end == 'stalled-receipt'!r} and path.name == 'native-start':
+        Path({str(witness)!r}).write_bytes(values['record.json'])
+        time.sleep(12)
+    return publish(path, values)
+runs._publish_session_packet = maybe_stall
+runs.session_main()
+'''
+    spawn = subprocess.Popen
+
+    def inject(argv, *args, **kwargs):
+        if len(argv) > 2 and argv[1] == '-c' and 'session_main' in argv[2]:
+            argv = [*argv[:2], code, *argv[3:]]
+        return spawn(argv, *args, **kwargs)
+
+    monkeypatch.setattr(subprocess, 'Popen', inject)
+    selection = (state, 'demo', first['id'], first['id'], 'live-native-start')
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        pending = executor.submit(runs.continue_session, state, 'demo', first['id'], first['id'], 'SLEEP original',
+                                  expected_revision=revision, intent_id=selection[-1], timeout=15 if end == 'stop' else 6)
+        limit = time.monotonic() + 10
+        receipt = runs.continuation_receipt(*selection)
+        while receipt['dispatch'] != 'accepted' and time.monotonic() < limit:
+            time.sleep(.02)
+            receipt = runs.continuation_receipt(*selection)
+        assert receipt['dispatch'] == 'accepted' and receipt['native_start']['status'] == 'unrecorded'
+        gate.touch()
+        def child_observed():
+            return witness.is_file() if end == 'stalled-receipt' else receipt['native_start']['status'] == 'running'
+
+        while (not child_observed() or not (repo/'native-ready').is_file()) and time.monotonic() < limit:
+            time.sleep(.02)
+            receipt = runs.continuation_receipt(*selection)
+        assert child_observed() and (repo/'native-ready').is_file()
+        process = (json.loads(witness.read_bytes()) if end == 'stalled-receipt' else receipt['native_start'])['process']
+        assert process['pid'] != receipt['run']['owner']['pid']
+        if end == 'stop':
+            stopped = runs.stop_session(state, 'demo', first['id'], receipt['run_id'], intent_id='original-stop')
+            assert stopped['stop_requested'] is True
+        result = pending.result(timeout=9 if end == 'stalled-receipt' else 15)
+    after = runs.continuation_receipt(*selection)
+    assert after['run_id'] == result['id'] and result['execution_stopped'] is True
+    if end != 'stop':
+        folder = runs.native_sources.turn_folder(state, result['id'])
+        request = runs.native_sources.packet(folder, 'request.json')
+        assert runs.budget_clock.remaining(request['clock'], request['timeout']) <= 0
+        assert after['run']['stop_request'] is None and after['run']['status'] in ('timed_out', 'cancelled')
+    else:
+        assert after['run']['status'] == 'cancelled'
+    if end == 'stalled-receipt':
+        assert after['native_start']['status'] == 'incomplete' and 'pending' in after['native_start']['error']
+    else:
+        assert after['native_start'] == {'status': 'started', 'process': process}
+    assert not Path('/proc', str(process['pid'])).exists()
+    assert not Path('/proc', (repo/'escape-pid').read_text()).exists()
+    assert len((repo/'native-calls.jsonl').read_text().splitlines()) == 2
+
+
+def test_continuation_start_receipt_write_failure_keeps_original_reaper(native_session_case, monkeypatch, tmp_path):
+    state, _, config, runs = native_session_case
+    revision = state.project('demo')['revision']
+    first = runs.run_agent(state, 'demo', 'implementer', 'first', timeout=10,
+                          session_intent='receipt-failure-parent', expected_revision=revision, codex_config=config)
+    witnessed = tmp_path / 'start-witness.jsonl'
+    code = f'''from pathlib import Path
+from ergora.agents import runs
+publish = runs._publish_session_packet
+def fail_start(path, values):
+    if path.name == 'native-start':
+        with Path({str(witnessed)!r}).open('ab') as stream:
+            stream.write(values['record.json'] + b'\\n')
+        raise OSError('fixture start receipt write failed')
+    return publish(path, values)
+runs._publish_session_packet = fail_start
+runs.session_main()
+'''
+    spawn = subprocess.Popen
+
+    def inject(argv, *args, **kwargs):
+        if len(argv) > 2 and argv[1] == '-c' and 'session_main' in argv[2]:
+            argv = [*argv[:2], code, *argv[3:]]
+        return spawn(argv, *args, **kwargs)
+
+    monkeypatch.setattr(subprocess, 'Popen', inject)
+    kwargs = {'expected_revision': revision, 'intent_id': 'receipt-write-failure', 'timeout': 10}
+    result = runs.continue_session(state, 'demo', first['id'], first['id'], 'short continuation', **kwargs)
+    assert result['status'] == 'succeeded' and result['execution_stopped'] is True
+    receipt = runs.continuation_receipt(state, 'demo', first['id'], first['id'], kwargs['intent_id'])
+    assert receipt['dispatch'] == 'accepted' and receipt['native_start'] == {
+        'status': 'incomplete', 'error': 'fixture start receipt write failed'}
+    assert runs.continue_session(state, 'demo', first['id'], first['id'], 'short continuation', **kwargs)['id'] == result['id']
+    records = witnessed.read_text(encoding='utf-8').splitlines()
+    assert len(records) == 1
+    assert not Path('/proc', str(json.loads(records[0])['process']['pid'])).exists()
 
 
 def test_session_reservation_survives_attempt_publication_failure_without_dispatch(native_session_case, monkeypatch):

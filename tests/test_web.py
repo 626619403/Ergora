@@ -430,6 +430,7 @@ def test_project_native_session_http_and_cli_share_original_development_chain(na
         del response
         receipt = client.get(continuation_url, params=parent).json()
         assert receipt["dispatch"] == "accepted" and receipt["intent_id"] == "http-next"
+        assert receipt["native_start"]["status"] == "started"
         assert client.get(continuation_url, params={"parent_run_id": "another-parent"}).status_code == 400
         second = receipt["run"]
         assert second["status"] == "succeeded", second

@@ -184,8 +184,9 @@ def _record_cleanup(output: Path, value: dict) -> None:
 def run(argv: list[str], cwd: Path, output: Path, timeout: float, stdin: str = "",
         env: dict | None = None, *, supervised: bool = False, lock_fd: int | None = None,
         command_record: Path | None = None, stop_requested: Callable[[], bool] | None = None,
-        record_lifecycle: bool = False, deadline: float | None = None) -> dict:
-    if record_lifecycle and not supervised:
+        record_lifecycle: bool = False, deadline: float | None = None,
+        on_start: Callable[[dict], None] | None = None) -> dict:
+    if (record_lifecycle or on_start is not None) and not supervised:
         raise ValueError('Durable subtree receipts require the original supervised process owner')
     if deadline is not None:
         if supervised:
@@ -222,8 +223,10 @@ def run(argv: list[str], cwd: Path, output: Path, timeout: float, stdin: str = "
                     argv, cwd=cwd, env=env, stdin=recorded_input, stdout=stdout, stderr=stderr,
                     text=True, start_new_session=not supervised,
                     pass_fds=() if lock_fd is None else (lock_fd,), encoding="utf-8")
-                if record_lifecycle:
+                if record_lifecycle or on_start is not None:
                     model = _process_stamp(process.pid)
+                if on_start is not None:
+                    on_start(model)
                 try:
                     if supervised or stop_requested is not None:
                         # TERM only requests cancellation, including during final cleanup.
