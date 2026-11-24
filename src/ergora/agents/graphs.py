@@ -486,10 +486,11 @@ def _observe_verification(project, sequence, read, original_source, *, fixed_rev
                    for name, value in {**original_source, **(fixed_review or {})}.items())):
         return {**observation, 'recorded_evidence': {'state': 'mismatch'}}
     field = 'fixed_results_sha256' if fixed_review is not None else 'check_results_sha256'
-    check_results = evidence.get(field)
-    if not isinstance(check_results, str) or re.fullmatch('[a-f0-9]{64}', check_results) is None:
+    fields = (field, 'receipt_sha256') if fixed_review is not None and 'wait_seconds' in original_source else (field,)
+    digests = {name: evidence.get(name) for name in fields}
+    if any(not isinstance(value, str) or re.fullmatch('[a-f0-9]{64}', value) is None for value in digests.values()):
         return {**observation, 'recorded_evidence': {'state': 'invalid'}}
-    return {**observation, 'recorded_evidence': {'state': 'recorded', field: check_results}}
+    return {**observation, 'recorded_evidence': {'state': 'recorded', **digests}}
 
 
 def _observe_route(sequence, record, selector, attempts, choices, graph_status):

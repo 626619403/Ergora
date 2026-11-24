@@ -86,14 +86,28 @@ ergora review prepare-graph-task ./review-packet --source-sha256 PACKET_SHA256 \
 ergora task candidate-check-status PROJECT OPERATION_ID > ./fixed-check-status.json
 ```
 
-Create `graph-inputs.json` with exactly two fields. Copy the returned `task` object unchanged into `task`. From the original check status, require `succeeded`, `cleanup_confirmed: true` and `stop_requested: false`. Copy `operation_id`, `request_file_sha256`, `job_sha256`, `candidate_sha`, `receipt_sha256` and `fixed_results_sha256` into the `check` object.
+Create `graph-inputs.json` with exactly two fields. Copy the returned `task` object unchanged into `task`. In `check`, copy the original `operation_id`, `request_file_sha256`, `job_sha256` and `candidate_sha` from the check status. For an already completed check, require `succeeded`, `cleanup_confirmed: true` and `stop_requested: false`. Add its exact `receipt_sha256` and `fixed_results_sha256`.
+
+For an already authorized check in `queued` or `attempted` state, use the waiting form of the same `check` object. It takes an integer `wait_seconds` from 1 to 3600 in place of the two terminal digests.
+
+```json
+{
+  "operation_id": "OPERATION_ID",
+  "request_file_sha256": "REQUEST_FILE_SHA256",
+  "job_sha256": "JOB_SHA256",
+  "candidate_sha": "CANDIDATE_SHA",
+  "wait_seconds": 120
+}
+```
+
+The registered executor watcher runs the original Job. The gate observes it until the earlier of the original graph deadline and the requested wait window. The Job retains its original authorization, attempt and clock. To stop that Job, explicitly use `task candidate-check-stop` with its original operation ID, Job digest and `--confirm`.
 
 ```bash
 ergora composition run-graph PROJECT ./gated-review-manifest --manifest-digest MANIFEST_DIGEST \
   --inputs ./graph-inputs.json --directory ./gated-review-run --max-prompt-bytes 1000000 --timeout 300
 ```
 
-The gate reads the original completed check and validates its proof against the exact candidate, receipt, authorized project revision, manifest, leaf and task reconstructed from the saved packet. Run the gated reviewer through the graph and inspect its saved Agent evidence with `composition inspect-run`. Missing or mismatched evidence blocks the reviewer. The graph's `proof` output records the check and review-input identities. The separate `result` output carries the single advisory review of the unchanged task. Check launch and recovery authority stay with the original check owner. [Observe the graph readback](#observe-an-original-graph-run)
+The gate validates the original terminal proof against the exact candidate, receipt, authorized project revision, manifest, leaf and task reconstructed from the saved packet. Timeout, stop, unknown outcomes and missing or mismatched evidence block the reviewer. The graph's `proof` output records the verified receipt and fixed-results digests along with the review-input identities. The separate `result` output carries the single advisory review of the unchanged task. Inspect its saved Agent evidence with `composition inspect-run`. Check launch and recovery authority stay with the original check owner. [Observe the graph readback](#observe-an-original-graph-run)
 
 ### Choose a follow-up Agent
 

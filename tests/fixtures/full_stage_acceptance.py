@@ -606,16 +606,26 @@ async def _candidate_check(root, state, runtime, spec, candidate, records, *, ga
               'native_started_sha256': hashlib.sha256(started_bytes).hexdigest(), 'request_file_sha256': source_sha,
               'owner_stopped_sha256': hashlib.sha256((owner / 'stopped.json').read_bytes()).hexdigest()}
     if gated:
+        async def authorize_wait():
+            queued = await call(*command, 'wait-check', *options, '--confirm')
+            return queued, *locations(queued)
+
+        async def execute_wait(request):
+            return await call(*executor, str(request))
+
         result['graph'] = await _candidate_check_graph(root, state, runtime, packet, material['packet_sha256'],
-                                                     manifest, passed, finished, call)
+                                                     manifest, passed, finished, call, authorize_wait, execute_wait)
     return result
 
 
-async def _candidate_check_graph(root, state, runtime, packet, packet_digest, manifest, passed, stopped, call):
+async def _candidate_check_graph(root, state, runtime, packet, packet_digest, manifest, passed, stopped, call,
+                                 authorize_wait, execute_wait):
     """The graph reads actual native evidence before its one controlled reviewer."""
     from contextlib import redirect_stdout, redirect_stderr
+    from concurrent.futures import ThreadPoolExecutor
     from copy import deepcopy
     import io
+    from threading import Event
     from unittest.mock import patch
 
     from ergora.agents import backends
@@ -663,20 +673,39 @@ Path(sys.argv[1]).write_text(json.dumps({'summary':'Exact candidate reviewed','d
     code.write_text(reviewer_code, encoding='utf-8')
     original_command = backends.CodexBackend.command
     native_run, lifetimes = processes.run, []
-
-    def observe_run(argv, *args, **kwargs):
-        lifetimes.append((argv[-1], kwargs.get('deadline'), kwargs.get('stop_requested')))
-        return native_run(argv, *args, **kwargs)
+    read_entry = 'from ergora.development.runtime.candidate_checks import main;main()'
 
     def controlled_command(backend, request):
         argv, prompt = original_command(backend, request)
         assert argv[argv.index('--sandbox') + 1] == 'read-only'
         return [sys.executable, str(code), argv[argv.index('--output-last-message') + 1], str(calls)], prompt
 
-    def graph(name, values, expected):
+    def graph(name, values, expected, *, pending=None):
         serialized, directory = root / (name + '.inputs.json'), root / (name + '-graph')
         serialized.write_text(json.dumps(values), encoding='utf-8')
         stdout, stderr = io.StringIO(), io.StringIO()
+
+        def observe_run(argv, *args, **kwargs):
+            lifetimes.append((argv[-1], kwargs.get('deadline'), kwargs.get('stop_requested')))
+            if pending is not None and argv[-1] == read_entry:
+                # Signal the fixture only after the real proof child has read the original queued Job.
+                probe = f'''from pathlib import Path
+from ergora.development.runtime import candidate_checks
+observe = candidate_checks._observe
+marker = Path({str(pending)!r})
+async def observed(*args, **kwargs):
+    original = await observe(*args, **kwargs)
+    if original['status'] == 'queued' and not marker.exists():
+        temporary = marker.with_suffix('.pending')
+        temporary.write_text(original['job_sha256'], encoding='utf-8')
+        temporary.replace(marker)
+    return original
+candidate_checks._observe = observed
+candidate_checks.main()
+'''
+                argv = [*argv[:-1], probe]
+            return native_run(argv, *args, **kwargs)
+
         with redirect_stdout(stdout), redirect_stderr(stderr), patch.object(backends.CodexBackend, 'command', controlled_command), \
              patch.object(backends.CodexBackend, 'check_invocation', lambda self: None), patch.object(processes, 'run', observe_run):
             status = main(['--home', str(state.root), 'composition', 'run-graph', 'demo', manifest['path'],
@@ -693,7 +722,7 @@ Path(sys.argv[1]).write_text(json.dumps({'summary':'Exact candidate reviewed','d
     assert good['verification_reads'][0]['evidence'] == proof and not good['formal_execution_authorized']
     assert json.loads(calls.read_bytes()) == inputs['task']
     native_read, reviewer = lifetimes
-    assert native_read[0] == 'from ergora.development.runtime.candidate_checks import main;main()'
+    assert native_read[0] == read_entry
     assert native_read[1] == reviewer[1] and native_read[2] == reviewer[2] and callable(native_read[2])
     leaf, = good['leaves']
     assert leaf['instance'] == task['instance'] and leaf['status'] == 'succeeded'
@@ -723,9 +752,10 @@ Path(sys.argv[1]).write_text(json.dumps({'summary':'Exact candidate reviewed','d
 
     cases = []
     def blocked(name, values, message):
+        reviewer_bytes = calls.read_bytes()
         run, _ = graph(name, values, 1)
         assert run['status'] == 'failed' and message in run['error']
-        assert run['leaves'] == [] and calls.read_text().count('\n') == 1
+        assert run['leaves'] == [] and calls.read_bytes() == reviewer_bytes
         cases.append(name)
 
     changed = deepcopy(inputs)
@@ -758,6 +788,87 @@ Path(sys.argv[1]).write_text(json.dumps({'summary':'Exact candidate reviewed','d
     changed = deepcopy(inputs)
     changed['check'] = {key: stopped.get(key) or '0' * 64 for key in keys}
     blocked('nonpassing-original', changed, 'completed passing original fixed check')
+    assert check_records() == before and len(agent_runs.runs(state, 'demo')) == len(before_runs) + 1
+
+    queued, request, permit, workspace = await authorize_wait()
+    assert queued['status'] == 'queued' and queued['receipt_sha256'] is None
+    original_request, original_permit = request.read_bytes(), permit.read_bytes()
+    queued_records, reviewer_bytes = check_records(), calls.read_bytes()
+    source = {key: queued[key] for key in keys[:4]}
+    wait_inputs = {'task': task['task'], 'check': {**source, 'wait_seconds': 10}}
+
+    def while_queued(name, expected, action):
+        marker = root / (name + '.reader-queued')
+        ended = Event()
+
+        def observe_pending():
+            while not marker.exists():
+                assert not ended.wait(.01), 'Graph exited before observing the queued Job'
+            assert marker.read_text(encoding='utf-8') == queued['job_sha256']
+            return action()
+
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            owner = pool.submit(observe_pending)
+            try:
+                result, directory = graph(name, wait_inputs, expected, pending=marker)
+            finally:
+                ended.set()
+            return result, directory, owner.result()
+
+    expiry_marker = root / 'wait-expired.reader-queued'
+    short_wait = {'task': task['task'], 'check': {**source, 'wait_seconds': 3}}
+    timed_out, _ = graph('wait-expired', short_wait, 1, pending=expiry_marker)
+    assert expiry_marker.read_text(encoding='utf-8') == queued['job_sha256']
+    cancelled, _, _ = while_queued('wait-stopped', 1, lambda: os.kill(os.getpid(), signal.SIGINT))
+    for result, status, locator in ((timed_out, 'timed_out', short_wait['check']),
+                                    (cancelled, 'cancelled', wait_inputs['check'])):
+        assert result['status'] == status and result['leaves'] == [] and 'outputs' not in result
+        readback, = result['verification_reads']
+        assert readback['source'] == locator and readback['status'] == status and 'evidence' not in readback
+    assert check_records() == queued_records and calls.read_bytes() == reviewer_bytes
+    assert not (workspace / 'budget/attempt.json').exists()
+
+    wrong = {'task': task['task'], 'check': {**wait_inputs['check'], 'request_file_sha256': '1' * 64}}
+    wrong_locator, _ = graph('wait-wrong-locator', wrong, 1)
+    assert wrong_locator['status'] == 'failed' and not wrong_locator['leaves'] and 'outputs' not in wrong_locator
+    assert 'locator differs' in wrong_locator['error']
+    assert check_records() == queued_records and calls.read_bytes() == reviewer_bytes
+
+    def run_original_check():
+        assert check_records() == queued_records and not (workspace / 'budget/attempt.json').exists()
+        receipt = asyncio.run(execute_wait(request))
+        assert receipt['state'] == 'SUCCEEDED'
+        return receipt, check_records()
+
+    waited, waiting_directory, (original_receipt, finished_records) = while_queued('wait-succeeded', 0, run_original_check)
+    status = await call('task', 'candidate-check-status', 'demo', queued['operation_id'], '--job-sha256', queued['job_sha256'])
+    wait_proof = waited['outputs']['proof']
+    assert waited['status'] == 'succeeded' and status['cleanup_confirmed'] is True and not status['stop_requested']
+    assert all(wait_proof[key] == value for key, value in wait_inputs['check'].items())
+    assert all(wait_proof[key] == status[key] for key in (*keys, 'job_id', 'authorization_sha256', 'verification_sha256'))
+    assert wait_proof['task_sha256'] == task['task_sha256'] and wait_proof['instance'] == task['instance']
+    assert wait_proof['packet_sha256'] == packet_digest and wait_proof['manifest_digest'] == manifest['digest']
+    proof_read, = waited['verification_reads']
+    assert proof_read['status'] == 'validated' and proof_read['source'] == wait_inputs['check'] and proof_read['evidence'] == wait_proof
+    assert waited == json.loads((waiting_directory / 'run.json').read_bytes())
+    inspected_wait = await call('composition', 'inspect-graph', 'demo', str(waiting_directory),
+                                '--manifest-digest', manifest['digest'])
+    recorded_wait, = inspected_wait['verification_reads']
+    assert recorded_wait['locator'] == wait_inputs['check'] and recorded_wait['original_receipt']['state'] == 'not_queried'
+    assert recorded_wait['recorded_evidence'] == {'state': 'recorded', **{key: wait_proof[key] for key in keys[4:]}}
+    leaf, = waited['leaves']
+    reviewed = agent_runs.inspect_run(state, 'demo', leaf['run_id'])
+    assert leaf['status'] == 'succeeded' and leaf['instance'] == task['instance']
+    assert reviewed['input']['digest'] == leaf['input_digest'] and reviewed['result']['sha256'] == leaf['result_sha256']
+    assert [json.loads(line) for line in calls.read_bytes()[len(reviewer_bytes):].splitlines()] == [inputs['task']]
+    attempt = json.loads((workspace / 'budget/attempt.json').read_bytes())
+    assert attempt['job_sha256'] == queued['job_sha256'] and attempt['job_id'] == queued['job_id']
+    assert not (runtime / 'fences/fixed-candidate-check' / (request.parent.name + '.json')).exists()
+    assert len(list((runtime / 'processes').glob('af-oracle-' + queued['job_sha256'] + '-*'))) == len(status['fixed_check_ids'])
+    assert request.read_bytes() == original_request and permit.read_bytes() == original_permit
+    assert original_receipt['artifacts'][0]['sha256'] == wait_proof['fixed_results_sha256']
+    assert check_records() == finished_records
+
     before_project = state.project('demo')
     revised = await call('project', 'correction-suggestions', 'demo', '--enabled', 'false',
                          '--revision', str(before_project['revision']))
@@ -770,6 +881,8 @@ Path(sys.argv[1]).write_text(json.dumps({'summary':'Exact candidate reviewed','d
     stale = json.loads((root / 'stale-project-revision-graph/run.json').read_bytes())
     assert stale['project_revision'] == revised['revision']
 
-    assert check_records() == before and len(agent_runs.runs(state, 'demo')) == len(before_runs) + 1
+    assert check_records() == finished_records and len(agent_runs.runs(state, 'demo')) == len(before_runs) + 2
     return {'review_calls': 1, 'proof_matches': True, 'original_check_records_unchanged': True, 'blocked_before_review': cases,
-            'historical_check_revision': historical['project_revision'], 'revised_project_revision': revised['revision']}
+            'historical_check_revision': historical['project_revision'], 'revised_project_revision': revised['revision'],
+            'wait': {'timed_out': timed_out['status'], 'stopped': cancelled['status'], 'wrong_locator': wrong_locator['status'],
+                     'proof': wait_proof, 'reviewer_run_id': leaf['run_id'], 'original_native_effects_only': True}}

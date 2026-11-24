@@ -477,6 +477,10 @@ def test_real_preparation_calls_and_original_stage_results(tmp_path, case):
                                                   'wrong-receipt', 'changed-packet', 'missing-receipt',
                                                   'nonpassing-original', 'stale-project-revision']
         assert graph['revised_project_revision'] == graph['historical_check_revision'] + 1
+        wait = graph['wait']
+        assert (wait['timed_out'], wait['stopped'], wait['wrong_locator']) == ('timed_out', 'cancelled', 'failed')
+        assert wait['proof']['operation_id'] == 'wait-check' and wait['proof']['status'] == 'validated'
+        assert wait['proof']['wait_seconds'] == 10 and wait['reviewer_run_id'] and wait['original_native_effects_only']
 
 
 @pytest.mark.parametrize('full_graph,case', [(1, 'complete'), (2, 'complete'), (2, 'duplicate'), (2, 'stop')], indirect=['full_graph'])

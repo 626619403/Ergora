@@ -5,8 +5,9 @@ import hashlib
 import json
 from pathlib import Path
 import sys
+import time
 
-from agent_platform.core import Blocked, require
+from agent_platform.core import Blocked, STATE, require
 from agent_platform.process_job import candidate_check_gate
 from dev_platform.adapter import FileAdapter, publish
 from dev_platform.contracts import canonical_sha
@@ -23,6 +24,7 @@ from ergora.storage.state import file_lock
 
 
 KIND = fixed_checks.KIND
+_PENDING_CHECK = ('queued', 'attempted')
 
 
 async def _status(adapter: FileAdapter, envelope: dict, admission: dict) -> dict:
@@ -140,7 +142,8 @@ async def _operate(payload: dict) -> dict:
     return await _observe(adapter, payload, task_id, admission, stop=False)
 
 
-async def _observe(adapter: FileAdapter, payload: dict, task_id: str, admission: dict, *, stop: bool) -> dict:
+async def _observe(adapter: FileAdapter, payload: dict, task_id: str, admission: dict, *, stop: bool,
+                   waiting: bool = False) -> dict:
     require(admission['project'] == payload['project']['id'] and admission['control_home'] == payload['control_home'],
             'Candidate check belongs to another project or control directory')
     context = fixed_checks.check_context(admission)
@@ -169,7 +172,33 @@ async def _observe(adapter: FileAdapter, payload: dict, task_id: str, admission:
                 'job_sha256': job_sha, 'authorization_sha256': admission['sha256'],
                 'request_file_sha256': admission['request_file_sha256'], 'cleanup_confirmed': None,
                 'stop_requested': fence.exists()}
-    return await _status(adapter, envelope, admission)
+    status = await _status(adapter, envelope, admission)
+    if waiting and status['status'] in _PENDING_CHECK and not status['stop_requested']:
+        refusal = STATE / 'rejected-envelopes' / (hashlib.sha256(str(request).encode()).hexdigest() + '.json')
+        require(not refusal.exists(), 'Original fixed check request was rejected by its executor')
+    return status
+
+
+def _require_completion(status: dict, *, waiting: bool) -> None:
+    detail = 'Graph requires a completed passing original fixed check with confirmed cleanup'
+    if waiting:
+        detail += ' (observed ' + status['status'] + ')'
+    require(status['status'] == 'succeeded' and status['cleanup_confirmed'] is True and not status['stop_requested'], detail)
+
+
+def _review_task_sha256(admission: dict, review: dict, candidate: str) -> str:
+    request = admission['request']
+    require(isinstance(review, dict) and review.keys() == {'manifest_digest', 'instance', 'task_sha256', 'packet_sha256'},
+            'Graph proof requires the exact review task and manifest binding')
+    require(review['manifest_digest'] == request['manifest_digest'] and review['instance'] == request['instance'],
+            'Graph manifest or reviewer differs from the original fixed check authorization')
+    require(review['packet_sha256'] == request['packet_sha256'], 'Graph packet differs from the original fixed check authorization')
+    material = packets.read(Path(request['packet']), sha256=request['packet_sha256'])
+    require(material['packet']['repository']['head'] == candidate, 'Original review packet targets another candidate')
+    task = requests._task(material, 'local', request['packet_sha256'], request['manifest_digest'])
+    task_sha256 = hashlib.sha256(task).hexdigest()
+    require(review['task_sha256'] == task_sha256, 'Graph root task differs from the complete original review packet')
+    return task_sha256
 
 
 async def _prove_graph_read(adapter: FileAdapter, payload: dict, task_id: str, admission: dict) -> dict:
@@ -180,24 +209,28 @@ async def _prove_graph_read(adapter: FileAdapter, payload: dict, task_id: str, a
             'Graph project revision differs from the original fixed check authorization')
     require(admission['registration_sha256'] == project['registration']['sha256'],
             'Graph fixed check differs from its original registered project')
-    status = await _observe(adapter, payload, task_id, admission, stop=False)
-    require(status['status'] == 'succeeded' and status['cleanup_confirmed'] is True and not status['stop_requested'],
-            'Graph requires a completed passing original fixed check with confirmed cleanup')
-    require(all(status.get(key) == value for key, value in source.items()),
+    waiting = 'wait_seconds' in source
+    status = await _observe(adapter, payload, task_id, admission, stop=False, waiting=waiting)
+    pending = waiting and status['status'] in _PENDING_CHECK and not status['stop_requested']
+    if not pending:
+        _require_completion(status, waiting=waiting)
+    require(all(status.get(key) == value for key, value in source.items() if key != 'wait_seconds'),
             'Graph locator differs from the original fixed check receipt or candidate')
-    request, review = admission['request'], payload['review']
-    require(isinstance(review, dict) and review.keys() == {'manifest_digest', 'instance', 'task_sha256', 'packet_sha256'},
-            'Graph proof requires the exact review task and manifest binding')
-    require(review['manifest_digest'] == request['manifest_digest'] and review['instance'] == request['instance'],
-            'Graph manifest or reviewer differs from the original fixed check authorization')
-    require(review['packet_sha256'] == request['packet_sha256'], 'Graph packet differs from the original fixed check authorization')
-    material = packets.read(Path(request['packet']), sha256=request['packet_sha256'])
-    require(material['packet']['repository']['head'] == source['candidate_sha'],
-            'Original review packet targets another candidate')
-    task = requests._task(material, 'local', request['packet_sha256'], request['manifest_digest'])
-    task_sha256 = hashlib.sha256(task).hexdigest()
-    require(review['task_sha256'] == task_sha256, 'Graph root task differs from the complete original review packet')
-    return {**source, 'status': 'validated', 'project': admission['project'],
+    review = payload['review']
+    task_sha256 = _review_task_sha256(admission, review, source['candidate_sha'])
+    if pending:
+        deadline = payload['deadline']
+        while status['status'] in _PENDING_CHECK and not status['stop_requested']:
+            await asyncio.sleep(max(0, min(.25, deadline - time.monotonic())))
+            if time.monotonic() >= deadline:
+                raise TimeoutError('Original fixed check wait reached its deadline')
+            # Observe the same saved Job and approval on every poll.
+            status = await _observe(adapter, payload, task_id, admission, stop=False, waiting=True)
+        _require_completion(status, waiting=waiting)
+        task_sha256 = _review_task_sha256(admission, review, source['candidate_sha'])
+    request = admission['request']
+    return {**source, 'receipt_sha256': status['receipt_sha256'], 'fixed_results_sha256': status['fixed_results_sha256'],
+            'status': 'validated', 'project': admission['project'],
             'project_revision': admission['project_revision'], 'job_id': status['job_id'],
             'authorization_sha256': status['authorization_sha256'], 'verification_sha256': status['verification_sha256'],
             'fixed_check_ids': status['fixed_check_ids'], 'packet_sha256': request['packet_sha256'],
