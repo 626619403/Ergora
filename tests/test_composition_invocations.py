@@ -188,6 +188,163 @@ Path(sys.argv[1]).write_text(json.dumps({'summary': 'Review', 'artifacts': {'res
     assert len(call_log.read_text(encoding='utf-8').splitlines()) == len(calls)
 
 
+@pytest.mark.skipif(sys.platform != 'linux', reason='Historical direct-child stamps use Linux procfs')
+@pytest.mark.parametrize('case', ['success', 'timeout', 'stop', 'missing-proc', 'unreadable-proc'])
+def test_cli_observes_the_original_waited_graph_child(prepared, tmp_path, monkeypatch, capsys, case):
+    state, _, _ = prepared()
+    workflow = workflows.get(state, 'structure-review', '1.0.0')['definition']
+    grant = {'schema_version': 1, 'permissions': workflow['permissions'], 'limits': workflow['limits']}
+    manifest = tmp_path / 'manifest'
+    frozen = workflows.prepare_manifest(state.root, workflow['id'], workflow['version'], grant, manifest)
+    source, inputs, witnesses = tmp_path / 'child.py', tmp_path / 'inputs.json', tmp_path / 'witnesses'
+    witnesses.mkdir()
+    source.write_text('''import json, os, signal, sqlite3, sys, time
+from pathlib import Path
+
+result, witnesses, database = map(Path, sys.argv[1:])
+task = json.loads(sys.stdin.read().split('Workflow task port (JSON value):\\n')[-1])
+run_id = result.parent.name.removesuffix('.protocol')
+with sqlite3.connect(database.as_uri() + '?mode=ro', uri=True) as connection:
+    row, = connection.execute('SELECT document FROM agent_runs WHERE id=?', (run_id,)).fetchone()
+    run = json.loads(row)
+assert run['status'] == 'running' and 'finished' not in run
+assert 'process_start_receipt' not in run and 'process_start_sha256' not in run
+pid = os.getpid()
+fields = Path('/proc/self/stat').read_text().rsplit(')', 1)[1].split()
+stamp = {'pid': pid, 'start_ticks': fields[19],
+         'boot_id': Path('/proc/sys/kernel/random/boot_id').read_text().strip()}
+(witnesses / (run_id + '.json')).write_text(json.dumps(stamp), encoding='utf-8')
+if task == 'stop':
+    os.kill(os.getppid(), signal.SIGTERM)
+if task in ('stop', 'timeout'):
+    time.sleep(30)
+result.write_text(json.dumps({'summary': task, 'artifacts': {'response': 'reviewed'},
+                             'decision': 'approve'}), encoding='utf-8')
+''', encoding='utf-8')
+    original = agent_backends.CodexBackend.command
+
+    def command(backend, request):
+        argv, prompt = original(backend, request)
+        result = argv[argv.index('--output-last-message') + 1]
+        return [sys.executable, str(source), result, str(witnesses), str(state.root / 'ergora.sqlite3')], prompt
+
+    monkeypatch.setattr(agent_backends.CodexBackend, 'command', command)
+    monkeypatch.setattr(agent_backends.CodexBackend, 'check_invocation', lambda self: None)
+    if case in ('missing-proc', 'unreadable-proc'):
+        def fail_sample(_pid):
+            error = FileNotFoundError if case == 'missing-proc' else PermissionError
+            raise error('Controlled procfs read failure')
+        monkeypatch.setattr(processes, '_process_stamp', fail_sample)
+
+    cli = ['--home', str(state.root), 'composition']
+
+    def run(task):
+        directory = tmp_path / task
+        inputs.write_text(json.dumps({'task': task}), encoding='utf-8')
+        assert main([*cli, 'run-graph', 'demo', str(manifest), '--manifest-digest', frozen['digest'],
+                     '--inputs', str(inputs), '--directory', str(directory), '--max-prompt-bytes', '30000',
+                     '--timeout', '5' if task == 'timeout' else '20']) == (1 if task in ('timeout', 'stop') else 0)
+        receipt = json.loads(capsys.readouterr().out)
+        leaf, = receipt['leaves']
+        return directory, receipt, leaf
+
+    directory, receipt, leaf = run(case)
+    run_id = leaf['run_id']
+    other = run('different-input')[2] if case == 'success' else None
+    original_records = {item['id']: item for item in agent_runs.runs(state, 'demo')}
+    assert set(original_records) == ({run_id, other['run_id']} if other is not None else {run_id})
+    witnessed = {path.stem: json.loads(path.read_text()) for path in witnesses.iterdir()}
+    assert witnessed.keys() == original_records.keys()
+    expected_graph = {'timeout': 'timed_out', 'stop': 'cancelled'}.get(case, 'succeeded')
+    assert receipt['status'] == expected_graph
+    if case == 'timeout':
+        assert leaf['status'] in ('timed_out', 'cancelled')
+    else:
+        assert leaf['status'] == expected_graph
+    process = witnessed[run_id]
+    try:
+        current = processes.identity(process['pid'])
+    except (OSError, ValueError):
+        pass
+    else:
+        assert current != process
+
+    def forbidden(*args, **kwargs):
+        pytest.fail('Historical inspection must never dispatch or sample a live PID')
+
+    for operation in ('run', 'identity', '_process_stamp'):
+        monkeypatch.setattr(processes, operation, forbidden)
+
+    def read_run():
+        assert main([*cli, 'inspect-run', 'demo', run_id]) == 0
+        return json.loads(capsys.readouterr().out)
+
+    receipt_bytes = (directory / 'run.json').read_bytes()
+    observed = read_run()
+    names = ('process_start_receipt', 'process_start_sha256')
+    run_record = original_records[run_id]
+    omitted = {name: value for name, value in run_record.items() if name not in names}
+    assert observed['run'] == omitted
+    start = observed['process_start']
+    expected_start = {'missing-proc': 'missing', 'unreadable-proc': 'unknown'}.get(case, 'available')
+    assert start['state'] == expected_start and start['available'] is (expected_start == 'available')
+    if start['available']:
+        assert start['kind'] == 'historical-direct-child-start' and start['process'] == process
+        bound = original_records[run_id]['process_start_receipt']['binding']
+        assert bound == {'run_id': run_id, 'project': 'demo', 'project_revision': receipt['project_revision'],
+                         'input_digest': leaf['input_digest'], 'instance': leaf['instance'],
+                         'preview_sha256': frozen['manifest']['preview_sha256'],
+                         'prompt_sha256': observed['prompt']['sha256']}
+        assert start['receipt_sha256'] == original_records[run_id]['process_start_sha256']
+    assert observed['input']['digest'] == leaf['input_digest'] and observed['prompt']['input_compared']
+    assert observed['result']['available'] == (expected_graph == 'succeeded')
+    assert main([*cli, 'inspect-graph', 'demo', str(directory), '--manifest-digest', frozen['digest']]) == 0
+    graph = json.loads(capsys.readouterr().out)
+    assert graph['agent_attempts'][0]['original_run']['process_start'] == start
+    assert graph['process_start'] == graph['stop_and_cleanup'] == 'unknown'
+    assert read_run() == observed and (directory / 'run.json').read_bytes() == receipt_bytes
+    assert {item['id']: item for item in agent_runs.runs(state, 'demo')} == original_records
+
+    if case == 'success':
+        other_record = original_records[other['run_id']]
+        partial = {**omitted, names[0]: run_record[names[0]]}
+        swapped = {**run_record, **{name: other_record[name] for name in names}}
+        invalid = json.loads(json.dumps(run_record))
+        invalid[names[0]]['observation']['process']['boot_id'] = '0' * 36
+        invalid[names[1]] = native_sources.sha(invalid[names[0]])
+        escaped_surrogate = json.loads(json.dumps(run_record))
+        escaped_surrogate[names[0]]['observation']['process']['boot_id'] = '\ud800'
+        for modified, status in ((omitted, 'not_recorded'), (partial, 'missing'),
+                                 (swapped, 'mismatch'), (invalid, 'invalid'), (escaped_surrogate, 'invalid')):
+            stored = json.dumps(modified)
+            with state.connect() as db:
+                db.execute('UPDATE agent_runs SET document=? WHERE id=?', (stored, run_id))
+            repeated = read_run()
+            assert not repeated['process_start']['available'] and repeated['process_start']['state'] == status
+            assert repeated['input']['available'] and repeated['prompt']['available']
+            assert repeated['result'] == observed['result']
+            assert repeated['run'] == omitted
+            with state.connect() as db:
+                assert db.execute('SELECT document FROM agent_runs WHERE id=?', (run_id,)).fetchone()[0] == stored
+        with state.connect() as db:
+            db.execute('UPDATE agent_runs SET document=? WHERE id=?', (json.dumps(run_record), run_id))
+        saved_task = state.root / 'runs' / (run_id + '.input') / 'task.txt'
+        task_bytes = saved_task.read_bytes()
+        saved_task.write_bytes(b'changed task')
+        repeated = read_run()
+        assert not repeated['input']['available'] and not repeated['process_start']['available']
+        assert repeated['process_start']['state'] == repeated['input']['state']
+        assert repeated['prompt']['available'] and not repeated['prompt']['input_compared']
+        assert repeated['result'] == observed['result']
+        saved_task.write_bytes(task_bytes)
+        prompt_file = state.root / 'runs' / (run_id + '.protocol') / 'prompt.txt'
+        prompt_file.unlink()
+        repeated = read_run()
+        assert repeated['prompt']['state'] == repeated['process_start']['state'] == 'missing'
+        assert repeated['result'] == observed['result']
+        assert {path.stem: json.loads(path.read_text()) for path in witnesses.iterdir()} == witnessed
+
+
 @pytest.fixture
 def parallel_graph(prepared, tmp_path, monkeypatch):
     from ergora.agents.graphs import run_graph

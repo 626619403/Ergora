@@ -37,6 +37,7 @@ from ergora._paths import IMPORT_ROOT
 
 
 _MAX_SESSION_TURNS = 10_000
+_PROCESS_START_FIELDS = frozenset({'process_start_receipt', 'process_start_sha256'})
 
 
 def _store(state: State, document: dict) -> None:
@@ -219,9 +220,12 @@ def run_input(state: State, project_id: str, source: Path, timeout: int = 300, *
     if run_id is not None:
         native_sources.session_id(run_id, 'Agent run ID')
         document['id'] = run_id
+    observe_direct_child_start = (run_id is not None and not supervised and mode == 'text-only'
+                                  and prepared['request']['input_origin'] == 'workflow-port')
     return _run_prepared(state, prepared, document, timeout, mode=mode, codex_config=codex_config,
         result_schema=result_schema, env=env, codex_bin=codex_bin, supervised=supervised,
-        stop_requested=stop_requested, remaining=remaining, record_lifecycle=record_lifecycle, deadline=deadline)
+        stop_requested=stop_requested, remaining=remaining, record_lifecycle=record_lifecycle, deadline=deadline,
+        observe_direct_child_start=observe_direct_child_start)
 
 
 def run_workspace(state: State, project_id: str, source: Path, cwd: Path, authority: dict, timeout: int, *,
@@ -255,7 +259,7 @@ def run_workspace(state: State, project_id: str, source: Path, cwd: Path, author
 
 def _run_prepared(state, prepared, document, timeout, *, mode, codex_config, result_schema, env,
                   codex_bin, supervised, workspace=None, stop_requested=None, remaining=None,
-                  record_lifecycle=False, deadline=None):
+                  record_lifecycle=False, deadline=None, observe_direct_child_start=False):
     """One immutable snapshot, MCP lifecycle and native invocation evidence owner."""
     run_id = document.get("id") or uuid.uuid4().hex
     output = state.root / "runs" / run_id
@@ -313,12 +317,18 @@ def _run_prepared(state, prepared, document, timeout, *, mode, codex_config, res
         if record_lifecycle:
             document['invocation_entered'] = True
             _store(state, document)
-        document.update(agents.invoke(document["binding"], document["role"], saved["prompt"], working, output,
+        invoked = agents.invoke(document["binding"], document["role"], saved["prompt"], working, output,
             min(timeout, remaining()) if remaining is not None else timeout,
             schema, codex_config=codex_config, mode=mode, task_mcp=native_mcp, env=env, codex_bin=codex_bin,
             supervised=supervised, **({'stop_requested': stop_requested} if stop_requested is not None else {}),
             **({'deadline': deadline} if deadline is not None else {}),
-            **({'record_lifecycle': True} if record_lifecycle else {})))
+            **({'record_lifecycle': True} if record_lifecycle else {}),
+            **({'observe_direct_child_start': True} if observe_direct_child_start else {}))
+        start = invoked.pop('direct_child_start', None)
+        document.update(invoked)
+        if start is not None:
+            receipt = {'binding': _process_start_binding(document, saved['request']), 'observation': start}
+            document.update(process_start_receipt=receipt, process_start_sha256=native_sources.sha(receipt))
         if mode in ("task-mcp", "workspace-task-mcp") and document["status"] == "succeeded":
             document["task_mcp"]["native"] = task_mcp.verify_native(native_audit, scope["sha256"])
         if deadline is None or document['status'] != 'cancelled':
@@ -644,6 +654,57 @@ def run_cycle_analysis(state: State, project_id: str, prepared_input: Path, auth
 
 
 
+def _process_start_binding(run, request):
+    return {'run_id': run['id'], 'project': run['project'], 'project_revision': run['project_revision'],
+            'input_digest': run['input_digest'], 'instance': request['instance'],
+            'preview_sha256': request['preview_sha256'], 'prompt_sha256': request['prompt_sha256']}
+
+
+def _observe_process_start(run, saved_input, prompt):
+    if _PROCESS_START_FIELDS.isdisjoint(run):
+        return {'available': False, 'state': 'not_recorded', 'error': 'No historical direct-child start was recorded'}
+    if not _PROCESS_START_FIELDS.issubset(run):
+        return {'available': False, 'state': 'missing', 'error': 'Historical direct-child start receipt is incomplete'}
+    try:
+        receipt, digest = run['process_start_receipt'], run['process_start_sha256']
+        if (not isinstance(receipt, dict) or receipt.keys() != {'binding', 'observation'}
+                or not isinstance(receipt['binding'], dict) or not isinstance(receipt['observation'], dict)):
+            raise ValueError('Invalid historical direct-child start receipt')
+        contracts.validate(digest, contracts.COMPOSITION_INPUT['$defs']['digest'], 'Process start receipt SHA256')
+        if native_sources.sha(receipt) != digest:
+            raise native_sources.ArtifactIdentityError('Historical direct-child start receipt differs from its recorded SHA256')
+        for name, evidence in (('input', saved_input), ('prompt', prompt)):
+            if not evidence['available']:
+                return {'available': False, 'state': evidence['state'],
+                        'error': f'Cannot verify process start against original {name}: {evidence["error"]}'}
+        request = saved_input['request']
+        policy = run.get('policy')
+        if (run.get('formal_execution_authorized') is not False or not isinstance(policy, dict)
+                or policy.get('mode') != 'text-only' or request['input_origin'] != 'workflow-port'
+                or type(run.get('project_revision')) is not int or not isinstance(run.get('finished'), str)
+                or run.get('status') not in ('succeeded', 'failed', 'timed_out', 'cancelled')):
+            raise ValueError('Historical direct-child start requires an original terminal text-only graph leaf')
+        recorded = receipt['binding']
+        expected = _process_start_binding(run, request)
+        if recorded.keys() != expected.keys() or any(type(recorded[key]) is not type(value)
+                                                      for key, value in expected.items()):
+            raise ValueError('Invalid historical direct-child start binding')
+        if recorded != expected:
+            raise native_sources.ArtifactIdentityError('Historical direct-child start differs from its original run or frozen input')
+        observation = receipt['observation']
+        if (observation.keys() == {'state', 'error'} and observation['state'] in ('missing', 'unknown', 'invalid')
+                and isinstance(observation['error'], str)):
+            return {'available': False, **observation}
+        process = observation.get('process')
+        if (observation.keys() != {'process'} or not _process_identity(process)
+                or str(uuid.UUID(process['boot_id'])) != process['boot_id']):
+            raise ValueError('Invalid historical direct-child process identity')
+    except (ValueError, RecursionError) as error:
+        return {'available': False, **native_sources.observation_failure(error)}
+    return {'available': True, 'state': 'available', 'kind': 'historical-direct-child-start',
+            'process': process, 'receipt_sha256': digest}
+
+
 def inspect_run(state: State, project_id: str, run_id: str, *, max_result_bytes: int = 8_388_608) -> dict:
     """Observe original composition material without current admission or redispatch."""
     contracts.validate(run_id, {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"}, "Run ID")
@@ -652,7 +713,8 @@ def inspect_run(state: State, project_id: str, run_id: str, *, max_result_bytes:
     if document.get("kind") != "composition-agent-run":
         raise ValueError("Select an original composition agent run")
     storage = state.root / "runs"
-    observed = {"schema_version": 1, "kind": "composition-run-observation", "run": document,
+    run = {name: value for name, value in document.items() if name not in _PROCESS_START_FIELDS}
+    observed = {"schema_version": 1, "kind": "composition-run-observation", "run": run,
                 "formal_execution_authorized": False}
     request = document.get("input_request")
     try:
@@ -680,6 +742,7 @@ def inspect_run(state: State, project_id: str, run_id: str, *, max_result_bytes:
                               "input_compared": observed["input"]["available"]}
     except (OSError, ValueError, RecursionError) as error:
         observed["prompt"] = {"available": False, **native_sources.observation_failure(error)}
+    observed['process_start'] = _observe_process_start(document, observed['input'], observed['prompt'])
     if document.get("result_sha256") is None:
         observed["result"] = {"available": False, "state": "not_recorded",
                               "error": "No original structured result identity was recorded"}

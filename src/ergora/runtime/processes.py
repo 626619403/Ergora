@@ -147,6 +147,17 @@ def _process_stamp(pid: int) -> dict:
             'boot_id': Path('/proc/sys/kernel/random/boot_id').read_text().strip()}
 
 
+def _observe_direct_child_start(pid: int) -> dict:
+    try:
+        return {'process': _process_stamp(pid)}
+    except FileNotFoundError as error:
+        return {'state': 'missing', 'error': str(error)}
+    except OSError as error:
+        return {'state': 'unknown', 'error': str(error)}
+    except (IndexError, ValueError) as error:
+        return {'state': 'invalid', 'error': str(error)}
+
+
 def _reap_children() -> list[dict]:
     children = Path(f"/proc/{os.getpid()}/task/{os.getpid()}/children")
     waited = []
@@ -185,7 +196,7 @@ def run(argv: list[str], cwd: Path, output: Path, timeout: float, stdin: str = "
         env: dict | None = None, *, supervised: bool = False, lock_fd: int | None = None,
         command_record: Path | None = None, stop_requested: Callable[[], bool] | None = None,
         record_lifecycle: bool = False, deadline: float | None = None,
-        on_start: Callable[[dict], None] | None = None) -> dict:
+        on_start: Callable[[dict], None] | None = None, observe_direct_child_start: bool = False) -> dict:
     if (record_lifecycle or on_start is not None) and not supervised:
         raise ValueError('Durable subtree receipts require the original supervised process owner')
     if deadline is not None:
@@ -209,6 +220,7 @@ def run(argv: list[str], cwd: Path, output: Path, timeout: float, stdin: str = "
         _adopt_children()
     owner = identity(os.getpid()) if record_lifecycle else None
     model = None
+    direct_child_start = None
     with ((output / "stdout.txt").open("w", encoding="utf-8") as stdout,
           (output / "stderr.txt").open("w", encoding="utf-8") as stderr,
           (output / "stdin.txt").open("rb") as recorded_input):
@@ -225,6 +237,9 @@ def run(argv: list[str], cwd: Path, output: Path, timeout: float, stdin: str = "
                     pass_fds=() if lock_fd is None else (lock_fd,), encoding="utf-8")
                 if record_lifecycle or on_start is not None:
                     model = _process_stamp(process.pid)
+                elif observe_direct_child_start and not supervised and sys.platform == 'linux':
+                    # The original Popen still owns this child, including an unreaped fast exit.
+                    direct_child_start = _observe_direct_child_start(process.pid)
                 if on_start is not None:
                     on_start(model)
                 try:
@@ -275,7 +290,10 @@ def run(argv: list[str], cwd: Path, output: Path, timeout: float, stdin: str = "
         status = "cancelled"
     if code and status == "succeeded":
         status = "failed"
-    return {"status": status, "returncode": code, "output": str(output)}
+    result = {"status": status, "returncode": code, "output": str(output)}
+    if direct_child_start is not None:
+        result['direct_child_start'] = direct_child_start
+    return result
 
 
 if __name__ == "__main__":

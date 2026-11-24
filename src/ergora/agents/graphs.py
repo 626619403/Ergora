@@ -907,6 +907,7 @@ def _observe_leaf_run(state, project, receipt, manifest, attempt, remaining_resu
         evidence = observed[name]
         source[name] = ({'state': 'available', **{key: evidence[key] for key in fields}} if evidence['available']
                         else {'state': evidence['state'], 'error': evidence['error']})
+    source['process_start'] = observed['process_start']
     if attempt['status'] in ('attempted', 'unknown'):
         source['graph_outcome_agreement'] = 'not_recorded'
     elif attempt['status'] == source['status'] and attempt.get('result_sha256') == run.get('result_sha256'):

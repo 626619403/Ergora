@@ -35,7 +35,7 @@ ergora --home ROOT composition inspect-graph PROJECT DIRECTORY --manifest-digest
 
 The reader verifies the frozen manifest and reports its root, the saved `run.json` status and digest, the recorded output port names and Agent attempts in reservation order. Each attempt includes the reserved input identity and separate observations of the original Agent run, input, prompt and result. For example, a saved `attempted` entry can have an observed `succeeded` Agent run while the graph receipt still reads `incomplete`. Use the original Agent run ID for complete result content. [Read an original leaf by ID](leaf-calls.md#read-an-original-composition-run-by-exact-id)
 
-In `route_decisions`, a `corroborated` choice matches the frozen branch list and the original analyzer's verified result. For `verify-evidence`, the report shows the graph-recorded locator and evidence status with the original native receipt marked `not_queried`. Process start, stop and cleanup remain `unknown`. Inspection is for observation only. Repeat the read with the same identifiers when more evidence becomes available.
+In `route_decisions`, a `corroborated` choice matches the frozen branch list and the original analyzer's verified result. For `verify-evidence`, the report shows the graph-recorded locator and evidence status with the original native receipt marked `not_queried`. Per-leaf `original_run.process_start` shows the original Agent run's historical direct-child observation. The graph-level `process_start` and `stop_and_cleanup` report `unknown`. Inspection is for observation only. Repeat the read with the same identifiers when more evidence becomes available.
 
 ### Resume an interrupted graph
 
