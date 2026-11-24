@@ -81,7 +81,7 @@ def ci_runner(tmp_path, monkeypatch):
         original_monitor(*args, offsets=tuple(0.05 * index for index in range(1, 9)),
                          poll_interval=0.005)
 
-    def start(script, *, fail_on_output=False, windows_returncode=None):
+    def start(script, *, fail_on_output=False, windows_returncode=None, pipe_stdin=False):
         outcome = {}
 
         def popen(command, **options):
@@ -89,6 +89,8 @@ def ci_runner(tmp_path, monkeypatch):
                 return original_popen(command, **options)
             outcome['command'] = command
             outcome['options'] = {key: value for key, value in options.items() if key != 'env'}
+            if pipe_stdin:
+                options['stdin'] = subprocess.PIPE
             child = original_popen(child_command(script, directory), **options)
             children.append(child)
             if windows_returncode is not None:
@@ -656,18 +658,21 @@ def test_real_isolated_faulthandler_timeout_survives_long_traceback(ci_runner, c
 import faulthandler
 sys.stdout.write('tests/test_example.py::test_pending[Windows fatal exception: quoted parameter] ')
 sys.stdout.flush()
-faulthandler.dump_traceback_later(0.025)
 def original_timeout_owner(depth):
     if depth:
         return original_timeout_owner(depth - 1)
-    wait('release')
+    # Keep the armed traceback stack blocked on the original parent's release.
+    faulthandler.dump_traceback_later(0.025)
+    if sys.stdin.buffer.read(1) != b'x':
+        raise RuntimeError('The parent did not release the timeout fixture')
 original_timeout_owner(80)
 faulthandler.cancel_dump_traceback_later()
 raise SystemExit(7)
-''')
+''', pipe_stdin=True)
     wait_for(lambda: (directory / 'stdout.txt').exists()
              and 'original_timeout_owner' in (directory / 'stdout.txt').read_text(), outcome)
-    (directory / 'release').touch()
+    children[0].stdin.write('x')
+    children[0].stdin.flush()
     worker.join(timeout=5)
     assert not worker.is_alive() and 'error' not in outcome
     assert outcome['returncode'] == children[0].returncode == 7

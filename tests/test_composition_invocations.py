@@ -199,6 +199,7 @@ def parallel_graph(prepared, tmp_path, monkeypatch):
     source, witnesses = tmp_path/'provider.py', tmp_path/'witnesses'
     witnesses.mkdir()
     source.write_text('''import json, os, sys, time
+from itertools import count
 from pathlib import Path
 
 result, witnesses = map(Path, sys.argv[1:])
@@ -206,9 +207,16 @@ task = json.loads(sys.stdin.read().split('Workflow task port (JSON value):\\n')[
 name = task.get('name', 'next')
 
 def stamp(event):
+    # The providers claim a shared event order even when their clock ticks are equal.
+    for position in count():
+        try:
+            (witnesses.parent / f'event-{position}').touch(exist_ok=False)
+        except FileExistsError:
+            continue
+        break
     path = witnesses / (name + '.' + event)
     temporary = path.with_suffix('.tmp')
-    temporary.write_text(json.dumps([os.getpid(), time.monotonic_ns()]), encoding='utf-8')
+    temporary.write_text(json.dumps([os.getpid(), position]), encoding='utf-8')
     temporary.replace(path)
 
 stamp('started')
@@ -291,18 +299,19 @@ def test_standalone_graph_runs_ready_leaves_within_every_scope(parallel_graph, p
     joined = receipt['outputs']['joined']
     assert list(joined) == ['root/slow', 'root/next', 'root/nested']
     assert json.loads(joined['root/next']['result']['artifacts']['response']) == joined['root/nested']['b']
-    times = {path.name: json.loads(path.read_bytes())[1] for path in witnesses.iterdir()}
-    events = sorted((when, 1 if name.endswith('.started') else -1) for name, when in times.items())
+    positions = {path.name: json.loads(path.read_bytes())[1] for path in witnesses.iterdir()}
+    events = sorted((position, 1 if name.endswith('.started') else -1) for name, position in positions.items())
+    assert [position for position, _ in events] == list(range(2 * len(receipt['leaves'])))
     active, peak = 0, 0
     for _, change in events:
         active += change
         peak = max(active, peak)
     assert peak == min(project_cap, root_cap)
-    assert times['next.started'] > max(times['a.finished'], times['b.finished'])
+    assert positions['next.started'] > max(positions['a.finished'], positions['b.finished'])
     if peak == 2:
-        assert times['slow.started'] < times['next.started'] < times['slow.finished']
-        overlap = min(times['a.finished'], times['b.finished']) - max(times['a.started'], times['b.started'])
-        assert (overlap > 0) == (nested_cap == 2)
+        assert positions['slow.started'] < positions['next.started'] < positions['slow.finished']
+        nested_overlap = max(positions['a.started'], positions['b.started']) < min(positions['a.finished'], positions['b.finished'])
+        assert nested_overlap == (nested_cap == 2)
 
 
 @pytest.mark.parametrize('case', ['failure', 'cancelled', 'timed_out'])
