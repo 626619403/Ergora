@@ -420,8 +420,8 @@ print(json.dumps({"skill":request["candidate"]["skill"].replace("BASELINE","IMPR
     manifest["cases"].append({"id": "validation-two", "split": "validation", "input": {}})
     bounded = evaluation.register(state, "demo", manifest)
     projects.bind(state, "demo", "optimizer", {"tool": "gepa", "proposer_argv": [sys.executable, str(proposer)]}, 1)
-    # Exercise rounding when the simulated clock crosses a power of two.
-    clock = [math.nextafter(254.0, -math.inf)]
+    # The Windows child admission gate reads the system monotonic clock.
+    clock = [time.monotonic()]
     started = clock[0]
     for owner in (optimization, evaluation, optimization.processes):
         monkeypatch.setattr(owner, "time", SimpleNamespace(monotonic=lambda: clock[0]))
