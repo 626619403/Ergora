@@ -54,7 +54,7 @@ Formal development goes through `development.application` → `development.nativ
 
 ### Graphs, independent calls, improvement and training
 
-`agents.graphs` owns standalone graph evaluation and its operation record. `agents.runs` owns original leaf runs and native session continuations. `agents.invocation` owns backend invocation and results. `agents.native_sources` reads original bounded records and retains native packet serialization for the runner and document-correction owner. Definitions supply complete frozen ancestor resources through the admitted mode. [Execution routes and continuation receipts](framework-tour.md#definitions-and-execution-routes)
+`agents.graphs` schedules dependency-ready Agent leaves within the frozen concurrency limits and publishes the standalone graph's operation record. `agents.runs` owns original leaf runs and native session continuations. `agents.invocation` owns backend invocation and results. `agents.native_sources` reads original bounded records and retains native packet serialization for the runner and document-correction owner. Definitions supply complete frozen ancestor resources through the admitted mode. [Standalone graph execution](../definitions/workflows/compose.md#run-a-standalone-workflow-graph) · [Execution routes and continuation receipts](framework-tour.md#definitions-and-execution-routes)
 
 Improvement generation, trusted evaluation, adoption/rollback and new-task material freezing are separate use cases. `training.application` uses its own native client and original runtime processes; an evidence index or proposal neither launches an experiment nor advances a baseline. Read [training execution](execution/training.md) before changing its authorization, clock, stop or recovery behavior.
 

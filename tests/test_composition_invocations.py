@@ -92,7 +92,7 @@ def prepared(tmp_path):
     return build
 
 
-@pytest.mark.parametrize('case', ['success', 'failed-first', 'result-budget'])
+@pytest.mark.parametrize('case', ['success', 'failed-first', 'result-budget', 'lost-outcome'])
 def test_standalone_graph_executes_nested_ports_and_keeps_original_attempts(prepared, tmp_path, monkeypatch, capsys, case):
     from ergora.agents import graphs
 
@@ -139,6 +139,14 @@ Path(sys.argv[1]).write_text(json.dumps({'summary': 'Review', 'artifacts': {'res
 
     monkeypatch.setattr(agent_backends.CodexBackend, 'command', command)
     monkeypatch.setattr(agent_backends.CodexBackend, 'check_invocation', lambda self: None)
+    if case == 'lost-outcome':
+        original_run = agent_runs.run_input
+
+        def lose_outcome(*args, **kwargs):
+            original_run(*args, **kwargs)
+            raise OSError('Original leaf reply was lost')
+
+        monkeypatch.setattr(agent_runs, 'run_input', lose_outcome)
     process_deadlines = []
     native = processes.run
 
@@ -153,7 +161,7 @@ Path(sys.argv[1]).write_text(json.dumps({'summary': 'Review', 'artifacts': {'res
     assert not destination.exists() and not call_log.exists()
     capsys.readouterr()
     bound = [*argv, '--manifest-digest', selected['digest']]
-    assert main(bound) == (0 if case == 'success' else 1)
+    assert main(bound) == (0 if case in ('success', 'lost-outcome') else 1)
     receipt = json.loads(capsys.readouterr().out)
     assert json.loads((destination/'run.json').read_bytes()) == receipt
     assert receipt['manifest_digest'] == selected['digest'] and not receipt['formal_execution_authorized']
@@ -178,6 +186,218 @@ Path(sys.argv[1]).write_text(json.dumps({'summary': 'Review', 'artifacts': {'res
         assert observed['input']['request']['input_origin'] == 'workflow-port'
     assert main(bound) == 2
     assert len(call_log.read_text(encoding='utf-8').splitlines()) == len(calls)
+
+
+@pytest.fixture
+def parallel_graph(prepared, tmp_path, monkeypatch):
+    from ergora.agents.graphs import run_graph
+
+    state, _, _ = prepared()
+    base = workflows.get(state, 'structure-review', '1.0.0')
+    definition = base['definition']
+    leaf = definition['nodes'][0]
+    source, witnesses = tmp_path/'provider.py', tmp_path/'witnesses'
+    witnesses.mkdir()
+    source.write_text('''import json, os, sys, time
+from pathlib import Path
+
+result, witnesses = map(Path, sys.argv[1:])
+task = json.loads(sys.stdin.read().split('Workflow task port (JSON value):\\n')[-1])
+name = task.get('name', 'next')
+
+def stamp(event):
+    path = witnesses / (name + '.' + event)
+    temporary = path.with_suffix('.tmp')
+    temporary.write_text(json.dumps([os.getpid(), time.monotonic_ns()]), encoding='utf-8')
+    temporary.replace(path)
+
+stamp('started')
+if 'wait_for' in task:
+    end = time.monotonic() + 15
+    while not (witnesses / task['wait_for']).exists():
+        if time.monotonic() >= end:
+            sys.exit(8)
+        time.sleep(.01)
+if task.get('trigger') == 'failure':
+    sys.exit(7)
+if task.get('trigger') == 'cancelled':
+    (witnesses / 'stop').touch()
+    time.sleep(15)
+result.write_text(json.dumps({'summary': name, 'decision': 'approve',
+                              'artifacts': {'response': json.dumps(task)}}), encoding='utf-8')
+stamp('finished')
+''', encoding='utf-8')
+    original = agent_backends.CodexBackend.command
+
+    def command(backend, request):
+        argv, prompt = original(backend, request)
+        return [sys.executable, str(source), argv[argv.index('--output-last-message') + 1], str(witnesses)], prompt
+
+    monkeypatch.setattr(agent_backends.CodexBackend, 'command', command)
+    monkeypatch.setattr(agent_backends.CodexBackend, 'check_invocation', lambda self: None)
+
+    def run(project_cap, root_cap, nested_cap, case='success'):
+        nested = {**definition, 'id': 'parallel-nested', 'limits': {**definition['limits'], 'concurrency': nested_cap},
+                  'inputs': ['a', 'b'], 'outputs': {name: {'node': name, 'output': 'result'} for name in ('a', 'b')},
+                  'nodes': [{**leaf, 'id': name, 'inputs': {'task': {'input': name}}} for name in ('a', 'b')]}
+        child = workflows.revise(state, definition['id'], definition['version'], base['digest'], nested, publish=True)
+        draft = {**definition, 'id': 'parallel-root', 'limits': {**definition['limits'], 'concurrency': root_cap},
+                 'inputs': ['a', 'b', 'slow'], 'outputs': {'joined': {'node': 'join', 'output': 'result'}}, 'nodes': [
+                     {'id': 'nested', 'ref': {'kind': 'workflow', 'id': nested['id'], 'version': nested['version'],
+                                              'digest': child['digest']}, 'depends_on': [],
+                      'inputs': {name: {'input': name} for name in nested['inputs']}},
+                     {**leaf, 'id': 'slow', 'inputs': {'task': {'input': 'slow'}}},
+                     {**leaf, 'id': 'next', 'depends_on': ['nested'],
+                      'inputs': {'task': {'node': 'nested', 'output': 'b'}}},
+                     {'id': 'join', 'join': 'all', 'depends_on': ['slow', 'next', 'nested']},
+                 ]}
+        if case == 'over-budget':
+            draft['nodes'][1]['depends_on'] = ['nested']
+        workflows.revise(state, definition['id'], definition['version'], base['digest'], draft, publish=True)
+        grant = {'schema_version': 1, 'permissions': draft['permissions'],
+                 'limits': {**draft['limits'], 'concurrency': project_cap}}
+        manifest, directory = tmp_path/'manifest', tmp_path/'run'
+        selected = workflows.prepare_manifest(state.root, draft['id'], draft['version'], grant, manifest)
+        inputs = {name: {'name': name} for name in ('a', 'b', 'slow')}
+        if min(project_cap, root_cap) == 2:
+            inputs['slow']['wait_for'] = 'next.finished'
+            if nested_cap == 2:
+                inputs['a']['wait_for'] = 'b.started'
+                inputs['b']['wait_for'] = 'a.started'
+            else:
+                inputs['a']['wait_for'] = 'slow.started'
+        if case == 'timed_out':
+            inputs['b']['wait_for'] = 'never.started'
+        elif case in ('failure', 'cancelled'):
+            inputs['b']['trigger'] = case
+        elif case.startswith('reservation-'):
+            inputs['a']['wait_for'] = 'release-a'
+            if case == 'reservation-failure':
+                inputs['a']['trigger'] = 'failure'
+        receipt = run_graph(state, 'demo', manifest, selected['digest'], inputs, directory, 50_000,
+                            5 if case == 'timed_out' else 20, stop_requested=lambda: (witnesses/'stop').exists())
+        assert receipt == json.loads((directory/'run.json').read_bytes())
+        assert len({leaf['run_id'] for leaf in receipt['leaves']}) == len(receipt['leaves'])
+        return receipt, witnesses, state
+
+    return run
+
+
+@pytest.mark.parametrize('project_cap,root_cap,nested_cap', [(1, 2, 2), (2, 1, 2), (2, 2, 2), (2, 2, 1)])
+def test_standalone_graph_runs_ready_leaves_within_every_scope(parallel_graph, project_cap, root_cap, nested_cap):
+    receipt, witnesses, _ = parallel_graph(project_cap, root_cap, nested_cap)
+    assert receipt['status'] == 'succeeded'
+    assert len(receipt['leaves']) == 4
+    joined = receipt['outputs']['joined']
+    assert list(joined) == ['root/slow', 'root/next', 'root/nested']
+    assert json.loads(joined['root/next']['result']['artifacts']['response']) == joined['root/nested']['b']
+    times = {path.name: json.loads(path.read_bytes())[1] for path in witnesses.iterdir()}
+    events = sorted((when, 1 if name.endswith('.started') else -1) for name, when in times.items())
+    active, peak = 0, 0
+    for _, change in events:
+        active += change
+        peak = max(active, peak)
+    assert peak == min(project_cap, root_cap)
+    assert times['next.started'] > max(times['a.finished'], times['b.finished'])
+    if peak == 2:
+        assert times['slow.started'] < times['next.started'] < times['slow.finished']
+        overlap = min(times['a.finished'], times['b.finished']) - max(times['a.started'], times['b.started'])
+        assert (overlap > 0) == (nested_cap == 2)
+
+
+@pytest.mark.parametrize('case', ['failure', 'cancelled', 'timed_out'])
+def test_standalone_graph_stops_dispatch_and_drains_owned_leaves(parallel_graph, monkeypatch, case):
+    from ergora.agents.graphs import _GraphRun
+
+    original_save = _GraphRun.save
+
+    def save(graph):
+        if any(attempt['status'] == 'failed' for attempt in graph.receipt['leaves']):
+            assert graph.should_stop()
+        original_save(graph)
+
+    monkeypatch.setattr(_GraphRun, 'save', save)
+    receipt, witnesses, state = parallel_graph(2, 2, 1, case)
+    assert receipt['status'] == ('failed' if case == 'failure' else case)
+    assert 'outputs' not in receipt and not (witnesses/'next.started').exists()
+    attempts = {leaf['instance'].rsplit('/', 1)[-1]: leaf for leaf in receipt['leaves']}
+    assert attempts.keys() == {'a', 'b', 'slow'}
+    for name, attempt in attempts.items():
+        pid, _ = json.loads((witnesses/(name + '.started')).read_bytes())
+        if os.name == 'posix':
+            with pytest.raises(ProcessLookupError):
+                os.kill(pid, 0)
+        observed = agent_runs.inspect_run(state, 'demo', attempt['run_id'])
+        assert observed['run']['id'] == attempt['run_id']
+        assert observed['run']['status'] == attempt['status']
+        assert observed['input']['digest'] == attempt['input_digest']
+        if name == 'a':
+            assert attempt['status'] == 'succeeded'
+            assert observed['result']['sha256'] == attempt['result_sha256']
+        elif case == 'failure':
+            assert attempt['status'] == ('failed' if name == 'b' else 'cancelled')
+        else:
+            assert attempt['status'] in ('cancelled', 'timed_out')
+
+
+@pytest.mark.parametrize('condition,terminal,error', [
+    ('failure', 'failed', 'Workflow leaf root/nested/a reported failed'),
+    ('stop', 'cancelled', 'Workflow interrupted'),
+    ('budget', 'failed', 'Workflow has no remaining result bytes'),
+])
+def test_standalone_graph_rechecks_admission_after_saving_an_attempt(
+        parallel_graph, tmp_path, monkeypatch, condition, terminal, error):
+    from ergora.agents import graphs
+
+    if condition == 'budget':
+        task = {'name': 'a', 'wait_for': 'release-a'}
+        result = {'summary': 'a', 'decision': 'approve', 'artifacts': {'response': json.dumps(task)}}
+        monkeypatch.setattr(graphs, '_RESULT_LIMIT', len(json.dumps(result).encode('utf-8')))
+    previous_status = {'failure': 'failed', 'stop': 'cancelled', 'budget': 'succeeded'}[condition]
+    witnesses = tmp_path/'witnesses'
+    original_save = graphs._GraphRun.save
+    reservations = []
+
+    def save(graph):
+        leaves = graph.receipt['leaves']
+        if len(leaves) == 2 and leaves[-1]['instance'] == 'root/nested/b' and not reservations:
+            assert len(json.loads((graph.directory/'run.json').read_bytes())['leaves']) == 1
+            reservations.append(leaves[-1].copy())
+            if condition == 'stop':
+                (witnesses/'stop').touch()
+            else:
+                (witnesses/'release-a').touch()
+                first, = graph.running
+                assert first.result(timeout=10)['status'] == previous_status
+        original_save(graph)
+
+    monkeypatch.setattr(graphs._GraphRun, 'save', save)
+    receipt, witnesses, state = parallel_graph(2, 2, 2, 'reservation-' + condition)
+    assert receipt['status'] == terminal and receipt['error'] == error
+    first, skipped = receipt['leaves']
+    reservation, = reservations
+    assert reservation['status'] == 'attempted'
+    assert skipped == {**reservation, 'status': 'not_dispatched'}
+    assert first['status'] == previous_status
+    assert {job['id'] for job in agent_runs.runs(state, 'demo')} == {first['run_id']}
+    assert not (witnesses/'b.started').exists()
+
+
+def test_standalone_graph_charges_parallel_results_to_one_budget(parallel_graph, monkeypatch):
+    from ergora.agents import graphs
+
+    monkeypatch.setattr(graphs, '_RESULT_LIMIT', 180)
+    receipt, witnesses, state = parallel_graph(2, 2, 2, 'over-budget')
+    assert receipt['status'] == 'failed' and 'remaining' in receipt['error']
+    assert 'outputs' not in receipt
+    assert {path.name for path in witnesses.iterdir()} == {'a.started', 'a.finished', 'b.started', 'b.finished'}
+    assert [leaf['instance'] for leaf in receipt['leaves']] == ['root/nested/a', 'root/nested/b']
+    original_sizes = []
+    for attempt in receipt['leaves']:
+        original = agent_runs.inspect_run(state, 'demo', attempt['run_id'])['result']
+        assert original['sha256'] == attempt['result_sha256']
+        original_sizes.append(original['bytes'])
+    assert max(original_sizes) <= 180 < sum(original_sizes)
 
 
 def test_standalone_graph_rejects_writable_leaf_before_reserving_any_effect(prepared, tmp_path):

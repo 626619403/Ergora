@@ -19,9 +19,11 @@ ergora composition run-graph my-project ./complete-manifest --manifest-digest MA
   --inputs ./graph-inputs.json --directory ./original-graph-run --max-prompt-bytes 150000 --timeout 300
 ```
 
-The command executes dependency levels serially. It follows nested workflow ports, passes each Agent leaf's complete structured reply as `result`, and maps all declared predecessor outputs by exact instance path at an all-join. Agent leaves use their current text-only backend and read-only permission declaration. One deadline controls the graph's native launches and waits.
+The command schedules read-only, text-only Agent leaves when their declared dependencies are satisfied and the frozen project, root and ancestor concurrency limits allow another call. With a free slot, a successor can start while an unrelated branch is still running. Nested workflows pass data through their declared ports. Each Agent leaf supplies its complete structured reply as `result`, and an all-join maps the outputs of all its declared predecessors by exact instance path.
 
-Read `run.json` in the selected directory for the original manifest, inputs, attempted Agent run IDs and named outputs. Read each Agent run with `composition inspect-run`. The graph retains up to 8 MiB of complete verified leaf results and caps its final output at 8 MiB. Exceeding either limit fails the graph with the original leaf records available. Ctrl+C requests cancellation through the native process owner. On Linux/WSL2, SIGTERM uses the same path. An interrupted invocation can leave an incomplete receipt with an original attempted leaf. Later reads can use that identity. Execution takes an unused directory and returns a nonzero status when the graph ends without complete success.
+The graph coordinator records each original Agent attempt and run ID in `run.json` before launch, then checks the current stop, completed calls and result capacity again. An attempt stopped before the Agent runner starts is recorded as `not_dispatched`. One deadline covers the whole graph. On failure, cancellation or timeout, the coordinator stops dispatch and waits for the original process owners to stop and collect active calls. Ctrl+C requests cancellation through those owners. On Linux/WSL2, SIGTERM uses the same path.
+
+Read `run.json` in the selected directory for the original manifest, inputs, attempted Agent run IDs and named outputs. Use `composition inspect-run` to read each original leaf, including completed leaves from a failed or interrupted graph. The graph retains up to 8 MiB of complete verified leaf results and caps its final output at 8 MiB. Exceeding either limit fails the graph with the original leaf records available. Execution takes an unused directory and returns a nonzero status when the graph ends without complete success.
 
 ### Read original fixed verification evidence
 
@@ -39,7 +41,7 @@ For a Workflow v2 graph with a `verify-evidence` node, run the same command with
 }
 ```
 
-Replace the placeholders and example event ID with values from the original run. The read requires the project's original Linux/WSL2 reference installation, Temporal history and job files. A successful node returns the verified evidence identity on its `result` port. The graph receipt records each original locator and the read outcome in `verification_reads`. Formal verification, approval and candidate release continue through their original owners. [Node and port contract](contracts.md#original-fixed-verification-evidence)
+Replace the placeholders and example event ID with values from the original run. The read requires the project's original Linux/WSL2 reference installation, Temporal history and job files. It runs synchronously in the graph coordinator and can delay independent dispatch and observation of other Agent results. Active Agent calls retain their original deadline and stop handling. A successful node returns the verified evidence identity on its `result` port. The graph receipt records each original locator and the read outcome in `verification_reads`. Formal verification, approval and candidate release continue through their original owners. [Node and port contract](contracts.md#original-fixed-verification-evidence)
 
 ## Use bundled domain compositions
 

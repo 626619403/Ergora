@@ -1,14 +1,18 @@
 """Execute an explicitly selected standalone graph through original leaf runs."""
 
+from collections import Counter
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 import json
 import os
 from pathlib import Path
 import shutil
+from sqlite3 import Error as StateError
 import tempfile
+from threading import Event
 import time
 import uuid
 
-from ergora.agents import backends, runs
+from ergora.agents import backends, native_sources, runs
 from ergora.configuration import validation as contracts
 from ergora.definitions import agents, workflows
 from ergora.storage.assets import publish_directory
@@ -52,7 +56,11 @@ class _GraphRun:
         self.directory, self.receipt, self.deadline = directory, receipt, deadline
         self.codex_config = codex_config
         self.stop_requested = stop_requested
+        self.stop = Event()
         self.result_bytes = 0
+        self.running = {}
+        self.active_slots = Counter()
+        self.completed = {}
 
     def save(self):
         path = self.directory / 'run.json'
@@ -66,43 +74,93 @@ class _GraphRun:
         finally:
             Path(name).unlink(missing_ok=True)
 
+    def should_stop(self):
+        return self.stop.is_set() or (self.stop_requested is not None and self.stop_requested())
+
     def check_active(self):
-        if self.stop_requested is not None and self.stop_requested():
+        if self.should_stop():
             raise KeyboardInterrupt
         if time.monotonic() >= self.deadline:
             raise TimeoutError('The original workflow deadline expired')
 
-    def leaf(self, path, task):
-        remaining = _RESULT_LIMIT - self.result_bytes
-        if remaining <= 0:
+    def check_leaf_admission(self):
+        self.check_active()
+        settled = self.collect_finished()
+        self.check_active()
+        if self.result_bytes >= _RESULT_LIMIT:
             raise ValueError('Workflow has no remaining result bytes')
+        return settled
+
+    def dispatch_leaf(self, executor, node, task):
+        if self.result_bytes >= _RESULT_LIMIT:
+            raise ValueError('Workflow has no remaining result bytes')
+        path = node['path']
         limit = self.receipt['max_prompt_bytes']
         source = self.directory / f"input-{len(self.receipt['leaves']) + 1}"
         prepared = workflows.prepare_input_from_manifest(self.directory/'manifest', path,
             _bounded_json(task, limit), source, limit, input_origin='workflow-port',
             manifest_digest=self.receipt['manifest_digest'])
-        self.check_active()
+        self.check_leaf_admission()
         attempt = {'instance': path, 'run_id': uuid.uuid4().hex, 'input_digest': prepared['digest'], 'status': 'attempted'}
         self.receipt['leaves'].append(attempt)
-        self.save()
-        job = runs.run_input(self.state, self.project['id'], source, self.receipt['timeout'], mode='text-only',
+        try:
+            self.save()
+            # Final admission observes results and stops that arrived during durable publication.
+            settled = self.check_leaf_admission()
+        except BaseException:
+            self.stop.set()
+            attempt['status'] = 'not_dispatched'
+            raise
+        future = executor.submit(runs.run_input, self.state, self.project['id'], source, self.receipt['timeout'], mode='text-only',
             codex_config=self.codex_config, deadline=self.deadline, input_digest=prepared['digest'], run_id=attempt['run_id'],
-            expected_revision=self.project['revision'], stop_requested=self.stop_requested)
+            expected_revision=self.project['revision'], stop_requested=self.should_stop)
+        self.running[future] = attempt
+        self.active_slots.update(scope['path'] for scope in node['concurrency_scopes'])
+        if settled:
+            self.save()
+
+    def collect_finished(self):
+        settled = False
+        while finished := [future for future in self.running if future.done()]:
+            for future in finished:
+                attempt = self.running.pop(future)
+                node = self.nodes[attempt['instance']]
+                self.active_slots.subtract(scope['path'] for scope in node['concurrency_scopes'])
+                self.completed[node['path']] = self.finish_leaf(future, attempt)
+            settled = True
+        return settled
+
+    def finish_leaf(self, future, attempt):
+        path = attempt['instance']
+        try:
+            job = future.result()
+        except (OSError, ValueError, RecursionError, KeyboardInterrupt, StateError) as error:
+            # The caller can lose the outcome after the original owner stored it.
+            try:
+                job = native_sources.record(self.state, self.project['id'], attempt['run_id'])
+                if (job['kind'] != 'composition-agent-run' or job.get('input_digest') != attempt['input_digest']
+                        or job['status'] in ('preparing', 'running')):
+                    raise ValueError('No matching terminal Agent outcome')
+            except (OSError, ValueError, KeyError, StateError):
+                attempt['status'] = 'unknown'
+                raise error
         attempt.update(status=job['status'], result_sha256=job.get('result_sha256'))
-        self.save()
         if job['status'] != 'succeeded':
             if job['status'] == 'timed_out':
                 raise TimeoutError(f'Workflow leaf reached its deadline: {path}')
             if job['status'] == 'cancelled':
                 raise KeyboardInterrupt
             raise ValueError(f'Workflow leaf {path} reported {job["status"]}')
+        remaining = _RESULT_LIMIT - self.result_bytes
+        if remaining <= 0:
+            raise ValueError('Workflow has no remaining result bytes')
         observed = runs.inspect_run(self.state, self.project['id'], attempt['run_id'], max_result_bytes=remaining)
         result = observed['result']
         if not result['available']:
             raise ValueError(f'Workflow leaf {path} cannot supply its original result within the remaining {remaining} bytes: '
                              + result['error'])
         if (not observed['input']['available'] or not observed['prompt']['available']
-                or observed['input']['digest'] != prepared['digest'] or result['sha256'] != attempt['result_sha256']):
+                or observed['input']['digest'] != attempt['input_digest'] or result['sha256'] != attempt['result_sha256']):
             raise ValueError(f'Original workflow leaf evidence is unavailable: {path}')
         self.result_bytes += result['bytes']
         return {'result': result['document']}
@@ -118,7 +176,7 @@ class _GraphRun:
         try:
             evidence = read_candidate_verification(
                 self.state, self.project['id'], source, expected_revision=self.project['revision'],
-                deadline=self.deadline, stop_requested=self.stop_requested)
+                deadline=self.deadline, stop_requested=self.should_stop)
             self.result_bytes += len(_bounded_json(evidence, _RESULT_LIMIT - self.result_bytes))
             self.check_active()
         except TimeoutError:
@@ -134,36 +192,69 @@ class _GraphRun:
         self.save()
         return {'result': evidence}
 
-    def workflow(self, path, inputs):
-        completed = {}
+    def ports(self, path, inputs, bindings):
+        return {name: inputs[binding['input']] if 'input' in binding else
+                self.completed[path + '/' + binding['node']][binding['output']] for name, binding in bindings.items()}
 
-        def value(binding):
-            if 'input' in binding:
-                return inputs[binding['input']]
-            return completed[path + '/' + binding['node']][binding['output']]
+    def ready(self, node, opened):
+        return (node['parent'] in opened and all(path in self.completed for path in node['depends_on'])
+                and all(self.active_slots[scope['path']] < scope['limit'] for scope in node.get('concurrency_scopes', ())))
 
-        node = self.nodes[path]
-        for level in node['levels']:
-            for child_path in level:
+    def workflow(self, inputs, project_limit):
+        pending = {path: node for path, node in self.nodes.items() if path != 'root'}
+        opened = {'root': inputs}
+        children = {path: [child for level in node['levels'] for child in level]
+                    for path, node in self.nodes.items() if node['kind'] == 'workflow'}
+        root_limit = self.nodes['root']['limits']['concurrency']
+        executor = ThreadPoolExecutor(max_workers=min(project_limit, root_limit))
+        try:
+            while 'root' not in self.completed:
                 self.check_active()
-                child = self.nodes[child_path]
-                if child['kind'] == 'join':
-                    result = {'result': {dependency: completed[dependency] for dependency in child['depends_on']}}
+                if self.collect_finished():
+                    self.save()
+                # Finalize children before their parents using frozen workflow membership.
+                for path in reversed(tuple(opened)):
+                    if all(child in self.completed for child in children[path]):
+                        self.completed[path] = self.ports(path, opened.pop(path), self.nodes[path]['outputs'])
+                if 'root' in self.completed:
+                    break
+                node = next((node for node in pending.values() if self.ready(node, opened)), None)
+                if node is None:
+                    if not self.running:
+                        raise ValueError('No runnable workflow node remains')
+                    wait(self.running, timeout=min(.05, max(0, self.deadline - time.monotonic())),
+                         return_when=FIRST_COMPLETED)
+                    continue
+                path = node['path']
+                del pending[path]
+                if node['kind'] == 'join':
+                    self.completed[path] = {'result': {dep: self.completed[dep] for dep in node['depends_on']}}
+                    continue
+                parent = node['parent']
+                ports = self.ports(parent, opened[parent], node['inputs'])
+                if node['kind'] == 'workflow':
+                    opened[path] = ports
+                elif node['kind'] == 'verify-evidence':
+                    self.completed[path] = self.verify_evidence(path, ports['source'])
                 else:
-                    ports = {name: value(binding) for name, binding in child['inputs'].items()}
-                    if child['kind'] == 'workflow':
-                        result = self.workflow(child_path, ports)
-                    elif child['kind'] == 'verify-evidence':
-                        result = self.verify_evidence(child_path, ports['source'])
-                    else:
-                        result = self.leaf(child_path, ports['task'])
-                completed[child_path] = result
-        return {name: value(binding) for name, binding in node['outputs'].items()}
+                    self.dispatch_leaf(executor, node, ports['task'])
+        except BaseException:
+            self.stop.set()
+            raise
+        finally:
+            executor.shutdown()
+            # The executor joins after the stop fence. Persist original terminal outcomes even after a graph failure.
+            for future, attempt in self.running.items():
+                try:
+                    self.finish_leaf(future, attempt)
+                except (OSError, ValueError, RecursionError, KeyboardInterrupt, StateError):
+                    pass
+        return self.completed['root']
 
 
 def run_graph(state: State, project_id: str, manifest: Path, manifest_digest: str, inputs: dict, directory: Path,
               max_prompt_bytes: int, timeout: int, *, codex_config: Path | None = None, stop_requested=None) -> dict:
-    """Run a bounded read-only graph serially, with no resubmission through this entry."""
+    """Run a bounded, dependency-ready read-only graph with no resubmission through this entry."""
     contracts.validate(timeout, {'type': 'integer', 'minimum': 1, 'maximum': 3600}, 'Workflow timeout')
     contracts.validate(max_prompt_bytes, contracts.COMPOSITION_INPUT['properties']['max_prompt_bytes'], 'Input byte limit')
     deadline = time.monotonic() + timeout
@@ -207,7 +298,7 @@ def run_graph(state: State, project_id: str, manifest: Path, manifest_digest: st
         publish_directory(staged, directory)
     run.directory = directory
     try:
-        outputs = run.workflow('root', inputs)
+        outputs = run.workflow(inputs, composition['grant']['limits']['concurrency'])
         _bounded_json(outputs, _RESULT_LIMIT)
         run.check_active()
         receipt.update(status='succeeded', outputs=outputs)
@@ -215,7 +306,7 @@ def run_graph(state: State, project_id: str, manifest: Path, manifest_digest: st
         receipt.update(status='timed_out', error=str(error))
     except KeyboardInterrupt:
         receipt.update(status='cancelled', error='Workflow interrupted')
-    except (OSError, ValueError, RecursionError) as error:
+    except (OSError, ValueError, RecursionError, StateError) as error:
         receipt.update(status='failed', error=str(error))
     run.save()
     return receipt
