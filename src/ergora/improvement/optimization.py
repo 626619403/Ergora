@@ -13,6 +13,7 @@ import uuid
 import ergora.improvement.evaluation as evaluation
 import ergora.definitions.skills as skill_assets
 from ergora.configuration import catalog as components
+from ergora.definitions.bundles import parse_json
 from ergora.runtime import processes
 from ergora.storage.state import State, now
 
@@ -155,7 +156,7 @@ def optimize(state: State, project_id: str, baseline_digest: str, suite_digest: 
         output = Path(outcome["output"]) / "stdout.txt"
         if output.stat().st_size > 200_000:
             raise ValueError("Proposer response exceeded 200 KB")
-        response = json.loads(output.read_text(encoding="utf-8"))
+        response = parse_json(output.read_text(encoding="utf-8"), "Proposer response")
         cost = response["cost"]
         if not isinstance(response["skill"], str) or type(cost) not in (int, float) or not math.isfinite(cost) or cost < 0:
             raise ValueError("Proposer requires complete skill text and a finite nonnegative cost")
@@ -177,7 +178,7 @@ def optimize(state: State, project_id: str, baseline_digest: str, suite_digest: 
             # GEPA can retain proposal errors internally; preserve them as a terminal search outcome.
             if document["status"] == "running":
                 document["status"] = "failed"
-            document["error"] = str(error)
+            document.setdefault("error", str(error))
             persist()
             raise
 
@@ -205,7 +206,7 @@ def optimize(state: State, project_id: str, baseline_digest: str, suite_digest: 
         # The external SDK is a job boundary: retain failures, never substitute another optimizer.
         if document["status"] == "running":
             document["status"] = "failed"
-        document["error"] = str(error)
+        document.setdefault("error", str(error))
     document["finished"] = now()
     persist()
     return document

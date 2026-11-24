@@ -319,6 +319,38 @@ print(json.dumps({"skill":request["candidate"]["skill"].replace("BASELINE","IMPR
         assert all(case["split"] != "holdout" for case in snapshot["cases"])
 
 
+def test_real_gepa_stops_with_unknown_proposer_cost_when_cost_fields_conflict(skill_project):
+    pytest.importorskip("gepa")
+    state, repo, _, baseline, original = skill_project
+    scorer = repo / "cost-scorer.py"
+    scorer.write_text('''import json, pathlib, sys
+request = json.load(sys.stdin)
+text = pathlib.Path(request["skill_dir"], "SKILL.md").read_text()
+print(json.dumps({"score": .9 if "IMPROVED" in text else .5, "passed": True, "cost": .125, "feedback": "fixture"}))
+''', encoding="utf-8")
+    proposer = repo / "ambiguous-proposer.py"
+    proposer.write_text('''import json, sys
+request = json.load(sys.stdin)
+skill = request["candidate"]["skill"].replace("BASELINE", "IMPROVED")
+print('{"skill":' + json.dumps(skill) + ',"cost":2,"cost":0}')
+''', encoding="utf-8")
+    manifest = {key: value for key, value in original["manifest"].items() if key not in ("file_sha256", "path_bindings")}
+    manifest.update(evaluator_argv=[sys.executable, str(scorer)], evaluator_files=[str(scorer)])
+    suite = evaluation.register(state, "demo", manifest)
+    projects.bind(state, "demo", "optimizer", {"tool": "gepa", "proposer_argv": [sys.executable, str(proposer)]}, 1)
+
+    result = optimization.optimize(state, "demo", baseline["digest"], suite["digest"], "Improve fixture score", 4, 1, 20)
+    raw = Path(result["output"], "proposal-1", "stdout.txt").read_bytes()
+    assert raw.rstrip().endswith(b',"cost":2,"cost":0}')
+    assert result["status"] == "failed" and result["reported_cost_complete"] is False, result
+    assert "Duplicate JSON key" in result["error"] and "cost" in result["error"]
+    children = [evaluation.get(state, "demo", run_id) for run_id in result["evaluations"]]
+    assert all(run["skill"] == baseline["digest"] and run["reported_cost_complete"] for run in children)
+    assert result["reported_cost"] == sum(run["reported_cost"] for run in children) > 0
+    assert result["proposals"] == 1 and result["candidates"] == [baseline["digest"]]
+    assert optimization.listing(State(state.root), "demo")[0] == result
+
+
 def test_real_gepa_retains_failed_proposer_and_cost_budget_evidence(skill_project):
     pytest.importorskip("gepa")
     state, repo, source, baseline, suite = skill_project
