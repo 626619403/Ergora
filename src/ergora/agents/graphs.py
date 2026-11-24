@@ -1,6 +1,6 @@
 """Execute and observe explicitly selected standalone graphs through original leaf runs."""
 
-from collections import Counter
+from collections import Counter, deque
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from contextlib import ExitStack
 import hashlib
@@ -98,6 +98,21 @@ def _enter_owner(stack, path):
 
 def _owner_identity(stat_result):
     return [stat_result.st_dev, stat_result.st_ino]
+
+
+def _leaf_result_schema(node):
+    routed = 'route_choices' in node
+    schema = invocation.result_schema(['response', 'route'] if routed else ['response'], review=node['role'] == 'reviewer')
+    if routed:
+        schema['properties']['artifacts']['properties']['route'] = {'type': 'string', 'enum': node['route_choices']}
+    return schema
+
+
+def _route_record(node, choice, source):
+    selected = None if choice == 'none' else f"{node['parent']}/{choice}"
+    return {'instance': node['path'], 'choice': choice, 'eligible': node['branches'], 'selected': selected,
+            'skipped': [path for path in node['branches'] if path != selected],
+            'source': {key: source[key] for key in ('instance', 'run_id', 'input_digest', 'result_sha256')}}
 
 
 class _GraphRun:
@@ -213,9 +228,7 @@ class _GraphRun:
             gate, = self.nodes[node['parent']]['depends_on']
             options['_fixed_check_proof'] = self.completed[gate]['result']
         if 'route_choices' in node:
-            schema = invocation.result_schema(['response', 'route'], review=node['role'] == 'reviewer')
-            schema['properties']['artifacts']['properties']['route'] = {'type': 'string', 'enum': node['route_choices']}
-            options['result_schema'] = schema
+            options['result_schema'] = _leaf_result_schema(node)
         self.check_leaf_admission()
         run_id = uuid.uuid4().hex if self.recovery is None else self.recovery_run_id(path)
         attempt = {'instance': path, 'run_id': run_id, 'input_digest': prepared['digest'], 'status': 'attempted'}
@@ -317,23 +330,28 @@ class _GraphRun:
         self.save()
         return {'result': evidence}
 
-    def choose_agent(self, node, source):
-        self.check_active()
+    def route_decision(self, node, source):
         analyzer = node['depends_on'][0]
         artifacts = source.get('artifacts')
         choice = artifacts.get('route') if isinstance(artifacts, dict) else None
         if choice not in self.nodes[analyzer]['route_choices']:
             raise ValueError(f'Original analyzer result lacks an eligible route choice: {analyzer}')
         attempt = next(item for item in self.receipt['leaves'] if item['instance'] == analyzer)
-        selected = None if choice == 'none' else f"{node['parent']}/{choice}"
-        skipped = [path for path in node['branches'] if path != selected]
-        record = {'instance': node['path'], 'choice': choice, 'eligible': node['branches'], 'selected': selected,
-                  'skipped': skipped, 'source': {key: attempt[key] for key in
-                                                ('instance', 'run_id', 'input_digest', 'result_sha256')}}
+        return _route_record(node, choice, attempt)
+
+    def choose_agent(self, node, source):
+        self.check_active()
+        record = self.route_decision(node, source)
         self.receipt.setdefault('route_decisions', []).append(record)
         self.save()
         self.check_active()
-        return {'result': {'choice': choice}}, skipped
+        return record
+
+    def complete_route(self, record, pending):
+        self.completed[record['instance']] = {'result': {'choice': record['choice']}}
+        for branch in record['skipped']:
+            del pending[branch]
+            self.completed[branch] = {'status': 'skipped'}
 
     def ports(self, path, inputs, bindings):
         return {name: inputs[binding['input']] if 'input' in binding else
@@ -394,13 +412,15 @@ class _GraphRun:
                 or not observed['prompt']['available'] or not result['available']
                 or (('result_sha256' in attempt or status == 'succeeded') and attempt.get('result_sha256') != result['sha256'])):
             raise ValueError(f'Graph recovery requires matching original Agent input, prompt and result evidence: {path}')
-        invocation.validate_result(result['document'], invocation.result_schema(['response'], review=node['role'] == 'reviewer'))
+        invocation.validate_result(result['document'], _leaf_result_schema(node))
         self.result_bytes += result['bytes']
         attempt.update(status='succeeded', result_sha256=result['sha256'])
         self.completed[path] = {'result': result['document']}
 
     def recover(self, inputs):
         agent_nodes = {path: node for path, node in self.nodes.items() if node['kind'] == 'agent'}
+        selectors = {path: node for path, node in self.nodes.items() if node['kind'] == 'choose-agent'}
+        decisions = deque(_observed_attempts(self.receipt, 'route_decisions', selectors))
         leaves = _observed_attempts(self.receipt, 'leaves', agent_nodes, required=True)
         reserved = {item['instance'] for item in leaves}
         names = {entry.name for entry in self.directory.iterdir()}
@@ -412,16 +432,32 @@ class _GraphRun:
             raise ValueError('Saved graph input slots differ from the original reservations')
         pending, opened, children = self.workflow_state(inputs)
 
-        def task_at(path):
+        def advance_progress():
             while True:
                 self.check_active()
                 self.finalize_workflows(opened, children)
+                if decisions:
+                    record = decisions[0]
+                    selector = selectors[record['instance']]
+                    if self.ready(selector, opened):
+                        parent = selector['parent']
+                        source = self.ports(parent, opened[parent], selector['inputs'])['source']
+                        expected = self.route_decision(selector, source)
+                        if native_sources.encode(record) != native_sources.encode(expected):
+                            raise ValueError(f'Saved route decision differs from its original analyzer result: {selector["path"]}')
+                        decisions.popleft()
+                        del pending[selector['path']]
+                        self.complete_route(expected, pending)
+                        continue
                 structural = next((node for node in pending.values()
                                    if node['kind'] in ('workflow', 'join') and self.ready(node, opened)), None)
                 if structural is None:
-                    break
+                    return
                 del pending[structural['path']]
                 self.open_structure(structural, opened)
+
+        def task_at(path):
+            advance_progress()
             node = pending.get(path)
             if node is None or node['kind'] != 'agent' or not self.ready(node, opened):
                 raise ValueError(f'Saved graph input is unreachable through its original dependencies: {path}')
@@ -433,6 +469,9 @@ class _GraphRun:
             prepared = self.recovery_input(self.directory / f'input-{sequence}', path, task_at(path))
             self.recover_leaf(agent_nodes[path], attempt, prepared)
             del pending[path]
+        advance_progress()
+        if decisions:
+            raise ValueError(f'Saved route decision is unreachable through its original dependencies: {decisions[0]["instance"]}')
         for path in agent_nodes.keys() - reserved:
             self.check_active()
             if native_sources.find_run(self.state, self.project['id'], self.recovery_run_id(path)) is not None:
@@ -475,11 +514,7 @@ class _GraphRun:
                 if node['kind'] in _VERIFICATION_NODES:
                     self.completed[path] = self.verify_evidence(path, ports['source'])
                 elif node['kind'] == 'choose-agent':
-                    result, skipped = self.choose_agent(node, ports['source'])
-                    self.completed[path] = result
-                    for branch in skipped:
-                        del pending[branch]
-                        self.completed[branch] = {'status': 'skipped'}
+                    self.complete_route(self.choose_agent(node, ports['source']), pending)
                 elif node['kind'] == 'agent':
                     self.dispatch_leaf(executor, node, ports['task'])
                 else:
@@ -504,8 +539,8 @@ def _graph_inputs(composition, inputs, max_prompt_bytes, *, recoverable=False):
     if not isinstance(inputs, dict) or inputs.keys() != composition['instances'][0]['inputs'].keys():
         raise ValueError('Workflow inputs must supply exactly the declared root ports')
     encoded_inputs = _bounded_json(inputs, max_prompt_bytes)
-    if recoverable and any(node['kind'] not in ('agent', 'workflow', 'join') for node in composition['instances']):
-        raise ValueError('Recoverable graphs support only Agent, Workflow and all-join nodes')
+    if recoverable and any(node['kind'] not in ('agent', 'workflow', 'join', 'choose-agent') for node in composition['instances']):
+        raise ValueError('Recoverable graphs support only Agent, Workflow, all-join and choose-agent nodes')
     for leaf in (item for item in composition['instances'] if item['kind'] == 'agent'):
         if any(leaf['permissions'][name] for name in ('write', 'shell', 'network')):
             raise ValueError(f'Standalone workflow requires a read-only leaf: {leaf["path"]}')
@@ -625,7 +660,7 @@ def resume_graph(home: Path | None, project_id: str, directory: Path, manifest_d
         _, receipt = _read_graph_receipt(project_id, directory, manifest_digest)
         if receipt.get('status') != 'incomplete' or os.path.lexists(directory / 'stop.json'):
             raise ValueError('A terminal or explicitly stopped graph cannot resume')
-        if 'outputs' in receipt or 'error' in receipt or 'verification_reads' in receipt or 'route_decisions' in receipt:
+        if 'outputs' in receipt or 'error' in receipt or 'verification_reads' in receipt:
             raise ValueError('Saved graph progress differs from the supported incomplete recovery state')
         if any(field not in receipt for field in _RECOVERY_FIELDS):
             raise ValueError('Saved recovery is missing original graph authority')
@@ -806,10 +841,8 @@ def _observe_route(sequence, record, selector, attempts, choices, graph_status):
     choice = choices.get(analyzer)
     if choice is None:
         return {**observation, 'state': 'invalid', 'proof': 'result'}
-    selected = None if choice == 'none' else f"{selector['parent']}/{choice}"
-    skipped = [branch for branch in branches if branch != selected]
-    expected = {'instance': selector['path'], 'eligible': branches, 'source': source,
-                'choice': choice, 'selected': selected, 'skipped': skipped}
+    expected = _route_record(selector, choice, source)
+    selected, skipped = expected['selected'], expected['skipped']
     if (record != expected or any(branch in attempts for branch in skipped)
             or (graph_status == 'succeeded' and selected is not None and selected not in attempts)):
         return {**observation, 'state': 'mismatch', 'proof': 'route_decision'}

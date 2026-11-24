@@ -410,7 +410,8 @@ def test_standalone_graph_charges_parallel_results_to_one_budget(parallel_graph,
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Recoverable standalone graphs require Linux/WSL2')
-@pytest.mark.parametrize('case', ['resume', 'lost-outcome', 'unknown', 'expired', 'clock', 'project', 'result-budget'])
+@pytest.mark.parametrize('case', ['resume', 'lost-outcome', 'unknown', 'expired', 'clock', 'project', 'result-budget',
+                                  'route-before', 'route-after', 'route-none'])
 def test_standalone_graph_resume_retains_the_original_work(prepared, tmp_path, case):
     import signal
     import time
@@ -418,18 +419,23 @@ def test_standalone_graph_resume_retains_the_original_work(prepared, tmp_path, c
     state, _, _ = prepared()
     base = workflows.get(state, 'structure-review', '1.0.0')
     definition = base['definition']
-    leaf = {**definition['nodes'][0], 'review_requirement': 'required'}
-    draft = {**definition, 'schema_version': 2, 'id': 'resume-review', 'inputs': ['task'],
-             'nodes': [{**leaf, 'id': 'first', 'inputs': {'task': {'input': 'task'}}},
-                       {**leaf, 'id': 'second', 'depends_on': ['first'],
-                        'inputs': {'task': {'node': 'first', 'output': 'result'}}}],
-             'outputs': {'result': {'node': 'second', 'output': 'result'}}}
+    choice = {'route-before': 'dependency', 'route-after': 'structure', 'route-none': 'none'}.get(case)
+    if choice is not None:
+        draft = _conditional_draft(definition)
+    else:
+        leaf = {**definition['nodes'][0], 'review_requirement': 'required'}
+        draft = {**definition, 'schema_version': 2, 'id': 'resume-review', 'inputs': ['task'],
+                 'nodes': [{**leaf, 'id': 'first', 'inputs': {'task': {'input': 'task'}}},
+                           {**leaf, 'id': 'second', 'depends_on': ['first'],
+                            'inputs': {'task': {'node': 'first', 'output': 'result'}}}],
+                 'outputs': {'result': {'node': 'second', 'output': 'result'}}}
     workflows.revise(state, definition['id'], definition['version'], base['digest'], draft, publish=True)
     grant = {'schema_version': 1, 'permissions': draft['permissions'], 'limits': draft['limits']}
     manifest, directory = tmp_path / 'manifest', tmp_path / 'graph'
     selected = workflows.prepare_manifest(state.root, draft['id'], draft['version'], grant, manifest)
     inputs, calls, gate = (tmp_path / name for name in ('inputs.json', 'calls.jsonl', 'interrupted'))
-    task = {'request': 'Review the exact source and carry the original result to the next review.'}
+    task = ({'choice': choice} if choice is not None else
+            {'request': 'Review the exact source and carry the original result to the next review.'})
     inputs.write_text(json.dumps({'task': task}), encoding='utf-8')
     result_limit = 1200 if case == 'result-budget' else None
     timeout = 7 if case == 'expired' else 45
@@ -456,9 +462,11 @@ import sys
 
 target, calls, case = sys.argv[1:]
 task = json.loads(sys.stdin.read().split('Workflow task port (JSON value):\n')[-1])
-label = 'first' if 'request' in task else 'second'
+label = 'first' if 'request' in task or 'choice' in task else 'second'
 result = {'summary': label, 'decision': 'approve',
           'artifacts': {'response': 'x' * 700 if case == 'result-budget' else 'Review fixture'}}
+if 'choice' in task:
+    result['artifacts']['route'] = task['choice']
 with Path(calls).open('a', encoding='utf-8') as stream:
     stream.write(json.dumps({'task': task, 'result': result}) + '\n')
 Path(target).write_text(json.dumps(result), encoding='utf-8')
@@ -519,11 +527,22 @@ elif checkpoint == 'lost':
             hold('lost')
         return collect(self)
     graphs._GraphRun.collect_finished = before_receipt
+elif checkpoint in ('before-choice', 'after-choice'):
+    choose = graphs._GraphRun.choose_agent
+    def around_choice(self, node, source):
+        assert self.receipt['leaves'][0]['status'] == 'succeeded'
+        if checkpoint == 'before-choice':
+            hold(checkpoint)
+        result = choose(self, node, source)
+        hold(checkpoint)
+        return result
+    graphs._GraphRun.choose_agent = around_choice
 
 raise SystemExit(main(sys.argv[6:]))
 '''
     env = dict(os.environ, PYTHONPATH=str(IMPORT_ROOT), PYTHONDONTWRITEBYTECODE='1')
-    checkpoint = {'unknown': 'reserved', 'lost-outcome': 'lost'}.get(case, 'successor')
+    checkpoint = {'unknown': 'reserved', 'lost-outcome': 'lost', 'route-before': 'before-choice',
+                  'route-after': 'after-choice', 'route-none': 'after-choice'}.get(case, 'successor')
 
     def command(operation, *args, hook='none', clock='actual', home=None):
         return [sys.executable, '-P', '-c', coordinator, case, hook, clock, str(gate), str(calls),
@@ -554,9 +573,10 @@ raise SystemExit(main(sys.argv[6:]))
         original_receipt, original_budget = receipt_path.read_bytes(), recovery.read_bytes()
         saved = json.loads(original_receipt)
         first, = saved['leaves']
-        assert saved['status'] == 'incomplete' and first['instance'] == 'root/first'
+        assert saved['status'] == 'incomplete' and first['instance'] == ('root/analyze' if choice is not None else 'root/first')
         assert not (directory / 'input-2').exists()
-        assert first['status'] == ('succeeded' if checkpoint == 'successor' else 'attempted')
+        assert first['status'] == ('attempted' if checkpoint in ('reserved', 'lost') else 'succeeded')
+        assert len(saved.get('route_decisions', [])) == (1 if checkpoint == 'after-choice' else 0)
         if case == 'unknown':
             assert not calls.exists() and agent_runs.runs(state, 'demo') == []
         else:
@@ -613,6 +633,21 @@ raise SystemExit(main(sys.argv[6:]))
             unchanged()
         finally:
             result_file.write_bytes(original_result)
+    elif case == 'route-after':
+        # A coherent choice of the other branch still contradicts the original analyzer.
+        recorded, = saved['route_decisions']
+        different = {**recorded, 'choice': 'dependency', 'selected': 'root/dependency', 'skipped': ['root/structure']}
+        altered = json.dumps({**saved, 'route_decisions': [different]}).encode('utf-8')
+        try:
+            receipt_path.write_bytes(altered)
+            refused = resume()
+            assert refused.returncode == 2 and 'route decision differs from its original analyzer result' in refused.stderr, refused.stderr
+            assert receipt_path.read_bytes() == altered and recovery.read_bytes() == original_budget
+            assert len(calls.read_text(encoding='utf-8').splitlines()) == 1
+            assert len(agent_runs.runs(state, 'demo')) == 1 and not (directory / 'input-2').exists()
+        finally:
+            receipt_path.write_bytes(original_receipt)
+        unchanged()
     elif case == 'project':
         project = state.project('demo')
         projects.set_correction_suggestions(state, 'demo', False, project['revision'])
@@ -652,13 +687,17 @@ raise SystemExit(main(sys.argv[6:]))
     settled = json.loads(resumed.stdout)
     assert settled == json.loads(receipt_path.read_bytes()) and recovery.read_bytes() == original_budget
     first_result = original_run['result']
-    recovered, next_leaf = settled['leaves']
+    recovered, *new_leaves = settled['leaves']
     assert recovered['instance'] == first['instance'] and recovered['run_id'] == first['run_id']
     assert recovered['input_digest'] == first['input_digest'] and recovered['result_sha256'] == first_result['sha256']
-    assert next_leaf['instance'] == 'root/second' and next_leaf['run_id'] != first['run_id']
     repeated = agent_runs.inspect_run(state, 'demo', first['run_id'])
     assert repeated['input'] == original_run['input'] and repeated['result'] == first_result
     observed = [json.loads(line) for line in calls.read_text(encoding='utf-8').splitlines()]
+    if choice is not None:
+        _assert_resumed_route(settled, saved, choice, original_run, repeated, observed, task, new_leaves, state)
+        return
+    next_leaf, = new_leaves
+    assert next_leaf['instance'] == 'root/second' and next_leaf['run_id'] != first['run_id']
     assert [row['task'] for row in observed] == [task, first_result['document']]
     if case == 'result-budget':
         assert settled['status'] == 'failed' and 'remaining' in settled['error'] and 'outputs' not in settled
@@ -674,6 +713,30 @@ raise SystemExit(main(sys.argv[6:]))
             assert refused.returncode == 2 and 'terminal or explicitly stopped graph' in refused.stderr
             assert receipt_path.read_bytes() == finished and recovery.read_bytes() == original_budget
             assert len(calls.read_text(encoding='utf-8').splitlines()) == 2
+
+
+def _assert_resumed_route(settled, saved, choice, original, repeated, calls, task, new_leaves, state):
+    selected = None if choice == 'none' else 'root/' + choice
+    eligible = ['root/structure', 'root/dependency']
+    first = saved['leaves'][0]
+    assert settled['status'] == 'succeeded' and settled['leaves'][0] == first
+    assert repeated['run'] == original['run'] and calls[0]['task'] == task
+    record, = settled['route_decisions']
+    assert record == {'instance': 'root/choose', 'choice': choice, 'eligible': eligible, 'selected': selected,
+                      'skipped': [path for path in eligible if path != selected],
+                      'source': {key: first[key] for key in ('instance', 'run_id', 'input_digest', 'result_sha256')}}
+    if saved.get('route_decisions'):
+        assert settled['route_decisions'] == saved['route_decisions']
+    followups = {path: {'status': 'skipped'} for path in eligible}
+    if selected is None:
+        assert len(calls) == 1 and not new_leaves
+    else:
+        successor, = new_leaves
+        assert successor['instance'] == selected and successor['run_id'] != first['run_id']
+        assert len(calls) == 2 and calls[1]['task'] == original['result']['document']
+        followups[selected] = {'result': calls[1]['result']}
+    assert settled['outputs'] == {'selection': {'choice': choice}, 'followups': followups}
+    assert {row['id'] for row in agent_runs.runs(state, 'demo')} == {leaf['run_id'] for leaf in settled['leaves']}
 
 
 def test_inspect_graph_joins_original_attempts_after_a_lost_reply(parallel_graph, tmp_path, monkeypatch, capsys):
@@ -825,13 +888,9 @@ def test_standalone_graph_rejects_writable_leaf_before_reserving_any_effect(prep
     assert not destination.exists() and agent_runs.runs(state, 'demo') == []
 
 
-@pytest.fixture
-def conditional_definition(prepared, tmp_path):
-    state, _, _ = prepared()
-    base = workflows.get(state, 'structure-review', '1.0.0')
-    root = base['definition']
+def _conditional_draft(root):
     agent = {**root['nodes'][0], 'review_requirement': 'required'}
-    draft = {**root, 'schema_version': 2, 'id': 'bounded-route', 'outputs': {
+    return {**root, 'schema_version': 2, 'id': 'bounded-route', 'outputs': {
         'selection': {'node': 'choose', 'output': 'result'}, 'followups': {'node': 'gather', 'output': 'result'}},
         'nodes': [
             {**agent, 'id': 'analyze'},
@@ -841,6 +900,13 @@ def conditional_definition(prepared, tmp_path):
                'inputs': {'task': {'node': 'analyze', 'output': 'result'}}} for name in ('structure', 'dependency')],
             {'id': 'gather', 'join': 'all', 'depends_on': ['dependency', 'structure']},
         ]}
+
+
+@pytest.fixture
+def conditional_definition(prepared, tmp_path):
+    state, _, _ = prepared()
+    base = workflows.get(state, 'structure-review', '1.0.0')
+    draft = _conditional_draft(base['definition'])
 
     def publish(definition):
         source = tmp_path / 'conditional-definition'

@@ -39,7 +39,7 @@ In `route_decisions`, a `corroborated` choice matches the frozen branch list and
 
 ### Resume an interrupted graph
 
-On Linux/WSL2, select `--recoverable` at the first launch. This mode supports read-only, text-only Agent leaves, nested Workflows and all-joins. Use the manifest's backend bindings and omit `--codex-config`. The first launch saves the original graph inputs, manifest and same-boot budget, and holds a coordinator lock.
+On Linux/WSL2, select `--recoverable` at the first launch. This mode supports read-only, text-only Agent leaves, nested Workflows, all-joins and typed `choose-agent` routing. Use ordinary standalone execution for verification gates. Use the manifest's backend bindings and omit `--codex-config`. The first launch saves the original graph inputs, manifest and same-boot budget, and holds a coordinator lock.
 
 ```bash
 ergora composition run-graph PROJECT ./complete-manifest --manifest-digest MANIFEST_DIGEST \
@@ -54,6 +54,8 @@ ergora composition resume-graph PROJECT ./original-graph-run --manifest-digest M
 ```
 
 Resumption acquires the original coordinator lock and verifies the control home before opening State for writes. It checks the saved project revision, manifest, inputs, remaining budget and original leaf evidence, and corroborates each reservation with its durable pre-send record. It reconstructs the declared outputs of verified successful leaves from their original attempts and Agent run IDs. Only previously unreserved leaves can start. The original deadline and result limits still apply.
+
+For `choose-agent`, recovery derives the selected branch or `none` from the analyzer's verified original result. It checks any saved decision against that result and the frozen branches. A mismatch blocks resumption. If the coordinator was interrupted after the analyzer succeeded and before saving the decision, recovery records that same decision before preparing or dispatching the selected branch. A missing decision blocks recovery when dependent work was already prepared or reserved. A conditional branch can start only if selected and previously unreserved. All-joins retain the skipped states of unselected branches. [Conditional routing contract](contracts.md#conditional-agent-routing)
 
 The command refuses an active coordinator, a terminal or explicitly stopped graph, an expired or invalid original clock, or any reserved leaf with unresolved or inconsistent evidence. Keep the original directory and IDs for readback.
 
