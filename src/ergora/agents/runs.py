@@ -780,16 +780,28 @@ def _publish_session_packet(destination, values):
 
 
 
-def _observe_session_run(state, document, *, full_preview=False):
-    folder = native_sources.turn_folder(state, document['id'])
+def _session_request(folder, document):
     request = native_sources.packet(folder, 'request.json')
-    if (native_sources.sha(request) != document['request_sha256'] or request['run_id'] != document['id']
-            or request['project'] != document['project'] or request['session'] != document['session']):
+    if (not isinstance(request, dict) or native_sources.sha(request) != document.get('request_sha256')
+            or request.get('run_id') != document['id']
+            or any(request.get(key) != document.get(key) for key in ('project', 'session', 'submitted'))):
         raise ValueError('Session run differs from its original immutable request')
+    return request
+
+
+def _observe_session_run(state, document, *, full_preview=False):
+    return _session_outcome(state, document, full_preview=full_preview)[0]
+
+
+def _session_outcome(state, document, *, full_preview=False, request=None):
+    folder = native_sources.turn_folder(state, document['id'])
+    if request is None:
+        request = _session_request(folder, document)
     stop_request = None
     if (folder / 'stop').exists():
         stop_request = native_sources.packet(folder / 'stop')
-        if (stop_request.get('run_id') != document['id'] or stop_request.get('project') != document['project']
+        if (not isinstance(stop_request, dict) or stop_request.get('run_id') != document['id']
+                or stop_request.get('project') != document['project']
                 or stop_request.get('session') != document['session']['id']
                 or stop_request.get('request_sha256') != document['request_sha256']):
             raise ValueError('Saved stop request differs from its original turn')
@@ -800,27 +812,30 @@ def _observe_session_run(state, document, *, full_preview=False):
             unavailable = dict(document, status='unknown', execution_stopped=False, stop_request=stop_request,
                                error='Final packet durability is unconfirmed: ' + str(error))
             suggestion = _correction_observation(state, request, unavailable, include_preview=full_preview)
-            return {**unavailable, **({'correction_suggestion': suggestion} if suggestion is not None else {})}
-        if final['request_sha256'] != document['request_sha256'] or final['session'] != document['session']:
+            return {**unavailable, **({'correction_suggestion': suggestion} if suggestion is not None else {})}, False
+        if (not isinstance(final, dict) or any(final.get(key) != document[key]
+                for key in ('request_sha256', 'id', 'project', 'session', 'submitted'))
+                or final.get('status') not in ('succeeded', 'failed', 'cancelled', 'timed_out', 'unknown')
+                or not isinstance(final.get('finished'), str) or type(final.get('execution_stopped')) is not bool):
             raise ValueError('Session final differs from the selected request')
         if final.get('status') == 'succeeded':
             raw = native_sources.artifact(state.root / 'runs' / document['id'],
                             'result.json' if request['schema'] is not None else 'result.txt', 8_388_608)
-            if hashlib.sha256(raw).hexdigest() != final['result_sha256']:
+            if hashlib.sha256(raw).hexdigest() != final.get('result_sha256'):
                 raise ValueError('Session result differs from its original complete bytes')
         suggestion = _correction_observation(state, request, final, include_preview=full_preview)
         return {**final, 'stop_request': stop_request,
-                **({'correction_suggestion': suggestion} if suggestion is not None else {})}
+                **({'correction_suggestion': suggestion} if suggestion is not None else {})}, True
     observed = dict(document, status='unknown', execution_stopped=False, stop_request=stop_request)
     try:
         owner = native_sources.packet(folder / 'owner')
         if owner['request_sha256'] == document['request_sha256'] and processes.identity(owner['identity']['pid']) == owner['identity']:
             observed['status'] = 'running'
             observed['owner'] = owner['identity']
-    except (FileNotFoundError, ProcessLookupError, ValueError):
+    except (FileNotFoundError, ProcessLookupError, KeyError, TypeError, ValueError):
         pass
     suggestion = _correction_observation(state, request, observed, include_preview=full_preview)
-    return {**observed, **({'correction_suggestion': suggestion} if suggestion is not None else {})}
+    return {**observed, **({'correction_suggestion': suggestion} if suggestion is not None else {})}, False
 
 
 def _correction_observation(state, request, document, *, include_preview=False):
@@ -1045,13 +1060,72 @@ def _start_session(state, project_id, role, prompt, timeout, skill_names, recall
 
 
 
+def _continuation_run_id(session_id: str, intent_id: str) -> str:
+    native_sources.session_id(session_id)
+    native_sources.session_id(intent_id, 'Turn intent')
+    return uuid.uuid5(uuid.NAMESPACE_URL, 'ergora:native-turn:' + session_id + ':' + intent_id).hex
+
+
+def continuation_receipt(state: State, project_id: str, session_id: str, parent_run_id: str, intent_id: str) -> dict:
+    """Observe one continuation and its existing dispatch evidence without sending it."""
+    ident = _continuation_run_id(session_id, intent_id)
+    native_sources.session_id(parent_run_id, 'Parent run')
+    state.project(project_id)
+    receipt = {'session_id': session_id, 'parent_run_id': parent_run_id, 'intent_id': intent_id,
+               'run_id': ident, 'dispatch': 'unrecorded', 'run': None}
+    saved = native_sources.find_run(state, project_id, ident)
+    if saved is None:
+        return receipt
+    session, submitted = saved.get('session'), saved.get('submitted')
+    if (not isinstance(session, dict) or not isinstance(submitted, dict) or saved.get('kind') != 'native-agent-run'
+            or session.get('id') != session_id or session.get('parent_run') != parent_run_id
+            or submitted.get('parent_run') != parent_run_id or submitted.get('intent_id') != intent_id):
+        raise ValueError('Continuation receipt differs from the selected session, parent or intent')
+    folder = native_sources.turn_folder(state, ident)
+    request = _session_request(folder, saved)
+    try:
+        run, final_verified = _session_outcome(state, saved, request=request)
+    except (OSError, ValueError) as error:
+        run = dict(saved, status='unknown', execution_stopped=False, error='Original outcome unavailable: ' + str(error))
+        final_verified = False
+    receipt['run'] = run
+    # The owner is published after the attempt. Read in reverse order so a
+    # live publication between reads cannot look like an owner without an attempt.
+    evidence = set()
+    try:
+        for name in ('owner', 'attempt'):
+            path = folder / name
+            try:
+                packet = native_sources.packet(path)
+            except FileNotFoundError as error:
+                if error.filename != str(path):
+                    raise ValueError(f'Continuation {name} receipt is incomplete') from error
+                continue
+            if not isinstance(packet, dict) or packet.get('request_sha256') != saved['request_sha256']:
+                raise ValueError(f'Continuation {name} differs from its original request')
+            if name == 'owner':
+                identity = packet.get('identity')
+                if (not isinstance(identity, dict) or type(identity.get('pid')) is not int or identity['pid'] < 1
+                        or not all(isinstance(identity.get(key), str) and identity[key] for key in ('start_ticks', 'boot_id'))):
+                    raise ValueError('Continuation owner receipt lacks its process identity')
+            evidence.add(name)
+        if 'attempt' not in evidence and ('owner' in evidence or final_verified or saved.get('finished') is not None):
+            raise ValueError('Continuation has later evidence but no original attempt')
+        # The caller can record a failed supervisor launch before any owner
+        # starts. Other finals and a failed native invocation require an owner.
+        if ('owner' not in evidence and final_verified
+                and (run['status'] != 'failed' or 'output' in run or 'returncode' in run)):
+            raise ValueError('Continuation outcome has no original owner receipt')
+    except (OSError, ValueError) as error:
+        return {**receipt, 'dispatch': 'incomplete', 'dispatch_error': str(error)}
+    return {**receipt, 'dispatch': 'accepted' if 'owner' in evidence else 'attempted' if evidence else 'reserved'}
+
+
 def continue_session(state: State, project_id: str, session_id: str, parent_run_id: str, prompt: str, *,
                      expected_revision: int, intent_id: str, timeout: int = 300) -> dict:
-    native_sources.session_id(session_id)
+    ident = _continuation_run_id(session_id, intent_id)
     native_sources.session_id(parent_run_id, 'Parent run')
-    native_sources.session_id(intent_id, 'Turn intent')
     _session_prompt(prompt, timeout)
-    ident = uuid.uuid5(uuid.NAMESPACE_URL, 'ergora:native-turn:' + session_id + ':' + intent_id).hex
     submitted = {'parent_run': parent_run_id, 'prompt': prompt, 'expected_revision': expected_revision,
                  'timeout': timeout, 'intent_id': intent_id}
     existing = native_sources.find_run(state, project_id, ident)

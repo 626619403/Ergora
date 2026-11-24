@@ -117,7 +117,12 @@ def session_folder(state, ident):
 def find_run(state, project, ident):
     with state.connect() as db:
         row = db.execute('SELECT document FROM agent_runs WHERE project=? AND id=?', (project, ident)).fetchone()
-    return None if row is None else parse_json(row[0], 'Native session run', finite=True, bounded=True)
+    if row is None:
+        return None
+    document = parse_json(row[0], 'Native session run', finite=True, bounded=True)
+    if not isinstance(document, dict) or document.get('id') != ident or document.get('project') != project:
+        raise ValueError('Saved native session run differs from its selected project or run ID')
+    return document
 
 
 def directory_identity(path):

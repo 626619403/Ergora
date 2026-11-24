@@ -1129,6 +1129,10 @@ def create_app(home: Path | None = None) -> FastAPI:
                               limit: Annotated[int, Query(ge=1, le=100)] = 20):
         return agent_runs.inspect_session(state, project_id, session_id, after=after, limit=limit)
 
+    @application.get("/api/projects/{project_id}/agent-sessions/{session_id}/continuations/{intent_id}")
+    def inspect_agent_continuation(project_id: str, session_id: str, intent_id: str, parent_run_id: str):
+        return agent_runs.continuation_receipt(state, project_id, session_id, parent_run_id, intent_id)
+
     @application.post("/api/projects/{project_id}/agent-sessions/{session_id}/continue")
     def continue_agent_session(project_id: str, session_id: str, body: AgentContinuePayload):
         return agent_runs.continue_session(state, project_id, session_id, body.parent_run_id, body.prompt,

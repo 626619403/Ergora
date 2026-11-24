@@ -83,10 +83,13 @@ ergora agent sessions my-project
 ergora agent sessions my-project --intent BIRTH_INTENT
 ergora agent session my-project SESSION_ID
 ergora agent continue my-project SESSION_ID --parent LATEST_RUN_ID --prompt next.md --revision CURRENT_REVISION --intent TURN_INTENT
+ergora agent continuation-receipt my-project SESSION_ID --parent LATEST_RUN_ID --intent TURN_INTENT
 ergora agent stop my-project SESSION_ID --run EXACT_RUN_ID --intent STOP_INTENT
 ```
 
 Choose a stable, unique intent for each explicit operation. List and inspect pages accept `--after` and `--limit`; follow their `next_after` manually. After a lost response, retain the original intent and inspect the exact original session/turn before submitting any new work. `agent sessions --intent` observes the original birth intent without invoking an Agent. The console retains unresolved requests in this browser tab's session storage and offers “观察原操作”; it never automatically resends them. `stop_requested`, notification delivery and confirmed process cleanup are separate facts. A turn can continue only when the domain reports `can_continue`; changed configuration or missing cleanup evidence remains visibly blocked. Normal source and HEAD edits are part of development.
+
+For a continuation, the receipt command and Console read one exact original turn using its session, parent and intent. `dispatch` reports `unrecorded` when the turn has no saved reservation, `reserved` when only the request is recorded, `attempted` when the original dispatch attempt exists, and `accepted` when its supervision process has accepted the request. An accepted receipt can be read after the process exits. Missing or damaged dispatch evidence is reported as `incomplete` with its reason. The accompanying original `run` independently reports live or final outcome evidence, or an unknown outcome. An `unrecorded` response can race the original request, so retain the original intent and observe again. The read-only endpoint is `GET /api/projects/ID/agent-sessions/SESSION_ID/continuations/TURN_INTENT?parent_run_id=LATEST_RUN_ID`.
 
 The same HTTP operations are `GET /api/projects/ID/agent-sessions` (optional `intent_id`, `after`, `limit`), `GET /api/projects/ID/agent-sessions/SESSION_ID`, and POST `.../continue` or `.../stop`. A continue body contains only `parent_run_id`, `prompt`, `expected_revision`, `intent_id` and optional `timeout`. A stop body contains `run_id` and `intent_id`. Starting a persistent session uses the existing `POST .../agent-runs` with `session_intent`, `expected_revision` and a one-time `codex_config` source. Mutations retain the same-origin and `X-Ergora-Request: 1` contract. Existing single-use run/output history remains readable.
 

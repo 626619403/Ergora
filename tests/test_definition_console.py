@@ -185,6 +185,43 @@ def test_revision_http_and_cli_share_candidate_identity_and_keep_base(library_co
     assert projects.list_projects(state) == []
 
 
+def test_save_edited_graph_as_an_independent_workflow(library_console):
+    client, state = library_console
+    base = client.post('/api/composition/presets/training-flow-map/install', json={}).json()['root']
+    base_url = f"/api/workflow-definitions/{base['id']}/{base['version']}"
+    original = client.get(base_url).json()
+    draft = deepcopy(original['definition'])
+    draft.update(id='independent-flow-map', version='1.0.0')
+    first, gather = draft['nodes']
+    second = {**deepcopy(first), 'id': 'check', 'depends_on': [first['id']]}
+    gather['depends_on'] = [second['id']]
+    draft['nodes'].insert(1, second)
+    payload = {'base_digest': base['digest'], 'definition': draft}
+
+    checked = client.post(base_url + '/revisions/check', json=payload)
+    assert checked.status_code == 200, checked.text
+    new_url = f"/api/workflow-definitions/{draft['id']}/{draft['version']}"
+    assert client.get(new_url).status_code == 400
+    published = client.post(base_url + '/revisions', json=payload)
+    assert published.status_code == 200, published.text
+    assert published.json() == {**checked.json(), 'published': True}
+    assert client.get(base_url).json() == original
+    assert client.get(new_url).json()['definition'] == draft
+
+    preview_payload = {'id': draft['id'], 'version': draft['version'], 'grant': {
+        'schema_version': 1, 'permissions': draft['permissions'], 'limits': draft['limits']}}
+    preview = client.post('/api/composition/preview', json=preview_payload)
+    assert preview.status_code == 200, preview.text
+    graph = preview.json()
+    assert graph['root']['digest'] == published.json()['digest']
+    assert {node['path']: node['depends_on'] for node in graph['instances']} == {
+        'root': [], 'root/map': [], 'root/check': ['root/map'], 'root/gather': ['root/check']}
+    saved = client.post('/api/composition/manifests', json={**preview_payload, 'preview_sha256': graph['preview_sha256']})
+    assert saved.status_code == 200, saved.text
+    assert saved.json()['manifest']['root'] == graph['root']
+    assert projects.list_projects(state) == [] and not (state.root / 'runs').exists()
+
+
 @pytest.mark.parametrize('kind,command', [('agent', ['agent', 'definition']), ('workflow', ['composition'])])
 def test_resource_revision_cli_http_roundtrip_preserves_complete_tree(library_console, tmp_path, capsys, kind, command):
     client, state = library_console

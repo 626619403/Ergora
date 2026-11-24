@@ -327,13 +327,27 @@ export function agentDialog(data, base, refresh, origin = null) {
             observations.push(panel(`原会话 ${session.id}`, "已按原出生 intent 找到。", pre(session),
               row(button("选择这个原会话", () => selectSession(session.id)))));
           } else observations.push(empty(`出生 intent ${item.intent} 尚无可观察记录；仍保留原提交。`));
+        } else if (item.kind === "continue") {
+          const query = new URLSearchParams({ parent_run_id: item.payload.parent_run_id });
+          const receipt = await api(`${base}/agent-sessions/${encodeURIComponent(item.session)}/continuations/${encodeURIComponent(item.intent)}?${query}`);
+          if (!current()) return;
+          if (receipt.session_id !== item.session || receipt.intent_id !== item.intent ||
+              receipt.parent_run_id !== item.payload.parent_run_id) throw new Error("返回的续接回执与原提交不符。");
+          if (receipt.dispatch === "unrecorded") {
+            observations.push(empty(`续接 intent ${item.intent} 尚无可观察记录；仍保留原提交。`));
+          } else {
+            const label = { reserved: "已预留原轮次", attempted: "已记录原派发尝试", accepted: "监督进程已接单",
+              incomplete: "派发证据不完整" }[receipt.dispatch];
+            if (!label || !receipt.run || receipt.run.id !== receipt.run_id) throw new Error("原续接回执不完整。");
+            observed(item.intent);
+            observations.push(panel(`原续接 ${receipt.run_id}`, label, pre(receipt),
+              row(button("选择这个原会话", () => selectSession(item.session)))));
+          }
         } else {
           const after = observationOffsets.get(item.intent) ?? 0;
           const page = await api(`${base}/agent-sessions/${encodeURIComponent(item.session)}?after=${after}&limit=20`);
           if (!current()) return;
-          const run = page.turns.find((turn) => item.kind === "continue"
-            ? turn.submitted?.intent_id === item.intent && turn.session.parent_run === item.payload.parent_run_id
-            : turn.id === item.payload.run_id && turn.stop_request?.intent_id === item.intent);
+          const run = page.turns.find((turn) => turn.id === item.payload.run_id && turn.stop_request?.intent_id === item.intent);
           if (run) {
             observed(item.intent);
             observationOffsets.delete(item.intent);

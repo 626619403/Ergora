@@ -102,6 +102,8 @@ After adding an instance, select it and complete its actual ports, dependencies 
 
 Use “Apply field text” or apply JSON/YAML → “Check definition candidate” → “Publish new definition version”. The three editor buffers, raw-text synchronization confirmation, bounded history, recovery and download rules match the [Agent editor](../agents.md#edit-a-specialist-agent-in-the-console). The page provides no cross-library transaction: publish Agents/subworkflows first, then update/publish parents and finally the new root. A failed parent does not undo published child versions, change old roots or alter in-flight tasks.
 
+To save an edited graph under a different template ID, choose “Set save-as target” and enter the destination ID and version. Apply the target, check the candidate and choose “Save as template”. Use an unused ID to create a separate template, or select an unused version under a different existing ID. Open the exact saved version to preview or save a complete manifest. The CLI uses `composition revise` with the destination `id` and `version` in the draft document and the original ID, version and digest as the base. Graph saving uses the definition library. Formal task creation separately checks the selected execution route.
+
 The library page holds no project grant; saving root permissions is not approval. After publication, preview and freeze tasks with an explicit grant. See the [workflow guide](#view-published-nested-relationships) for formal-task handoff implementation scope.
 
 ### View published nested relationships
