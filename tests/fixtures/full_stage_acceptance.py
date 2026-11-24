@@ -395,11 +395,13 @@ async def _exercise(root, case, app, activities, adapter, installation, state, r
     if case.startswith('fixed-candidate-check'):
         result['independent_check'] = await _candidate_check(
             root, state, runtime, app.spec, result['candidate'], records,
-            gated=case.startswith('fixed-candidate-check-graph'), recoverable=case.endswith('-recoverable'))
+            gated=case.startswith('fixed-candidate-check-graph'), recoverable=case.endswith('-recoverable'),
+            wait_recovery=case.endswith('-wait-recoverable'))
     return {**result, 'case': case, 'complete_preparation': True, 'model_intervals': model_intervals}
 
 
-async def _candidate_check(root, state, runtime, spec, candidate, records, *, gated=False, recoverable=False):
+async def _candidate_check(root, state, runtime, spec, candidate, records, *, gated=False,
+                           recoverable=False, wait_recovery=False):
     """Recheck a real formal candidate and fence a live checker by its original job."""
     from types import SimpleNamespace
 
@@ -616,12 +618,12 @@ async def _candidate_check(root, state, runtime, spec, candidate, records, *, ga
 
         result['graph'] = await _candidate_check_graph(
             root, state, runtime, packet, material['packet_sha256'], manifest, passed, finished,
-            call, authorize_wait, execute_wait, recoverable=recoverable)
+            call, authorize_wait, execute_wait, recoverable=recoverable, wait_recovery=wait_recovery)
     return result
 
 
 async def _candidate_check_graph(root, state, runtime, packet, packet_digest, manifest, passed, stopped, call,
-                                 authorize_wait, execute_wait, *, recoverable=False):
+                                 authorize_wait, execute_wait, *, recoverable=False, wait_recovery=False):
     """The graph reads actual native evidence before its one controlled reviewer."""
     from contextlib import redirect_stdout, redirect_stderr
     from concurrent.futures import ThreadPoolExecutor
@@ -674,9 +676,25 @@ Path(sys.argv[1]).write_text(json.dumps({'summary':'Exact candidate reviewed','d
     code = root / 'graph-reviewer.py'
     code.write_text(reviewer_code, encoding='utf-8')
     if recoverable:
-        job_id = passed['job_id']
+        original, start_wait = passed, None
+        if wait_recovery:
+            original, request, permit, workspace = await authorize_wait()
+            assert original['status'] == 'queued' and original['receipt_sha256'] is None
+            original_request, original_permit = request.read_bytes(), permit.read_bytes()
+            inputs['check'] = {**{key: original[key] for key in keys[:4]}, 'wait_seconds': 45}
+
+            async def start_wait(observed):
+                assert observed == {key: original[key] for key in ('status', 'job_id', 'job_sha256', 'request_file_sha256')}
+                assert not (workspace / 'budget/attempt.json').exists()
+                receipt = await execute_wait(request)
+                assert receipt['state'] == 'SUCCEEDED' and receipt['job_id'] == original['job_id']
+                assert request.read_bytes() == original_request and permit.read_bytes() == original_permit
+                return receipt
+
+        job_id = original['job_id']
         terminal = runtime / 'receipts/fixed-candidate-check' / job_id.rsplit('-', 1)[0] / (job_id + '.json')
-        return await _recover_fixed_graph(root, state, manifest, inputs, code, calls, check_records, terminal)
+        return await _recover_fixed_graph(root, state, manifest, inputs, code, calls, check_records, terminal,
+                                          start_wait=start_wait)
     original_command = backends.CodexBackend.command
     native_run, lifetimes = processes.run, []
     read_entry = 'from ergora.development.runtime.candidate_checks import main;main()'
@@ -894,7 +912,7 @@ candidate_checks.main()
                      'proof': wait_proof, 'reviewer_run_id': leaf['run_id'], 'original_native_effects_only': True}}
 
 
-async def _recover_fixed_graph(root, state, manifest, inputs, model, calls, check_records, terminal):
+async def _recover_fixed_graph(root, state, manifest, inputs, model, calls, check_records, terminal, *, start_wait=None):
     """Interrupt only the graph coordinator and prove that native Job evidence is reread."""
     from copy import deepcopy
     from ergora.agents import native_sources
@@ -906,6 +924,7 @@ import os
 from pathlib import Path
 import signal
 import sys
+import time
 
 from ergora.agents import backends, graphs
 from ergora.interfaces.cli import main
@@ -928,9 +947,31 @@ def original_read(argv, *args, **kwargs):
         owner = (transport.with_suffix('') / '.owner.lock').stat(follow_symlinks=False)
         inherited = os.fstat(kwargs['lock_fd'])
         assert (owner.st_dev, owner.st_ino) == (inherited.st_dev, inherited.st_ino)
+        request = json.loads(args[3])
+        source = request['source']
         with transport.open('a', encoding='utf-8') as stream:
             stream.write(json.dumps({'deadline': kwargs['deadline'], 'operation': sys.argv[9],
+                                     'at': time.monotonic(), 'source': source,
                                      'owner': [owner.st_dev, owner.st_ino]}) + '\n')
+        if phase == 'complete' and 'wait_seconds' in source:
+            queued = transport.with_suffix('.queued')
+            probe = f"""
+from pathlib import Path
+import json
+from ergora.development.runtime import candidate_checks
+observe = candidate_checks._observe
+marker = Path({str(queued)!r})
+async def observe_queued(*args, **kwargs):
+    result = await observe(*args, **kwargs)
+    if result['status'] == 'queued' and not marker.exists():
+        pending = marker.with_suffix('.queued-pending')
+        pending.write_text(json.dumps({{key: result[key] for key in
+            ('status', 'job_id', 'job_sha256', 'request_file_sha256')}}), encoding='utf-8')
+        pending.replace(marker)
+    return result
+candidate_checks._observe = observe_queued
+"""
+            argv = [*argv[:-1], probe + argv[-1]]
     return run(argv, *args, **kwargs)
 processes.run = original_read
 
@@ -987,8 +1028,8 @@ elif phase == 'review-complete':
 
 raise SystemExit(main(sys.argv[6:]))
 '''
-    serialized = root / 'fixed-recovery-inputs.json'
-    serialized.write_text(json.dumps(inputs), encoding='utf-8')
+    waiting = start_wait is not None
+    executed = None
     before, before_runs = check_records(), agent_runs.runs(state, 'demo')
     ledger = terminal.parents[3] / 'executor.sqlite3'
     ledger_before = ledger.read_bytes()
@@ -1005,11 +1046,15 @@ raise SystemExit(main(sys.argv[6:]))
         path = directory.with_suffix('.native-reads')
         return [json.loads(line) for line in path.read_bytes().splitlines()] if path.exists() else []
 
-    async def interrupt(name, phase):
+    async def interrupt(name, phase, *, values=None):
+        nonlocal executed, before, ledger_before
         directory = root / name
+        values = inputs if values is None else values
         if phase == 'review-complete':
             argv = command(directory, phase, 'resume-graph', 'demo', str(directory), '--manifest-digest', manifest['digest'])
         else:
+            serialized = directory.with_suffix('.inputs.json')
+            serialized.write_text(json.dumps(values), encoding='utf-8')
             argv = command(directory, phase, 'run-graph', 'demo', manifest['path'], '--manifest-digest', manifest['digest'],
                            '--inputs', str(serialized), '--directory', str(directory), '--max-prompt-bytes', '100000',
                            '--timeout', '55', '--recoverable')
@@ -1019,6 +1064,15 @@ raise SystemExit(main(sys.argv[6:]))
             process = subprocess.Popen(argv, stdout=stdout, stderr=stderr)
             try:
                 async with asyncio.timeout(15):
+                    if phase == 'complete' and waiting:
+                        queued = directory.with_suffix('.queued')
+                        while not queued.exists():
+                            assert process.poll() is None and not marker.exists(), stderr_path.read_text(encoding='utf-8')
+                            await asyncio.sleep(.01)
+                        assert check_records() == before and ledger.read_bytes() == ledger_before
+                        assert not calls.exists() and executed is None
+                        executed = await start_wait(json.loads(queued.read_bytes()))
+                        before, ledger_before = check_records(), ledger.read_bytes()
                     while not marker.exists():
                         assert process.poll() is None, stderr_path.read_text(encoding='utf-8')
                         await asyncio.sleep(.01)
@@ -1043,10 +1097,10 @@ raise SystemExit(main(sys.argv[6:]))
                     await asyncio.to_thread(process.wait, 5)
         assert process.returncode == -signal.SIGKILL
         read, = receipt['verification_reads']
-        assert read['source'] == inputs['check']
+        assert read['source'] == values['check']
         attempt = json.loads((directory / 'verification-attempt.json').read_bytes())
         assert read['attempt_sha256'] == native_sources.sha(attempt)
-        assert attempt['source'] == inputs['check'] and attempt['mode'] == 'completed'
+        assert attempt['source'] == values['check'] and attempt['mode'] == ('wait' if waiting else 'completed')
         assert attempt['recovery_sha256'] == receipt['recovery_sha256']
         assert (directory / 'verification-complete.json').exists() == (phase != 'incomplete')
         return directory, receipt
@@ -1077,33 +1131,37 @@ raise SystemExit(main(sys.argv[6:]))
         assert len(reads(directory)) == len(before_reads) + int(expect_read)
         refused.append(name)
 
-    expired, _ = await interrupt('expired-fixed-proof', 'proof')
     incomplete, pending = await interrupt('incomplete-fixed-proof', 'incomplete')
     assert pending['verification_reads'][0]['status'] == 'attempted' and not reads(incomplete)
     await blocked('incomplete', incomplete, 'original completed fixed-check proof')
-    altered, saved = await interrupt('altered-fixed-proof', 'proof')
-    saved_receipt = altered / 'run.json'
-    raw = saved_receipt.read_bytes()
-    changed = deepcopy(saved)
-    changed['verification_reads'][0]['evidence']['fixed_results_sha256'] = '0' * 64
-    try:
-        saved_receipt.write_text(json.dumps(changed), encoding='utf-8')
-        await blocked('altered-proof', altered, 'verification progress differs')
-    finally:
-        saved_receipt.write_bytes(raw)
+    if not waiting:
+        expired, _ = await interrupt('expired-fixed-proof', 'proof')
+        altered, saved = await interrupt('altered-fixed-proof', 'proof')
+        saved_receipt = altered / 'run.json'
+        raw = saved_receipt.read_bytes()
+        changed = deepcopy(saved)
+        changed['verification_reads'][0]['evidence']['fixed_results_sha256'] = '0' * 64
+        try:
+            saved_receipt.write_text(json.dumps(changed), encoding='utf-8')
+            await blocked('altered-proof', altered, 'verification progress differs')
+        finally:
+            saved_receipt.write_bytes(raw)
 
-    prepared, _ = await interrupt('prepared-fixed-proof', 'prepared')
-    saved_receipt = prepared / 'run.json'
-    raw = saved_receipt.read_bytes()
-    earlier = ready_marker(prepared, 'prepared').with_suffix('.stale').read_bytes()
-    assert json.loads(earlier)['verification_reads'][0]['status'] == 'attempted'
-    try:
-        saved_receipt.write_bytes(earlier)
-        await blocked('stale-with-prepared-input', prepared, 'attempted with dependent work already recorded')
-    finally:
-        saved_receipt.write_bytes(raw)
+        prepared, _ = await interrupt('prepared-fixed-proof', 'prepared')
+        saved_receipt = prepared / 'run.json'
+        raw = saved_receipt.read_bytes()
+        earlier = ready_marker(prepared, 'prepared').with_suffix('.stale').read_bytes()
+        assert json.loads(earlier)['verification_reads'][0]['status'] == 'attempted'
+        try:
+            saved_receipt.write_bytes(earlier)
+            await blocked('stale-with-prepared-input', prepared, 'attempted with dependent work already recorded')
+        finally:
+            saved_receipt.write_bytes(raw)
 
     ready, saved = await interrupt('saved-fixed-proof', 'complete')
+    if waiting:
+        short = {'task': inputs['task'], 'check': {**inputs['check'], 'wait_seconds': 5}}
+        expired, _ = await interrupt('expired-fixed-proof', 'proof', values=short)
     attempted, = saved['verification_reads']
     assert attempted['status'] == 'attempted' and 'evidence' not in attempted
     attempt = json.loads((ready / 'verification-attempt.json').read_bytes())
@@ -1117,12 +1175,39 @@ raise SystemExit(main(sys.argv[6:]))
         assert evidence[key] == value
     original_deadline, = reads(ready)
     assert original_deadline['deadline'] == attempt['deadline_monotonic_ns'] / 1_000_000_000
-    raw_terminal = terminal.read_bytes()
-    try:
-        terminal.unlink()
-        await blocked('missing-native-receipt', ready, 'completed passing original fixed check', expect_read=True)
-    finally:
-        terminal.write_bytes(raw_terminal)
+    if waiting:
+        captured = {key: evidence[key] for key in ('receipt_sha256', 'fixed_results_sha256')}
+        assert captured == {'receipt_sha256': native_sources.sha(executed),
+                            'fixed_results_sha256': executed['artifacts'][0]['sha256']}
+        # The pending graph progress has no completion hash yet. A changed
+        # output identity with a valid proof digest must fail the native reread.
+        complete_path = ready / 'verification-complete.json'
+        saved_completion = complete_path.read_bytes()
+        reordered = dict(evidence)
+        reordered['wait_seconds'] = reordered.pop('wait_seconds')
+        assert reordered == evidence and list(reordered) != list(evidence)
+        altered_proofs = (
+            ('changed-terminal-identity', {**evidence, 'receipt_sha256': '0' * 64}, 'locator differs'),
+            ('reordered-proof', reordered, 'original native proof differs from the saved fixed-check proof'),
+        )
+        for name, changed_evidence, diagnostic in altered_proofs:
+            changed_bytes = json.dumps(changed_evidence, ensure_ascii=False, allow_nan=False,
+                                       separators=(',', ':')).encode('utf-8')
+            assert changed_bytes != evidence_bytes
+            try:
+                complete_path.write_text(json.dumps({**completion, 'evidence': changed_evidence,
+                                                      'evidence_sha256': hashlib.sha256(changed_bytes).hexdigest()}),
+                                         encoding='utf-8')
+                await blocked(name, ready, diagnostic, expect_read=True)
+            finally:
+                complete_path.write_bytes(saved_completion)
+    else:
+        raw_terminal = terminal.read_bytes()
+        try:
+            terminal.unlink()
+            await blocked('missing-native-receipt', ready, 'completed passing original fixed check', expect_read=True)
+        finally:
+            terminal.write_bytes(raw_terminal)
     assert check_records() == before and ledger.read_bytes() == ledger_before
 
     authority = (ready / 'recovery.json').read_bytes()
@@ -1154,8 +1239,15 @@ raise SystemExit(main(sys.argv[6:]))
     assert (ready / 'recovery.json').read_bytes() == authority
     assert {path: path.read_bytes() for path in ready.glob('verification-*.json')} == fixed_files
     observations = reads(ready)
-    assert len(observations) == 4 and all(item['deadline'] == original_deadline['deadline']
+    assert len(observations) == (5 if waiting else 4) and all(item['deadline'] == original_deadline['deadline']
                                           and item['owner'] == original_deadline['owner'] for item in observations)
+    assert observations[0]['source'] == inputs['check']
+    if waiting:
+        completed_locator = {key: value for key, value in inputs['check'].items() if key != 'wait_seconds'}
+        assert observations[1]['source'] == {**completed_locator, **captured, 'receipt_sha256': '0' * 64}
+        for read in observations[2:]:
+            assert read['source'] == {**completed_locator, **captured}
+            assert read['deadline'] - read['at'] > 20
 
     read_deadline = reads(expired)[0]['deadline']
     graph_deadline = json.loads((expired / 'recovery.json').read_bytes())['deadline_monotonic_ns'] / 1_000_000_000
@@ -1167,4 +1259,4 @@ raise SystemExit(main(sys.argv[6:]))
     assert check_records() == before and ledger.read_bytes() == ledger_before
     return {'reused_proof': True, 'native_records_unchanged': True, 'reviewer_calls': 1, 'refused': refused,
             'read_deadline': original_deadline['deadline'], 'reviewer_run_id': leaf['run_id'],
-            'original_reviewer_reused': True}
+            'original_reviewer_reused': True, 'original_wait_observed': waiting and executed is not None}

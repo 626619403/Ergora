@@ -31,6 +31,7 @@ _VERIFICATION_NODES = ('verify-evidence', 'verify-fixed-check')
 _RECOVERY_FIELDS = ('project', 'project_revision', 'root', 'manifest_digest', 'inputs', 'timeout', 'max_prompt_bytes')
 _FIXED_READ_ATTEMPT = 'verification-attempt.json'
 _FIXED_READ_COMPLETE = 'verification-complete.json'
+_FIXED_OUTPUT_DIGESTS = ('receipt_sha256', 'fixed_results_sha256')
 
 
 def _verify_sources(composition, inputs):
@@ -305,10 +306,11 @@ class _GraphRun:
         return {'result': result['document']}
 
     def fixed_read_attempt(self, path, source, started):
-        cutoff = min(self.recovery['deadline_monotonic_ns'],
-                     started + development_native.FIXED_CHECK_PROOF_TIMEOUT * 1_000_000_000)
+        waiting = 'wait_seconds' in source
+        window = source['wait_seconds'] if waiting else development_native.FIXED_CHECK_PROOF_TIMEOUT
+        cutoff = min(self.recovery['deadline_monotonic_ns'], started + window * 1_000_000_000)
         return {'schema_version': 1, 'instance': path, 'recovery_sha256': self.receipt['recovery_sha256'],
-                'mode': 'completed', 'source': source, 'source_sha256': native_sources.sha(source),
+                'mode': 'wait' if waiting else 'completed', 'source': source, 'source_sha256': native_sources.sha(source),
                 'review': self.fixed_review, 'boot_id': self.recovery['clock']['boot_id'],
                 'started_monotonic_ns': started, 'deadline_monotonic_ns': cutoff}
 
@@ -322,12 +324,15 @@ class _GraphRun:
     def check_fixed_proof(self, source, evidence):
         expected = {**source, **self.fixed_review, 'status': 'validated', 'project': self.project['id'],
                     'project_revision': self.project['revision']}
+        digests = {'authorization_sha256', 'verification_sha256'}
+        if 'wait_seconds' in source:
+            digests.update(_FIXED_OUTPUT_DIGESTS)
         if (not isinstance(evidence, dict) or evidence.keys() != expected.keys() | {
-                'job_id', 'authorization_sha256', 'verification_sha256', 'fixed_check_ids'}
+                'job_id', 'fixed_check_ids'} | digests
                 or any(type(evidence[key]) is not type(value) or evidence[key] != value for key, value in expected.items())
                 or not isinstance(evidence['job_id'], str) or not evidence['job_id']
                 or any(not isinstance(evidence[key], str) or re.fullmatch('[a-f0-9]{64}', evidence[key]) is None
-                       for key in ('authorization_sha256', 'verification_sha256'))
+                       for key in digests)
                 or not isinstance(evidence['fixed_check_ids'], list)
                 or not all(isinstance(key, str) for key in evidence['fixed_check_ids'])):
             raise ValueError('Saved fixed-check proof differs from its original locator or review binding')
@@ -432,12 +437,21 @@ class _GraphRun:
         from ergora.development.application import read_fixed_check_proof
 
         attempt, record, validated_record = restored
+        source, saved = self.receipt['inputs']['check'], validated_record['evidence']
+        wait_seconds = source.get('wait_seconds')
+        locator = source
+        options = {}
+        if wait_seconds is not None:
+            locator = {key: value for key, value in source.items() if key != 'wait_seconds'}
+            locator.update({key: saved[key] for key in _FIXED_OUTPUT_DIGESTS})
+            options['original_wait_seconds'] = wait_seconds
         self.check_fixed_read_cutoff(attempt)
-        proof = read_fixed_check_proof(self.state, self.project['id'], attempt['source'], self.fixed_review,
+        proof = read_fixed_check_proof(self.state, self.project['id'], locator, self.fixed_review,
             expected_revision=self.project['revision'], deadline=attempt['deadline_monotonic_ns'] / 1_000_000_000,
-            stop_requested=self.should_stop, lock_fd=self.lock_fd)
+            stop_requested=self.should_stop, lock_fd=self.lock_fd, **options)
         self.check_fixed_read_cutoff(attempt)
-        if native_sources.encode(proof) != native_sources.encode(validated_record['evidence']):
+        if (not isinstance(proof, dict) or proof.keys() != saved.keys() - {'wait_seconds'}
+                or _bounded_json({**source, **proof}, self.result_limit) != _bounded_json(saved, self.result_limit)):
             raise ValueError('Original native proof differs from the saved fixed-check proof')
         record.update(validated_record)
 
@@ -658,8 +672,7 @@ def _graph_inputs(composition, inputs, max_prompt_bytes, *, recoverable=False):
             from ergora.development.verification import validate_fixed_check_source
 
             dags.fixed_check_review(composition)
-            if 'wait_seconds' in validate_fixed_check_source(inputs['check']):
-                raise ValueError('Recoverable fixed-check review requires a completed locator with both original output digests')
+            validate_fixed_check_source(inputs['check'])
     for leaf in (item for item in composition['instances'] if item['kind'] == 'agent'):
         if any(leaf['permissions'][name] for name in ('write', 'shell', 'network')):
             raise ValueError(f'Standalone workflow requires a read-only leaf: {leaf["path"]}')

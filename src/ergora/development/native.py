@@ -341,12 +341,18 @@ def task_fixed_candidate_check(project: dict, home: Path, operation: str, payloa
 
 
 def task_fixed_check_proof(project: dict, home: Path, source: dict, review: dict, *, deadline: float,
-                           stop_requested=None, lock_fd: int | None = None) -> dict:
+                           stop_requested=None, lock_fd: int | None = None, original_wait_seconds: int | None = None) -> dict:
     """Read an original fixed check under the standalone graph's deadline."""
     if type(deadline) not in (int, float) or not math.isfinite(deadline):
         raise ValueError('Fixed check proof requires an absolute monotonic deadline')
     timeout = source.get('wait_seconds', FIXED_CHECK_PROOF_TIMEOUT)
-    if 'wait_seconds' in source:
+    if original_wait_seconds is not None:
+        if (lock_fd is None or 'wait_seconds' in source or type(original_wait_seconds) is not int
+                or not 1 <= original_wait_seconds <= 3600):
+            raise ValueError('Original wait allowance requires a locked completed fixed-check reread')
+        # Retain the saved transport cutoff even if it is later than a fresh completed read's limit.
+        timeout = original_wait_seconds
+    elif 'wait_seconds' in source:
         deadline = min(deadline, time.monotonic() + timeout)
     return _task_operation(project, home, 'candidate_checks', 'prove-fixed-check',
                            {'source': source, 'operation_id': source['operation_id'], 'job_sha256': source['job_sha256'],
