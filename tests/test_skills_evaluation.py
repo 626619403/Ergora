@@ -420,7 +420,8 @@ print(json.dumps({"skill":request["candidate"]["skill"].replace("BASELINE","IMPR
     manifest["cases"].append({"id": "validation-two", "split": "validation", "input": {}})
     bounded = evaluation.register(state, "demo", manifest)
     projects.bind(state, "demo", "optimizer", {"tool": "gepa", "proposer_argv": [sys.executable, str(proposer)]}, 1)
-    clock = [time.monotonic()]
+    # Exercise rounding when the simulated clock crosses a power of two.
+    clock = [math.nextafter(254.0, -math.inf)]
     started = clock[0]
     for owner in (optimization, evaluation, optimization.processes):
         monkeypatch.setattr(owner, "time", SimpleNamespace(monotonic=lambda: clock[0]))
@@ -442,7 +443,8 @@ print(json.dumps({"skill":request["candidate"]["skill"].replace("BASELINE","IMPR
     received = [json.loads(case["feedback"]) for record in runs for case in record["cases"]]
     assert received == budgets
     assert all(budget["deadline_monotonic"] == started + 20 for budget in budgets)
-    assert [budget["remaining_seconds"] for budget in budgets] == [20, 19, 18, 16, 15, 14]
+    assert [budget["remaining_seconds"] for budget in budgets] == pytest.approx(
+        [20, 19, 18, 16, 15, 14], rel=0, abs=math.ulp(started + 20))
     assert [budget["remaining_batch_calls"] for budget in budgets] == [2, 1, 1, 1, 2, 1]
     assert [budget["unreserved_metric_calls"] for budget in budgets] == [4, 4, 3, 2, 0, 0]
     assert all(math.isclose(budget["remaining_reported_cost"], 1 - index * .1) for index, budget in enumerate(budgets))
