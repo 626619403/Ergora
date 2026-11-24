@@ -1,6 +1,7 @@
 """Prepare and read an explicitly authorized independent fixed check operation."""
 
 import asyncio
+import hashlib
 import json
 from pathlib import Path
 import sys
@@ -11,7 +12,7 @@ from dev_platform.adapter import FileAdapter, publish
 from dev_platform.contracts import canonical_sha
 
 from ergora.definitions import workflows
-from ergora.development import verification
+from ergora.development import dags, verification
 from ergora.development.review import packets, requests
 from ergora.development.runtime import fixed_checks
 from ergora.development.runtime.export import _Export
@@ -22,8 +23,6 @@ from ergora.storage.state import file_lock
 
 
 KIND = fixed_checks.KIND
-CORRECTNESS = {'kind': 'workflow', 'id': 'ergora-correctness-review', 'version': '1.0.2',
-               'digest': 'f7b5e13770fd64d54b9fe8380e8c70f49b2f6ce140168f2a6eb5cf9e0f4d0ae7'}
 
 
 async def _status(adapter: FileAdapter, envelope: dict, admission: dict) -> dict:
@@ -93,9 +92,10 @@ async def _authorize(adapter: FileAdapter, payload: dict, project: dict, task_id
     checked = workflows.inspect_manifest(Path(source['manifest']), material=True)
     require(checked['digest'] == source['manifest_digest'], 'Candidate check review manifest changed')
     graph = checked['composition']
-    leaf = requests._review_leaf(graph, source['instance'], packet)
+    gated = dags.fixed_check_review(graph) is not None
+    leaf = requests._review_leaf(graph, source['instance'], packet, gated=gated)
     parent = next(item for item in graph['instances'] if item['path'] == leaf['parent'])
-    require(parent['ref'] == CORRECTNESS, 'Select the original correctness-review leaf in the pinned wrapper')
+    require(parent['ref'] == dags.FIXED_CHECK_REVIEW, 'Select the original correctness-review leaf in the pinned wrapper')
     repository = GitMaterials(Path(project['repo']), git='/usr/bin/git')
     require(repository.read('cat-file', '-t', source['candidate_sha']).strip() == b'commit', 'Candidate is absent from the registered local repository')
     registration = project['registration']
@@ -128,8 +128,11 @@ async def _operate(payload: dict) -> dict:
         adapter.roots['approvals'].mkdir(parents=True, exist_ok=True, mode=0o700)
         with file_lock(lock, blocking=False):
             return await _authorize(adapter, payload, project, task_id)
-    require(operation in ('status-fixed-check', 'stop-fixed-check'), 'Unsupported candidate check operation')
+    require(operation in ('status-fixed-check', 'stop-fixed-check', 'prove-fixed-check'),
+            'Unsupported candidate check operation')
     admission = fixed_checks.read_record(adapter.path('approvals', task_id + '.json'))
+    if operation == 'prove-fixed-check':
+        return await _prove_graph_read(adapter, payload, task_id, admission)
     if operation == 'stop-fixed-check':
         require(payload.get('confirm') is True, 'Stopping a candidate check requires explicit confirmation')
         with file_lock(lock, blocking=False):
@@ -167,6 +170,38 @@ async def _observe(adapter: FileAdapter, payload: dict, task_id: str, admission:
                 'request_file_sha256': admission['request_file_sha256'], 'cleanup_confirmed': None,
                 'stop_requested': fence.exists()}
     return await _status(adapter, envelope, admission)
+
+
+async def _prove_graph_read(adapter: FileAdapter, payload: dict, task_id: str, admission: dict) -> dict:
+    source = verification.validate_fixed_check_source(payload['source'])
+    project = payload['project']
+    revision, admitted = project['revision'], admission['project_revision']
+    require(type(revision) is int and type(admitted) is int and revision == admitted,
+            'Graph project revision differs from the original fixed check authorization')
+    require(admission['registration_sha256'] == project['registration']['sha256'],
+            'Graph fixed check differs from its original registered project')
+    status = await _observe(adapter, payload, task_id, admission, stop=False)
+    require(status['status'] == 'succeeded' and status['cleanup_confirmed'] is True and not status['stop_requested'],
+            'Graph requires a completed passing original fixed check with confirmed cleanup')
+    require(all(status.get(key) == value for key, value in source.items()),
+            'Graph locator differs from the original fixed check receipt or candidate')
+    request, review = admission['request'], payload['review']
+    require(isinstance(review, dict) and review.keys() == {'manifest_digest', 'instance', 'task_sha256', 'packet_sha256'},
+            'Graph proof requires the exact review task and manifest binding')
+    require(review['manifest_digest'] == request['manifest_digest'] and review['instance'] == request['instance'],
+            'Graph manifest or reviewer differs from the original fixed check authorization')
+    require(review['packet_sha256'] == request['packet_sha256'], 'Graph packet differs from the original fixed check authorization')
+    material = packets.read(Path(request['packet']), sha256=request['packet_sha256'])
+    require(material['packet']['repository']['head'] == source['candidate_sha'],
+            'Original review packet targets another candidate')
+    task = requests._task(material, 'local', request['packet_sha256'], request['manifest_digest'])
+    task_sha256 = hashlib.sha256(task).hexdigest()
+    require(review['task_sha256'] == task_sha256, 'Graph root task differs from the complete original review packet')
+    return {**source, 'status': 'validated', 'project': admission['project'],
+            'project_revision': admission['project_revision'], 'job_id': status['job_id'],
+            'authorization_sha256': status['authorization_sha256'], 'verification_sha256': status['verification_sha256'],
+            'fixed_check_ids': status['fixed_check_ids'], 'packet_sha256': request['packet_sha256'],
+            'manifest_digest': request['manifest_digest'], 'instance': request['instance'], 'task_sha256': task_sha256}
 
 
 def main() -> None:

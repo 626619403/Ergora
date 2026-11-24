@@ -116,6 +116,11 @@ def parser() -> argparse.ArgumentParser:
         else:
             operation.add_argument("--input", type=Path, required=True)
             operation.add_argument("--input-digest", required=True)
+    graph_task = operations.add_parser("prepare-graph-task", help="Prepare exact local review task data for a gated graph")
+    graph_task.add_argument("source", type=Path)
+    graph_task.add_argument("--source-sha256", required=True)
+    graph_task.add_argument("--manifest", type=Path, required=True)
+    graph_task.add_argument("--manifest-digest", required=True)
     finding = operations.add_parser("prepare-finding", help="Prepare a read-only input for one exact original review finding")
     finding.add_argument("project")
     finding.add_argument("source", type=Path)
@@ -1082,13 +1087,16 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "review":
             import ergora.development.review.packets as review_packets
 
-            if args.operation in ("prepare-input", "prepare-finding", "verify-input", "report"):
+            if args.operation in ("prepare-input", "prepare-graph-task", "prepare-finding", "verify-input", "report"):
                 import ergora.development.review.requests as review_requests
 
                 if args.operation == "prepare-input":
                     output = review_requests.prepare(args.source, source_kind=args.source_kind, source_sha256=args.source_sha256,
                         manifest=args.manifest, manifest_digest=args.manifest_digest, instance=args.instance,
                         destination=args.directory, max_prompt_bytes=args.max_prompt_bytes)
+                elif args.operation == "prepare-graph-task":
+                    output = review_requests.prepare_graph_task(args.source, source_sha256=args.source_sha256,
+                        manifest=args.manifest, manifest_digest=args.manifest_digest)
                 elif args.operation == "prepare-finding":
                     output = review_requests.prepare_finding(State(args.home), args.project, args.source,
                         source_kind=args.source_kind, source_sha256=args.source_sha256, manifest=args.manifest,

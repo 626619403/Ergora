@@ -30,7 +30,10 @@ const textOf = (value) => JSON.stringify(value, null, 2) + "\n";
 const referenceText = ({ kind, id, version, digest }) => JSON.stringify({ kind, id, version, digest });
 const verifyEvidence = "verify-evidence";
 const chooseAgent = "choose-agent";
-const standaloneOperations = new Map([[verifyEvidence, "证据验证"], [chooseAgent, "条件分派"]]);
+const verifyFixedCheck = "verify-fixed-check";
+const standaloneOperations = new Map([
+  [verifyEvidence, "证据验证"], [chooseAgent, "条件分派"], [verifyFixedCheck, "固定检查凭证核验"],
+]);
 const editorKey = (home, kind, base, starter) => JSON.stringify(["ergora-definition-editor-v1", home, kind, base.id, base.version,
   base.digest, ...(starter ? [starter.id, starter.version] : [])]);
 const currentEditor = () => library.detail && editors.get(editorKey(library.controlDirectory, library.selection.kind,
@@ -830,6 +833,8 @@ function definitionForm(current, render, action, updateControls) {
       fields.append(field("实例输入绑定 JSON", "nodeInputs", values.nodeInputs, "textarea", { spellcheck: "false" }));
     if (selected.operation === verifyEvidence)
       fields.append(node("p", {}, "source 绑定须追溯到操作者提供的根输入端口，输出端口为 result。"));
+    if (selected.operation === verifyFixedCheck)
+      fields.append(node("p", {}, "source 绑定到根输入 check 提供的原固定检查定位信息，核验后的凭证由 result 输出。"));
     if (selected.operation === chooseAgent)
       fields.append(field("候选 Agent 实例 ID（每行一个）", "branches", values.branches, "textarea"),
         node("p", {}, "source 绑定到唯一先行 Agent 的 result。填写 1–8 个同一工作流内的 Agent ID，每个 Agent 须直接依赖此分派实例。none 表示跳过所有候选分支。"));

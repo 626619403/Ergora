@@ -300,7 +300,7 @@ async def _exercise(root, case, app, activities, adapter, installation, state, r
     if method is not None:
         app.plan_sha256 = plan_sha
     app.approved_plan = {'plan_sha256': plan_sha, 'receipt': plan, 'approval': authorization}
-    work_case = ('fixed-good' if case == 'fixed-candidate-check' else case if case.startswith('fixed-') else
+    work_case = ('fixed-good' if case.startswith('fixed-candidate-check') else case if case.startswith('fixed-') else
                  'materials-specialists' if selected else 'materials-issue-source' if case == 'issue-source' else 'materials')
     result = await original_work(root, work_case, app, activities, installation, state, runtime, requests, records)
     if case == 'fixed-bad' or case.startswith('fixed-review-'):
@@ -392,12 +392,13 @@ async def _exercise(root, case, app, activities, adapter, installation, state, r
         assert len(calls) == len(app.admission['budget']['slots'])
         result.update(selected_context_calls=calls, canonical_changed_after_intent=True,
                       original_input_sha256=task_envelopes.identity(app.admission))
-    if case == 'fixed-candidate-check':
-        result['independent_check'] = await _candidate_check(root, state, runtime, app.spec, result['candidate'], records)
+    if case.startswith('fixed-candidate-check'):
+        result['independent_check'] = await _candidate_check(root, state, runtime, app.spec, result['candidate'], records,
+                                                            gated=case.endswith('-graph'))
     return {**result, 'case': case, 'complete_preparation': True, 'model_intervals': model_intervals}
 
 
-async def _candidate_check(root, state, runtime, spec, candidate, records):
+async def _candidate_check(root, state, runtime, spec, candidate, records, *, gated=False):
     """Recheck a real formal candidate and fence a live checker by its original job."""
     from types import SimpleNamespace
 
@@ -445,12 +446,19 @@ async def _candidate_check(root, state, runtime, spec, candidate, records):
     selected = workflows.get(state, ref['id'], ref['version'])['definition']
     wrapper = root / 'candidate-check-wrapper'
     wrapper.mkdir()
-    write(wrapper / 'workflow.json', {'schema_version': 2, 'id': 'candidate-check-wrapper', 'version': '1.0.0',
+    definition = {'schema_version': 2, 'id': 'candidate-check-wrapper', 'version': '1.0.0',
         'description': 'Review one exported candidate.', 'resources': [],
         'permissions': selected['permissions'], 'limits': selected['limits'], 'inputs': ['task'],
         'nodes': [{'id': 'correctness', 'ref': {key: ref[key] for key in ('kind', 'id', 'version', 'digest')},
                    'depends_on': [], 'inputs': {'task': {'input': 'task'}}}],
-        'outputs': {'result': {'node': 'correctness', 'output': 'result'}}})
+        'outputs': {'result': {'node': 'correctness', 'output': 'result'}}}
+    if gated:
+        definition['inputs'].append('check')
+        definition['nodes'][0]['depends_on'].append('verify')
+        definition['nodes'].insert(0, {'id': 'verify', 'operation': 'verify-fixed-check', 'depends_on': [],
+                                       'inputs': {'source': {'input': 'check'}}})
+        definition['outputs']['proof'] = {'node': 'verify', 'output': 'result'}
+    write(wrapper / 'workflow.json', definition)
     workflows.import_bundle(state, wrapper)
     manifest = workflows.prepare_manifest(state.root, 'candidate-check-wrapper', '1.0.0',
         {'schema_version': 1, 'permissions': selected['permissions'], 'limits': selected['limits']}, root / 'check-manifest')
@@ -459,10 +467,11 @@ async def _candidate_check(root, state, runtime, spec, candidate, records):
     material = packets.prepare(Path(project['repo']), repository_id='fixture/local', base=base, head=candidate,
                                requirements=requirements, destination=packet)
     instance = 'root/correctness/review'
-    input_record = requests.prepare(packet, source_kind='local', source_sha256=material['packet_sha256'],
-        manifest=Path(manifest['path']), manifest_digest=manifest['digest'], instance=instance,
-        destination=root / 'candidate-review-input', max_prompt_bytes=100_000)
-    assert input_record['execution_authorized'] is False
+    if not gated:
+        input_record = requests.prepare(packet, source_kind='local', source_sha256=material['packet_sha256'],
+            manifest=Path(manifest['path']), manifest_digest=manifest['digest'], instance=instance,
+            destination=root / 'candidate-review-input', max_prompt_bytes=100_000)
+        assert input_record['execution_authorized'] is False
     source = {'task_id': 'task-1', 'run_id': run_id, 'candidate_sha': candidate,
               'export_intent_sha256': exported['intent_sha256'],
               'verification_sha256': verification.snapshot(project)['sha256'],
@@ -592,7 +601,175 @@ async def _candidate_check(root, state, runtime, spec, candidate, records):
     assert not (runtime / 'fences/task-1.json').exists()
     assert agent_runs.runs(state, 'demo') == original_runs
     assert {path.name: path.read_bytes() for path in (runtime / 'approvals').glob('*.json')} == original_approvals
-    return {'same_observations': True, 'passing_receipt': passed, 'stop': finished, 'original_starts': 1,
-            'stopped_identities': identities, 'outer_cleanup_confirmed': stopped['cleanup_confirmed'],
-            'native_started_sha256': hashlib.sha256(started_bytes).hexdigest(), 'request_file_sha256': source_sha,
-            'owner_stopped_sha256': hashlib.sha256((owner / 'stopped.json').read_bytes()).hexdigest()}
+    result = {'same_observations': True, 'passing_receipt': passed, 'stop': finished, 'original_starts': 1,
+              'stopped_identities': identities, 'outer_cleanup_confirmed': stopped['cleanup_confirmed'],
+              'native_started_sha256': hashlib.sha256(started_bytes).hexdigest(), 'request_file_sha256': source_sha,
+              'owner_stopped_sha256': hashlib.sha256((owner / 'stopped.json').read_bytes()).hexdigest()}
+    if gated:
+        result['graph'] = await _candidate_check_graph(root, state, runtime, packet, material['packet_sha256'],
+                                                     manifest, passed, finished, call)
+    return result
+
+
+async def _candidate_check_graph(root, state, runtime, packet, packet_digest, manifest, passed, stopped, call):
+    """The graph reads actual native evidence before its one controlled reviewer."""
+    from contextlib import redirect_stdout, redirect_stderr
+    from copy import deepcopy
+    import io
+    from unittest.mock import patch
+
+    from ergora.agents import backends
+    from ergora.development.dags import require_formal_nodes
+    from ergora.development.route_errors import RouteBlocked
+    from ergora.interfaces.cli import main
+    from ergora.runtime import processes
+
+    task = await call('review', 'prepare-graph-task', str(packet), '--source-sha256', packet_digest,
+                      '--manifest', manifest['path'], '--manifest-digest', manifest['digest'])
+    assert task['execution_authorized'] is False and task['instance'] == 'root/correctness/review'
+    compiled = workflows.inspect_manifest(Path(manifest['path']), material=True)['composition']
+    try:
+        require_formal_nodes(compiled)
+    except RouteBlocked as error:
+        assert error.instance == 'root/verify'
+    else:
+        raise AssertionError('Formal route admitted a standalone review gate')
+    direct_task = root / 'direct-review-task.txt'
+    direct_task.write_text('Unbound review', encoding='utf-8')
+    assert 'gated graph' in await call('composition', 'prepare-from-manifest', manifest['path'], task['instance'],
+                                     '--task', str(direct_task), '--max-prompt-bytes', '30000',
+                                     '--directory', str(root / 'direct-review'), code=2)
+    keys = ('operation_id', 'request_file_sha256', 'job_sha256', 'candidate_sha', 'receipt_sha256', 'fixed_results_sha256')
+    inputs = {'task': task['task'], 'check': {key: passed[key] for key in keys}}
+    original_namespaces = ['approvals', 'requests', 'receipts', 'fences', 'workspaces', 'artifacts']
+
+    def check_records():
+        dirs = [runtime / name / 'fixed-candidate-check' for name in original_namespaces]
+        dirs.append(runtime / 'processes')
+        return {str(path): hashlib.sha256(path.read_bytes()).hexdigest()
+                for directory in dirs for path in directory.rglob('*') if path.is_file() and not path.is_symlink()}
+
+    before, before_runs = check_records(), agent_runs.runs(state, 'demo')
+    reviewer_code = '''import json,sys
+from pathlib import Path
+value = json.loads(sys.stdin.read().split('Workflow task port (JSON value):\\n')[-1])
+with Path(sys.argv[2]).open('a', encoding='utf-8') as log:
+    log.write(json.dumps(value) + '\\n')
+Path(sys.argv[1]).write_text(json.dumps({'summary':'Exact candidate reviewed','decision':'approve',
+    'artifacts':{'response':'Controlled advisory review'}}), encoding='utf-8')
+'''
+    calls = root / 'graph-reviewer-calls.jsonl'
+    code = root / 'graph-reviewer.py'
+    code.write_text(reviewer_code, encoding='utf-8')
+    original_command = backends.CodexBackend.command
+    native_run, lifetimes = processes.run, []
+
+    def observe_run(argv, *args, **kwargs):
+        lifetimes.append((argv[-1], kwargs.get('deadline'), kwargs.get('stop_requested')))
+        return native_run(argv, *args, **kwargs)
+
+    def controlled_command(backend, request):
+        argv, prompt = original_command(backend, request)
+        assert argv[argv.index('--sandbox') + 1] == 'read-only'
+        return [sys.executable, str(code), argv[argv.index('--output-last-message') + 1], str(calls)], prompt
+
+    def graph(name, values, expected):
+        serialized, directory = root / (name + '.inputs.json'), root / (name + '-graph')
+        serialized.write_text(json.dumps(values), encoding='utf-8')
+        stdout, stderr = io.StringIO(), io.StringIO()
+        with redirect_stdout(stdout), redirect_stderr(stderr), patch.object(backends.CodexBackend, 'command', controlled_command), \
+             patch.object(backends.CodexBackend, 'check_invocation', lambda self: None), patch.object(processes, 'run', observe_run):
+            status = main(['--home', str(state.root), 'composition', 'run-graph', 'demo', manifest['path'],
+                           '--inputs', str(serialized), '--manifest-digest', manifest['digest'],
+                           '--directory', str(directory), '--max-prompt-bytes', '100000', '--timeout', '15'])
+        assert status == expected, (stdout.getvalue(), stderr.getvalue())
+        return json.loads(stdout.getvalue()), directory
+
+    good, directory = graph('bound', inputs, 0)
+    proof = good['outputs']['proof']
+    assert all(proof[key] == value for key, value in inputs['check'].items())
+    assert proof['task_sha256'] == task['task_sha256'] and proof['instance'] == task['instance']
+    assert proof['packet_sha256'] == packet_digest and proof['manifest_digest'] == manifest['digest']
+    assert good['verification_reads'][0]['evidence'] == proof and not good['formal_execution_authorized']
+    assert json.loads(calls.read_bytes()) == inputs['task']
+    native_read, reviewer = lifetimes
+    assert native_read[0] == 'from ergora.development.runtime.candidate_checks import main;main()'
+    assert native_read[1] == reviewer[1] and native_read[2] == reviewer[2] and callable(native_read[2])
+    leaf, = good['leaves']
+    assert leaf['instance'] == task['instance'] and leaf['status'] == 'succeeded'
+    reviewed = agent_runs.inspect_run(state, 'demo', leaf['run_id'])['run']
+    assert reviewed['role'] == 'reviewer' and reviewed['formal_execution_authorized'] is False
+    for operation in ('check-input', 'run-input'):
+        refused = await call('composition', operation, 'demo', str(directory / 'input-1'),
+                             '--input-digest', leaf['input_digest'], code=2)
+        assert 'requires its gated graph coordinator' in refused
+    inspect = ['composition', 'inspect-graph', 'demo', str(directory), '--manifest-digest', manifest['digest']]
+    inspected = await call(*inspect)
+    assert inspected['verification_reads'][0]['recorded_evidence']['fixed_results_sha256'] == passed['fixed_results_sha256']
+    saved_graph = directory / 'run.json'
+    original_graph = saved_graph.read_bytes()
+    try:
+        for revision in (good['project_revision'] + 1, float(good['project_revision'])):
+            changed = deepcopy(good)
+            changed['verification_reads'][0]['evidence']['project_revision'] = revision
+            saved_graph.write_text(json.dumps(changed), encoding='utf-8')
+            observed = await call(*inspect)
+            readback, = observed['verification_reads']
+            assert readback['recorded_evidence']['state'] == 'mismatch'
+            assert readback['original_receipt']['state'] == 'not_queried'
+            assert observed['agent_attempts'][0]['original_run']['result']['state'] == 'available'
+    finally:
+        saved_graph.write_bytes(original_graph)
+
+    cases = []
+    def blocked(name, values, message):
+        run, _ = graph(name, values, 1)
+        assert run['status'] == 'failed' and message in run['error']
+        assert run['leaves'] == [] and calls.read_text().count('\n') == 1
+        cases.append(name)
+
+    changed = deepcopy(inputs)
+    changed['task']['material']['packet']['requirements']['text'] += ' substituted'
+    blocked('wrong-requirements', changed, 'root task differs')
+    changed = deepcopy(inputs)
+    changed['task']['material']['packet']['repository']['head'] = '0' * 40
+    blocked('wrong-head', changed, 'root task differs')
+    changed = deepcopy(inputs)
+    changed['task']['source_sha256'] = '2' * 64
+    blocked('wrong-task-packet', changed, 'Graph packet differs')
+    changed = deepcopy(inputs)
+    changed['check']['receipt_sha256'] = '1' * 64
+    blocked('wrong-receipt', changed, 'locator differs')
+    packet_path = packet / 'packet.json'
+    raw = packet_path.read_bytes()
+    try:
+        packet_path.write_bytes(raw + b' ')
+        blocked('changed-packet', inputs, 'packet differs from expected SHA256')
+    finally:
+        packet_path.write_bytes(raw)
+    job_id = passed['job_id']
+    terminal = runtime / 'receipts/fixed-candidate-check' / job_id.rsplit('-', 1)[0] / (job_id + '.json')
+    raw = terminal.read_bytes()
+    try:
+        terminal.unlink()
+        blocked('missing-receipt', inputs, 'completed passing original fixed check')
+    finally:
+        terminal.write_bytes(raw)
+    changed = deepcopy(inputs)
+    changed['check'] = {key: stopped.get(key) or '0' * 64 for key in keys}
+    blocked('nonpassing-original', changed, 'completed passing original fixed check')
+    before_project = state.project('demo')
+    revised = await call('project', 'correction-suggestions', 'demo', '--enabled', 'false',
+                         '--revision', str(before_project['revision']))
+    assert revised['revision'] == before_project['revision'] + 1
+    assert revised['registration']['sha256'] == before_project['registration']['sha256']
+    historical = await call('task', 'candidate-check-status', 'demo', passed['operation_id'],
+                            '--job-sha256', passed['job_sha256'])
+    assert historical == passed and historical['project_revision'] == before_project['revision']
+    blocked('stale-project-revision', inputs, 'Graph project revision differs')
+    stale = json.loads((root / 'stale-project-revision-graph/run.json').read_bytes())
+    assert stale['project_revision'] == revised['revision']
+
+    assert check_records() == before and len(agent_runs.runs(state, 'demo')) == len(before_runs) + 1
+    return {'review_calls': 1, 'proof_matches': True, 'original_check_records_unchanged': True, 'blocked_before_review': cases,
+            'historical_check_revision': historical['project_revision'], 'revised_project_revision': revised['revision']}

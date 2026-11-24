@@ -337,6 +337,16 @@ def task_fixed_candidate_check(project: dict, home: Path, operation: str, payloa
     return _task_operation(project, home, 'candidate_checks', operation, payload, 20)
 
 
+def task_fixed_check_proof(project: dict, home: Path, source: dict, review: dict, *, deadline: float,
+                           stop_requested=None) -> dict:
+    """Read a completed fixed check under the standalone graph's original window."""
+    if type(deadline) not in (int, float) or not math.isfinite(deadline):
+        raise ValueError('Fixed check proof requires an absolute monotonic deadline')
+    return _task_operation(project, home, 'candidate_checks', 'prove-fixed-check',
+                           {'source': source, 'operation_id': source['operation_id'], 'job_sha256': source['job_sha256'],
+                            'review': review}, 20, deadline=deadline, stop_requested=stop_requested)
+
+
 def task_cancellation(project: dict, home: Path, operation: str, payload: dict, *, timeout: int) -> dict:
     """Use the native cancellation guard and preserve signal delivery uncertainty."""
     return _task_operation(project, home, 'cancellation', operation, payload, timeout)

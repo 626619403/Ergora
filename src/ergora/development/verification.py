@@ -69,6 +69,20 @@ def validate_readback_source(source: dict) -> dict:
     return source
 
 
+def validate_fixed_check_source(source: dict) -> dict:
+    """Validate the exact locator of a completed independent fixed check."""
+    fields = ('operation_id', 'request_file_sha256', 'job_sha256', 'candidate_sha', 'receipt_sha256', 'fixed_results_sha256')
+    _fields(source, fields, 'Fixed check source')
+    identifier, candidate = source['operation_id'], source['candidate_sha']
+    if not isinstance(identifier, str) or re.fullmatch('[A-Za-z0-9][A-Za-z0-9_-]{0,79}', identifier) is None:
+        raise ValueError('Invalid original fixed check operation ID')
+    if not isinstance(candidate, str) or re.fullmatch('[a-f0-9]{40}', candidate) is None:
+        raise ValueError('Fixed check source requires a full SHA-1 candidate commit')
+    for key in ('request_file_sha256', 'job_sha256', 'receipt_sha256', 'fixed_results_sha256'):
+        _digest(source[key])
+    return source
+
+
 def value_bytes(value) -> bytes:
     """One exact JSON domain: bool is distinct from int, and floats are absent."""
     raw = observation_bytes(value, SOURCE_BYTES)

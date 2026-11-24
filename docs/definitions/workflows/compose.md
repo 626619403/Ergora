@@ -55,6 +55,46 @@ For a Workflow v2 graph with a `verify-evidence` node, run the same command with
 
 Replace the placeholders and example event ID with values from the original run. The read requires the project's original Linux/WSL2 reference installation, Temporal history and job files. It runs synchronously in the graph coordinator and can delay independent dispatch and observation of other Agent results. Active Agent calls retain their original deadline and stop handling. A successful node returns the verified evidence identity on its `result` port. The graph receipt records each original locator and the read outcome in `verification_reads`. Formal verification, approval and candidate release continue through their original owners. [Node and port contract](contracts.md#original-fixed-verification-evidence)
 
+### Gate an advisory review on a completed fixed check
+
+On Linux/WSL2, create a Workflow v2 root with a `verify-fixed-check` gate and exactly one shipped `ergora-correctness-review@1.0.2` child. The child depends on the gate and forwards the root `task` unchanged. Add this fragment to the root definition with its own identity, description, resources, read-only permissions and limits. The `engineering-review` preset installs the pinned child. [Freeze the exact graph manifest](#save-and-share-a-complete-composition)
+
+```json
+{
+  "schema_version": 2,
+  "inputs": ["task", "check"],
+  "outputs": {
+    "proof": {"node": "verify", "output": "result"},
+    "result": {"node": "correctness", "output": "result"}
+  },
+  "nodes": [
+    {"id": "verify", "operation": "verify-fixed-check", "depends_on": [],
+     "inputs": {"source": {"input": "check"}}},
+    {"id": "correctness", "ref": {
+       "kind": "workflow", "id": "ergora-correctness-review", "version": "1.0.2",
+       "digest": "f7b5e13770fd64d54b9fe8380e8c70f49b2f6ce140168f2a6eb5cf9e0f4d0ae7"
+     }, "depends_on": ["verify"], "inputs": {"task": {"input": "task"}}}
+  ]
+}
+```
+
+Authorize the fixed check with this gated manifest's exact path and digest, the leaf `root/correctness/review` and the local review packet for the exported candidate. Use `task candidate-check` and the registered executor to run it separately. Prepare the graph task from the same packet and manifest, then read the original check status by operation ID. [Authorize, execute and read back a fixed check](../../development/run-and-recover.md#run-registered-fixed-checks-on-an-exported-candidate)
+
+```bash
+ergora review prepare-graph-task ./review-packet --source-sha256 PACKET_SHA256 \
+  --manifest ./gated-review-manifest --manifest-digest MANIFEST_DIGEST > ./review-task.json
+ergora task candidate-check-status PROJECT OPERATION_ID > ./fixed-check-status.json
+```
+
+Create `graph-inputs.json` with exactly two fields. Copy the returned `task` object unchanged into `task`. From the original check status, require `succeeded`, `cleanup_confirmed: true` and `stop_requested: false`. Copy `operation_id`, `request_file_sha256`, `job_sha256`, `candidate_sha`, `receipt_sha256` and `fixed_results_sha256` into the `check` object.
+
+```bash
+ergora composition run-graph PROJECT ./gated-review-manifest --manifest-digest MANIFEST_DIGEST \
+  --inputs ./graph-inputs.json --directory ./gated-review-run --max-prompt-bytes 1000000 --timeout 300
+```
+
+The gate reads the original completed check and validates its proof against the exact candidate, receipt, authorized project revision, manifest, leaf and task reconstructed from the saved packet. Run the gated reviewer through the graph and inspect its saved Agent evidence with `composition inspect-run`. Missing or mismatched evidence blocks the reviewer. The graph's `proof` output records the check and review-input identities. The separate `result` output carries the single advisory review of the unchanged task. Check launch and recovery authority stay with the original check owner. [Observe the graph readback](#observe-an-original-graph-run)
+
 ### Choose a follow-up Agent
 
 Use the fragment in a Workflow v2 `workflow.json` with ID `conditional-review` and version `1.0.0`. Keep the usual root description, resources, read-only permissions and limits. Replace each example `ref` with an imported Agent's exact ID, version and bundle digest. Give the analyzer instructions for choosing `structure`, `dependency` or `none` in `artifacts.route`. Both reviewers take the root task as input. [Agent definitions](../agents.md#create-and-modify-definitions) · [Routing contract](contracts.md#conditional-agent-routing)

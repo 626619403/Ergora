@@ -501,6 +501,16 @@ def stop_candidate_check(state: State, project_id: str, operation_id: str, job_s
         {'operation_id': operation_id, 'job_sha256': job_sha256, 'confirm': confirm})
 
 
+def read_fixed_check_proof(state: State, project_id: str, source: dict, review: dict, *, expected_revision: int,
+                           deadline: float, stop_requested=None) -> dict:
+    """Validate the original fixed check and its authorized review task for the selected graph."""
+    source = verification.validate_fixed_check_source(source)
+    project = _project(state, project_id)
+    _revision(project, expected_revision)
+    return development_native.task_fixed_check_proof(project, state.root, source, review, deadline=deadline,
+                                                      stop_requested=stop_requested)
+
+
 def submission(state: State, project_id: str, task_id: str) -> dict:
     """Inspect local submission facts without connecting to Temporal or reissuing work."""
     project = _project(state, project_id)

@@ -448,7 +448,7 @@ def test_text_only_cannot_silently_drop_required_skill_attachments(full_creation
 @pytest.mark.skipif(sys.platform != 'linux', reason='Native stage monitor requires Linux/WSL2')
 @pytest.mark.parametrize('case', ['full', 'serial', 'capacity', 'unread', 'source-artifact', 'source-claim', 'source-receipt',
                                  'owner-source-artifact', 'issue-source', 'development-specialists', 'method-addendum',
-                                 'fixed-candidate-check'])
+                                 'fixed-candidate-check', 'fixed-candidate-check-graph'])
 def test_real_preparation_calls_and_original_stage_results(tmp_path, case):
     pytest.importorskip('temporalio')
     pytest.importorskip('mcp')
@@ -465,11 +465,18 @@ def test_real_preparation_calls_and_original_stage_results(tmp_path, case):
     if case == 'method-addendum':
         assert 'work:implementation' in record['method_material_consumers']
         assert any(stage.startswith('review:') for stage in record['method_material_consumers'])
-    if case == 'fixed-candidate-check':
+    if case.startswith('fixed-candidate-check'):
         proof = record['independent_check']
         assert proof['same_observations'] is True and proof['passing_receipt']['status'] == 'succeeded'
         assert proof['stop']['status'] in ('cancelled', 'unknown') and proof['outer_cleanup_confirmed'] is True
         assert len(proof['stopped_identities']) == 3 and proof['original_starts'] == 1
+    if case == 'fixed-candidate-check-graph':
+        graph = proof['graph']
+        assert graph['review_calls'] == 1 and graph['proof_matches'] and graph['original_check_records_unchanged']
+        assert graph['blocked_before_review'] == ['wrong-requirements', 'wrong-head', 'wrong-task-packet',
+                                                  'wrong-receipt', 'changed-packet', 'missing-receipt',
+                                                  'nonpassing-original', 'stale-project-revision']
+        assert graph['revised_project_revision'] == graph['historical_check_revision'] + 1
 
 
 @pytest.mark.parametrize('full_graph,case', [(1, 'complete'), (2, 'complete'), (2, 'duplicate'), (2, 'stop')], indirect=['full_graph'])

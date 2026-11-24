@@ -447,7 +447,7 @@
               "maxItems": 128,
               "items": {"$ref": "#/$defs/id"}
             },
-            "operation": {"const": "verify-evidence"},
+            "operation": {"enum": ["verify-evidence", "verify-fixed-check"]},
             "inputs": {"$ref": "#/$defs/bindings"}
           }
         },

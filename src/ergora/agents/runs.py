@@ -27,6 +27,7 @@ import ergora.improvement.document_corrections as document_corrections
 from ergora.runtime import budget_clock
 from ergora.configuration import catalog as components
 from ergora.configuration import validation as contracts
+from ergora.development import dags
 from ergora.runtime import processes
 from ergora.storage.assets import inventory_tree, is_link, publish_directory
 from ergora.configuration.bindings import validate_binding
@@ -121,13 +122,22 @@ def run_agent(state: State, project_id: str, role: str, prompt: str, timeout: in
 
 def _admit_input(state: State, project_id: str, source: Path, *, backend: str | None,
                  model: str | None, reason: str | None, mode: str, codex_config: Path | None,
-                 binding_override: dict | None = None, input_digest: str | None = None) -> tuple[dict, dict]:
+                 binding_override: dict | None = None, input_digest: str | None = None,
+                 _fixed_check_proof: dict | None = None) -> tuple[dict, dict]:
     """One current admission produces both the preview and the persisted call contract."""
     contracts.validate(mode, {"enum": ["text-only", "task-mcp"]}, "Composition call mode")
     prepared = workflow_definitions.inspect_input(source, material=True)
     if input_digest is not None and prepared['digest'] != input_digest:
         raise ValueError('Composition input differs from the explicitly selected digest')
-    leaf = next(item for item in prepared["composition"]["instances"] if item["path"] == prepared["request"]["instance"])
+    request = prepared['request']
+    fixed = dags.fixed_check_review(prepared['composition'])
+    if fixed is not None:
+        proof = _fixed_check_proof
+        if (not isinstance(proof, dict) or proof.get('status') != 'validated' or proof.get('project') != project_id
+                or proof.get('instance') != fixed[1]['path'] or request['instance'] != fixed[1]['path']
+                or request['input_origin'] != 'workflow-port' or input_digest is None):
+            raise ValueError('Fixed-check review input requires its gated graph coordinator')
+    leaf = next(item for item in prepared["composition"]["instances"] if item["path"] == request["instance"])
     permissions = leaf["permissions"]
     if permissions["write"] or permissions["shell"] or permissions["network"]:
         raise ValueError(f"{'Text-only' if mode == 'text-only' else 'Task MCP'} calls cannot satisfy write, shell or network requests; use a read-only leaf")
@@ -198,11 +208,12 @@ def run_input(state: State, project_id: str, source: Path, timeout: int = 300, *
               codex_bin: str = "codex", supervised: bool = False,
               input_digest: str | None = None, stop_requested=None, remaining=None,
               record_lifecycle: bool = False, deadline: float | None = None, run_id: str | None = None,
-              expected_revision: int | None = None) -> dict:
-    """Explicit independent restricted call; no workflow ports or formal approval."""
+              expected_revision: int | None = None, _fixed_check_proof: dict | None = None) -> dict:
+    """Run a restricted leaf through explicit admission and retain its original authority."""
     contracts.validate(timeout, {"type": "integer", "minimum": 1, "maximum": 3600}, "Agent timeout")
     prepared, document = _admit_input(state, project_id, source, backend=backend, model=model, reason=reason, mode=mode,
-                                      codex_config=codex_config, binding_override=binding_override, input_digest=input_digest)
+                                      codex_config=codex_config, binding_override=binding_override,
+                                      input_digest=input_digest, _fixed_check_proof=_fixed_check_proof)
     if expected_revision is not None and document['project_revision'] != expected_revision:
         raise ValueError('Project revision changed before the workflow leaf was admitted')
     if run_id is not None:

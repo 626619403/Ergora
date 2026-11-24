@@ -12,9 +12,45 @@ from pathlib import PurePosixPath
 from ergora.development.route_errors import RouteBlocked
 
 
+FIXED_CHECK_REVIEW = {'kind': 'workflow', 'id': 'ergora-correctness-review', 'version': '1.0.2',
+                      'digest': 'f7b5e13770fd64d54b9fe8380e8c70f49b2f6ce140168f2a6eb5cf9e0f4d0ae7'}
+
+
+def fixed_check_review(graph: dict) -> tuple[dict, dict] | None:
+    """Recognize the standalone, source-bound review with one fixed-check control edge."""
+    instances = graph['instances']
+    gates = [node for node in instances if node['kind'] == 'verify-fixed-check']
+    if not gates:
+        return None
+    gate = gates[0]
+    message = 'Fixed-check review requires one root gate and the exact shipped correctness workflow'
+    if len(gates) != 1 or gate['parent'] != 'root' or gate['depends_on'] or gate['inputs'] != {'source': {'input': 'check'}}:
+        raise RouteBlocked(gate['path'], message)
+    root = instances[0]
+    coworkers = [node for node in instances if node['parent'] == 'root' and node['path'] != gate['path']]
+    if len(coworkers) != 1 or root['inputs'] != {'task': {'input': 'task'}, 'check': {'input': 'check'}}:
+        raise RouteBlocked(gate['path'], message)
+    review = coworkers[0]
+    if (review['kind'] != 'workflow' or review['ref'] != FIXED_CHECK_REVIEW
+            or review['inputs'] != {'task': {'input': 'task'}} or review['depends_on'] != [gate['path']]):
+        raise RouteBlocked(review['path'], message)
+    review_name, gate_name = (node['path'].split('/')[-1] for node in (review, gate))
+    if root['outputs'] != {'proof': {'node': gate_name, 'output': 'result'},
+                           'result': {'node': review_name, 'output': 'result'}}:
+        raise RouteBlocked(root['path'], 'Fixed-check review requires separate proof and review result outputs')
+    leaves = [node for node in instances if node['kind'] == 'agent']
+    if len(leaves) != 1:
+        raise RouteBlocked(review['path'], message)
+    leaf = leaves[0]
+    if (leaf['parent'] != review['path'] or leaf['role'] != 'reviewer' or leaf['depends_on']
+            or leaf['inputs'] != {'task': {'input': 'task'}}):
+        raise RouteBlocked(leaf['path'], 'Fixed-check review requires the original leaf and unchanged root task forwarding')
+    return gate, leaf
+
+
 def require_formal_nodes(graph: dict) -> None:
     for node in graph['instances']:
-        if node['kind'] == 'verify-evidence':
+        if node['kind'] in ('verify-evidence', 'verify-fixed-check'):
             raise RouteBlocked(node['path'], 'Candidate verification evidence reads require standalone graph execution')
         if node['kind'] == 'choose-agent':
             raise RouteBlocked(node['path'], 'Conditional Agent selection requires standalone graph execution')

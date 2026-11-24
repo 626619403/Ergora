@@ -1,6 +1,9 @@
 import { node, button, pre, empty, row, badge, table } from "./ui.js";
 
-const instanceLabels = { workflow: "子工作流", join: "all 汇合", "verify-evidence": "证据验证", "choose-agent": "条件分派" };
+const instanceLabels = {
+  workflow: "子工作流", join: "all 汇合", "verify-evidence": "证据验证", "choose-agent": "条件分派",
+  "verify-fixed-check": "固定检查凭证核验",
+};
 const relationLabels = { dependency: "先行依赖", data: "具名数据", branch: "条件分支" };
 
 // Private presentation of an already compiled preview. Paths identify instances;

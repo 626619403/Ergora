@@ -41,10 +41,22 @@ def _task(material: dict, kind: str, sha256: str, manifest_digest: str) -> bytes
                 "Retain missing evidence, failed checks, limitations and minority findings; this is an advisory "
                 "single-leaf review, not a completed workflow or formal/platform approval.",
             "material": material}
+    return _task_bytes(task)
+
+
+def _task_bytes(task: dict) -> bytes:
     return (json.dumps(task, sort_keys=True, ensure_ascii=False, allow_nan=False, indent=2) + "\n").encode("utf-8")
 
 
-def _review_leaf(composition: dict, instance: str, packet: dict, *, role: str = "reviewer") -> dict:
+def task_identity(task: dict) -> str:
+    """Hash complete task data with the source-bound review encoding."""
+    if not isinstance(task, dict):
+        raise ValueError("Source-bound review requires a complete task object")
+    return hashlib.sha256(_task_bytes(task)).hexdigest()
+
+
+def _review_leaf(composition: dict, instance: str, packet: dict, *, role: str = "reviewer",
+                 gated: bool = False) -> dict:
     instances = {item["path"]: item for item in composition["instances"]}
     leaf = instances.get(instance)
     if leaf is None or leaf["kind"] != "agent" or leaf["role"] != role:
@@ -52,7 +64,12 @@ def _review_leaf(composition: dict, instance: str, packet: dict, *, role: str = 
     permissions = leaf["permissions"]
     if permissions["write"] or permissions["shell"] or permissions["network"]:
         raise ValueError("Source-bound review requires a read-only leaf without shell or network")
-    review_dags.require_root_task(instances, leaf)
+    if gated:
+        fixed = review_dags.fixed_check_review(composition)
+        if fixed is None or fixed[1]['path'] != instance:
+            raise ValueError("Select the fixed-check graph's original gated review leaf")
+    else:
+        review_dags.require_root_task(instances, leaf)
     paths = {name for label in ("base", "diff_base", "head") for name in packet["source"][label]["files"]}
     for name in sorted(paths):
         wanted = "workspace/" + name
@@ -66,6 +83,20 @@ def _manifest(manifest: Path, manifest_digest: str) -> dict:
     if frozen["digest"] != manifest_digest:
         raise ValueError("Review manifest differs from the explicitly selected digest")
     return frozen
+
+
+def prepare_graph_task(source: Path, *, source_sha256: str, manifest: Path, manifest_digest: str) -> dict:
+    """Prepare just the original root task data for a fixed-check review graph."""
+    material, packet = _material(source, 'local', source_sha256)
+    frozen = _manifest(manifest, manifest_digest)
+    fixed = review_dags.fixed_check_review(frozen['composition'])
+    if fixed is None:
+        raise ValueError("Select a fixed-check review graph manifest")
+    instance = fixed[1]['path']
+    _review_leaf(frozen['composition'], instance, packet, gated=True)
+    task = _task(material, 'local', source_sha256, manifest_digest)
+    return {'task': json.loads(task), 'task_sha256': hashlib.sha256(task).hexdigest(), 'instance': instance,
+            'manifest_digest': manifest_digest, 'execution_authorized': False}
 
 
 def _publish_input(frozen: dict, instance: str, task: bytes, destination: Path,

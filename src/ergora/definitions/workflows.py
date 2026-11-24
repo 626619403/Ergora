@@ -14,6 +14,7 @@ from urllib.parse import urlsplit
 import ergora.definitions.agents as agent_definitions
 import ergora.definitions.bundles as definition_bundles
 from ergora.configuration import validation as contracts
+from ergora.development import dags
 from ergora.storage.assets import inventory_tree, publish_directory
 from ergora.storage.state import State, file_lock
 from ergora._paths import DATA_ROOT
@@ -460,6 +461,7 @@ class _Compilation:
                   "usage": {key: self.total[key] for key in ("instances", "material_bytes")},
                   "pending": ["project admission and approved manifest", "backend permission and resource enforcement",
                               "runtime port values, complete input capacity and durable execution"]}
+        dags.fixed_check_review(result)
         return {**result, "preview_sha256": hashlib.sha256(_encoded(result)).hexdigest()}
 
 
@@ -657,6 +659,8 @@ def compile_input(composition: dict, instance: str, task: bytes, max_prompt_byte
     """Compile complete leaf prompt bytes without writing or authorizing a call."""
     contracts.validate(max_prompt_bytes, contracts.COMPOSITION_INPUT["properties"]["max_prompt_bytes"], "Input byte limit")
     contracts.validate(input_origin, contracts.COMPOSITION_INPUT["properties"]["input_origin"], "Input origin")
+    if input_origin == "operator-supplied" and dags.fixed_check_review(composition) is not None:
+        raise ValueError("A fixed-check review leaf must receive its task from the original gated graph")
     if len(task) > contracts.COMPOSITION_INPUT["properties"]["max_prompt_bytes"]["maximum"]:
         raise ValueError("Composition task exceeds the supported input byte limit")
     text = task.decode("utf-8-sig")

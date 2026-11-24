@@ -163,7 +163,7 @@ async def main():
             source = check['source']['files']['oracle.py']
             source['text'] = source['text'].replace('"value": valid}',
                 '"value": valid if case["id"] == "integrity" else case["input"]}')
-            if mode == 'composition-work-materials-fixed-candidate-check':
+            if mode in ('composition-work-materials-fixed-candidate-check', 'composition-work-materials-fixed-candidate-check-graph'):
                 check['wall_seconds'] = 18
                 gate = root / 'hold-candidate-check'
                 waiting = f"""
@@ -187,7 +187,7 @@ if (document["subject"]["check_id"] == "configuration-integrity"
             source['sha256'] = hashlib.sha256(source['text'].encode()).hexdigest()
             check['source']['digest'] = manifest_digest({'oracle.py': {key: source[key]
                 for key in ('sha256', 'executable_bits')}})
-            if mode == 'composition-work-materials-fixed-candidate-check':
+            if mode in ('composition-work-materials-fixed-candidate-check', 'composition-work-materials-fixed-candidate-check-graph'):
                 # The passing run covers both checks. The stopped run must
                 # keep the later check from reaching its process namespace.
                 definition['trusted_checks']['follow-up'] = deepcopy(check)
