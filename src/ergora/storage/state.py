@@ -164,8 +164,13 @@ def resolve_home(root: Path | None = None) -> Path:
 
 
 class State:
-    def __init__(self, root: Path | None = None):
+    def __init__(self, root: Path | None = None, *, read_only: bool = False):
         self.root = resolve_home(root)
+        self._read_only = read_only
+        if read_only:
+            if not (self.root / "ergora.sqlite3").is_file():
+                raise ValueError("No existing Ergora state database in the selected home")
+            return
         self.root.mkdir(parents=True, exist_ok=True, mode=0o700)
         with file_lock(self.root / ".schema.lock"), closing(self._open()) as db:
             version = db.execute("PRAGMA user_version").fetchone()[0]
@@ -205,9 +210,14 @@ class State:
                 raise ValueError(f"State migration failed; database transaction rolled back. {detail}. {error}") from error
 
     def _open(self) -> sqlite3.Connection:
-        db = sqlite3.connect(self.root / "ergora.sqlite3", timeout=15)
+        database = self.root / "ergora.sqlite3"
+        if self._read_only:
+            db = sqlite3.connect(database.as_uri() + "?mode=ro", timeout=15, uri=True)
+        else:
+            db = sqlite3.connect(database, timeout=15)
         db.row_factory = sqlite3.Row
-        db.create_function("ergora_writer_schema_version", 0, lambda: SCHEMA_VERSION, deterministic=True)
+        if not self._read_only:
+            db.create_function("ergora_writer_schema_version", 0, lambda: SCHEMA_VERSION, deterministic=True)
         return db
 
     @contextmanager

@@ -1,10 +1,12 @@
-"""Execute an explicitly selected standalone graph through original leaf runs."""
+"""Execute and observe explicitly selected standalone graphs through original leaf runs."""
 
 from collections import Counter
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
+import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 from sqlite3 import Error as StateError
 import tempfile
@@ -14,17 +16,20 @@ import uuid
 
 from ergora.agents import backends, invocation, native_sources, runs
 from ergora.configuration import validation as contracts
-from ergora.definitions import agents, workflows
+from ergora.definitions import agents, bundles, workflows
 from ergora.storage.assets import publish_directory
 from ergora.storage.state import State
 
 
 _RESULT_LIMIT = 8_388_608
+_RECEIPT_LIMIT = 10_000_000
+_TERMINAL_STATUSES = ('succeeded', 'failed', 'cancelled', 'timed_out')
 
 
 def _verify_sources(composition, inputs):
     from ergora.development.verification import validate_readback_source
 
+    sources = {}
     nodes = {node['path']: node for node in composition['instances']}
     for node in nodes.values():
         if node['kind'] != 'verify-evidence':
@@ -37,7 +42,8 @@ def _verify_sources(composition, inputs):
             scope = nodes[parent]
             binding = scope['inputs'][binding['input']]
             parent = scope['parent']
-        validate_readback_source(inputs[binding['input']])
+        sources[node['path']] = validate_readback_source(inputs[binding['input']])
+    return sources
 
 
 def _bounded_json(value, limit: int) -> bytes:
@@ -67,7 +73,7 @@ class _GraphRun:
         descriptor, name = tempfile.mkstemp(dir=self.directory, prefix='.run-')
         try:
             with os.fdopen(descriptor, 'wb') as stream:
-                stream.write(_bounded_json(self.receipt, 10_000_000) + b'\n')
+                stream.write(_bounded_json(self.receipt, _RECEIPT_LIMIT) + b'\n')
                 stream.flush()
                 os.fsync(stream.fileno())
             os.replace(name, path)
@@ -341,3 +347,232 @@ def run_graph(state: State, project_id: str, manifest: Path, manifest_digest: st
         receipt.update(status='failed', error=str(error))
     run.save()
     return receipt
+
+
+def _observed_attempts(receipt, name, paths, *, required=False):
+    attempts = receipt.get(name, None if required else [])
+    if not isinstance(attempts, list) or len(attempts) > len(paths):
+        raise ValueError(f'Invalid graph receipt {name}')
+    seen = set()
+    for attempt in attempts:
+        path = attempt.get('instance') if isinstance(attempt, dict) else None
+        if not isinstance(path, str) or path not in paths or path in seen:
+            raise ValueError(f'Unexpected or repeated instance in graph receipt {name}')
+        seen.add(path)
+    return attempts
+
+
+def _matches_graph_input(request, manifest, instance, max_prompt_bytes):
+    if not isinstance(request, dict):
+        return False
+    actual = (
+        request.get('root'), request.get('grant'), request.get('preview_sha256'),
+        request.get('instance'), request.get('input_origin'), request.get('max_prompt_bytes')
+    )
+    expected = (
+        manifest['root'], manifest['grant'], manifest['preview_sha256'],
+        instance, 'workflow-port', max_prompt_bytes
+    )
+    return actual == expected and native_sources.encode(actual) == native_sources.encode(expected)
+
+
+def _observe_reserved_input(directory, attempt, manifest, max_prompt_bytes):
+    try:
+        checked = workflows.inspect_input(directory / f"input-{attempt['sequence']}")
+        if checked['digest'] != attempt['input_digest'] or not _matches_graph_input(
+                checked['request'], manifest, attempt['instance'], max_prompt_bytes):
+            raise native_sources.ArtifactIdentityError('Reserved input differs from its original attempt or graph manifest')
+    except (ValueError, OSError, RecursionError) as error:
+        return native_sources.observation_failure(error)
+    return {'state': 'available', 'digest': checked['digest'], 'task_sha256': checked['request']['task_sha256']}
+
+
+def _observe_leaf_run(state, project, receipt, manifest, attempt, remaining_result_bytes, route_choices):
+    try:
+        observed = runs.inspect_run(state, project, attempt['run_id'], max_result_bytes=max(1, remaining_result_bytes))
+    except native_sources.RunNotFound as error:
+        return {'state': 'missing', 'error': str(error)}, 0, None
+    except (OSError, StateError) as error:
+        return {'state': 'unknown', 'error': str(error)}, 0, None
+    except (ValueError, RecursionError) as error:
+        return {'state': 'invalid', 'error': str(error)}, 0, None
+    run = observed['run']
+    if run.get('status') not in (*_TERMINAL_STATUSES, 'preparing', 'running', 'unknown'):
+        return {'state': 'invalid', 'error': 'Original Agent run has an unsupported status'}, 0, None
+    if (run.get('input_digest') != attempt['input_digest']
+            or type(run.get('project_revision')) is not int
+            or run.get('project_revision') != receipt['project_revision']
+            or run.get('formal_execution_authorized') is not False
+            or not _matches_graph_input(run.get('input_request'), manifest,
+                                       attempt['instance'], receipt['max_prompt_bytes'])):
+        return {'state': 'mismatch', 'error': 'Original Agent run differs from its graph attempt'}, 0, None
+    source = {'state': 'available', 'status': run.get('status'),
+              'record_created': run.get('started'), 'record_finished': run.get('finished')}
+    evidence_fields = {'input': ('digest',), 'prompt': ('sha256', 'bytes'), 'result': ('sha256', 'bytes')}
+    for name, fields in evidence_fields.items():
+        evidence = observed[name]
+        source[name] = ({'state': 'available', **{key: evidence[key] for key in fields}} if evidence['available']
+                        else {'state': evidence['state'], 'error': evidence['error']})
+    if attempt['status'] in ('attempted', 'unknown'):
+        source['graph_outcome_agreement'] = 'not_recorded'
+    elif attempt['status'] == source['status'] and attempt.get('result_sha256') == run.get('result_sha256'):
+        source['graph_outcome_agreement'] = 'matching'
+    else:
+        source['graph_outcome_agreement'] = 'mismatch'
+    choice = None
+    if route_choices and observed['result']['available']:
+        result = observed['result']['document']
+        artifacts = result.get('artifacts') if isinstance(result, dict) else None
+        route = artifacts.get('route') if isinstance(artifacts, dict) else None
+        if isinstance(route, str) and route in route_choices:
+            choice = route
+    return source, source['result'].get('bytes', 0), choice
+
+
+def _observe_verification(project, sequence, read, original_source):
+    from ergora.development.verification import validate_readback_source
+
+    status = read.get('status')
+    if status not in ('attempted', 'failed', 'timed_out', 'cancelled', 'validated'):
+        raise ValueError('Invalid verification status in graph receipt')
+    observation = {'sequence': sequence, 'instance': read['instance'], 'status': status,
+                   'original_receipt': {'state': 'not_queried'}}
+    try:
+        locator = validate_readback_source(read.get('source'))
+    except ValueError:
+        return {**observation, 'locator_state': 'mismatch'}
+    if locator != original_source:
+        return {**observation, 'locator_state': 'mismatch'}
+    observation.update(locator_state='matching', locator=original_source)
+    evidence = read.get('evidence')
+    if evidence is None:
+        evidence_state = 'missing' if status == 'validated' else 'not_recorded'
+        return {**observation, 'recorded_evidence': {'state': evidence_state}}
+    if (status != 'validated' or not isinstance(evidence, dict)
+            or evidence.get('status') != 'validated' or evidence.get('project') != project
+            or any(type(evidence.get(name)) is not type(value) or evidence.get(name) != value
+                   for name, value in original_source.items())):
+        return {**observation, 'recorded_evidence': {'state': 'mismatch'}}
+    check_results = evidence.get('check_results_sha256')
+    if not isinstance(check_results, str) or re.fullmatch('[a-f0-9]{64}', check_results) is None:
+        return {**observation, 'recorded_evidence': {'state': 'invalid'}}
+    return {**observation, 'recorded_evidence': {'state': 'recorded', 'check_results_sha256': check_results}}
+
+
+def _observe_route(sequence, record, selector, attempts, choices, graph_status):
+    analyzer, = selector['depends_on']
+    branches = selector['branches']
+    observation = {'sequence': sequence, 'instance': selector['path'], 'eligible': branches,
+                   'source_instance': analyzer}
+    attempt = attempts.get(analyzer)
+    if attempt is None:
+        return {**observation, 'state': 'missing', 'proof': 'analyzer_attempt'}
+    source = {key: attempt[key] for key in ('instance', 'run_id', 'input_digest', 'result_sha256')}
+    if record.get('source') != source or source['result_sha256'] is None or attempt['status'] != 'succeeded':
+        return {**observation, 'state': 'mismatch', 'proof': 'analyzer_attempt'}
+    observation['source'] = source
+    original = attempt['original_run']
+    if original['state'] != 'available':
+        return {**observation, 'state': original['state'], 'proof': 'original_run'}
+    if original['graph_outcome_agreement'] != 'matching':
+        return {**observation, 'state': 'mismatch', 'proof': 'original_run'}
+    for field in ('input', 'prompt', 'result'):
+        if original[field]['state'] != 'available':
+            return {**observation, 'state': original[field]['state'], 'proof': field}
+    choice = choices.get(analyzer)
+    if choice is None:
+        return {**observation, 'state': 'invalid', 'proof': 'result'}
+    selected = None if choice == 'none' else f"{selector['parent']}/{choice}"
+    skipped = [branch for branch in branches if branch != selected]
+    expected = {'instance': selector['path'], 'eligible': branches, 'source': source,
+                'choice': choice, 'selected': selected, 'skipped': skipped}
+    if (record != expected or any(branch in attempts for branch in skipped)
+            or (graph_status == 'succeeded' and selected is not None and selected not in attempts)):
+        return {**observation, 'state': 'mismatch', 'proof': 'route_decision'}
+    return {**observation, 'state': 'corroborated', 'choice': choice, 'selected': selected, 'skipped': skipped}
+
+
+def inspect_graph(state: State, project: str, directory: Path, manifest_digest: str) -> dict:
+    """Reconstruct graph receipt and Agent observations offline without acquiring execution authority."""
+    directory = directory.expanduser().absolute()
+    contracts.validate(manifest_digest, contracts.COMPOSITION_MANIFEST['$defs']['digest'], 'Manifest SHA256')
+    raw = native_sources.artifact(directory, 'run.json', _RECEIPT_LIMIT + 1)
+    try:
+        receipt = bundles.parse_json(raw.decode('utf-8'), 'Graph run receipt', finite=True)
+    except RecursionError as error:
+        raise ValueError('Graph run receipt has excessive nesting') from error
+    if (not isinstance(receipt, dict) or receipt.get('kind') != 'standalone-workflow-run'
+            or type(receipt.get('schema_version')) is not int or receipt['schema_version'] != 1
+            or receipt.get('formal_execution_authorized') is not False):
+        raise ValueError('Select an original standalone graph run receipt')
+    if receipt.get('project') != project or receipt.get('manifest_digest') != manifest_digest:
+        raise ValueError('Graph receipt differs from the selected project or manifest digest')
+    checked = workflows.inspect_manifest(directory / 'manifest', material=True)
+    manifest, composition = checked['manifest'], checked['composition']
+    if checked['digest'] != manifest_digest or receipt.get('root') != manifest['root']:
+        raise ValueError('Saved graph manifest differs from the receipt or explicitly selected digest')
+    try:
+        state.project(project)
+    except StateError as error:
+        raise ValueError('Cannot read the selected project state: ' + str(error)) from error
+    nodes = composition['instances']
+    root = nodes[0]
+    inputs, outputs, status = (receipt.get(name) for name in ('inputs', 'outputs', 'status'))
+    if (not isinstance(inputs, dict) or inputs.keys() != root['inputs'].keys()
+            or status not in ('incomplete', *_TERMINAL_STATUSES)
+            or (status == 'succeeded' and (not isinstance(outputs, dict) or outputs.keys() != root['outputs'].keys()))
+            or (status != 'succeeded' and 'outputs' in receipt)):
+        raise ValueError('Graph receipt status or ports differ from the frozen graph')
+    contracts.validate(receipt.get('project_revision'), {'type': 'integer', 'minimum': 1}, 'Receipt project revision')
+    contracts.validate(receipt.get('max_prompt_bytes'), contracts.COMPOSITION_INPUT['properties']['max_prompt_bytes'],
+                       'Receipt input byte limit')
+    contracts.validate(receipt.get('timeout'), {'type': 'integer', 'minimum': 1, 'maximum': 3600}, 'Receipt workflow timeout')
+    _bounded_json(inputs, receipt['max_prompt_bytes'])
+    if outputs is not None:
+        _bounded_json(outputs, _RESULT_LIMIT)
+    sources = _verify_sources(composition, inputs)
+    agent_nodes = {node['path']: node for node in nodes if node['kind'] == 'agent'}
+    selectors = {node['path']: node for node in nodes if node['kind'] == 'choose-agent'}
+    leaves = _observed_attempts(receipt, 'leaves', agent_nodes, required=True)
+    verification_reads = _observed_attempts(receipt, 'verification_reads', sources)
+    route_records = _observed_attempts(receipt, 'route_decisions', selectors)
+    attempts, choices, run_ids, remaining = {}, {}, set(), _RESULT_LIMIT
+    digest_contract = contracts.COMPOSITION_MANIFEST['$defs']['digest']
+    for sequence, leaf in enumerate(leaves, 1):
+        run_id, input_digest, leaf_status = (leaf.get(name) for name in ('run_id', 'input_digest', 'status'))
+        if not isinstance(run_id, str) or re.fullmatch('[a-f0-9]{32}', run_id) is None or run_id in run_ids:
+            raise ValueError('Invalid or repeated Agent run ID in graph receipt')
+        if leaf_status not in (*_TERMINAL_STATUSES, 'attempted', 'not_dispatched', 'unknown'):
+            raise ValueError('Invalid Agent attempt status in graph receipt')
+        run_ids.add(run_id)
+        contracts.validate(input_digest, digest_contract, 'Attempt input SHA256')
+        if leaf.get('result_sha256') is not None:
+            contracts.validate(leaf['result_sha256'], digest_contract, 'Attempt result SHA256')
+        attempt = {'sequence': sequence, 'instance': leaf['instance'], 'run_id': run_id, 'input_digest': input_digest,
+                   'status': leaf_status, 'result_sha256': leaf.get('result_sha256')}
+        attempt['reserved_input'] = _observe_reserved_input(directory, attempt, manifest, receipt['max_prompt_bytes'])
+        route_choices = agent_nodes[leaf['instance']].get('route_choices', ())
+        attempt['original_run'], result_bytes, choice = _observe_leaf_run(
+            state, project, receipt, manifest, attempt, remaining, route_choices)
+        remaining -= result_bytes
+        attempts[leaf['instance']] = attempt
+        if choice is not None:
+            choices[leaf['instance']] = choice
+    reads = [_observe_verification(project, sequence, read, sources[read['instance']])
+             for sequence, read in enumerate(verification_reads, 1)]
+    decisions = [_observe_route(sequence, record, selectors[record['instance']], attempts, choices, status)
+                 for sequence, record in enumerate(route_records, 1)]
+    recorded_paths = {'root', *attempts, *(item['instance'] for item in reads + decisions)}
+    return {'schema_version': 1, 'kind': 'standalone-workflow-observation', 'project': project,
+            'project_revision': receipt['project_revision'], 'root': receipt['root'], 'manifest_digest': manifest_digest,
+            'graph_receipt': {'directory': str(directory), 'sha256': hashlib.sha256(raw).hexdigest(), 'bytes': len(raw),
+                              'status': status, 'input_ports': list(root['inputs']),
+                              'recorded_output_ports': list(outputs or {})},
+            'ordering': {'agent_attempts': 'graph_receipt_reservation_order', 'verification_reads': 'graph_receipt_read_order',
+                         'route_decisions': 'graph_receipt_decision_order', 'nodes': 'frozen_manifest_order'},
+            'nodes': [{'instance': node['path'], 'kind': node['kind'], 'depends_on': node['depends_on'],
+                       'graph_record': 'recorded' if node['path'] in recorded_paths else 'not_recorded'}
+                      for node in nodes],
+            'agent_attempts': list(attempts.values()), 'verification_reads': reads, 'route_decisions': decisions,
+            'process_start': 'unknown',
+            'stop_and_cleanup': 'unknown', 'formal_execution_authorized': False}

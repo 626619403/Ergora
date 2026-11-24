@@ -24,6 +24,32 @@ V4_TABLES = V3_TABLES | {'candidate_review_links'}
 CURRENT_TABLES = V4_TABLES
 
 
+def test_read_only_state_observes_live_wal_without_writer_access(tmp_path):
+    state = State(tmp_path / 'home #read%')
+    with state.connect() as writer:
+        assert writer.execute('PRAGMA journal_mode=WAL').fetchone()[0] == 'wal'
+        writer.execute('PRAGMA wal_autocheckpoint=0')
+        writer.execute('INSERT INTO projects (id, document) VALUES (?, ?)', ('wal-project', '{"id":"wal-project"}'))
+        writer.commit()
+        reader = State(state.root, read_only=True)
+        assert reader.project('wal-project') == {'id': 'wal-project'}
+        with pytest.raises(sqlite3.OperationalError, match='readonly'):
+            with reader.connect() as db:
+                db.execute('CREATE TABLE invalid_write (test TEXT)')
+
+
+def test_read_only_state_never_migrates_a_legacy_database(old_home):
+    home, document = old_home
+    database = home / 'ergora.sqlite3'
+    original = database.read_bytes()
+    reader = State(home, read_only=True)
+    with pytest.raises(ValueError, match='Unsupported database schema'):
+        reader.project(document['id'])
+    assert database.read_bytes() == original
+    assert not (home / '.schema.lock').exists()
+    assert not (home / 'backups').exists()
+
+
 def _fixed_v1(db):
     # Historical v1 contract, independent of the current migration functions.
     for table in LEGACY_TABLES:

@@ -642,45 +642,46 @@ def inspect_run(state: State, project_id: str, run_id: str, *, max_result_bytes:
         raise ValueError("Select an original composition agent run")
     storage = state.root / "runs"
     observed = {"schema_version": 1, "kind": "composition-run-observation", "run": document,
-                "input": {"available": False}, "prompt": {"available": False},
-                "result": {"available": False}, "formal_execution_authorized": False}
+                "formal_execution_authorized": False}
+    request = document.get("input_request")
     try:
         prepared = workflow_definitions.inspect_input(storage / (run_id + ".input"), material=True)
-        if (prepared["digest"] != document.get("input_digest") or prepared["request"] != document.get("input_request")
+        if (prepared["digest"] != document.get("input_digest")
+                or native_sources.encode(prepared["request"]) != native_sources.encode(request)
                 or prepared["request"]["prompt_sha256"] != document.get("prompt_sha256")):
-            raise ValueError("Saved input differs from the original run input identity")
+            raise native_sources.ArtifactIdentityError("Saved input differs from the original run input identity")
         leaf = next(item for item in prepared['composition']['instances']
                     if item['path'] == prepared['request']['instance'])
         components.validate_agent_minimum(document.get('binding'), leaf.get('invocation_minimum'))
         observed["input"] = {"available": True, **prepared}
     except (OSError, ValueError, RecursionError) as error:
-        observed["input"]["error"] = str(error)
+        observed["input"] = {"available": False, **native_sources.observation_failure(error)}
     try:
-        request = document.get("input_request")
         contracts.validate(request, contracts.COMPOSITION_INPUT, "Original input request")
         raw = native_sources.artifact(storage / (run_id + ".protocol"), "prompt.txt", request["prompt_bytes"])
         digest = hashlib.sha256(raw).hexdigest()
         if (len(raw) != request["prompt_bytes"] or digest != request["prompt_sha256"]
                 or digest != document.get("prompt_sha256")):
-            raise ValueError("Original invocation prompt differs from its recorded identity")
+            raise native_sources.ArtifactIdentityError("Original invocation prompt differs from its recorded identity")
         if observed["input"]["available"] and raw != prepared["prompt"].encode("utf-8"):
-            raise ValueError("Original invocation prompt differs from the frozen input")
+            raise native_sources.ArtifactIdentityError("Original invocation prompt differs from the frozen input")
         observed["prompt"] = {"available": True, "bytes": len(raw), "sha256": digest,
                               "input_compared": observed["input"]["available"]}
     except (OSError, ValueError, RecursionError) as error:
-        observed["prompt"]["error"] = str(error)
+        observed["prompt"] = {"available": False, **native_sources.observation_failure(error)}
     if document.get("result_sha256") is None:
-        observed["result"]["error"] = "No original structured result identity was recorded"
+        observed["result"] = {"available": False, "state": "not_recorded",
+                              "error": "No original structured result identity was recorded"}
     else:
         try:
             raw = native_sources.artifact(storage / run_id, "result.json", max_result_bytes)
             digest = hashlib.sha256(raw).hexdigest()
             if digest != document["result_sha256"]:
-                raise ValueError("Structured result differs from its original run SHA256")
+                raise native_sources.ArtifactIdentityError("Structured result differs from its original run SHA256")
             observed["result"] = {"available": True, "bytes": len(raw), "sha256": digest,
                                   "document": parse_json(raw.decode("utf-8"), "Agent result", finite=True, bounded=True)}
         except (OSError, ValueError, RecursionError) as error:
-            observed["result"]["error"] = str(error)
+            observed["result"] = {"available": False, **native_sources.observation_failure(error)}
     return observed
 
 

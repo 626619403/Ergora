@@ -400,6 +400,142 @@ def test_standalone_graph_charges_parallel_results_to_one_budget(parallel_graph,
     assert max(original_sizes) <= 180 < sum(original_sizes)
 
 
+def test_inspect_graph_joins_original_attempts_after_a_lost_reply(parallel_graph, tmp_path, monkeypatch, capsys):
+    receipt, witnesses, state = parallel_graph(2, 2, 1)
+    directory = tmp_path / 'run'
+    receipt_path = directory / 'run.json'
+    raw = receipt_path.read_bytes()
+    attempts = receipt['leaves']
+    argv = ['--home', str(state.root), 'composition', 'inspect-graph', 'demo', str(directory),
+            '--manifest-digest', receipt['manifest_digest']]
+    witness_bytes = {path.name: path.read_bytes() for path in witnesses.iterdir()}
+
+    def forbidden(*args, **kwargs):
+        pytest.fail('Inspection must not perform an execution or admission operation')
+
+    monkeypatch.setattr(agent_runs, 'run_input', forbidden)
+    monkeypatch.setattr(processes, 'run', forbidden)
+    monkeypatch.setattr(agent_backends.CodexBackend, 'check_invocation', forbidden)
+    assert main([*argv[:-1], 'f' * 64]) == 2
+    assert 'selected project or manifest digest' in capsys.readouterr().err
+    wrong_project = argv.copy()
+    wrong_project[4] = 'other'
+    assert main(wrong_project) == 2
+    assert 'selected project or manifest digest' in capsys.readouterr().err
+    assert main([argv[0], str(tmp_path / 'absent-home'), *argv[2:]]) == 2
+    assert not (tmp_path / 'absent-home').exists()
+    capsys.readouterr()
+
+    # Observe one exact receipt if the coordinator replaces it between stat and open.
+    before_publication = {name: value for name, value in receipt.items() if name != 'outputs'}
+    before_publication.update(status='incomplete', leaves=[])
+    receipt_path.write_text(json.dumps(before_publication), encoding='utf-8')
+    staged_receipt = receipt_path.with_name('staged.json')
+    staged_receipt.write_bytes(raw)
+    open_path = Path.open
+
+    def open_after_publication(path, *args, **kwargs):
+        if path == receipt_path and staged_receipt.exists():
+            staged_receipt.replace(receipt_path)
+        return open_path(path, *args, **kwargs)
+
+    with monkeypatch.context() as replacing:
+        replacing.setattr(Path, 'open', open_after_publication)
+        assert main(argv) == 0
+    observed = json.loads(capsys.readouterr().out)
+    assert observed['graph_receipt']['sha256'] == hashlib.sha256(raw).hexdigest()
+    assert observed['graph_receipt']['status'] == 'succeeded'
+    assert observed['graph_receipt']['recorded_output_ports'] == ['joined']
+    assert observed['process_start'] == observed['stop_and_cleanup'] == 'unknown'
+    assert observed['formal_execution_authorized'] is False
+    assert [item['run_id'] for item in observed['agent_attempts']] == [item['run_id'] for item in attempts]
+    assert [item['sequence'] for item in observed['agent_attempts']] == [1, 2, 3, 4]
+    assert observed['ordering'] == {'nodes': 'frozen_manifest_order',
+                                    'agent_attempts': 'graph_receipt_reservation_order',
+                                    'verification_reads': 'graph_receipt_read_order',
+                                    'route_decisions': 'graph_receipt_decision_order'}
+    for attempt, item in zip(attempts, observed['agent_attempts'], strict=True):
+        assert item['reserved_input']['state'] == 'available'
+        assert item['reserved_input']['digest'] == attempt['input_digest']
+        original = item['original_run']
+        assert original['state'] == 'available'
+        assert original['input']['digest'] == attempt['input_digest']
+        assert original['result']['sha256'] == attempt['result_sha256']
+        assert original['graph_outcome_agreement'] == 'matching'
+        assert original['record_created'] and original['record_finished']
+        assert 'document' not in original['result']
+
+    for key, label in (('project_revision', 'Receipt project revision'), ('max_prompt_bytes', 'Receipt input byte limit'),
+                       ('timeout', 'Receipt workflow timeout')):
+        receipt_path.write_text(json.dumps({**receipt, key: float(receipt[key])}), encoding='utf-8')
+        assert main(argv) == 2
+        assert label in capsys.readouterr().err
+    receipt_path.write_bytes(raw)
+
+    # Retain the original attempt but model a crash before the coordinator saved its outcome.
+    receipt['status'] = 'incomplete'
+    receipt.pop('outputs')
+    attempts[0].pop('result_sha256')
+    attempts[0]['status'] = 'attempted'
+    receipt_path.write_text(json.dumps(receipt), encoding='utf-8')
+    shutil.rmtree(directory / 'input-2')
+    files = state.root / 'runs'
+    (files / attempts[1]['run_id'] / 'result.json').write_text('{}', encoding='utf-8')
+    (files / attempts[2]['run_id'] / 'result.json').unlink()
+    with state.connect() as db:
+        db.execute('DELETE FROM agent_runs WHERE id=?', (attempts[3]['run_id'],))
+    before = [path.read_bytes() for path in (receipt_path, state.root / 'ergora.sqlite3')]
+
+    assert main(argv) == 0
+    observed = json.loads(capsys.readouterr().out)
+    recovered, changed, missing_result, missing_run = observed['agent_attempts']
+    assert observed['graph_receipt']['status'] == 'incomplete'
+    assert recovered['status'] == 'attempted'
+    assert recovered['original_run']['status'] == 'succeeded'
+    assert recovered['original_run']['graph_outcome_agreement'] == 'not_recorded'
+    assert changed['reserved_input']['state'] == 'missing'
+    assert changed['original_run']['result']['state'] == 'mismatch'
+    assert missing_result['original_run']['result']['state'] == 'missing'
+    assert missing_run['original_run']['state'] == 'missing'
+    assert {path.name: path.read_bytes() for path in witnesses.iterdir()} == witness_bytes
+    assert before == [path.read_bytes() for path in (receipt_path, state.root / 'ergora.sqlite3')]
+
+    # A run with a different frozen input identity cannot corroborate the selected leaf.
+    first_id = attempts[0]['run_id']
+    with state.connect() as db:
+        row = json.loads(db.execute('SELECT document FROM agent_runs WHERE id=?', (first_id,)).fetchone()[0])
+    request = row['input_request']
+    limits = request['grant']['limits']
+    changed_grant = {**request['grant'], 'limits': {**limits, 'concurrency': float(limits['concurrency'])}}
+    changed_rows = [
+        {**row, 'input_digest': 'a' * 64},
+        {**row, 'project_revision': float(row['project_revision'])},
+        {**row, 'input_request': {**request, 'max_prompt_bytes': float(request['max_prompt_bytes'])}},
+        {**row, 'input_request': {**request, 'grant': changed_grant}},
+    ]
+    for changed_row in changed_rows:
+        with state.connect() as db:
+            db.execute('UPDATE agent_runs SET document=? WHERE id=?', (json.dumps(changed_row), first_id))
+        assert main(argv) == 0
+        observed = json.loads(capsys.readouterr().out)
+        assert observed['agent_attempts'][0]['original_run']['state'] == 'mismatch'
+
+    # Independently read the original saved input when only its prompt byte-count type has changed.
+    altered_request = {**request, 'prompt_bytes': float(request['prompt_bytes'])}
+    with state.connect() as db:
+        db.execute('UPDATE agent_runs SET document=? WHERE id=?',
+                   (json.dumps({**row, 'input_request': altered_request}), first_id))
+    assert main(argv) == 0
+    observed = json.loads(capsys.readouterr().out)
+    original = observed['agent_attempts'][0]['original_run']
+    assert original['input']['state'] == 'mismatch'
+    assert original['prompt']['state'] == 'invalid'
+
+    (directory / 'manifest' / 'surprise.txt').write_text('unexpected', encoding='utf-8')
+    assert main(argv) == 2
+    assert 'undeclared files' in capsys.readouterr().err
+
+
 def test_standalone_graph_rejects_writable_leaf_before_reserving_any_effect(prepared, tmp_path):
     from ergora.agents.graphs import run_graph
 
@@ -550,9 +686,21 @@ result.write_text(json.dumps(output), encoding='utf-8')
     original = agent_runs.inspect_run(state, 'demo', before['run_id'])
     assert original['input']['digest'] == before['input_digest']
     assert {job['id'] for job in agent_runs.runs(state, 'demo')} == {leaf['run_id'] for leaf in receipt['leaves']}
+    observe_argv = ['--home', str(state.root), 'composition', 'inspect-graph', 'demo', str(directory),
+                    '--manifest-digest', pinned['digest']]
+    call_bytes = calls.read_bytes()
+
+    def observe():
+        assert main(observe_argv) == 0
+        assert calls.read_bytes() == call_bytes
+        return json.loads(capsys.readouterr().out)
+
+    observation = observe()
+    node_records = {node['instance']: node['graph_record'] for node in observation['nodes']}
     if failure:
         assert receipt['status'] == 'failed' and 'route_decisions' not in receipt and 'outputs' not in receipt
         assert not followups and len(executed) == 1
+        assert observation['route_decisions'] == [] and node_records[selector] == 'not_recorded'
         assert not original['result']['available']
         if case == 'changed-result':
             assert 'SHA256' in original['result']['error']
@@ -566,8 +714,33 @@ result.write_text(json.dumps(output), encoding='utf-8')
                         'skipped': [path for path in eligible if path != selected],
                         'source': {'instance': analyzer, 'run_id': before['run_id'], 'input_digest': before['input_digest'],
                                    'result_sha256': original['result']['sha256']}}
+    assert observation['route_decisions'] == [
+        {**decision, 'sequence': 1, 'source_instance': analyzer, 'state': 'corroborated'}]
+    assert node_records[selector] == 'recorded'
+    assert all(node_records[path] == 'not_recorded' for path in decision['skipped'])
+    if case == 'structure':
+        receipt_path = directory / 'run.json'
+        saved = receipt_path.read_bytes()
+        decision.update(choice='unverified-content', selected='unverified-target')
+        receipt_path.write_text(json.dumps(receipt), encoding='utf-8')
+        changed, = observe()['route_decisions']
+        assert changed['state'] == 'mismatch' and changed['proof'] == 'route_decision'
+        assert not {'choice', 'selected', 'skipped'}.intersection(changed)
+        receipt_path.write_bytes(saved)
+        decision.update(choice=choice, selected=selected)
+        result_path = Path(original['run']['result'])
+        original_bytes = result_path.read_bytes()
+        result_path.write_text('{}', encoding='utf-8')
+        changed, = observe()['route_decisions']
+        assert changed['state'] == 'mismatch' and changed['proof'] == 'result'
+        assert not {'choice', 'selected', 'skipped'}.intersection(changed)
+        result_path.unlink()
+        missing, = observe()['route_decisions']
+        assert missing['state'] == 'missing' and missing['proof'] == 'result'
+        result_path.write_bytes(original_bytes)
     if case == 'stopped':
         assert receipt['status'] == 'cancelled' and not followups and len(executed) == 1 and 'outputs' not in receipt
+        assert node_records[selected] == 'not_recorded'
         return
     assert receipt['status'] == 'succeeded' and receipt['outputs']['selection'] == {'choice': choice}
     joined = receipt['outputs']['followups']
@@ -737,6 +910,35 @@ Path(sys.argv[1]).write_text(json.dumps({'summary':'Review', 'artifacts':{'respo
     else:
         assert status == 1 and not received.exists() and receipt['leaves'] == []
         assert record['status'] == receipt['status'] == ('cancelled' if case == 'cancelled' else 'failed')
+    # Reconstruct the graph-recorded verification reference without opening its original native reader.
+    observation_argv = ['--home', str(state.root), 'composition', 'inspect-graph', 'demo', str(directory),
+                        '--manifest-digest', selected['digest']]
+    assert main(observation_argv) == 0
+    observation = json.loads(capsys.readouterr().out)
+    verification, = observation['verification_reads']
+    assert verification['locator'] == source
+    assert verification['status'] == record['status']
+    assert verification['original_receipt'] == {'state': 'not_queried'}
+    assert verification['recorded_evidence']['state'] == ('recorded' if case == 'validated' else 'not_recorded')
+    nodes = {node['instance']: node['graph_record'] for node in observation['nodes']}
+    assert nodes['root/review'] == ('recorded' if case == 'validated' else 'not_recorded')
+    if case == 'validated':
+        for field, value in (('receipt_sha256', 'd' * 64), ('event_id', float(source['event_id']))):
+            original_value = record['evidence'][field]
+            record['evidence'][field] = value
+            (directory / 'run.json').write_text(json.dumps(receipt), encoding='utf-8')
+            assert main(observation_argv) == 0
+            observation = json.loads(capsys.readouterr().out)
+            assert observation['verification_reads'][0]['recorded_evidence']['state'] == 'mismatch'
+            record['evidence'][field] = original_value
+
+        record['source']['event_id'] = float(source['event_id'])
+        (directory / 'run.json').write_text(json.dumps(receipt), encoding='utf-8')
+        assert main(observation_argv) == 0
+        observation = json.loads(capsys.readouterr().out)
+        assert observation['verification_reads'][0]['locator_state'] == 'mismatch'
+        assert 'locator' not in observation['verification_reads'][0]
+    assert reads == [source]
 
 
 def test_standalone_graph_rechecks_selected_manifest_at_each_leaf(prepared, tmp_path, monkeypatch):

@@ -25,6 +25,18 @@ The graph coordinator records each original Agent attempt and run ID in `run.jso
 
 Read `run.json` in the selected directory for the original manifest, inputs, attempted Agent run IDs and named outputs. Use `composition inspect-run` to read each original leaf, including completed leaves from a failed or interrupted graph. The graph retains up to 8 MiB of complete verified leaf results and caps its final output at 8 MiB. Exceeding either limit fails the graph with the original leaf records available. Execution takes an unused directory and returns a nonzero status when the graph ends without complete success.
 
+### Observe an original graph run
+
+After an interrupted run or a lost reply, use the original control home, project, run directory and manifest digest. The command opens the existing control database read-only. SQLite can create or update WAL coordination sidecars during a shared read. The command issues no writes to project records or the graph receipt and does not migrate the database.
+
+```bash
+ergora --home ROOT composition inspect-graph PROJECT DIRECTORY --manifest-digest SHA256
+```
+
+The reader verifies the frozen manifest and reports its root, the saved `run.json` status and digest, the recorded output port names and Agent attempts in reservation order. Each attempt includes the reserved input identity and separate observations of the original Agent run, input, prompt and result. For example, a saved `attempted` entry can have an observed `succeeded` Agent run while the graph receipt still reads `incomplete`. Use the original Agent run ID for complete result content. [Read an original leaf by ID](leaf-calls.md#read-an-original-composition-run-by-exact-id)
+
+In `route_decisions`, a `corroborated` choice matches the frozen branch list and the original analyzer's verified result. For `verify-evidence`, the report shows the graph-recorded locator and evidence status with the original native receipt marked `not_queried`. Process start, stop and cleanup remain `unknown`. Inspection is for observation only. Repeat the read with the same identifiers when more evidence becomes available.
+
 ### Read original fixed verification evidence
 
 For a Workflow v2 graph with a `verify-evidence` node, run the same command with the registered project. Supply the original fixed-verify locator through the declared root input. Use the original verify job's activity scheduling event ID, candidate SHA and receipt SHA256. This input example assumes the graph declares `source`. [Read original job receipts](../../development/run-and-recover.md#read-original-job-receipts-and-text-evidence)

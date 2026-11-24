@@ -319,6 +319,10 @@ def parser() -> argparse.ArgumentParser:
     graph.add_argument("--max-prompt-bytes", type=int, required=True)
     graph.add_argument("--timeout", type=int, default=300, help="Overall graph deadline in seconds")
     graph.add_argument("--codex-config", type=Path)
+    graph_inspection = operations.add_parser("inspect-graph", help="Observe a standalone graph and original Agent runs offline")
+    graph_inspection.add_argument("project")
+    graph_inspection.add_argument("directory", type=Path)
+    graph_inspection.add_argument("--manifest-digest", required=True)
     inspection = operations.add_parser("inspect-run", help="Read an exact original composition run, complete input and result offline")
     inspection.add_argument("project")
     inspection.add_argument("id")
@@ -1512,6 +1516,9 @@ def main(argv: list[str] | None = None) -> int:
                 finally:
                     for signum, handler in handlers.items():
                         signal.signal(signum, handler)
+            elif args.operation == "inspect-graph":
+                from ergora.agents.graphs import inspect_graph
+                output = inspect_graph(State(args.home, read_only=True), args.project, args.directory, args.manifest_digest)
             elif args.operation == "inspect-run":
                 output = agent_runs.inspect_run(State(args.home), args.project, args.id, max_result_bytes=args.max_result_bytes)
             else:

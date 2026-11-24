@@ -23,6 +23,32 @@ if TYPE_CHECKING:
 PACKET_BYTES = 10_000_000
 
 
+class RunNotFound(ValueError):
+    """No original run is recorded for the selected project and ID."""
+
+
+class ArtifactCapacityError(ValueError):
+    """The complete original artifact exceeds an observation's byte limit."""
+
+
+class ArtifactIdentityError(ValueError):
+    """An original artifact differs from its recorded identity."""
+
+
+def observation_failure(error: Exception) -> dict:
+    if isinstance(error, FileNotFoundError):
+        state = 'missing'
+    elif isinstance(error, ArtifactCapacityError):
+        state = 'over_capacity'
+    elif isinstance(error, ArtifactIdentityError):
+        state = 'mismatch'
+    elif isinstance(error, OSError):
+        state = 'unknown'
+    else:
+        state = 'invalid'
+    return {'state': state, 'error': str(error)}
+
+
 def sync_descriptor(descriptor: int) -> None:
     """Retry one interrupted idempotent sync on the same already-open object."""
     try:
@@ -36,7 +62,7 @@ def record(state: State, project_id: str, run_id: str) -> dict:
     with state.connect() as db:
         row = db.execute("SELECT document FROM agent_runs WHERE project=? AND id=?", (project_id, run_id)).fetchone()
     if row is None:
-        raise ValueError("Unknown agent run in this project")
+        raise RunNotFound("Unknown agent run in this project")
     document = parse_json(row[0], "Agent run record", finite=True, bounded=True)
     if not isinstance(document, dict) or document.get("id") != run_id or document.get("project") != project_id:
         raise ValueError("Saved agent run differs from its selected project or run ID")
@@ -54,15 +80,17 @@ def artifact(directory: Path, name: str, byte_limit: int, *, confirm_durable: bo
     stream = (os.fdopen(os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK), 'rb')
               if confirm_durable else path.open('rb'))
     with stream:
+        before = os.fstat(stream.fileno())
+        if not stat.S_ISREG(before.st_mode):
+            raise ValueError("Run artifact requires an ordinary file: " + name)
         if confirm_durable:
-            before = os.fstat(stream.fileno())
             def stamp(value):
                 return value.st_dev, value.st_ino, value.st_size, value.st_mtime_ns, value.st_ctime_ns
-            if not stat.S_ISREG(before.st_mode) or stamp(before) != stamp(details):
+            if stamp(before) != stamp(details):
                 raise ValueError('Run artifact changed before durable confirmation')
-        raw = stream.read(min(byte_limit + 1, details.st_size + 1))
+        raw = stream.read(min(byte_limit + 1, before.st_size + 1))
         if len(raw) > byte_limit:
-            raise ValueError(f"Complete run artifact exceeds its byte limit: {name} > {byte_limit}")
+            raise ArtifactCapacityError(f"Complete run artifact exceeds its byte limit: {name} > {byte_limit}")
         if confirm_durable:
             sync_descriptor(stream.fileno())
             sync_directory_chain(directory)
