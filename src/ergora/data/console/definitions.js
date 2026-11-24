@@ -3,7 +3,7 @@ import { app } from "./state.js";
 import { compositionGraphView } from "./composition-graph.js";
 import { compositionComparisonView } from "./composition-comparison.js";
 import { submissionForm } from "./submissions.js";
-import { node, button, pre, heading, panel, empty, row, select, field, lines, badge, download, table, modal } from "./ui.js";
+import { node, button, pre, heading, panel, empty, row, select, field, form, lines, badge, download, table, modal } from "./ui.js";
 
 // Library assets belong to the control directory, independently of project selection.
 const library = {
@@ -963,10 +963,33 @@ function editorView(render) {
       action(`放弃 ${label} 原文`, () => { current.texts[format] = current.appliedTexts[format]; touchEditor(current); redraw(render); }, () => Boolean(current.request)),
       button(`下载 ${label} 原文`, () => download(`${current.kind}.${format}`, current.texts[format]))));
   });
+  const saveAsTemplate = current.kind === "workflow" && current.definition.id !== current.base.id;
+  const setTemplateTarget = () => {
+    const error = node("p", { role: "alert" });
+    const content = form([
+      field("目标模板 ID", "id", saveAsTemplate ? current.definition.id : "", "text", { required: true }),
+      field("版本", "version", saveAsTemplate ? current.definition.version : "1.0.0", "text", { required: true }),
+      error,
+    ], "应用另存目标", (values) => {
+      if (currentEditor() !== current || !currentLibrary(current.home) || busyOrPending()) return;
+      const id = values.get("id").trim();
+      if (id === current.base.id) {
+        error.textContent = "另存须填写不同的模板 ID。可在字段编辑中设置原模板的新版本。";
+        return;
+      }
+      const definition = { ...current.definition, id, version: values.get("version").trim() };
+      content.closest("dialog")?.close();
+      return convertCandidate(current, render, { text: textOf(definition) });
+    });
+    modal("设置另存目标", content);
+  };
   const view = panel("编辑定义并派生新版本", "编辑基于此精确原包，原附件与目录全部保留。发布增加不可变版本，不修改原定义或在途任务。",
-    pre({ base: current.base }), notice, storage, error, message,
-    row(action("检查定义候选", () => reviseDefinition(current, false, render), () => busyOrPending() || uncheckedResources()),
-      action("发布新定义版本", () => reviseDefinition(current, true, render),
+    pre({ base: current.base }),
+    saveAsTemplate ? node("p", {}, `另存目标 ${current.definition.id} @ ${current.definition.version}`) : null,
+    notice, storage, error, message,
+    row(current.kind === "workflow" ? action("设置另存目标", setTemplateTarget, busyOrPending) : null,
+      action("检查定义候选", () => reviseDefinition(current, false, render), () => busyOrPending() || uncheckedResources()),
+      action(saveAsTemplate ? "另存为模板" : "发布新定义版本", () => reviseDefinition(current, true, render),
         () => busyOrPending() || uncheckedResources() || current.check?.revision !== current.revision, "primary"),
       button("下载定义编辑缓冲", () => download("definition-editor-buffer.json", textOf(editorBuffer(current))))),
     row(action("撤销定义编辑", () => move(-1), () => busyOrPending() || current.historyIndex === 0),
@@ -996,7 +1019,7 @@ function instancesView(preview, render) {
     pre({ root: preview.root, preview_sha256: preview.preview_sha256, pending: preview.pending }),
     previewGraph.element,
     button("下载 composition-preview.json", () => download("composition-preview.json", JSON.stringify(preview, null, 2) + "\n")),
-    panel("保存完整组合包", "保存当前已发布预览及全部定义和 Skill 附件，供正式任务显式选用。编辑缓冲和比较目标不包含在此包中。",
+    panel("保存完整组合包", "保存当前已发布的图、定义和 Skill 附件，供独立查看或分享。正式任务另行校验执行路径。编辑缓冲和比较目标不包含在此包中。",
       row(
         button(manifest?.loading && manifest.save ? "正在保存…" : "保存当前预览为完整 manifest",
           () => previewManifest(preview, render, true), "secondary", { disabled: manifest?.loading }),
