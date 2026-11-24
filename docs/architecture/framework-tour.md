@@ -4,7 +4,7 @@ English · [Documentation](../README.md) · [Architecture contract](current.md)
 
 Ergora is a control plane for project-bound specialist Agents, workflow composition, formal software delivery, training experiments and reusable improvements. Definitions describe reusable behavior. Each operation freezes its own inputs, checks its execution authority and produces evidence under its original identity.
 
-This tour describes published main `29eddc2e39b912e54cd07ee073d8e857b281bb80` and its `src` tree `9b645dc1577ff9a0c5dba2809304032bdacd0bc0`. Packages, installed applications and local definition libraries have separate identities. The [current plan](../PLAN.md) and its delivery records track CI and installation status.
+This tour describes runtime commit `52c8415beae8b05c0434230f2f18b323c11b5592` and its `src` tree `f2e667b0e250b3a56075f6e3fba33471d96b953c`. Packages, installed applications and local definition libraries have separate identities. The [current plan](../PLAN.md) and its delivery records track CI and installation status.
 
 ## The whole system
 
@@ -18,19 +18,25 @@ flowchart TB
   Freeze -. "selected material" .-> Select
   Config["Project revision, bindings and grants"] --> Select
 
+  Select --> Check["Fixed-check CLI<br/>Separate authorization"]
   Select --> Graph["Standalone graph CLI<br/>Ready Agents and typed operations"]
   Select --> Session["Prepared leaf or native project session<br/>agents.runs"]
   Select --> Dev["Formal task<br/>Explicit native root or nested invocation"]
   Select --> Train["Training experiments and finite controllers<br/>training.application"]
   Select --> Improve["Retrospectives and Skill evaluation<br/>improvement"]
 
+  Check --> CheckJob["Registered executor<br/>Original fixed-check Job"]
   Graph --> GraphProof["Graph receipt and original Agent runs<br/>inspect-graph"]
+  Graph --> Gate["verify-fixed-check<br/>Exact advisory reviewer follows"]
+  CheckJob -. "completed receipt" .-> Gate
+  Gate --> GraphProof
   Session --> Turn["Original leaf result or Codex turn receipts"]
   Dev --> Six["Original Temporal six stages<br/>Exact approval and candidate evidence"]
   Train --> Runner["Original training executor<br/>Runner and experiment archive"]
   Improve --> Eval["Trusted evaluation<br/>Explicit adoption"]
 
   GraphProof -.-> Recover["Read original IDs, receipts and outcomes"]
+  CheckJob -.-> Recover
   Turn -.-> Recover
   Six -.-> Recover
   Runner -.-> Recover
@@ -50,9 +56,14 @@ Development's [workflow extensions](../../src/ergora/development/runtime/workflo
 `ergora composition run-graph` selects a complete manifest by digest, the exact root inputs and a new run directory. Read-only, text-only Agent leaves start when their dependencies are satisfied and project, root and ancestor concurrency limits have room. A ready successor can run while an unrelated branch is still active. The graph coordinator reserves each original attempt before dispatch. Failure, stop or deadline ends new dispatch and drains the original owned calls. Nested workflows pass declared ports, and all-joins collect outputs by exact instance path. [Graph commands and limits](../definitions/workflows/compose.md#run-a-standalone-workflow-graph) · [Graph runner](../../src/ergora/agents/graphs.py)
 
 - `choose-agent` reads the verified analyzer result and records the decision before any follow-up dispatch. Its typed route selects one declared sibling Agent or `none`. The all-join carries the selected branch's original result and explicit skipped states for untaken branches. [Routing contract](../definitions/workflows/contracts.md#conditional-agent-routing)
-- `verify-evidence` takes an exact original fixed-verify locator from a declared root input. The native reader uses the registered reference installation, original Temporal history and Job artifacts to validate the candidate, receipt, complete check results and process records. This synchronous read can delay other dispatch. The formal executor retains check execution. [Verification readback](../definitions/workflows/compose.md#read-original-fixed-verification-evidence)
+- `verify-evidence` takes an exact original fixed-verify locator from a declared root input. The native reader uses the registered reference installation, original Temporal history and Job artifacts to validate the candidate, receipt, complete check results and process records. This synchronous read can delay other dispatch. The formal executor owns execution of that verify Job. [Verification readback](../definitions/workflows/compose.md#read-original-fixed-verification-evidence)
+- `verify-fixed-check` reads a passing, separately authorized fixed-check Job with confirmed cleanup. It matches the original receipt and candidate to the exact review packet, frozen manifest and prepared task. The gate must succeed before the single pinned correctness reviewer receives that task. The graph publishes the proof and advisory review as separate outputs. [Gated advisory review](../definitions/workflows/compose.md#gate-an-advisory-review-on-a-completed-fixed-check)
 
 After an interrupted run, `composition inspect-graph` uses the original directory and manifest digest and opens the existing control database read-only. It reports the saved graph status and attempts alongside the observed original Agent input, prompt and result identities. A corroborated route matches the frozen branches and original analyzer evidence. Saved verification references show native receipts as `not_queried`, and process start and cleanup remain `unknown`. Use `composition inspect-run` on the exact original leaf run ID for complete result content. [Graph observation](../definitions/workflows/compose.md#observe-an-original-graph-run) · [Original leaf readback](../definitions/workflows/leaf-calls.md#read-an-original-composition-run-by-exact-id)
+
+### Separately authorized fixed checks
+
+On Linux/WSL2, `task candidate-check` authorizes one fixed-check Job for an already exported Git candidate using an exact request SHA256 and a stable operation ID. The registered reference executor runs `CandidateCheckJob` under the original clock, owns checker launch and cleanup, and publishes the scoped receipt. `task candidate-check-status` reads that original Job and `task candidate-check-stop` fences it. The checker Job's execution authority stays with its original permit and executor. [Fixed-check CLI and recovery](../development/run-and-recover.md#run-registered-fixed-checks-on-an-exported-candidate) · [Native operation](../../src/ergora/development/runtime/candidate_checks.py) · [Job owner](../../src/ergora/development/runtime/jobs.py)
 
 ### One leaf or a native project session
 
