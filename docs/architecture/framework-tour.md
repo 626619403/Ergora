@@ -4,33 +4,33 @@ English · [Documentation](../README.md) · [Architecture contract](current.md)
 
 Ergora is a control plane for project-bound specialist Agents, workflow composition, formal software delivery, training experiments and reusable improvements. Definitions describe reusable behavior. Each operation freezes its own inputs, checks its execution authority and produces evidence under its original identity.
 
-This tour describes published main `0ad3d7655796b3bb3ac2f3cf23f6c9b0f536729c` and its `src` tree `4765f76fdf2d905ff19b5c10b1825820f4d9a4ab`. Packages, installed applications and local definition libraries have separate identities. The [current plan](../PLAN.md) and its delivery records track CI and installation status.
+This tour describes published main `29eddc2e39b912e54cd07ee073d8e857b281bb80` and its `src` tree `9b645dc1577ff9a0c5dba2809304032bdacd0bc0`. Packages, installed applications and local definition libraries have separate identities. The [current plan](../PLAN.md) and its delivery records track CI and installation status.
 
 ## The whole system
 
-Reusable definitions can be previewed and frozen before an operator selects an execution route. The five branches show who runs each operation and which original records it produces.
+The template library offers exact bundled and saved starter graphs. An operator can preview and freeze a template before choosing its execution route.
 
 ```mermaid
 flowchart TB
   Entry["CLI and web Console"] --> Select["Select an execution route"]
   Entry --> Freeze["Static preview and freeze<br/>Exact manifest and selections"]
-  Assets["Versioned Agent, Workflow and Skill bundles"] --> Freeze
+  Assets["Starter library<br/>Default six-stage or another exact graph"] --> Freeze
   Freeze -. "selected material" .-> Select
   Config["Project revision, bindings and grants"] --> Select
 
-  Select --> Graph["CLI standalone graph or prepared leaf<br/>agents.graphs and agents.runs"]
-  Select --> Session["Native project session<br/>agents.runs"]
-  Select --> Dev["Formal candidate delivery<br/>development.application"]
+  Select --> Graph["Standalone graph CLI<br/>Ready Agents and typed operations"]
+  Select --> Session["Prepared leaf or native project session<br/>agents.runs"]
+  Select --> Dev["Formal task<br/>Explicit native root or nested invocation"]
   Select --> Train["Training experiments and finite controllers<br/>training.application"]
   Select --> Improve["Retrospectives and Skill evaluation<br/>improvement"]
 
-  Graph --> Leaf["Graph and original leaf run records"]
-  Session --> Turn["Local Codex process<br/>Continuation and outcome receipts"]
+  Graph --> GraphProof["Graph receipt and original Agent runs<br/>inspect-graph"]
+  Session --> Turn["Original leaf result or Codex turn receipts"]
   Dev --> Six["Original Temporal six stages<br/>Exact approval and candidate evidence"]
   Train --> Runner["Original training executor<br/>Runner and experiment archive"]
   Improve --> Eval["Trusted evaluation<br/>Explicit adoption"]
 
-  Leaf -.-> Recover["Read original IDs, receipts and outcomes"]
+  GraphProof -.-> Recover["Read original IDs, receipts and outcomes"]
   Turn -.-> Recover
   Six -.-> Recover
   Runner -.-> Recover
@@ -41,13 +41,18 @@ Development's [workflow extensions](../../src/ergora/development/runtime/workflo
 
 ## Definitions and execution routes
 
-`DefinitionLibrary` stores immutable Agent and Workflow versions with their complete ordinary-file bundles. The compiler resolves exact ID/version/digest references, ancestor instructions and Skills, permissions, capacity, dependencies and named ports. Structural ancestry supplies instructions and resources. Dependencies order work. Ports carry declared outputs. Inherited material stays within the original grants. Preview and freeze are static operations. Execution binds the selected manifest or session context to the project revision and admitted inputs. [Workflow compiler](../../src/ergora/definitions/workflows.py) · [Save an edited graph under a different template ID](../definitions/workflows/revisions.md#revise-workflows-on-the-page)
+`DefinitionLibrary` stores immutable Agent and Workflow versions with their complete ordinary-file bundles. The compiler resolves exact ID/version/digest references, ancestor instructions and Skills, permissions, capacity, dependencies and named ports. Structural ancestry supplies instructions and resources. Dependencies order work. Ports carry declared outputs. Inherited material stays within the original grants. Preview and freeze are static operations. Execution binds the selected manifest or session context to the project revision and admitted inputs. [Workflow compiler](../../src/ergora/definitions/workflows.py)
+
+“New template” preselects the bundled six-stage graph. Other bundled graphs and exact saved versions are peer choices. The selected starter opens an editable draft under its own destination ID and version. Formal task admission separately checks the published graph and explicitly selected route. [Choose a starter and save a template](../definitions/workflows/revisions.md#revise-workflows-on-the-page)
 
 ### Standalone graph
 
-`ergora composition run-graph` explicitly selects a complete manifest by digest, the exact root input object and a new run directory. The graph runner checks that every leaf has a read-only grant and a backend that supports text-only mode. It walks compiled dependency levels serially under one deadline. Nested workflows receive and return their declared ports. An all-join collects each declared predecessor's outputs under its exact instance path. This path creates an ordinary graph run without a formal task or candidate approval. [Graph commands and limits](../definitions/workflows/compose.md#run-a-standalone-workflow-graph) · [Graph runner](../../src/ergora/agents/graphs.py)
+`ergora composition run-graph` selects a complete manifest by digest, the exact root inputs and a new run directory. Read-only, text-only Agent leaves start when their dependencies are satisfied and project, root and ancestor concurrency limits have room. A ready successor can run while an unrelated branch is still active. The graph coordinator reserves each original attempt before dispatch. Failure, stop or deadline ends new dispatch and drains the original owned calls. Nested workflows pass declared ports, and all-joins collect outputs by exact instance path. [Graph commands and limits](../definitions/workflows/compose.md#run-a-standalone-workflow-graph) · [Graph runner](../../src/ergora/agents/graphs.py)
 
-`run.json` records the manifest digest, inputs, attempted child run IDs and any completed graph outputs. Each leaf goes through `agents.runs.run_input`. The graph checks that the original saved input, prompt and result are available and that the input and result digests match the attempted leaf. After an interruption, read the existing graph record and use `composition inspect-run` with each original child ID. The directory is reserved for that original run. [Read an original leaf run](../definitions/workflows/leaf-calls.md#read-an-original-composition-run-by-exact-id)
+- `choose-agent` reads the verified analyzer result and records the decision before any follow-up dispatch. Its typed route selects one declared sibling Agent or `none`. The all-join carries the selected branch's original result and explicit skipped states for untaken branches. [Routing contract](../definitions/workflows/contracts.md#conditional-agent-routing)
+- `verify-evidence` takes an exact original fixed-verify locator from a declared root input. The native reader uses the registered reference installation, original Temporal history and Job artifacts to validate the candidate, receipt, complete check results and process records. This synchronous read can delay other dispatch. The formal executor retains check execution. [Verification readback](../definitions/workflows/compose.md#read-original-fixed-verification-evidence)
+
+After an interrupted run, `composition inspect-graph` uses the original directory and manifest digest and opens the existing control database read-only. It reports the saved graph status and attempts alongside the observed original Agent input, prompt and result identities. A corroborated route matches the frozen branches and original analyzer evidence. Saved verification references show native receipts as `not_queried`, and process start and cleanup remain `unknown`. Use `composition inspect-run` on the exact original leaf run ID for complete result content. [Graph observation](../definitions/workflows/compose.md#observe-an-original-graph-run) · [Original leaf readback](../definitions/workflows/leaf-calls.md#read-an-original-composition-run-by-exact-id)
 
 ### One leaf or a native project session
 
@@ -65,7 +70,7 @@ The start receipt's metadata writer runs in a separate thread from the native ch
 
 ## From a development request to a reviewable candidate
 
-Choose the formal task route when delivery requires an approved plan, an exact Git candidate and trusted checks. The operator selects the registered repository, exact definitions, baseline, permissions, budget and optional issue, memory and Skill snapshots. `development.application` previews the selected route, prepares and creates the frozen task, then explicitly submits it. Current preparation uses Definition8/Input12 and `PreparationDAGWorkflow`. One native six-stage instance can be explicitly selected beneath a supported ordinary parent composition. The original Temporal run owns these stages.
+Choose the formal task route when delivery requires an approved plan, an exact Git candidate and trusted checks. In Definition8, `composition.native` can explicitly select one six-stage instance at `root` or under a supported parent that forwards its task and result. `development.application` checks the registered repository, baseline, permissions, budget and optional issue, memory and Skill snapshots, then prepares and creates the frozen task. Explicit submission uses Input12 and `PreparationDAGWorkflow`. The original Temporal run owns these stages. [Formal route selection](../definitions/workflows/compose.md#select-a-composition-on-the-formal-task-page)
 
 1. **`inventory`** inspects the exact starting Git objects. Frozen inventory specialists supply declared results to their coordinator; the canonical inventory records the trusted sources.
 2. **`plan`** uses that inventory and the selected planning DAG. The original workflow computes the plan receipt digest and waits for **the original owner's approval of that exact request and plan**. `development.application.approve` delivers this decision through the native approval owner. A proposed plan alone grants no work execution.
@@ -84,7 +89,7 @@ PR/MR review also works without creating a formal development task. `development
 
 `training.search` freezes a finite candidate package. `training.cycles` authorizes a bounded controller; `training.runtime.worker` executes its supported protocol using the original submission, budget and stop owners. Current consent distinguishes full-accepted execution from bounded screen/profile/no-effect-skip. `training.rounds` links original observations; its index neither executes candidates nor advances the baseline. Resource grants, specialist proposals, experiment execution and evidence approval stay separate. A template's GPU topology or optimization suggestion is not a GPU measurement.
 
-**Improvement, memory and RSI.** `improvement.retrospectives` turns source-bound handoff material into checked Skill, memory or Workflow candidates. `memory` owns revisions, validity, deletion/restore and optional ReMe mirroring. `evaluation` freezes trusted evaluator files and train/validation/holdout cases, then binds results to exact Skill content. Optional GEPA search in `optimization` proposes Skill text and evaluates visible cases under call/time/reported-cost bounds; failed or unknown cost coverage remains explicit. `skill_adoption.adopt` compares full-suite runs and explicitly moves a revision-checked head; rollback and later task-context freezing are separate operations. This RSI path improves reusable instructions and workflows, rather than training model weights. Project-document correction suggestions have their own exact-preview consent/apply owner. Research scheduling and native kernel campaigns retain separate domain lifecycles and capability checks.
+**Improvement, memory and RSI.** `improvement.retrospectives` turns source-bound handoff material into checked Skill, memory or Workflow candidates. `memory` owns revisions, validity, deletion/restore and optional ReMe mirroring. `evaluation` freezes trusted evaluator files and train/validation/holdout cases, then binds results to exact Skill content. Optional GEPA search in `optimization` starts from the registered Skill's exact seed bytes, proposes revisions and evaluates visible cases under call, time and reported-cost bounds. Ambiguous proposer cost ends the search with incomplete cost coverage. `skill_adoption.adopt` compares full-suite runs and explicitly moves a revision-checked head. Rollback and later task-context freezing have their own operations. Project-document correction suggestions have their own exact-preview consent/apply owner. Research scheduling and native kernel campaigns retain separate domain lifecycles and capability checks. [Evaluation and adoption](../improvement/skills-and-evaluation.md)
 
 ## Where each responsibility lives
 
@@ -93,7 +98,7 @@ PR/MR review also works without creating a formal development task. `development
 |Transport and pages|[cli.main](../../src/ergora/interfaces/cli.py), [web.create_app](../../src/ergora/interfaces/web.py), [console assets](../../src/ergora/data/console). Parse requests and render domain results; pages own no scheduler.|
 |Configuration|[catalog](../../src/ergora/configuration/catalog.py), [bindings](../../src/ergora/configuration/bindings.py), [projects](../../src/ergora/configuration/projects.py), [registrations](../../src/ergora/configuration/registrations.py). Effective choices, project revisions and one-way native publication.|
 |Reusable assets|[agents](../../src/ergora/definitions/agents.py), [workflows](../../src/ergora/definitions/workflows.py), [bundles](../../src/ergora/definitions/bundles.py), [skills](../../src/ergora/definitions/skills.py). Admission, compilation, immutable content and active Skill heads.|
-|Graph and Agent calls|[graphs](../../src/ergora/agents/graphs.py), [runs](../../src/ergora/agents/runs.py), [native record readers](../../src/ergora/agents/native_sources.py), [invocation](../../src/ergora/agents/invocation.py), [backends](../../src/ergora/agents/backends.py), [MCP](../../src/ergora/agents/mcp.py). Standalone dispatch, leaf and session records, backend selection, native processes and fixed resources.|
+|Graph and Agent calls|[graphs](../../src/ergora/agents/graphs.py), [runs](../../src/ergora/agents/runs.py), [native record readers](../../src/ergora/agents/native_sources.py), [invocation](../../src/ergora/agents/invocation.py), [backends](../../src/ergora/agents/backends.py), [MCP](../../src/ergora/agents/mcp.py). Standalone scheduling, route decisions and inspection, original leaf and session records, backend selection and fixed resources.|
 |Development and review|[application](../../src/ergora/development/application.py), [native](../../src/ergora/development/native.py), [runtime](../../src/ergora/development/runtime), [review](../../src/ergora/development/review), [verification](../../src/ergora/development/verification.py). Exact task/candidate decisions and trusted evidence.|
 |External sources|[issue backends](../../src/ergora/issues/backends.py), [snapshots](../../src/ergora/issues/snapshots.py), [writebacks](../../src/ergora/issues/writebacks.py). Platform identity, frozen context and attempted external effects.|
 |Training|[application](../../src/ergora/training/application.py), [execution protocol](../../src/ergora/training/execution_protocol.py), [runtime](../../src/ergora/training/runtime), [cycles](../../src/ergora/training/cycles.py), [rounds](../../src/ergora/training/rounds.py). Original experiments, finite controllers and observation links.|
@@ -113,7 +118,7 @@ General Repeat, arbitrary mixed-stage graphs, multiple native six-stage instance
 
 1. Start at `interfaces.cli.main` or `interfaces.web.create_app`; follow one domain call.
 2. Read `configuration.catalog`, `bindings` and `registrations` for effective authority and publication.
-3. Follow `definitions.workflows.preview` into `_Compilation` and `DefinitionLibrary` for frozen material, then `agents.graphs.run_graph` for standalone execution and `agents.runs` for original leaf or session receipts.
+3. Follow `definitions.workflows.preview` into `_Compilation` and `DefinitionLibrary`, then `agents.graphs.run_graph` and `inspect_graph` for standalone execution and evidence readback.
 4. Trace `development.application` → `development.native` → `PreparationDAGWorkflow` → bundled `DevelopmentWorkflow.run`.
 5. Read `development.runtime.executor.Executor`, `jobs` and `verification`, then `agents.invocation.invoke` and `AgentBackend`.
 6. Compare `training.application.execute`, `runtime.execution.Execution` and `execution_protocol`; follow the native runner and controller separately.
