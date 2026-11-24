@@ -23,7 +23,7 @@ The command schedules read-only, text-only Agent leaves when their declared depe
 
 The graph coordinator records each original Agent attempt and run ID in `run.json` before launch, then checks the current stop, completed calls and result capacity again. An attempt stopped before the Agent runner starts is recorded as `not_dispatched`. One deadline covers the whole graph. On failure, cancellation or timeout, the coordinator stops dispatch and waits for the original process owners to stop and collect active calls. Ctrl+C requests cancellation through those owners. On Linux/WSL2, SIGTERM uses the same path.
 
-Read `run.json` in the selected directory for the original manifest, inputs, attempted Agent run IDs and named outputs. Use `composition inspect-run` to read each original leaf, including completed leaves from a failed or interrupted graph. The graph retains up to 8 MiB of complete verified leaf results and caps its final output at 8 MiB. Exceeding either limit fails the graph with the original leaf records available. Execution takes an unused directory and returns a nonzero status when the graph ends without complete success.
+Read `run.json` in the selected directory for the original manifest, inputs, attempted Agent run IDs and named outputs. Use `composition inspect-run` to read each original leaf, including completed leaves from a failed or interrupted graph. The graph retains up to 8 MiB of complete verified leaf results and caps its final output at 8 MiB. Exceeding either limit fails the graph with the original leaf records available. `run-graph` takes an unused directory and returns a nonzero status when the graph ends without complete success.
 
 ### Observe an original graph run
 
@@ -36,6 +36,26 @@ ergora --home ROOT composition inspect-graph PROJECT DIRECTORY --manifest-digest
 The reader verifies the frozen manifest and reports its root, the saved `run.json` status and digest, the recorded output port names and Agent attempts in reservation order. Each attempt includes the reserved input identity and separate observations of the original Agent run, input, prompt and result. For example, a saved `attempted` entry can have an observed `succeeded` Agent run while the graph receipt still reads `incomplete`. Use the original Agent run ID for complete result content. [Read an original leaf by ID](leaf-calls.md#read-an-original-composition-run-by-exact-id)
 
 In `route_decisions`, a `corroborated` choice matches the frozen branch list and the original analyzer's verified result. For `verify-evidence`, the report shows the graph-recorded locator and evidence status with the original native receipt marked `not_queried`. Process start, stop and cleanup remain `unknown`. Inspection is for observation only. Repeat the read with the same identifiers when more evidence becomes available.
+
+### Resume an interrupted graph
+
+On Linux/WSL2, select `--recoverable` at the first launch. This mode supports read-only, text-only Agent leaves, nested Workflows and all-joins. Use the manifest's backend bindings and omit `--codex-config`. The first launch saves the original graph inputs, manifest and same-boot budget, and holds a coordinator lock.
+
+```bash
+ergora composition run-graph PROJECT ./complete-manifest --manifest-digest MANIFEST_DIGEST \
+  --inputs ./graph-inputs.json --directory ./original-graph-run --max-prompt-bytes 150000 \
+  --timeout 300 --recoverable
+```
+
+If the coordinator is interrupted and leaves the run `incomplete`, inspect the original directory first. Continue with the same control home, project, directory and manifest digest. [Graph readback](#observe-an-original-graph-run)
+
+```bash
+ergora composition resume-graph PROJECT ./original-graph-run --manifest-digest MANIFEST_DIGEST
+```
+
+Resumption acquires the original coordinator lock and verifies the control home before opening State for writes. It checks the saved project revision, manifest, inputs, remaining budget and original leaf evidence, and corroborates each reservation with its durable pre-send record. It reconstructs the declared outputs of verified successful leaves from their original attempts and Agent run IDs. Only previously unreserved leaves can start. The original deadline and result limits still apply.
+
+The command refuses an active coordinator, a terminal or explicitly stopped graph, an expired or invalid original clock, or any reserved leaf with unresolved or inconsistent evidence. Keep the original directory and IDs for readback.
 
 ### Read original fixed verification evidence
 

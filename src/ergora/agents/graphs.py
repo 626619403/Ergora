@@ -2,6 +2,7 @@
 
 from collections import Counter
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
+from contextlib import ExitStack
 import hashlib
 import json
 import os
@@ -18,14 +19,16 @@ from ergora.agents import backends, invocation, native_sources, runs
 from ergora.configuration import validation as contracts
 from ergora.definitions import agents, bundles, workflows
 from ergora.development import dags
-from ergora.storage.assets import publish_directory
-from ergora.storage.state import State
+from ergora.runtime import budget_clock
+from ergora.storage.assets import is_link, publish_directory
+from ergora.storage.state import State, file_lock, resolve_home
 
 
 _RESULT_LIMIT = 8_388_608
 _RECEIPT_LIMIT = 10_000_000
 _TERMINAL_STATUSES = ('succeeded', 'failed', 'cancelled', 'timed_out')
 _VERIFICATION_NODES = ('verify-evidence', 'verify-fixed-check')
+_RECOVERY_FIELDS = ('project', 'project_revision', 'root', 'manifest_digest', 'inputs', 'timeout', 'max_prompt_bytes')
 
 
 def _verify_sources(composition, inputs):
@@ -74,9 +77,34 @@ def _bounded_json(value, limit: int) -> bytes:
     return bytes(encoded)
 
 
+def _graph_authority_sha(receipt):
+    return hashlib.sha256(_bounded_json([receipt[name] for name in _RECOVERY_FIELDS], _RECEIPT_LIMIT)).hexdigest()
+
+
+def _write_recovery_record(directory, name, record):
+    with (directory / name).open('xb') as stream:
+        stream.write(native_sources.encode(record) + b'\n')
+        stream.flush()
+        native_sources.sync_descriptor(stream.fileno())
+    native_sources.sync_directory_chain(directory)
+
+
+def _enter_owner(stack, path):
+    try:
+        return stack.enter_context(file_lock(path, blocking=False))
+    except BlockingIOError as error:
+        raise ValueError('The original graph coordinator is still active') from error
+
+
+def _owner_identity(stat_result):
+    return [stat_result.st_dev, stat_result.st_ino]
+
+
 class _GraphRun:
-    def __init__(self, state, project, composition, directory, receipt, deadline, codex_config, stop_requested, fixed_review):
+    def __init__(self, state, project, composition, directory, receipt, deadline, codex_config, stop_requested, fixed_review,
+                 *, recovery=None):
         self.state, self.project = state, project
+        self.composition = composition
         self.nodes = {item['path']: item for item in composition['instances']}
         self.directory, self.receipt, self.deadline = directory, receipt, deadline
         self.codex_config = codex_config
@@ -87,8 +115,12 @@ class _GraphRun:
         self.active_slots = Counter()
         self.completed = {}
         self.fixed_review = fixed_review
+        self.recovery = recovery
+        self.result_limit = recovery['result_limit'] if recovery is not None else _RESULT_LIMIT
+        self.unreserved = None
 
     def save(self):
+        self.check_owner()
         path = self.directory / 'run.json'
         descriptor, name = tempfile.mkstemp(dir=self.directory, prefix='.run-')
         try:
@@ -97,35 +129,85 @@ class _GraphRun:
                 stream.flush()
                 os.fsync(stream.fileno())
             os.replace(name, path)
+            if self.recovery is not None:
+                native_sources.sync_directory_chain(self.directory)
         finally:
             Path(name).unlink(missing_ok=True)
 
-    def should_stop(self):
+    def stop_signalled(self):
         return self.stop.is_set() or (self.stop_requested is not None and self.stop_requested())
 
+    def recovery_clock_expired(self):
+        return self.recovery is not None and budget_clock.remaining(self.recovery['clock'], self.receipt['timeout']) <= 0
+
+    def should_stop(self):
+        return self.stop_signalled() or self.recovery_clock_expired()
+
     def check_active(self):
-        if self.should_stop():
+        self.check_owner()
+        if self.stop_signalled():
+            self.fence_stop()
             raise KeyboardInterrupt
-        if time.monotonic() >= self.deadline:
+        if time.monotonic() >= self.deadline or self.recovery_clock_expired():
             raise TimeoutError('The original workflow deadline expired')
+
+    def fence_stop(self):
+        if self.recovery is not None and not (self.directory / 'stop.json').exists():
+            self.check_owner()
+            _write_recovery_record(self.directory, 'stop.json', {'status': 'cancelled'})
+
+    def check_owner(self):
+        if self.recovery is not None:
+            lock = self.directory / '.owner.lock'
+            if _owner_identity(lock.stat(follow_symlinks=False)) != self.recovery['owner_identity']:
+                raise ValueError('The original graph owner lock was replaced')
+
+    def recovery_run_id(self, path):
+        return native_sources.sha([self.receipt['recovery_sha256'], path])[:32]
+
+    def reservation_witness(self, sequence, attempt):
+        return {'schema_version': 1, 'sequence': sequence, 'recovery_sha256': self.receipt['recovery_sha256'],
+                **{key: attempt.get(key) for key in ('instance', 'run_id', 'input_digest')}}
+
+    def check_reservations(self, names, leaves):
+        witnesses = {name for name in names if name.startswith('reservation-')}
+        expected = {f'reservation-{index}.json' for index in range(1, len(leaves) + 1)}
+        if witnesses != expected:
+            raise ValueError('Saved graph reservation witnesses differ from graph progress')
+        for sequence, attempt in enumerate(leaves, 1):
+            self.check_active()
+            raw = native_sources.encode(self.reservation_witness(sequence, attempt)) + b'\n'
+            detail = f'Saved graph reservation witness differs from its original attempt: {attempt["instance"]}'
+            try:
+                observed = native_sources.artifact(self.directory, f'reservation-{sequence}.json', len(raw))
+            except (OSError, ValueError) as error:
+                raise ValueError(detail) from error
+            if observed != raw:
+                raise ValueError(detail)
 
     def check_leaf_admission(self):
         self.check_active()
         settled = self.collect_finished()
         self.check_active()
-        if self.result_bytes >= _RESULT_LIMIT:
+        if self.result_bytes >= self.result_limit:
             raise ValueError('Workflow has no remaining result bytes')
         return settled
 
     def dispatch_leaf(self, executor, node, task):
-        if self.result_bytes >= _RESULT_LIMIT:
+        if self.result_bytes >= self.result_limit:
             raise ValueError('Workflow has no remaining result bytes')
         path = node['path']
         limit = self.receipt['max_prompt_bytes']
         source = self.directory / f"input-{len(self.receipt['leaves']) + 1}"
-        prepared = workflows.prepare_input_from_manifest(self.directory/'manifest', path,
-            _bounded_json(task, limit), source, limit, input_origin='workflow-port',
-            manifest_digest=self.receipt['manifest_digest'])
+        if self.unreserved is None:
+            prepared = workflows.prepare_input_from_manifest(self.directory/'manifest', path,
+                _bounded_json(task, limit), source, limit, input_origin='workflow-port',
+                manifest_digest=self.receipt['manifest_digest'])
+        else:
+            prepared = self.recovery_input(source, path, task)
+            if (path, prepared['digest']) != self.unreserved:
+                raise ValueError('Unreserved graph input changed before its original leaf was dispatched')
+            self.unreserved = None
         options = {}
         if self.fixed_review is not None:
             gate, = self.nodes[node['parent']]['depends_on']
@@ -135,9 +217,15 @@ class _GraphRun:
             schema['properties']['artifacts']['properties']['route'] = {'type': 'string', 'enum': node['route_choices']}
             options['result_schema'] = schema
         self.check_leaf_admission()
-        attempt = {'instance': path, 'run_id': uuid.uuid4().hex, 'input_digest': prepared['digest'], 'status': 'attempted'}
+        run_id = uuid.uuid4().hex if self.recovery is None else self.recovery_run_id(path)
+        attempt = {'instance': path, 'run_id': run_id, 'input_digest': prepared['digest'], 'status': 'attempted'}
         self.receipt['leaves'].append(attempt)
         try:
+            if self.recovery is not None:
+                # Keep immutable pre-send identity even if progress is restored from an older snapshot.
+                sequence = len(self.receipt['leaves'])
+                _write_recovery_record(self.directory, f'reservation-{sequence}.json',
+                                       self.reservation_witness(sequence, attempt))
             self.save()
             # Final admission observes results and stops that arrived during durable publication.
             settled = self.check_leaf_admission()
@@ -185,7 +273,7 @@ class _GraphRun:
             if job['status'] == 'cancelled':
                 raise KeyboardInterrupt
             raise ValueError(f'Workflow leaf {path} reported {job["status"]}')
-        remaining = _RESULT_LIMIT - self.result_bytes
+        remaining = self.result_limit - self.result_bytes
         if remaining <= 0:
             raise ValueError('Workflow has no remaining result bytes')
         observed = runs.inspect_run(self.state, self.project['id'], attempt['run_id'], max_result_bytes=remaining)
@@ -214,7 +302,7 @@ class _GraphRun:
                 evidence = read_fixed_check_proof(self.state, self.project['id'], source, self.fixed_review, **options)
             else:
                 evidence = read_candidate_verification(self.state, self.project['id'], source, **options)
-            self.result_bytes += len(_bounded_json(evidence, _RESULT_LIMIT - self.result_bytes))
+            self.result_bytes += len(_bounded_json(evidence, self.result_limit - self.result_bytes))
             self.check_active()
         except TimeoutError:
             record['status'] = 'timed_out'
@@ -255,11 +343,108 @@ class _GraphRun:
         return (node['parent'] in opened and all(path in self.completed for path in node['depends_on'])
                 and all(self.active_slots[scope['path']] < scope['limit'] for scope in node.get('concurrency_scopes', ())))
 
-    def workflow(self, inputs, project_limit):
-        pending = {path: node for path, node in self.nodes.items() if path != 'root'}
+    def workflow_state(self, inputs):
+        pending = {path: node for path, node in self.nodes.items() if path != 'root' and path not in self.completed}
         opened = {'root': inputs}
         children = {path: [child for level in node['levels'] for child in level]
                     for path, node in self.nodes.items() if node['kind'] == 'workflow'}
+        return pending, opened, children
+
+    def finalize_workflows(self, opened, children):
+        for path in reversed(tuple(opened)):
+            if all(child in self.completed for child in children[path]):
+                self.completed[path] = self.ports(path, opened.pop(path), self.nodes[path]['outputs'])
+
+    def open_structure(self, node, opened):
+        path, parent = node['path'], node['parent']
+        if node['kind'] == 'join':
+            self.completed[path] = {'result': {dep: self.completed[dep] for dep in node['depends_on']}}
+        else:
+            opened[path] = self.ports(parent, opened[parent], node['inputs'])
+
+    def recovery_input(self, source, path, task):
+        prepared = workflows.inspect_input(source)
+        limit = self.receipt['max_prompt_bytes']
+        expected, _ = workflows.compile_input(self.composition, path, _bounded_json(task, limit), limit,
+                                              input_origin='workflow-port')
+        if native_sources.encode(prepared['request']) != native_sources.encode(expected):
+            raise ValueError(f'Saved graph input differs from its reconstructed task or manifest: {path}')
+        return prepared
+
+    def recover_leaf(self, node, attempt, prepared):
+        path, run_id = node['path'], attempt.get('run_id')
+        if run_id != self.recovery_run_id(path) or attempt.get('input_digest') != prepared['digest']:
+            raise ValueError(f'Saved Agent reservation differs from its original identity: {path}')
+        status = attempt.get('status')
+        if status not in ('attempted', 'succeeded'):
+            raise ValueError(f'Graph recovery is blocked by the prior {status!r} Agent attempt: {path}')
+        remaining = self.result_limit - self.result_bytes
+        if remaining <= 0:
+            raise ValueError('Original leaves exceed the graph result capacity')
+        observed = runs.inspect_run(self.state, self.project['id'], run_id, max_result_bytes=remaining)
+        original, result = observed['run'], observed['result']
+        if original['status'] != 'succeeded':
+            raise ValueError(f'Graph recovery requires a proven successful original Agent outcome: {path}')
+        if (type(original.get('project_revision')) is not int
+                or original['project_revision'] != self.project['revision']
+                or original.get('formal_execution_authorized') is not False
+                or original.get('role') != node['role'] or original.get('binding') != node['backend_request']
+                or original.get('policy', {}).get('mode') != 'text-only'
+                or not observed['input']['available'] or observed['input']['digest'] != prepared['digest']
+                or not observed['prompt']['available'] or not result['available']
+                or (('result_sha256' in attempt or status == 'succeeded') and attempt.get('result_sha256') != result['sha256'])):
+            raise ValueError(f'Graph recovery requires matching original Agent input, prompt and result evidence: {path}')
+        invocation.validate_result(result['document'], invocation.result_schema(['response'], review=node['role'] == 'reviewer'))
+        self.result_bytes += result['bytes']
+        attempt.update(status='succeeded', result_sha256=result['sha256'])
+        self.completed[path] = {'result': result['document']}
+
+    def recover(self, inputs):
+        agent_nodes = {path: node for path, node in self.nodes.items() if node['kind'] == 'agent'}
+        leaves = _observed_attempts(self.receipt, 'leaves', agent_nodes, required=True)
+        reserved = {item['instance'] for item in leaves}
+        names = {entry.name for entry in self.directory.iterdir()}
+        self.check_reservations(names, leaves)
+        expected_slots = {f'input-{index}' for index in range(1, len(leaves) + 1)}
+        next_slot = f'input-{len(leaves) + 1}'
+        slots = {name for name in names if name.startswith('input-')}
+        if slots not in (expected_slots, expected_slots | {next_slot}):
+            raise ValueError('Saved graph input slots differ from the original reservations')
+        pending, opened, children = self.workflow_state(inputs)
+
+        def task_at(path):
+            while True:
+                self.check_active()
+                self.finalize_workflows(opened, children)
+                structural = next((node for node in pending.values()
+                                   if node['kind'] in ('workflow', 'join') and self.ready(node, opened)), None)
+                if structural is None:
+                    break
+                del pending[structural['path']]
+                self.open_structure(structural, opened)
+            node = pending.get(path)
+            if node is None or node['kind'] != 'agent' or not self.ready(node, opened):
+                raise ValueError(f'Saved graph input is unreachable through its original dependencies: {path}')
+            parent = node['parent']
+            return self.ports(parent, opened[parent], node['inputs'])['task']
+
+        for sequence, attempt in enumerate(leaves, 1):
+            path = attempt['instance']
+            prepared = self.recovery_input(self.directory / f'input-{sequence}', path, task_at(path))
+            self.recover_leaf(agent_nodes[path], attempt, prepared)
+            del pending[path]
+        for path in agent_nodes.keys() - reserved:
+            self.check_active()
+            if native_sources.find_run(self.state, self.project['id'], self.recovery_run_id(path)) is not None:
+                raise ValueError(f'An original Agent run is missing from the graph reservations: {path}')
+        if next_slot in slots:
+            source = self.directory / next_slot
+            path = workflows.inspect_input(source)['request']['instance']
+            prepared = self.recovery_input(source, path, task_at(path))
+            self.unreserved = (path, prepared['digest'])
+
+    def workflow(self, inputs, project_limit):
+        pending, opened, children = self.workflow_state(inputs)
         root_limit = self.nodes['root']['limits']['concurrency']
         executor = ThreadPoolExecutor(max_workers=min(project_limit, root_limit))
         try:
@@ -268,12 +453,12 @@ class _GraphRun:
                 if self.collect_finished():
                     self.save()
                 # Finalize children before their parents using frozen workflow membership.
-                for path in reversed(tuple(opened)):
-                    if all(child in self.completed for child in children[path]):
-                        self.completed[path] = self.ports(path, opened.pop(path), self.nodes[path]['outputs'])
+                self.finalize_workflows(opened, children)
                 if 'root' in self.completed:
                     break
-                node = next((node for node in pending.values() if self.ready(node, opened)), None)
+                node = next((node for node in pending.values() if self.ready(node, opened)
+                             and (self.unreserved is None or node['kind'] != 'agent'
+                                  or node['path'] == self.unreserved[0])), None)
                 if node is None:
                     if not self.running:
                         raise ValueError('No runnable workflow node remains')
@@ -282,14 +467,12 @@ class _GraphRun:
                     continue
                 path = node['path']
                 del pending[path]
-                if node['kind'] == 'join':
-                    self.completed[path] = {'result': {dep: self.completed[dep] for dep in node['depends_on']}}
+                if node['kind'] in ('workflow', 'join'):
+                    self.open_structure(node, opened)
                     continue
                 parent = node['parent']
                 ports = self.ports(parent, opened[parent], node['inputs'])
-                if node['kind'] == 'workflow':
-                    opened[path] = ports
-                elif node['kind'] in _VERIFICATION_NODES:
+                if node['kind'] in _VERIFICATION_NODES:
                     self.completed[path] = self.verify_evidence(path, ports['source'])
                 elif node['kind'] == 'choose-agent':
                     result, skipped = self.choose_agent(node, ports['source'])
@@ -301,8 +484,10 @@ class _GraphRun:
                     self.dispatch_leaf(executor, node, ports['task'])
                 else:
                     raise ValueError(f'Unsupported standalone workflow node: {path}')
-        except BaseException:
+        except BaseException as error:
             self.stop.set()
+            if isinstance(error, KeyboardInterrupt):
+                self.fence_stop()
             raise
         finally:
             executor.shutdown()
@@ -315,33 +500,79 @@ class _GraphRun:
         return self.completed['root']
 
 
-def run_graph(state: State, project_id: str, manifest: Path, manifest_digest: str, inputs: dict, directory: Path,
-              max_prompt_bytes: int, timeout: int, *, codex_config: Path | None = None, stop_requested=None) -> dict:
-    """Run a bounded, dependency-ready read-only graph with no resubmission through this entry."""
-    contracts.validate(timeout, {'type': 'integer', 'minimum': 1, 'maximum': 3600}, 'Workflow timeout')
-    contracts.validate(max_prompt_bytes, contracts.COMPOSITION_INPUT['properties']['max_prompt_bytes'], 'Input byte limit')
-    deadline = time.monotonic() + timeout
-    project = state.project(project_id)
-    checked = workflows.inspect_manifest(manifest, material=True)
-    if checked['digest'] != manifest_digest:
-        raise ValueError('Workflow manifest differs from the explicitly selected digest')
-    composition = checked['composition']
+def _graph_inputs(composition, inputs, max_prompt_bytes, *, recoverable=False):
     if not isinstance(inputs, dict) or inputs.keys() != composition['instances'][0]['inputs'].keys():
         raise ValueError('Workflow inputs must supply exactly the declared root ports')
     encoded_inputs = _bounded_json(inputs, max_prompt_bytes)
-    fixed_review = None
-    if any(item['kind'] in _VERIFICATION_NODES for item in composition['instances']):
-        _verify_sources(composition, inputs)
-        if any(item['kind'] == 'verify-fixed-check' for item in composition['instances']):
-            # Bind exactly the frozen values that will reach the dependent leaf.
-            inputs = json.loads(encoded_inputs)
-            fixed_review = _fixed_review_context(composition, inputs, manifest_digest)
+    if recoverable and any(node['kind'] not in ('agent', 'workflow', 'join') for node in composition['instances']):
+        raise ValueError('Recoverable graphs support only Agent, Workflow and all-join nodes')
     for leaf in (item for item in composition['instances'] if item['kind'] == 'agent'):
         if any(leaf['permissions'][name] for name in ('write', 'shell', 'network')):
             raise ValueError(f'Standalone workflow requires a read-only leaf: {leaf["path"]}')
         tool = leaf['backend_request']['tool']
         if not backends.supports_mode(tool, 'text-only'):
             raise ValueError(f'Standalone workflow requires text-only support at {leaf["path"]}: {tool}')
+    return encoded_inputs
+
+
+def _execute_graph(run, inputs, composition):
+    receipt = run.receipt
+    try:
+        outputs = run.workflow(inputs, composition['grant']['limits']['concurrency'])
+        _bounded_json(outputs, run.result_limit)
+        run.check_active()
+        receipt.update(status='succeeded', outputs=outputs)
+    except TimeoutError as error:
+        receipt.update(status='timed_out', error=str(error))
+    except KeyboardInterrupt:
+        run.fence_stop()
+        receipt.update(status='cancelled', error='Workflow interrupted')
+    except (OSError, ValueError, RecursionError, StateError) as error:
+        receipt.update(status='failed', error=str(error))
+    run.save()
+    return receipt
+
+
+def _graph_deadline(recovery, timeout):
+    clock, deadline_ns = recovery['clock'], recovery['deadline_monotonic_ns']
+    if (not isinstance(clock, dict) or clock.keys() != set(budget_clock.FIELDS)
+            or type(deadline_ns) is not int or deadline_ns < timeout * 1_000_000_000
+            or time.monotonic_ns() + timeout * 1_000_000_000 < deadline_ns):
+        raise ValueError('Saved graph clock or deadline is invalid')
+    budget_clock.validate(clock, timeout)
+    deadline = deadline_ns / 1_000_000_000
+    if time.monotonic() >= deadline or budget_clock.remaining(clock, timeout) <= 0:
+        raise TimeoutError('The original workflow deadline expired')
+    return deadline
+
+
+def run_graph(state: State, project_id: str, manifest: Path, manifest_digest: str, inputs: dict, directory: Path,
+              max_prompt_bytes: int, timeout: int, *, codex_config: Path | None = None, stop_requested=None,
+              recoverable=False) -> dict:
+    """Run a bounded, dependency-ready read-only graph with no resubmission through this entry."""
+    contracts.validate(timeout, {'type': 'integer', 'minimum': 1, 'maximum': 3600}, 'Workflow timeout')
+    contracts.validate(max_prompt_bytes, contracts.COMPOSITION_INPUT['properties']['max_prompt_bytes'], 'Input byte limit')
+    deadline = time.monotonic() + timeout
+    recovery = None
+    if recoverable:
+        if codex_config is not None:
+            raise ValueError('Recoverable graphs do not support an explicit Codex configuration')
+        deadline_ns = time.monotonic_ns() + timeout * 1_000_000_000
+        recovery = {'schema_version': 2, 'clock': budget_clock.authorize(timeout), 'deadline_monotonic_ns': deadline_ns,
+                    'result_limit': _RESULT_LIMIT}
+        deadline = _graph_deadline(recovery, timeout)
+    project = state.project(project_id)
+    checked = workflows.inspect_manifest(manifest, material=True)
+    if checked['digest'] != manifest_digest:
+        raise ValueError('Workflow manifest differs from the explicitly selected digest')
+    composition = checked['composition']
+    encoded_inputs = _graph_inputs(composition, inputs, max_prompt_bytes, recoverable=recoverable)
+    fixed_review = None
+    if any(item['kind'] in _VERIFICATION_NODES for item in composition['instances']):
+        _verify_sources(composition, inputs)
+        if any(item['kind'] == 'verify-fixed-check' for item in composition['instances']):
+            inputs = json.loads(encoded_inputs)
+            fixed_review = _fixed_review_context(composition, inputs, manifest_digest)
     directory = directory.expanduser().absolute()
     manifest = Path(checked['path'])
     if directory.exists() or directory.is_symlink():
@@ -353,31 +584,90 @@ def run_graph(state: State, project_id: str, manifest: Path, manifest_digest: st
                'project': project_id, 'project_revision': project['revision'], 'root': composition['root'],
                'manifest_digest': manifest_digest, 'inputs': inputs, 'timeout': timeout,
                'max_prompt_bytes': max_prompt_bytes, 'leaves': [], 'formal_execution_authorized': False}
+    if recoverable:
+        directory = directory.resolve()
+        receipt['inputs'] = inputs = json.loads(encoded_inputs)
+        recovery.update(directory=str(directory), state_home=str(state.root.resolve()),
+                        authority_sha256=_graph_authority_sha(receipt))
     directory.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix='.workflow-run-', dir=directory.parent) as temporary:
-        staged = Path(temporary)/'run'
-        staged.mkdir(mode=0o700)
-        shutil.copytree(manifest, staged/'manifest', symlinks=True)
-        if workflows.inspect_manifest(staged/'manifest')['digest'] != manifest_digest:
-            raise ValueError('Workflow manifest changed while freezing the run')
-        run = _GraphRun(state, project, composition, staged, receipt, deadline, codex_config, stop_requested, fixed_review)
-        run.check_active()
+    with ExitStack() as owner:
+        with tempfile.TemporaryDirectory(prefix='.workflow-run-', dir=directory.parent) as temporary:
+            staged = Path(temporary)/'run'
+            staged.mkdir(mode=0o700)
+            if recoverable:
+                lock = _enter_owner(owner, staged / '.owner.lock')
+                recovery['owner_identity'] = _owner_identity(os.fstat(lock.fileno()))
+                receipt['recovery_sha256'] = native_sources.sha(recovery)
+                _write_recovery_record(staged, 'recovery.json', recovery)
+            shutil.copytree(manifest, staged/'manifest', symlinks=True)
+            if workflows.inspect_manifest(staged/'manifest')['digest'] != manifest_digest:
+                raise ValueError('Workflow manifest changed while freezing the run')
+            run = _GraphRun(state, project, composition, staged, receipt, deadline, codex_config, stop_requested,
+                            fixed_review, recovery=recovery)
+            run.check_active()
+            run.save()
+            publish_directory(staged, directory)
+        run.directory = directory
+        if recoverable:
+            native_sources.sync_directory_chain(directory)
+        return _execute_graph(run, inputs, composition)
+
+
+def resume_graph(home: Path | None, project_id: str, directory: Path, manifest_digest: str, *, stop_requested=None) -> dict:
+    """Continue only the original, unexpired graph after verifying all its saved attempts."""
+    directory = directory.expanduser().resolve()
+    state_home = resolve_home(home)
+    lock = directory / '.owner.lock'
+    if is_link(lock) or not lock.is_file():
+        raise ValueError('Select an original recoverable graph directory')
+    with ExitStack() as owner:
+        original_lock = _enter_owner(owner, lock)
+        _, receipt = _read_graph_receipt(project_id, directory, manifest_digest)
+        if receipt.get('status') != 'incomplete' or os.path.lexists(directory / 'stop.json'):
+            raise ValueError('A terminal or explicitly stopped graph cannot resume')
+        if 'outputs' in receipt or 'error' in receipt or 'verification_reads' in receipt or 'route_decisions' in receipt:
+            raise ValueError('Saved graph progress differs from the supported incomplete recovery state')
+        if any(field not in receipt for field in _RECOVERY_FIELDS):
+            raise ValueError('Saved recovery is missing original graph authority')
+        recovery = native_sources.packet(directory, 'recovery.json')
+        if (not isinstance(recovery, dict) or recovery.keys() != {
+                'schema_version', 'clock', 'deadline_monotonic_ns', 'result_limit', 'directory', 'state_home',
+                'authority_sha256', 'owner_identity'}
+                or type(recovery['schema_version']) is not int or recovery['schema_version'] != 2
+                or recovery['directory'] != str(directory) or recovery['state_home'] != str(state_home)
+                or native_sources.encode(recovery['owner_identity']) != native_sources.encode(
+                    _owner_identity(os.fstat(original_lock.fileno())))
+                or recovery['authority_sha256'] != _graph_authority_sha(receipt)
+                or receipt.get('recovery_sha256') != native_sources.sha(recovery)):
+            raise ValueError('Recovery authorization differs from the original graph, directory or State home')
+        contracts.validate(receipt['timeout'], {'type': 'integer', 'minimum': 1, 'maximum': 3600}, 'Receipt workflow timeout')
+        contracts.validate(receipt['max_prompt_bytes'], contracts.COMPOSITION_INPUT['properties']['max_prompt_bytes'],
+                           'Receipt input byte limit')
+        limit = recovery['result_limit']
+        if type(limit) is not int or not 1 <= limit <= _RESULT_LIMIT:
+            raise ValueError('Saved graph result capacity is unsupported')
+        deadline = _graph_deadline(recovery, receipt['timeout'])
+        state = State(state_home, read_only=True)
+        project = state.project(project_id)
+        if type(receipt['project_revision']) is not int or receipt['project_revision'] != project['revision']:
+            raise ValueError('Project revision differs from the original graph authorization')
+        checked = workflows.inspect_manifest(directory / 'manifest', material=True)
+        if checked['digest'] != manifest_digest or receipt['root'] != checked['manifest']['root']:
+            raise ValueError('Saved graph manifest differs from the receipt or explicitly selected digest')
+        composition, inputs = checked['composition'], receipt['inputs']
+        _graph_inputs(composition, inputs, receipt['max_prompt_bytes'], recoverable=True)
+        run = _GraphRun(state, project, composition, directory, receipt, deadline, None, stop_requested, None, recovery=recovery)
+        try:
+            run.recover(inputs)
+            if state.project(project_id)['revision'] != project['revision']:
+                raise ValueError('Project revision changed during graph recovery')
+            run.check_active()
+        except KeyboardInterrupt:
+            run.fence_stop()
+            raise
+        run.state = State(state_home)
         run.save()
-        publish_directory(staged, directory)
-    run.directory = directory
-    try:
-        outputs = run.workflow(inputs, composition['grant']['limits']['concurrency'])
-        _bounded_json(outputs, _RESULT_LIMIT)
-        run.check_active()
-        receipt.update(status='succeeded', outputs=outputs)
-    except TimeoutError as error:
-        receipt.update(status='timed_out', error=str(error))
-    except KeyboardInterrupt:
-        receipt.update(status='cancelled', error='Workflow interrupted')
-    except (OSError, ValueError, RecursionError, StateError) as error:
-        receipt.update(status='failed', error=str(error))
-    run.save()
-    return receipt
+        return _execute_graph(run, inputs, composition)
 
 
 def _observed_attempts(receipt, name, paths, *, required=False):
@@ -526,9 +816,7 @@ def _observe_route(sequence, record, selector, attempts, choices, graph_status):
     return {**observation, 'state': 'corroborated', 'choice': choice, 'selected': selected, 'skipped': skipped}
 
 
-def inspect_graph(state: State, project: str, directory: Path, manifest_digest: str) -> dict:
-    """Reconstruct graph receipt and Agent observations offline without acquiring execution authority."""
-    directory = directory.expanduser().absolute()
+def _read_graph_receipt(project, directory, manifest_digest):
     contracts.validate(manifest_digest, contracts.COMPOSITION_MANIFEST['$defs']['digest'], 'Manifest SHA256')
     raw = native_sources.artifact(directory, 'run.json', _RECEIPT_LIMIT + 1)
     try:
@@ -541,6 +829,13 @@ def inspect_graph(state: State, project: str, directory: Path, manifest_digest: 
         raise ValueError('Select an original standalone graph run receipt')
     if receipt.get('project') != project or receipt.get('manifest_digest') != manifest_digest:
         raise ValueError('Graph receipt differs from the selected project or manifest digest')
+    return raw, receipt
+
+
+def inspect_graph(state: State, project: str, directory: Path, manifest_digest: str) -> dict:
+    """Reconstruct graph receipt and Agent observations offline without acquiring execution authority."""
+    directory = directory.expanduser().absolute()
+    raw, receipt = _read_graph_receipt(project, directory, manifest_digest)
     checked = workflows.inspect_manifest(directory / 'manifest', material=True)
     manifest, composition = checked['manifest'], checked['composition']
     if checked['digest'] != manifest_digest or receipt.get('root') != manifest['root']:

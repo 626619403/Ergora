@@ -324,6 +324,11 @@ def parser() -> argparse.ArgumentParser:
     graph.add_argument("--max-prompt-bytes", type=int, required=True)
     graph.add_argument("--timeout", type=int, default=300, help="Overall graph deadline in seconds")
     graph.add_argument("--codex-config", type=Path)
+    graph.add_argument("--recoverable", action="store_true", help="Keep original interruption recovery authority on Linux")
+    resume = operations.add_parser("resume-graph", help="Resume an interrupted original recoverable graph on Linux")
+    resume.add_argument("project")
+    resume.add_argument("directory", type=Path)
+    resume.add_argument("--manifest-digest", required=True)
     graph_inspection = operations.add_parser("inspect-graph", help="Observe a standalone graph and original Agent runs offline")
     graph_inspection.add_argument("project")
     graph_inspection.add_argument("directory", type=Path)
@@ -1519,14 +1524,15 @@ def main(argv: list[str] | None = None) -> int:
                 output = agent_runs.run_input(State(args.home), args.project, args.directory, args.timeout,
                     backend=args.backend, model=args.model, reason=args.backend_reason, codex_config=args.codex_config,
                     mode=args.mode, input_digest=args.input_digest)
-            elif args.operation == "run-graph":
+            elif args.operation in ("run-graph", "resume-graph"):
                 import signal
-                from ergora.agents.graphs import run_graph
-                maximum = contracts.COMPOSITION_INPUT['properties']['max_prompt_bytes']['maximum']
-                with args.inputs.open('rb') as source:
-                    raw = source.read(maximum + 1)
-                if len(raw) > maximum:
-                    raise ValueError('Workflow input file exceeds the supported input byte limit')
+                from ergora.agents import graphs
+                if args.operation == 'run-graph':
+                    maximum = contracts.COMPOSITION_INPUT['properties']['max_prompt_bytes']['maximum']
+                    with args.inputs.open('rb') as source:
+                        raw = source.read(maximum + 1)
+                    if len(raw) > maximum:
+                        raise ValueError('Workflow input file exceeds the supported input byte limit')
                 stopped = False
 
                 def request_stop(_signum, _frame):
@@ -1535,10 +1541,14 @@ def main(argv: list[str] | None = None) -> int:
 
                 handlers = {signum: signal.signal(signum, request_stop) for signum in (signal.SIGINT, signal.SIGTERM)}
                 try:
-                    output = run_graph(State(args.home), args.project, args.manifest, args.manifest_digest,
-                        definition_bundles.parse_json(raw.decode('utf-8-sig'), 'Workflow inputs', finite=True, bounded=True),
-                        args.directory, args.max_prompt_bytes, args.timeout, codex_config=args.codex_config,
-                        stop_requested=lambda: stopped)
+                    if args.operation == 'run-graph':
+                        output = graphs.run_graph(State(args.home), args.project, args.manifest, args.manifest_digest,
+                            definition_bundles.parse_json(raw.decode('utf-8-sig'), 'Workflow inputs', finite=True, bounded=True),
+                            args.directory, args.max_prompt_bytes, args.timeout, codex_config=args.codex_config,
+                            stop_requested=lambda: stopped, recoverable=args.recoverable)
+                    else:
+                        output = graphs.resume_graph(args.home, args.project, args.directory, args.manifest_digest,
+                                                     stop_requested=lambda: stopped)
                 except KeyboardInterrupt:
                     print('Workflow interrupted', file=sys.stderr)
                     return 1
@@ -1864,7 +1874,7 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         if args.command == "services" and output.get("outcome") in ("unconfirmed", "failed"):
             return 1
-        if args.command == "composition" and args.operation in ("run-input", "run-graph") and output["status"] != "succeeded":
+        if args.command == "composition" and args.operation in ("run-input", "run-graph", "resume-graph") and output["status"] != "succeeded":
             return 1
         return 0
     except (ValueError, OSError, RuntimeError) as error:

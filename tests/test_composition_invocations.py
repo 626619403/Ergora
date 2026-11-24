@@ -409,6 +409,273 @@ def test_standalone_graph_charges_parallel_results_to_one_budget(parallel_graph,
     assert max(original_sizes) <= 180 < sum(original_sizes)
 
 
+@pytest.mark.skipif(sys.platform != 'linux', reason='Recoverable standalone graphs require Linux/WSL2')
+@pytest.mark.parametrize('case', ['resume', 'lost-outcome', 'unknown', 'expired', 'clock', 'project', 'result-budget'])
+def test_standalone_graph_resume_retains_the_original_work(prepared, tmp_path, case):
+    import signal
+    import time
+
+    state, _, _ = prepared()
+    base = workflows.get(state, 'structure-review', '1.0.0')
+    definition = base['definition']
+    leaf = {**definition['nodes'][0], 'review_requirement': 'required'}
+    draft = {**definition, 'schema_version': 2, 'id': 'resume-review', 'inputs': ['task'],
+             'nodes': [{**leaf, 'id': 'first', 'inputs': {'task': {'input': 'task'}}},
+                       {**leaf, 'id': 'second', 'depends_on': ['first'],
+                        'inputs': {'task': {'node': 'first', 'output': 'result'}}}],
+             'outputs': {'result': {'node': 'second', 'output': 'result'}}}
+    workflows.revise(state, definition['id'], definition['version'], base['digest'], draft, publish=True)
+    grant = {'schema_version': 1, 'permissions': draft['permissions'], 'limits': draft['limits']}
+    manifest, directory = tmp_path / 'manifest', tmp_path / 'graph'
+    selected = workflows.prepare_manifest(state.root, draft['id'], draft['version'], grant, manifest)
+    inputs, calls, gate = (tmp_path / name for name in ('inputs.json', 'calls.jsonl', 'interrupted'))
+    task = {'request': 'Review the exact source and carry the original result to the next review.'}
+    inputs.write_text(json.dumps({'task': task}), encoding='utf-8')
+    result_limit = 1200 if case == 'result-budget' else None
+    timeout = 7 if case == 'expired' else 45
+
+    # Probe only the selected lifecycle boundary. The CLI, graph owner and Agent
+    # process are real. No coordinator hook is installed on the resume command.
+    coordinator = r'''
+import json
+import os
+from pathlib import Path
+import signal
+import sys
+
+from ergora.agents import backends, graphs
+from ergora.interfaces.cli import main
+from ergora.runtime import budget_clock, processes
+
+case, checkpoint, clock_jump, gate, calls = sys.argv[1:6]
+gate = Path(gate)
+model = r"""
+import json
+from pathlib import Path
+import sys
+
+target, calls, case = sys.argv[1:]
+task = json.loads(sys.stdin.read().split('Workflow task port (JSON value):\n')[-1])
+label = 'first' if 'request' in task else 'second'
+result = {'summary': label, 'decision': 'approve',
+          'artifacts': {'response': 'x' * 700 if case == 'result-budget' else 'Review fixture'}}
+with Path(calls).open('a', encoding='utf-8') as stream:
+    stream.write(json.dumps({'task': task, 'result': result}) + '\n')
+Path(target).write_text(json.dumps(result), encoding='utf-8')
+"""
+command = backends.CodexBackend.command
+def controlled(backend, request):
+    argv, prompt = command(backend, request)
+    assert argv[argv.index('--sandbox') + 1] == 'read-only'
+    return [sys.executable, '-c', model, argv[argv.index('--output-last-message') + 1], calls, case], prompt
+
+backends.CodexBackend.command = controlled
+backends.CodexBackend.check_invocation = lambda self: None
+if case == 'result-budget':
+    graphs._RESULT_LIMIT = 1200
+if clock_jump == 'jump':
+    current_clock = budget_clock._clock
+    def discontinuity():
+        boot, ticks = current_clock()
+        return boot, ticks + 120_000_000_000
+    budget_clock._clock = discontinuity
+
+def hold(phase):
+    ready = gate.with_suffix('.pending')
+    witness = {'phase': phase, 'owner': processes.identity(os.getpid())}
+    ready.write_text(json.dumps(witness), encoding='utf-8')
+    ready.replace(gate)
+    signal.pause()
+    raise AssertionError('Fixture should terminate its original coordinator')
+
+if checkpoint == 'successor':
+    dispatch = graphs._GraphRun.dispatch_leaf
+    def before_successor(self, executor, node, task):
+        if node['path'] == 'root/second':
+            assert self.receipt['leaves'][0]['status'] == 'succeeded'
+            hold('successor')
+        return dispatch(self, executor, node, task)
+    graphs._GraphRun.dispatch_leaf = before_successor
+elif checkpoint == 'reserved':
+    save = graphs._GraphRun.save
+    def retain_prior_progress(self):
+        if self.receipt['leaves']:
+            previous = (self.directory / 'run.json').read_bytes()
+            gate.with_name('stale-run.json').write_bytes(previous)
+        return save(self)
+    graphs._GraphRun.save = retain_prior_progress
+    admit = graphs._GraphRun.check_leaf_admission
+    def before_submit(self):
+        settled = admit(self)
+        if self.receipt['leaves'] and self.receipt['leaves'][0]['status'] == 'attempted':
+            hold('reserved')
+        return settled
+    graphs._GraphRun.check_leaf_admission = before_submit
+elif checkpoint == 'lost':
+    collect = graphs._GraphRun.collect_finished
+    def before_receipt(self):
+        if self.running and any(future.done() and future.result()['status'] == 'succeeded'
+                                for future in self.running):
+            hold('lost')
+        return collect(self)
+    graphs._GraphRun.collect_finished = before_receipt
+
+raise SystemExit(main(sys.argv[6:]))
+'''
+    env = dict(os.environ, PYTHONPATH=str(IMPORT_ROOT), PYTHONDONTWRITEBYTECODE='1')
+    checkpoint = {'unknown': 'reserved', 'lost-outcome': 'lost'}.get(case, 'successor')
+
+    def command(operation, *args, hook='none', clock='actual', home=None):
+        return [sys.executable, '-P', '-c', coordinator, case, hook, clock, str(gate), str(calls),
+                '--home', str(state.root if home is None else home), 'composition', operation, *args]
+
+    common = ['demo', str(directory), '--manifest-digest', selected['digest']]
+    original_cli = command('run-graph', 'demo', str(manifest), '--manifest-digest', selected['digest'],
+        '--inputs', str(inputs), '--max-prompt-bytes', '50000', '--timeout', str(timeout),
+        '--directory', str(directory), '--recoverable', hook=checkpoint)
+
+    def resume(*, clock='actual', home=None):
+        return subprocess.run(command('resume-graph', *common, clock=clock, home=home), env=env,
+                              capture_output=True, text=True, timeout=15)
+
+    receipt_path, recovery = directory / 'run.json', directory / 'recovery.json'
+    original = subprocess.Popen(original_cli, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    try:
+        cutoff = time.monotonic() + 12
+        while not gate.exists() and original.poll() is None and time.monotonic() < cutoff:
+            time.sleep(.01)
+        if not gate.exists():
+            if original.poll() is None:
+                original.kill()
+            stdout, stderr = original.communicate(timeout=5)
+            pytest.fail(f'Coordinator missed its interruption point: {(stdout, stderr)!r}')
+        witness = json.loads(gate.read_bytes())
+        assert witness == {'phase': checkpoint, 'owner': processes.identity(original.pid)}
+        original_receipt, original_budget = receipt_path.read_bytes(), recovery.read_bytes()
+        saved = json.loads(original_receipt)
+        first, = saved['leaves']
+        assert saved['status'] == 'incomplete' and first['instance'] == 'root/first'
+        assert not (directory / 'input-2').exists()
+        assert first['status'] == ('succeeded' if checkpoint == 'successor' else 'attempted')
+        if case == 'unknown':
+            assert not calls.exists() and agent_runs.runs(state, 'demo') == []
+        else:
+            original_run = agent_runs.inspect_run(state, 'demo', first['run_id'])
+            assert original_run['run']['status'] == 'succeeded'
+            assert original_run['input']['digest'] == first['input_digest']
+            assert len(calls.read_text(encoding='utf-8').splitlines()) == 1
+        if case == 'resume':
+            active = resume()
+            assert active.returncode == 2 and 'original graph coordinator is still active' in active.stderr
+            assert original.poll() is None and receipt_path.read_bytes() == original_receipt
+            assert recovery.read_bytes() == original_budget
+            assert not (directory / 'input-2').exists()
+            assert len(calls.read_text(encoding='utf-8').splitlines()) == 1
+    finally:
+        if original.poll() is None:
+            original.kill()
+        original.communicate(timeout=5)
+    assert original.returncode == -signal.SIGKILL
+
+    def unchanged():
+        assert receipt_path.read_bytes() == original_receipt
+        assert recovery.read_bytes() == original_budget
+        assert not (directory / 'input-2').exists()
+        assert len(agent_runs.runs(state, 'demo')) == (0 if case == 'unknown' else 1)
+
+    if case == 'resume':
+        missing_home, existing_home = (tmp_path / name for name in ('missing-home', 'other-home'))
+        existing_home.mkdir()
+        marker = existing_home / 'original-marker'
+        marker.write_bytes(b'Other State home fixture')
+        for home in (missing_home, existing_home):
+            refused = resume(home=home)
+            assert refused.returncode == 2 and 'State home' in refused.stderr
+            unchanged()
+        assert not missing_home.exists()
+        assert list(existing_home.iterdir()) == [marker] and marker.read_bytes() == b'Other State home fixture'
+
+        # A verified input slot alone must not make an omitted native attempt eligible.
+        try:
+            receipt_path.write_text(json.dumps({**saved, 'leaves': []}), encoding='utf-8')
+            omitted = resume()
+            assert omitted.returncode == 2 and 'reservation witnesses differ from graph progress' in omitted.stderr
+            assert len(calls.read_text(encoding='utf-8').splitlines()) == 1
+        finally:
+            receipt_path.write_bytes(original_receipt)
+        unchanged()
+        result_file = state.root / 'runs' / first['run_id'] / 'result.json'
+        original_result = result_file.read_bytes()
+        try:
+            result_file.write_bytes(original_result + b' ')
+            refused = resume()
+            assert refused.returncode == 2 and 'matching original Agent input, prompt and result evidence' in refused.stderr
+            unchanged()
+        finally:
+            result_file.write_bytes(original_result)
+    elif case == 'project':
+        project = state.project('demo')
+        projects.set_correction_suggestions(state, 'demo', False, project['revision'])
+    elif case == 'expired':
+        deadline = json.loads(original_budget)['deadline_monotonic_ns'] / 1_000_000_000
+        time.sleep(max(0, deadline - time.monotonic()) + .05)
+
+    resumed = resume(clock='jump' if case == 'clock' else 'actual')
+    diagnostics = {'unknown': 'Unknown agent run', 'clock': 'clock discontinuity',
+                   'project': 'Project revision differs', 'expired': 'original workflow deadline expired'}
+    if case in diagnostics:
+        assert resumed.returncode == 2 and diagnostics[case] in resumed.stderr, resumed.stderr
+        unchanged()
+        if case == 'unknown':
+            witness = directory / 'reservation-1.json'
+            witnessed = witness.read_bytes()
+            expected = {'schema_version': 1, 'sequence': 1, 'recovery_sha256': saved['recovery_sha256'],
+                        **{key: first[key] for key in ('instance', 'run_id', 'input_digest')}}
+            assert json.loads(witnessed) == expected
+            original_input = workflows.inspect_input(directory / 'input-1')['digest']
+            assert original_input == first['input_digest']
+            stale = gate.with_name('stale-run.json').read_bytes()
+            assert json.loads(stale) == {**saved, 'leaves': []}
+            try:
+                receipt_path.write_bytes(stale)
+                omitted = resume()
+                assert omitted.returncode == 2 and 'reservation witnesses differ from graph progress' in omitted.stderr
+                assert receipt_path.read_bytes() == stale and witness.read_bytes() == witnessed
+                assert recovery.read_bytes() == original_budget
+                assert workflows.inspect_input(directory / 'input-1')['digest'] == original_input
+                assert not calls.exists() and agent_runs.runs(state, 'demo') == []
+            finally:
+                receipt_path.write_bytes(original_receipt)
+            unchanged()
+        return
+    assert resumed.returncode == (1 if case == 'result-budget' else 0), (resumed.stdout, resumed.stderr)
+    settled = json.loads(resumed.stdout)
+    assert settled == json.loads(receipt_path.read_bytes()) and recovery.read_bytes() == original_budget
+    first_result = original_run['result']
+    recovered, next_leaf = settled['leaves']
+    assert recovered['instance'] == first['instance'] and recovered['run_id'] == first['run_id']
+    assert recovered['input_digest'] == first['input_digest'] and recovered['result_sha256'] == first_result['sha256']
+    assert next_leaf['instance'] == 'root/second' and next_leaf['run_id'] != first['run_id']
+    repeated = agent_runs.inspect_run(state, 'demo', first['run_id'])
+    assert repeated['input'] == original_run['input'] and repeated['result'] == first_result
+    observed = [json.loads(line) for line in calls.read_text(encoding='utf-8').splitlines()]
+    assert [row['task'] for row in observed] == [task, first_result['document']]
+    if case == 'result-budget':
+        assert settled['status'] == 'failed' and 'remaining' in settled['error'] and 'outputs' not in settled
+        next_result = agent_runs.inspect_run(state, 'demo', next_leaf['run_id'])['result']
+        sizes = first_result['bytes'], next_result['bytes']
+        assert max(sizes) <= result_limit < sum(sizes)
+    else:
+        assert settled['status'] == 'succeeded' and settled['outputs']['result'] == observed[1]['result']
+        assert len(agent_runs.runs(state, 'demo')) == 2
+        if case == 'resume':
+            finished = receipt_path.read_bytes()
+            refused = resume()
+            assert refused.returncode == 2 and 'terminal or explicitly stopped graph' in refused.stderr
+            assert receipt_path.read_bytes() == finished and recovery.read_bytes() == original_budget
+            assert len(calls.read_text(encoding='utf-8').splitlines()) == 2
+
+
 def test_inspect_graph_joins_original_attempts_after_a_lost_reply(parallel_graph, tmp_path, monkeypatch, capsys):
     receipt, witnesses, state = parallel_graph(2, 2, 1)
     directory = tmp_path / 'run'
