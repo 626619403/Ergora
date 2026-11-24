@@ -28,6 +28,7 @@ const currentLibrary = (home) => home === library.controlDirectory && home === a
 const editors = new Map();
 const textOf = (value) => JSON.stringify(value, null, 2) + "\n";
 const referenceText = ({ kind, id, version, digest }) => JSON.stringify({ kind, id, version, digest });
+const verifyEvidence = "verify-evidence";
 const editorKey = (home, kind, base, starter) => JSON.stringify(["ergora-definition-editor-v1", home, kind, base.id, base.version,
   base.digest, ...(starter ? [starter.id, starter.version] : [])]);
 const currentEditor = () => library.detail && editors.get(editorKey(library.controlDirectory, library.selection.kind,
@@ -730,13 +731,15 @@ function formValues(current) {
   if (!strings(definition.inputs) || !Array.isArray(definition.nodes) || !definition.nodes.length ||
       !definition.nodes.every((item) => item && typeof item.id === "string" && strings(item.depends_on) &&
         (item.ref ? ["agent", "workflow"].includes(item.ref.kind) &&
-          ["id", "version", "digest"].every((key) => typeof item.ref[key] === "string") : item.join === "all"))) return null;
+          ["id", "version", "digest"].every((key) => typeof item.ref[key] === "string") :
+          item.join === "all" || (definition.schema_version === 2 && item.operation === verifyEvidence)))) return null;
   const selected = definition.nodes[current.selectedNode];
   if (!selected) return null;
   Object.assign(values, { inputs: definition.inputs.join("\n"), outputs: textOf(definition.outputs),
     permissions: textOf(definition.permissions), limits: textOf(definition.limits),
     nodeId: selected.id, dependencies: selected.depends_on.join("\n") });
-  if (selected.ref) Object.assign(values, { reference: referenceText(selected.ref), nodeInputs: textOf(selected.inputs) });
+  if (selected.ref) values.reference = referenceText(selected.ref);
+  if (selected.ref || selected.operation === verifyEvidence) values.nodeInputs = textOf(selected.inputs);
   if (selected.ref?.kind === "agent") {
     values.role = selected.role;
     values.nodePermissions = textOf(selected.permissions);
@@ -765,7 +768,8 @@ function formDocument(current, values) {
     const selected = definition.nodes[current.selectedNode];
     Object.assign(selected, { id: values.nodeId, depends_on: lines(values.dependencies) });
     const nodeFragments = {};
-    if (selected.ref) Object.assign(nodeFragments, { ref: values.reference, inputs: values.nodeInputs });
+    if (selected.ref) nodeFragments.ref = values.reference;
+    if (selected.ref || selected.operation === verifyEvidence) nodeFragments.inputs = values.nodeInputs;
     if (selected.ref?.kind === "agent") {
       selected.role = values.role;
       nodeFragments.permissions = values.nodePermissions;
@@ -810,9 +814,12 @@ function definitionForm(current, render, action, updateControls) {
       }));
       if (!available.some((item) => referenceText(item) === values.reference)) available.unshift(selected.ref);
       const references = select(available.map((item) => [referenceText(item), `${item.kind} · ${item.id} @ ${item.version} · ${item.digest.slice(0, 12)}`]), values.reference, "reference");
-      fields.append(node("label", {}, "实例精确引用", references),
-        field("实例输入绑定 JSON", "nodeInputs", values.nodeInputs, "textarea", { spellcheck: "false" }));
+      fields.append(node("label", {}, "实例精确引用", references));
     }
+    if (selected.ref || selected.operation === verifyEvidence)
+      fields.append(field("实例输入绑定 JSON", "nodeInputs", values.nodeInputs, "textarea", { spellcheck: "false" }));
+    if (selected.operation === verifyEvidence)
+      fields.append(node("p", {}, "source 绑定须追溯到操作者提供的根输入端口，输出端口为 result。"));
     if (selected.ref?.kind === "agent") {
       const roles = [...new Set([values.role, ...app.agentRoles])];
       fields.append(node("label", {}, "实例职能", select(roles, values.role, "role")),
@@ -838,7 +845,7 @@ function definitionForm(current, render, action, updateControls) {
   action("放弃字段文本", () => { current.formBuffer = null; touchEditor(current); redraw(render); }, () => Boolean(current.request))));
   if (current.kind !== "workflow") return fields;
   const nodes = current.definition.nodes;
-  const picker = select(nodes.map((item, index) => [String(index), `${item.id} · ${item.ref?.kind || "all-join"}`]), String(current.selectedNode), null);
+  const picker = select(nodes.map((item, index) => [String(index), `${item.id} · ${item.ref?.kind || item.operation || "all-join"}`]), String(current.selectedNode), null);
   picker.setAttribute("aria-label", "编辑实例");
   picker.disabled = pending(current) || Boolean(current.request);
   picker.addEventListener("change", () => { current.selectedNode = Number(picker.value); rememberEditor(current); redraw(render); });
@@ -848,7 +855,11 @@ function definitionForm(current, render, action, updateControls) {
     while (next.nodes.some((item) => item.id === `${kind}-${index}`)) index++;
     const item = { id: `${kind}-${index}`, depends_on: [] };
     if (kind === "join") item.join = "all";
-    else {
+    else if (kind === verifyEvidence) {
+      if (!next.inputs.includes("source")) next.inputs.push("source");
+      item.operation = verifyEvidence;
+      item.inputs = { source: { input: "source" } };
+    } else {
       const reference = library[kind === "agent" ? "agents" : "workflows"][0];
       if (!reference) throw new Error("请先导入可引用的精确版本");
       item.ref = { kind, id: reference.id, version: reference.version, digest: reference.digest };
@@ -862,8 +873,10 @@ function definitionForm(current, render, action, updateControls) {
     next.nodes.push(item);
     return convertCandidate(current, render, { text: textOf(next) });
   };
+  const nodeTypes = [["agent", "增加 Agent 实例"], ["workflow", "增加子工作流实例"], ["join", "增加 all-join"]];
+  if (current.definition.schema_version === 2) nodeTypes.push([verifyEvidence, "增加证据验证实例"]);
   return node("div", {}, row(node("label", {}, "编辑实例", picker),
-    ...[["agent", "增加 Agent 实例"], ["workflow", "增加子工作流实例"], ["join", "增加 all-join"]].map(([kind, label]) =>
+    ...nodeTypes.map(([kind, label]) =>
       action(label, () => add(kind), () => pending(current) || Boolean(current.request)))), fields,
     action("删除当前实例", () => {
       const next = structuredClone(current.definition), id = nodes[current.selectedNode].id;
@@ -1062,9 +1075,12 @@ function instancesView(preview, render) {
   previewGraph = compositionGraphView(preview, graphSessions.get(key), library.agents,
     (reference) => openDefinition(reference.kind, reference, render));
   const manifest = library.manifest?.preview === preview ? library.manifest : null;
+  const executionRoute = preview.instances.some((item) => item.kind === verifyEvidence)
+    ? "证据验证节点通过独立图命令 ergora composition run-graph 执行。"
+    : "请在任务中选择执行路线并预览其准入。";
   return panel(
     "仅图预览 · 已发布静态组合与祖先指令",
-    "图使用精确已发布版本。结构父链决定资源继承和权限上限，依赖决定先后，端口决定数据来源。请在任务中选择执行路线并预览其准入。",
+    "图使用精确已发布版本。结构父链决定资源继承和权限上限，依赖决定先后，端口决定数据来源。" + executionRoute,
     row(badge(`${preview.usage.instances} 个实例`), badge(`${preview.usage.material_bytes} 指令字节`)),
     pre({ root: preview.root, preview_sha256: preview.preview_sha256, pending: preview.pending }),
     previewGraph.element,

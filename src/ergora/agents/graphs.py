@@ -18,6 +18,24 @@ from ergora.storage.state import State
 _RESULT_LIMIT = 8_388_608
 
 
+def _verify_sources(composition, inputs):
+    from ergora.development.verification import validate_readback_source
+
+    nodes = {node['path']: node for node in composition['instances']}
+    for node in nodes.values():
+        if node['kind'] != 'verify-evidence':
+            continue
+        binding = node['inputs']['source']
+        parent = node['parent']
+        while parent is not None:
+            if 'input' not in binding:
+                raise ValueError(f'Verification evidence source must come from a workflow root input: {node["path"]}')
+            scope = nodes[parent]
+            binding = scope['inputs'][binding['input']]
+            parent = scope['parent']
+        validate_readback_source(inputs[binding['input']])
+
+
 def _bounded_json(value, limit: int) -> bytes:
     encoded = bytearray()
     for part in json.JSONEncoder(ensure_ascii=False, allow_nan=False, separators=(',', ':')).iterencode(value):
@@ -89,6 +107,33 @@ class _GraphRun:
         self.result_bytes += result['bytes']
         return {'result': result['document']}
 
+    def verify_evidence(self, path, source):
+        from ergora.development.application import read_candidate_verification
+
+        self.check_active()
+        reads = self.receipt.setdefault('verification_reads', [])
+        record = {'instance': path, 'source': source, 'status': 'attempted'}
+        reads.append(record)
+        self.save()
+        try:
+            evidence = read_candidate_verification(
+                self.state, self.project['id'], source, expected_revision=self.project['revision'],
+                deadline=self.deadline, stop_requested=self.stop_requested)
+            self.result_bytes += len(_bounded_json(evidence, _RESULT_LIMIT - self.result_bytes))
+            self.check_active()
+        except TimeoutError:
+            record['status'] = 'timed_out'
+            raise
+        except KeyboardInterrupt:
+            record['status'] = 'cancelled'
+            raise
+        except (OSError, ValueError):
+            record['status'] = 'failed'
+            raise
+        record.update(status='validated', evidence=evidence)
+        self.save()
+        return {'result': evidence}
+
     def workflow(self, path, inputs):
         completed = {}
 
@@ -106,8 +151,12 @@ class _GraphRun:
                     result = {'result': {dependency: completed[dependency] for dependency in child['depends_on']}}
                 else:
                     ports = {name: value(binding) for name, binding in child['inputs'].items()}
-                    result = (self.workflow(child_path, ports) if child['kind'] == 'workflow'
-                              else self.leaf(child_path, ports['task']))
+                    if child['kind'] == 'workflow':
+                        result = self.workflow(child_path, ports)
+                    elif child['kind'] == 'verify-evidence':
+                        result = self.verify_evidence(child_path, ports['source'])
+                    else:
+                        result = self.leaf(child_path, ports['task'])
                 completed[child_path] = result
         return {name: value(binding) for name, binding in node['outputs'].items()}
 
@@ -126,6 +175,8 @@ def run_graph(state: State, project_id: str, manifest: Path, manifest_digest: st
     if not isinstance(inputs, dict) or inputs.keys() != composition['instances'][0]['inputs'].keys():
         raise ValueError('Workflow inputs must supply exactly the declared root ports')
     _bounded_json(inputs, max_prompt_bytes)
+    if any(item['kind'] == 'verify-evidence' for item in composition['instances']):
+        _verify_sources(composition, inputs)
     for leaf in (item for item in composition['instances'] if item['kind'] == 'agent'):
         if any(leaf['permissions'][name] for name in ('write', 'shell', 'network')):
             raise ValueError(f'Standalone workflow requires a read-only leaf: {leaf["path"]}')

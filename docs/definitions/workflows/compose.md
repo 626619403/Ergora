@@ -19,9 +19,27 @@ ergora composition run-graph my-project ./complete-manifest --manifest-digest MA
   --inputs ./graph-inputs.json --directory ./original-graph-run --max-prompt-bytes 150000 --timeout 300
 ```
 
-The command executes dependency levels serially. It follows nested workflow ports, passes each leaf's complete structured reply as `result`, and maps all declared predecessor outputs by exact instance path at an all-join. Every leaf uses its current text-only backend and read-only permission declaration. One deadline controls the graph's native launches and waits. Formal code delivery keeps its own approval and verification route.
+The command executes dependency levels serially. It follows nested workflow ports, passes each Agent leaf's complete structured reply as `result`, and maps all declared predecessor outputs by exact instance path at an all-join. Agent leaves use their current text-only backend and read-only permission declaration. One deadline controls the graph's native launches and waits.
 
-Read `run.json` in the selected directory for the original manifest, inputs, attempted leaf IDs and named outputs. Read each child with `composition inspect-run`. The graph retains up to 8 MiB of complete verified leaf results and caps its final output at 8 MiB. Exceeding either limit fails the graph with the original leaf records available. Ctrl+C requests cancellation through the native process owner. On Linux/WSL2, SIGTERM uses the same path. An interrupted invocation can leave an incomplete receipt with an original attempted leaf. Later reads can use that identity. Execution takes an unused directory and returns a nonzero status when the graph ends without complete success.
+Read `run.json` in the selected directory for the original manifest, inputs, attempted Agent run IDs and named outputs. Read each Agent run with `composition inspect-run`. The graph retains up to 8 MiB of complete verified leaf results and caps its final output at 8 MiB. Exceeding either limit fails the graph with the original leaf records available. Ctrl+C requests cancellation through the native process owner. On Linux/WSL2, SIGTERM uses the same path. An interrupted invocation can leave an incomplete receipt with an original attempted leaf. Later reads can use that identity. Execution takes an unused directory and returns a nonzero status when the graph ends without complete success.
+
+### Read original fixed verification evidence
+
+For a Workflow v2 graph with a `verify-evidence` node, run the same command with the registered project. Supply the original fixed-verify locator through the declared root input. Use the original verify job's activity scheduling event ID, candidate SHA and receipt SHA256. This input example assumes the graph declares `source`. [Read original job receipts](../../development/run-and-recover.md#read-original-job-receipts-and-text-evidence)
+
+```json
+{
+  "source": {
+    "task_id": "TASK_ID",
+    "run_id": "RUN_ID",
+    "event_id": 42,
+    "candidate_sha": "CANDIDATE_SHA",
+    "receipt_sha256": "RECEIPT_SHA256"
+  }
+}
+```
+
+Replace the placeholders and example event ID with values from the original run. The read requires the project's original Linux/WSL2 reference installation, Temporal history and job files. A successful node returns the verified evidence identity on its `result` port. The graph receipt records each original locator and the read outcome in `verification_reads`. Formal verification, approval and candidate release continue through their original owners. [Node and port contract](contracts.md#original-fixed-verification-evidence)
 
 ## Use bundled domain compositions
 

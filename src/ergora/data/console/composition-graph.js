@@ -1,5 +1,7 @@
 import { node, button, pre, empty, row, badge, table } from "./ui.js";
 
+const instanceLabels = { workflow: "子工作流", join: "all 汇合", "verify-evidence": "证据验证" };
+
 // Private presentation of an already compiled preview. Paths identify instances;
 // port nodes are display anchors, never additional workflow instances.
 export function compositionGraphView(preview, session, agents, openDefinition) {
@@ -32,8 +34,9 @@ export function compositionGraphView(preview, session, agents, openDefinition) {
 
   for (const item of preview.instances) {
     const name = item.path.split("/").pop();
+    const label = item.kind === "agent" ? `${item.role} · ${item.backend_request.tool}` : instanceLabels[item.kind] ?? item.kind;
     elements.push({ data: { id: item.path, parent: item.parent || undefined, path: item.path,
-      label: `${name}\n${item.kind === "agent" ? `${item.role} · ${item.backend_request.tool}` : item.kind === "join" ? "all 汇合" : "子工作流"}` },
+      label: `${name}\n${label}` },
       classes: item.kind });
     if (item.kind === "workflow") {
       for (const [direction, ports] of [["input", item.inputs], ["output", item.outputs]])

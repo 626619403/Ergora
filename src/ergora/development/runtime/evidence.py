@@ -6,11 +6,13 @@ import hashlib
 import json
 import os
 import sys
+import time
 
+from ergora.development import verification
 from ergora.development.runtime.submission import _Submission
 
 
-async def _job(payload: dict) -> dict:
+async def _job(payload: dict, *, candidate_verification: bool = False) -> dict:
     from dev_platform.adapter import identifier
     from dev_platform.runtime import RuntimeNotFound
 
@@ -19,6 +21,8 @@ async def _job(payload: dict) -> dict:
     creation, spec = submission.creation, submission.spec
     if payload['run_id'] != run_id:
         raise ValueError('Job evidence must pin the original submitted run ID')
+    if candidate_verification and (submission.input.version != 12 or 'verification' not in submission.input.document):
+        raise ValueError('Candidate verification requires the original fixed-check admission')
     identity = {'schema_version': 1, 'project': creation.project['id'],
                 'project_revision': creation.project['revision'], 'task_id': creation.task_id,
                 'workflow_id': intent['workflow_id'], 'run_id': run_id,
@@ -28,6 +32,8 @@ async def _job(payload: dict) -> dict:
     try:
         handle, description, converter = await submission.lookup_run(intent, run_id)
     except RuntimeNotFound:
+        if candidate_verification:
+            raise ValueError('Original verification run is unavailable') from None
         return {**identity, 'runtime_status': 'not_found'}
 
     next_id = 1
@@ -62,6 +68,8 @@ async def _job(payload: dict) -> dict:
                                              'job_sha256': job_sha, 'context': context}):
         raise ValueError('Job request envelope differs from its original history context')
     job = {'task_id': creation.task_id, 'job_id': job_id, 'job_sha256': job_sha, 'context': context}
+    if candidate_verification:
+        return await _checked_verification(payload, creation, adapter, job)
     receipt = await adapter.poll(job)
     result = {**identity, 'runtime_status': 'queried', 'temporal_status': description.status.name,
               'job_id': job_id, 'job_sha256': job_sha, 'stage': context['stage'],
@@ -92,6 +100,29 @@ async def _job(payload: dict) -> dict:
     return result
 
 
+async def _checked_verification(payload, creation, adapter, job) -> dict:
+    from temporalio.exceptions import ApplicationError
+
+    from ergora.development.runtime.workflows import PreparationDAGActivities
+
+    context = job['context']
+    if context['stage'] != 'verify' or context['expected_candidate_sha'] != payload['candidate_sha']:
+        raise ValueError('Verification source must select the original verify job for the exact candidate')
+    try:
+        receipt = await PreparationDAGActivities(adapter).poll(job)
+    except ApplicationError as error:
+        raise ValueError(error.message) from error
+    if receipt is None or creation.sha(receipt) != payload['receipt_sha256']:
+        raise ValueError('Verification receipt differs from the selected original observation')
+    if receipt['state'] != 'SUCCEEDED':
+        raise ValueError('Original verification receipt did not succeed')
+    fixed = context['admission']['verification']
+    check_results = next(item for item in receipt['artifacts'] if item['name'] == 'check-results')
+    return {**payload['source'], 'project': fixed['project'], 'project_revision': fixed['project_revision'],
+            'check_results_sha256': check_results['sha256'], 'fixed_check_ids': sorted(fixed['checks']),
+            'status': 'validated'}
+
+
 def main() -> None:
     """Inspect only; never publish receipts, signal, execute or change claims/refs."""
     from agent_platform.core import Blocked, environment
@@ -100,7 +131,19 @@ def main() -> None:
     try:
         payload = json.load(sys.stdin)
         os.environ.update(environment())
-        result = asyncio.run(asyncio.wait_for(_job(payload), payload['timeout']))
+        operation = payload['operation']
+        if operation == 'inspect-job':
+            read = _job(payload)
+            timeout = payload['timeout']
+        elif operation == 'read-candidate-verification':
+            source = verification.validate_readback_source(payload['source'])
+            timeout = min(payload['timeout'], payload['deadline'] - time.monotonic())
+            if timeout <= 0:
+                raise TimeoutError('Candidate verification read deadline expired before admission')
+            read = _job({**payload, **source}, candidate_verification=True)
+        else:
+            raise ValueError('Unsupported task evidence read operation')
+        result = asyncio.run(asyncio.wait_for(read, timeout))
         print(json.dumps(result, ensure_ascii=False, allow_nan=False))
     except TimeoutError as error:
         raise SystemExit('BLOCKED: Job evidence query timed out; unread evidence remains unknown') from error

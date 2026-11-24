@@ -53,6 +53,22 @@ def _id(value):
         raise ValueError('Fixed verification requires stable check and case IDs')
 
 
+def validate_readback_source(source: dict) -> dict:
+    """Validate an exact original-run locator before any native read."""
+    _fields(source, ('task_id', 'run_id', 'event_id', 'candidate_sha', 'receipt_sha256'), 'Verification source')
+    task_id, run_id, event_id, candidate = (source[key] for key in ('task_id', 'run_id', 'event_id', 'candidate_sha'))
+    if not isinstance(task_id, str) or re.fullmatch('[A-Za-z0-9][A-Za-z0-9_-]{0,79}', task_id) is None:
+        raise ValueError('Invalid original verification task ID')
+    if not isinstance(run_id, str) or not 1 <= len(run_id) <= 128 or run_id.strip() != run_id:
+        raise ValueError('Invalid original verification run ID')
+    if type(event_id) is not int or not 1 <= event_id <= 10_000:
+        raise ValueError('Verification scheduling event ID must be 1–10000')
+    if not isinstance(candidate, str) or re.fullmatch('(?:[a-f0-9]{40}|[a-f0-9]{64})', candidate) is None:
+        raise ValueError('Verification source requires a full candidate commit ID')
+    _digest(source['receipt_sha256'])
+    return source
+
+
 def value_bytes(value) -> bytes:
     """One exact JSON domain: bool is distinct from int, and floats are absent."""
     raw = observation_bytes(value, SOURCE_BYTES)

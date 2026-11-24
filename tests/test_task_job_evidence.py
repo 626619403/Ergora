@@ -6,6 +6,8 @@ import hashlib
 import io
 import json
 import sys
+import time
+from types import SimpleNamespace
 
 import pytest
 
@@ -195,6 +197,72 @@ def test_full_sized_artifact_returns_only_the_requested_window(original_job):
     assert selected['bytes'] == len(raw) and selected['text'] == 'x' * 16_384 and selected['next_offset'] is None
 
 
+@pytest.mark.parametrize('change,error', [
+    (None, None), ('candidate', 'exact candidate'), ('receipt', 'selected original observation'),
+    ('failed', 'did not succeed'), ('actor', 'trusted deterministic CI'), ('report', 'original terminal'),
+])
+def test_candidate_verification_requires_original_ci_receipt_and_complete_validation(
+        original_job, monkeypatch, capsys, change, error):
+    from ergora.development import envelopes, verification
+
+    data = original_job
+    project_revision = data.creation.project['revision'] - 1
+    fixed = {'project': 'demo', 'project_revision': project_revision, 'checks': {'frozen-configuration': {}}}
+    preparation = {'protocol': 'preparation-dag-v1', 'members': {},
+                   'inventory': {'instance': 'root/inventory', 'coordinator': 'root/inventory/expert'},
+                   'plan': {'instance': 'root/plan', 'coordinator': 'root/plan/expert'}}
+    preparation['members'] = {preparation[stage]['coordinator']: {} for stage in ('inventory', 'plan')}
+    document = {'verification': fixed, 'composition': {'preparation': preparation}}
+    data.input = data.submission.input = SimpleNamespace(version=12, document=document, adapter=data.input.adapter,
+        submit_activity=envelopes.WORK_SUBMIT, matches_context=lambda context: envelopes.matches_context(data.spec, context, document))
+    data.spec['profile'].update(artifacts_by_stage={'verify': ['check-results']}, required_checks=['scope'])
+    data.context.update(stage='verify', expected_candidate_sha=data.receipt['candidate_sha'], spec=deepcopy(data.spec),
+                        admission=document, author_ids=[], author_sessions=[])
+    data.receipt.update(actor={**data.receipt['actor'], 'role': 'verifier'}, job_sha256=data.creation.sha(data.context),
+                        checks=[{'id': 'scope', 'status': 'pass', 'artifact': 'check-results'}])
+    data.write(data.envelope_path, {'schema_version': 1, 'job_id': data.receipt['job_id'],
+                                    'job_sha256': data.receipt['job_sha256'], 'context': data.context})
+    raw = b'{"complete":"report fixture"}'
+    data.creation.path('artifacts/task-one/check-results.json').write_bytes(raw)
+    digest = hashlib.sha256(raw).hexdigest()
+    data.receipt['artifacts'] = [{'name': 'check-results', 'path': 'task-one/check-results.json', 'sha256': digest}]
+    if change == 'failed':
+        data.receipt['state'] = 'FAILED'
+    if change == 'actor':
+        data.receipt['actor']['kind'] = 'human'
+    data.save_receipt()
+    source = {'task_id': data.creation.task_id, 'run_id': 'original-run', 'event_id': 5,
+              'candidate_sha': 'b' * 40 if change == 'candidate' else data.receipt['candidate_sha'],
+              'receipt_sha256': '2' * 64 if change == 'receipt' else data.creation.sha(data.receipt)}
+    subject = {'job_sha256': data.receipt['job_sha256']}
+    seen = []
+
+    def validate_report(contents, admission, selected, *, process_root):
+        assert (contents, admission, selected, process_root) == (raw, fixed, subject, data.creation.root / 'processes')
+        seen.append(True)
+        if change == 'report':
+            raise ValueError('Fixed process evidence differs from its original terminal')
+
+    monkeypatch.setattr(verification, 'job_subject', lambda document, job, root: subject)
+    monkeypatch.setattr(verification, 'read_report', validate_report)
+    monkeypatch.syspath_prepend(str(native_resources.ROOT / 'platform/local'))
+    from agent_platform import core
+
+    monkeypatch.setattr(core, 'environment', lambda: {})
+    payload = {'operation': 'read-candidate-verification', 'source': source, 'timeout': 5, 'deadline': time.monotonic() + 5}
+    monkeypatch.setattr(sys, 'stdin', io.StringIO(json.dumps(payload)))
+    before = snapshot(data.creation.root)
+    if error is None:
+        reference_task_evidence.main()
+        assert json.loads(capsys.readouterr().out) == {**source, 'project': 'demo', 'project_revision': project_revision,
+            'check_results_sha256': digest, 'fixed_check_ids': ['frozen-configuration'], 'status': 'validated'}
+    else:
+        with pytest.raises(SystemExit, match=error):
+            reference_task_evidence.main()
+    assert bool(seen) == (change in (None, 'receipt', 'report'))
+    assert snapshot(data.creation.root) == before
+
+
 def test_cli_and_http_forward_the_same_read_only_window(tmp_path, monkeypatch, capsys):
     pytest.importorskip('fastapi')
     from fastapi.testclient import TestClient
@@ -235,5 +303,5 @@ def test_native_read_failures_do_not_offer_write_recovery(original_job, monkeypa
         if failure == 'timeout': raise TimeoutError()
         raise RPCError('unavailable', RPCStatusCode.UNAVAILABLE, b'')
     monkeypatch.setattr(reference_task_evidence, '_job', fail)
-    monkeypatch.setattr(sys, 'stdin', io.StringIO(json.dumps({'timeout': 1})))
+    monkeypatch.setattr(sys, 'stdin', io.StringIO(json.dumps({'operation': 'inspect-job', 'timeout': 1})))
     with pytest.raises(SystemExit, match=message): reference_task_evidence.main()

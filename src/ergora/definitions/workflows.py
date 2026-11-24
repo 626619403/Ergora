@@ -295,7 +295,7 @@ class _Compilation:
         ports = {}
         for identity, node in nodes.items():
             self.path = f"{path}/{identity}"
-            if "join" in node or node["ref"]["kind"] == "agent":
+            if "join" in node or "operation" in node or node["ref"]["kind"] == "agent":
                 ports[identity] = ["result"]
             else:
                 ports[identity] = list(self._resolve(node["ref"], self.path, project=project)["definition"]["outputs"])
@@ -310,8 +310,12 @@ class _Compilation:
             if "join" in node:
                 continue
             self.path = f"{path}/{node['id']}"
-            expected = (["task"] if node["ref"]["kind"] == "agent" else
-                        self._resolve(node["ref"], self.path, project=project)["definition"]["inputs"])
+            if "operation" in node:
+                expected = ["source"]
+            elif node["ref"]["kind"] == "agent":
+                expected = ["task"]
+            else:
+                expected = self._resolve(node["ref"], self.path, project=project)["definition"]["inputs"]
             if set(node["inputs"]) != set(expected):
                 raise ValueError(f"Workflow input ports differ at {node['id']}: expected {expected}")
             for value in node["inputs"].values():
@@ -369,6 +373,11 @@ class _Compilation:
                     self._count(scopes, child_path)
                     self.instances.append({"path": child_path, "parent": path, "kind": "join", "join": "all",
                                            "depends_on": dependencies, "outputs": ["result"], "permissions": permissions})
+                elif "operation" in node:
+                    self._count(scopes, child_path)
+                    self.instances.append({"path": child_path, "parent": path, "kind": node["operation"],
+                                           "depends_on": dependencies, "inputs": node["inputs"],
+                                           "outputs": ["result"], "permissions": permissions})
                 elif node["ref"]["kind"] == "workflow":
                     child = self._resolve(node["ref"], child_path, project=project)
                     self._workflow(child, child_path, materials, permissions,

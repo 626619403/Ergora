@@ -434,6 +434,22 @@
               "const": "all"
             }
           }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "depends_on", "operation", "inputs"],
+          "properties": {
+            "id": {"$ref": "#/$defs/id"},
+            "depends_on": {
+              "type": "array",
+              "uniqueItems": true,
+              "maxItems": 128,
+              "items": {"$ref": "#/$defs/id"}
+            },
+            "operation": {"const": "verify-evidence"},
+            "inputs": {"$ref": "#/$defs/bindings"}
+          }
         }
       ]
     },

@@ -5,10 +5,13 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 import json
+import math
 import os
 from pathlib import Path
 import subprocess
 import sys
+import tempfile
+import time
 
 from .._paths import IMPORT_ROOT
 from ..native.files import _read_windows_contract
@@ -317,6 +320,18 @@ def task_job(project: dict, home: Path, payload: dict, *, timeout: int) -> dict:
     return _task_operation(project, home, 'evidence', 'inspect-job', payload, timeout)
 
 
+def task_candidate_verification(project: dict, home: Path, source: dict, *, deadline: float,
+                                stop_requested=None) -> dict:
+    """Read the pinned verification under the calling graph's original deadline."""
+    from ergora.development.verification import validate_readback_source
+
+    if type(deadline) not in (int, float) or not math.isfinite(deadline):
+        raise ValueError('Candidate verification requires an absolute monotonic deadline')
+    return _task_operation(project, home, 'evidence', 'read-candidate-verification',
+                           {'source': validate_readback_source(source)}, 20, deadline=deadline,
+                           stop_requested=stop_requested)
+
+
 def task_cancellation(project: dict, home: Path, operation: str, payload: dict, *, timeout: int) -> dict:
     """Use the native cancellation guard and preserve signal delivery uncertainty."""
     return _task_operation(project, home, 'cancellation', operation, payload, timeout)
@@ -351,8 +366,31 @@ def task_reconciliation(project: dict, home: Path, operation: str, payload: dict
     return _task_operation(project, home, 'reconciliation', operation, payload, timeout)
 
 
-def _task_operation(project: dict, home: Path, component: str, operation: str, payload: dict, timeout: int) -> dict:
+def _bounded_task_read(command, home, request, environment, timeout, deadline, stop_requested):
+    from ergora.runtime import processes
+
+    with tempfile.TemporaryDirectory(prefix='ergora-task-read-') as temporary:
+        output = Path(temporary) / 'reader'
+        result = processes.run(command, home, output, timeout, request, environment,
+                               deadline=deadline, stop_requested=stop_requested)
+        if result['status'] == 'cancelled':
+            raise KeyboardInterrupt
+        if result['status'] == 'timed_out' or time.monotonic() >= deadline:
+            raise TimeoutError('Candidate verification evidence read reached its deadline')
+        with (output / 'stdout.txt').open('rb') as stream:
+            stdout = stream.read(1_048_577)
+        with (output / 'stderr.txt').open('rb') as stream:
+            stderr = stream.read(8192)
+        if len(stdout) > 1_048_576:
+            raise ValueError('Candidate verification response exceeds 1 MiB')
+        return subprocess.CompletedProcess(command, result['returncode'], stdout.decode('utf-8'),
+                                           stderr.decode('utf-8', errors='replace'))
+
+
+def _task_operation(project: dict, home: Path, component: str, operation: str, payload: dict, timeout: int, *,
+                    deadline: float | None = None, stop_requested=None) -> dict:
     inspection = {'inspect-plan': 'Plan', 'inspect-events': 'Task event', 'inspect-job': 'Job evidence',
+                  'read-candidate-verification': 'Candidate verification evidence',
                   'inspect-index': 'Task evidence index', 'inspect-amendment': 'Amendment checkpoint',
                   'inspect-amendment-release': 'Amendment release',
                   'export-handoff': 'Task handoff'}.get(operation)
@@ -368,12 +406,17 @@ def _task_operation(project: dict, home: Path, component: str, operation: str, p
                        AGENTFLOW_STATE_DIR=execution['state_directory'])
     environment['PYTHONPATH'] = os.pathsep.join(map(str, (
         IMPORT_ROOT, installation / 'local', installation / 'upstream/platform')))
+    command = [str(interpreter), '-P', '-c', f'from ergora.development.runtime.{component} import main;main()']
+    request = {**payload, 'project': project, 'control_home': str(home), 'operation': operation, 'timeout': timeout}
     try:
-        result = subprocess.run([str(interpreter), '-P', '-c',
-                                 f'from ergora.development.runtime.{component} import main;main()'],
-                                input=json.dumps({**payload, 'project': project, 'control_home': str(home),
-                                                  'operation': operation, 'timeout': timeout}, allow_nan=False),
-                                capture_output=True, text=True, encoding='utf-8', env=environment, timeout=timeout + 5)
+        if deadline is None:
+            result = subprocess.run(command, input=json.dumps(request, allow_nan=False), capture_output=True,
+                                    text=True, encoding='utf-8', env=environment, timeout=timeout + 5)
+        else:
+            deadline = min(deadline, time.monotonic() + timeout)
+            request['deadline'] = deadline
+            result = _bounded_task_read(command, home, json.dumps(request, allow_nan=False), environment,
+                                        timeout, deadline, stop_requested)
     except subprocess.TimeoutExpired as error:
         if operation.startswith('source-'):
             raise ValueError('Design source process timed out; inspect saved source state before recovering this operation') from error
@@ -394,7 +437,13 @@ def _task_operation(project: dict, home: Path, component: str, operation: str, p
         if component == 'work_priority':
             raise ValueError(detail)
         raise ValueError(detail + f'; inspect task {component} before any recovery')
-    return json.loads(result.stdout)
+    decoded = json.loads(result.stdout)
+    if deadline is not None:
+        if stop_requested is not None and stop_requested():
+            raise KeyboardInterrupt
+        if time.monotonic() >= deadline:
+            raise TimeoutError('Candidate verification evidence read reached its deadline')
+    return decoded
 
 
 def _task_files_main():

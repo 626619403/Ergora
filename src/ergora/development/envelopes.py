@@ -12,7 +12,7 @@ import re
 
 from ergora.configuration.catalog import validate_agent_minimum
 from ergora.development.dags import (
-    ReviewDAG, WorkDelivery, preparation_members, preparation_stages, require_root_task,
+    ReviewDAG, WorkDelivery, preparation_members, preparation_stages, require_formal_nodes, require_root_task,
 )
 from ergora.development.route_errors import RouteBlocked
 from ergora.issues.identity import validate_snapshot
@@ -508,6 +508,7 @@ def unwrap(document: dict) -> tuple[dict, dict | None]:
         raise ValueError('Invalid formal composition selection')
     manifest_identity(composition['manifest'])
     graph = manifest_graph(composition['manifest'])
+    require_formal_nodes(graph)
     requirements = document['schema_version'] in (3, 4, 5, 6, 7, 12)
     if document['schema_version'] == 3 and graph['schema_version'] != 2:
         raise ValueError('Formal v3 admission requires a versioned review requirements graph')

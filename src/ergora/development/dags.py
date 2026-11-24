@@ -12,6 +12,12 @@ from pathlib import PurePosixPath
 from ergora.development.route_errors import RouteBlocked
 
 
+def require_formal_nodes(graph: dict) -> None:
+    for node in graph['instances']:
+        if node['kind'] == 'verify-evidence':
+            raise RouteBlocked(node['path'], 'Candidate verification evidence reads require standalone graph execution')
+
+
 def require_root_task(instances: dict, leaf: dict) -> None:
     """A direct stage leaf consumes no unexecuted sibling data or control edge."""
     node, port, visited = leaf, 'task', set()

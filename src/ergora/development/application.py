@@ -24,7 +24,7 @@ from ergora.issues import identity as issue_sources
 from ergora.development import budget as reference_budget
 from ergora.development import envelopes as task_envelopes
 from ergora.development import plan_methods, verification
-from ergora.development.dags import WorkDelivery
+from ergora.development.dags import WorkDelivery, require_formal_nodes
 from ergora.development.route_errors import RouteBlocked
 from ergora.development.envelopes import identity
 from ergora.development.runtime.creation_process import task_preparation
@@ -123,6 +123,7 @@ def _composition_manifest(option: dict, *, include_inventory: bool = False) -> d
 
 
 def _composition_selection(graph: dict, definition: dict, selection: dict) -> dict:
+    require_formal_nodes(graph)
     option = definition['composition']
     instances = {item['path']: item for item in graph['instances']}
     position = option['review_instance']
@@ -451,6 +452,16 @@ def job(state: State, project_id: str, task_id: str, *, run_id: str, event_id: i
     return development_native.task_job(project, state.root, {'task_id': task_id, 'run_id': run_id,
                               'event_id': event_id, 'artifact': artifact, 'receipt_sha256': receipt_sha256,
                               'offset': offset, 'limit': limit}, timeout=timeout)
+
+
+def read_candidate_verification(state: State, project_id: str, source: dict, *, expected_revision: int,
+                                deadline: float, stop_requested=None) -> dict:
+    """Validate complete fixed verification evidence from one original job."""
+    source = verification.validate_readback_source(source)
+    project = _project(state, project_id)
+    _revision(project, expected_revision)
+    return development_native.task_candidate_verification(project, state.root, source, deadline=deadline,
+                                                          stop_requested=stop_requested)
 
 
 def submission(state: State, project_id: str, task_id: str) -> dict:

@@ -26,7 +26,7 @@ The package entry point is `workflow.json`; see [schema v1](../../../src/ergora/
 |`resources`|Ordered local instructions/context/Skills; may be empty. Reuses Agent resource formats and complete digest checks.|
 |`inputs`|Array of input-port names; mappings are checked statically, and formal `dag-v1` projects the root task or completed predecessors' named outputs using frozen bindings.|
 |`outputs`|Output port → source binding, from this workflow's inputs or local nodes' outputs.|
-|`nodes`|Agent references, Workflow references and all-join; determine structural instances and the local graph.|
+|`nodes`|Agent references, Workflow references, all-join and the Workflow v2 `verify-evidence` operation determine instances and the local graph.|
 |`permissions`|This workflow's request/child ceilings; checked along the complete structural ancestor chain and against the project grant.|
 |`limits`|This subtree's depth, instance, concurrency and complete static-material ceilings; root/project totals cover every subtree.|
 
@@ -35,6 +35,28 @@ Agent/Workflow references require `kind`, `id`, `version` and `digest`. `digest`
 Bindings can only be `{"input":"task"}` or `{"node":"implement","output":"result"}`. A node referencing another node's result must list it as a direct dependency; references do not implicitly add dependencies. There are no Python expressions, arbitrary scripts or loops. Port values are opaque data consumed at execution time; static checks do not establish trust in a candidate, review decision or domain artifact.
 
 `{"id":"gather","join":"all","depends_on":["structure","correctness","test-value"]}` declares a join whose intended `result` output is a map of every dependency branch's complete named outputs. A join is a data barrier waiting for all listed branches. Formal read-only parallel review requires the root output to point to an explicit all-join covering every leaf; the original trusted runner checks each required branch's candidate, session and receipt before producing an aggregate reference. Static all-join alone is neither majority voting nor human approval.
+
+## Original fixed verification evidence
+
+Use `operation: "verify-evidence"` in a Workflow v2 definition and execute it through the standalone graph route. The compiler records the instance as kind `verify-evidence`. Its `source` binding must trace through Workflow input ports to an explicitly supplied root input. This applies to nested workflows as well as the root. The fragment below exposes the operation's fixed `result` port as a Workflow output.
+
+```json
+{
+  "schema_version": 2,
+  "inputs": ["source"],
+  "outputs": {"evidence": {"node": "verify", "output": "result"}},
+  "nodes": [
+    {
+      "id": "verify",
+      "depends_on": [],
+      "operation": "verify-evidence",
+      "inputs": {"source": {"input": "source"}}
+    }
+  ]
+}
+```
+
+The locator binds the original `task_id`, `run_id`, `event_id`, `candidate_sha` and `receipt_sha256`. The native reader revalidates the exact successful fixed-verify job against the original history and complete check-results and process records. Missing or mismatched evidence fails the node. A successful read returns the locator, original project and project revision, `check_results_sha256`, `fixed_check_ids` and `status: validated`. The read leaves check execution, approval, release and changes to the original task with their existing formal owners. [Standalone graph input and runtime requirements](compose.md#read-original-fixed-verification-evidence)
 
 ## Static required and advisory review declarations
 

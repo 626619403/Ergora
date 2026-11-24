@@ -193,6 +193,109 @@ def test_standalone_graph_rejects_writable_leaf_before_reserving_any_effect(prep
     assert not destination.exists() and agent_runs.runs(state, 'demo') == []
 
 
+@pytest.mark.parametrize('case', ['validated', 'invalid-evidence', 'cancelled', 'invalid-source', 'agent-source'])
+def test_workflow_verification_read_binds_an_operator_source_before_analysis(prepared, tmp_path, monkeypatch, capsys, case):
+    from ergora.development import application
+    from ergora.development.route_errors import RouteBlocked
+
+    state, _, _ = prepared()
+    base = workflows.get(state, 'structure-review', '1.0.0')
+    definition = base['definition']
+    verify = {**definition, 'schema_version': 2, 'id': 'verify-original', 'inputs': ['source'],
+              'outputs': {'evidence': {'node': 'verify', 'output': 'result'}}, 'nodes': [
+                  {'id': 'verify', 'operation': 'verify-evidence', 'depends_on': [],
+                   'inputs': {'source': {'input': 'source'}}}]}
+    child = workflows.revise(state, definition['id'], definition['version'], base['digest'], verify, publish=True)
+    analyze = definition['nodes'][0]
+    nested = {'id': 'nested', 'ref': {'kind': 'workflow', 'id': verify['id'], 'version': verify['version'],
+                                     'digest': child['digest']}, 'depends_on': [],
+              'inputs': {'source': {'input': 'locator'}}}
+    draft = {**definition, 'id': 'verified-analysis', 'inputs': ['locator'],
+             'outputs': {'analysis': {'node': 'review', 'output': 'result'}}, 'nodes': [nested, {
+                 **analyze, 'depends_on': ['nested'], 'inputs': {'task': {'node': 'nested', 'output': 'evidence'}}}]}
+    if case == 'agent-source':
+        nested.update(depends_on=['find'], inputs={'source': {'node': 'find', 'output': 'result'}})
+        draft['nodes'].append({**analyze, 'id': 'find', 'inputs': {'task': {'input': 'locator'}}})
+    workflows.revise(state, definition['id'], definition['version'], base['digest'], draft, publish=True)
+    grant = {'schema_version': 1, 'permissions': draft['permissions'], 'limits': draft['limits']}
+    manifest = tmp_path / 'evidence-manifest'
+    selected = workflows.prepare_manifest(state.root, draft['id'], draft['version'], grant, manifest)
+    graph = workflows.inspect_manifest(manifest, material=True)['composition']
+    operation = next(item for item in graph['instances'] if item['path'] == 'root/nested/verify')
+    assert operation['kind'] == 'verify-evidence'
+    with pytest.raises(RouteBlocked, match='standalone graph execution') as error:
+        application._composition_selection(graph, {}, {})
+    assert error.value.instance == 'root/nested/verify'
+
+    source = {'task_id': 'demo-task', 'run_id': '00000000-0000-4000-8000-000000000001',
+              'event_id': 12, 'candidate_sha': 'a' * 40, 'receipt_sha256': 'b' * 64}
+    if case == 'invalid-source':
+        source.pop('candidate_sha')
+    project_revision = state.project('demo')['revision']
+    evidence = {**source, 'project': 'demo', 'project_revision': project_revision,
+                'check_results_sha256': 'c' * 64, 'fixed_check_ids': ['config-check'], 'status': 'validated'}
+    reads, deadlines = [], []
+
+    def read(observed_state, project_id, observed, *, expected_revision, deadline, stop_requested):
+        assert observed_state.root == state.root and project_id == 'demo' and expected_revision == project_revision
+        assert observed == source and not stop_requested()
+        reads.append(observed)
+        deadlines.append(deadline)
+        if case == 'invalid-evidence':
+            raise ValueError('Original verify receipt differs')
+        if case == 'cancelled':
+            raise KeyboardInterrupt
+        return evidence
+
+    monkeypatch.setattr(application, 'read_candidate_verification', read)
+    script, received = tmp_path / 'analysis.py', tmp_path / 'received.json'
+    script.write_text('''import json, sys
+from pathlib import Path
+evidence = json.loads(sys.stdin.read().split('Workflow task port (JSON value):\\n')[-1])
+Path(sys.argv[2]).write_text(json.dumps(evidence), encoding='utf-8')
+Path(sys.argv[1]).write_text(json.dumps({'summary':'Review', 'artifacts':{'response':'Ready'},
+                                       'decision':'approve'}), encoding='utf-8')
+''', encoding='utf-8')
+    original = agent_backends.CodexBackend.command
+
+    def command(backend, request):
+        argv, prompt = original(backend, request)
+        return [sys.executable, str(script), argv[argv.index('--output-last-message') + 1], str(received)], prompt
+
+    monkeypatch.setattr(agent_backends.CodexBackend, 'command', command)
+    monkeypatch.setattr(agent_backends.CodexBackend, 'check_invocation', lambda self: None)
+    native = processes.run
+
+    def observe(*args, **kwargs):
+        deadlines.append(kwargs['deadline'])
+        return native(*args, **kwargs)
+
+    monkeypatch.setattr(processes, 'run', observe)
+    supplied, directory = tmp_path / 'evidence-input.json', tmp_path / 'evidence-run'
+    supplied.write_text(json.dumps({'locator': source}), encoding='utf-8')
+    status = main(['--home', str(state.root), 'composition', 'run-graph', 'demo', str(manifest),
+                   '--manifest-digest', selected['digest'], '--inputs', str(supplied), '--directory', str(directory),
+                   '--max-prompt-bytes', '30000'])
+    captured = capsys.readouterr()
+    if case in ('agent-source', 'invalid-source'):
+        assert status == 2 and not directory.exists() and not reads and not received.exists()
+        if case == 'agent-source':
+            assert 'must come from a workflow root input: root/nested/verify' in captured.err
+        return
+    receipt = json.loads(captured.out)
+    assert receipt == json.loads((directory / 'run.json').read_bytes())
+    assert reads == [source] and receipt['formal_execution_authorized'] is False
+    record, = receipt['verification_reads']
+    assert record['instance'] == 'root/nested/verify' and record['source'] == source
+    if case == 'validated':
+        assert status == 0 and record['evidence'] == evidence
+        assert json.loads(received.read_bytes()) == evidence
+        assert len(deadlines) == 2 and deadlines[0] == deadlines[1]
+    else:
+        assert status == 1 and not received.exists() and receipt['leaves'] == []
+        assert record['status'] == receipt['status'] == ('cancelled' if case == 'cancelled' else 'failed')
+
+
 def test_standalone_graph_rechecks_selected_manifest_at_each_leaf(prepared, tmp_path, monkeypatch):
     from ergora.agents.graphs import run_graph
 
