@@ -62,7 +62,7 @@
 
 ## 理解和修改实现
 
-阅读[架构概览（English）](architecture/current.md)、[源码所有权地图（English）](architecture/module-map.md)、[组件变更协议（English）](architecture/component-change-protocols.md)和[领域词汇表（English）](../CONTEXT.md)。
+先看[框架结构图与运行路径（English）](architecture/framework-tour.md)，了解静态定义与快照、独立工作流图、原生会话回执、正式六阶段交付、训练与评估。再阅读[架构概览（English）](architecture/current.md)、[源码所有权地图（English）](architecture/module-map.md)、[组件变更协议（English）](architecture/component-change-protocols.md)和[领域词汇表（English）](../CONTEXT.md)。
 
 |参考|用途|
 |---|---|

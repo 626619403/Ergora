@@ -2,7 +2,7 @@
 
 English · [Documentation](../README.md)
 
-Ergora connects project contracts, composable specialist Agents, formal execution and verifiable evidence. CLI and web share application use cases; Agent backends, issue sources and external communication each have their own integration points. The current implementation still reuses the bundled reference implementation's six stages and Temporal. It does not require every project to use issues and has no second formal scheduler.
+Ergora connects project contracts, composable specialist Agents, execution and verifiable evidence. CLI and web share application use cases. The standalone graph CLI runs supported read-only compositions. Formal delivery uses the bundled reference implementation's original six stages and Temporal. The [framework tour](framework-tour.md) shows those routes alongside one-leaf calls, native project sessions, training and evaluation.
 
 The [source ownership map](module-map.md) locates current modules and their actual consumers. Definition inheritance, control dependencies and named data remain [distinct contracts](../definitions/workflows/contracts.md); added resources do not enlarge [permissions](../definitions/workflows/permissions.md). Original candidate evidence, budgets, unknown reconciliation and process cleanup stay with their execution owners. Before changing a component, read the [component protocol](component-change-protocols.md) and its directory instructions.
 
