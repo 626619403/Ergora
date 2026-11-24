@@ -39,7 +39,7 @@ In `route_decisions`, a `corroborated` choice matches the frozen branch list and
 
 ### Resume an interrupted graph
 
-On Linux/WSL2, select `--recoverable` at the first launch. This mode supports read-only, text-only Agent leaves, nested Workflows, all-joins and typed `choose-agent` routing. Use ordinary standalone execution for verification gates. Use the manifest's backend bindings and omit `--codex-config`. The first launch saves the original graph inputs, manifest and same-boot budget, and holds a coordinator lock.
+On Linux/WSL2, select `--recoverable` at the first launch. This mode supports read-only, text-only Agent leaves, nested Workflows, all-joins, typed `choose-agent` routing and the [completed fixed-check review graph](#resume-a-fixed-check-gated-review). Use the manifest's backend bindings and omit `--codex-config`. The first launch saves the original graph inputs, manifest and same-boot budget, and holds a coordinator lock.
 
 ```bash
 ergora composition run-graph PROJECT ./complete-manifest --manifest-digest MANIFEST_DIGEST \
@@ -130,6 +130,20 @@ ergora composition run-graph PROJECT ./gated-review-manifest --manifest-digest M
 ```
 
 The gate validates the original terminal proof against the exact candidate, receipt, authorized project revision, manifest, leaf and task reconstructed from the saved packet. Timeout, stop, unknown outcomes and missing or mismatched evidence block the reviewer. The graph's `proof` output records the verified receipt and fixed-results digests along with the review-input identities. The separate `result` output carries the single advisory review of the unchanged task. Inspect its saved Agent evidence with `composition inspect-run`. Check launch and recovery authority stay with the original check owner. [Observe the graph readback](#observe-an-original-graph-run)
+
+#### Resume a fixed-check-gated review
+
+Complete the separately authorized check for the exported candidate first. Use the exact gated manifest above and launch with `--recoverable`, supplying the completed `check` object with both terminal digests. If the coordinator is lost after it durably records the passing gate proof and before it reserves the reviewer, resume in the same control home and run directory.
+
+```bash
+ergora composition resume-graph PROJECT ./gated-review-run --manifest-digest MANIFEST_DIGEST
+```
+
+Recovery rechecks the saved proof through the original native reader under the cutoff recorded for the first gate observation and the original graph deadline. It verifies the original Job, receipt, report, confirmed cleanup and their binding to the authorized project revision, candidate, packet, manifest and reviewer task. The unreserved reviewer can then start under the remaining original graph budget. A previously reserved reviewer requires its verified successful original result.
+
+A native proof reader can outlive the coordinator and keep the original graph lock. Resume can be refused until that reader exits, and the original cutoff still applies. If graph progress still says `attempted`, recovery can reconcile it from a matching durable completion witness only when no prepared dependent input or reservation exists. An incomplete read without that witness or a mismatched proof blocks resumption.
+
+The original executor retains the fixed-check Job's execution, stop and cleanup authority. Wait-mode `verify-fixed-check` and formal `verify-evidence` use ordinary standalone execution. [Observe the original graph](#observe-an-original-graph-run)
 
 ### Choose a follow-up Agent
 

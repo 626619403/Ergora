@@ -18,7 +18,7 @@ import uuid
 from ergora.agents import backends, invocation, native_sources, runs
 from ergora.configuration import validation as contracts
 from ergora.definitions import agents, bundles, workflows
-from ergora.development import dags
+from ergora.development import dags, native as development_native
 from ergora.runtime import budget_clock
 from ergora.storage.assets import is_link, publish_directory
 from ergora.storage.state import State, file_lock, resolve_home
@@ -29,6 +29,8 @@ _RECEIPT_LIMIT = 10_000_000
 _TERMINAL_STATUSES = ('succeeded', 'failed', 'cancelled', 'timed_out')
 _VERIFICATION_NODES = ('verify-evidence', 'verify-fixed-check')
 _RECOVERY_FIELDS = ('project', 'project_revision', 'root', 'manifest_digest', 'inputs', 'timeout', 'max_prompt_bytes')
+_FIXED_READ_ATTEMPT = 'verification-attempt.json'
+_FIXED_READ_COMPLETE = 'verification-complete.json'
 
 
 def _verify_sources(composition, inputs):
@@ -81,9 +83,10 @@ def _graph_authority_sha(receipt):
     return hashlib.sha256(_bounded_json([receipt[name] for name in _RECOVERY_FIELDS], _RECEIPT_LIMIT)).hexdigest()
 
 
-def _write_recovery_record(directory, name, record):
+def _write_recovery_record(directory, name, record, *, preserve_order=False):
+    encoded = _bounded_json(record, _RECEIPT_LIMIT) if preserve_order else native_sources.encode(record)
     with (directory / name).open('xb') as stream:
-        stream.write(native_sources.encode(record) + b'\n')
+        stream.write(encoded + b'\n')
         stream.flush()
         native_sources.sync_descriptor(stream.fileno())
     native_sources.sync_directory_chain(directory)
@@ -117,7 +120,7 @@ def _route_record(node, choice, source):
 
 class _GraphRun:
     def __init__(self, state, project, composition, directory, receipt, deadline, codex_config, stop_requested, fixed_review,
-                 *, recovery=None):
+                 *, recovery=None, lock_fd=None):
         self.state, self.project = state, project
         self.composition = composition
         self.nodes = {item['path']: item for item in composition['instances']}
@@ -131,6 +134,7 @@ class _GraphRun:
         self.completed = {}
         self.fixed_review = fixed_review
         self.recovery = recovery
+        self.lock_fd = lock_fd
         self.result_limit = recovery['result_limit'] if recovery is not None else _RESULT_LIMIT
         self.unreserved = None
 
@@ -300,23 +304,69 @@ class _GraphRun:
         self.result_bytes += result['bytes']
         return {'result': result['document']}
 
+    def fixed_read_attempt(self, path, source, started):
+        cutoff = min(self.recovery['deadline_monotonic_ns'],
+                     started + development_native.FIXED_CHECK_PROOF_TIMEOUT * 1_000_000_000)
+        return {'schema_version': 1, 'instance': path, 'recovery_sha256': self.receipt['recovery_sha256'],
+                'mode': 'completed', 'source': source, 'source_sha256': native_sources.sha(source),
+                'review': self.fixed_review, 'boot_id': self.recovery['clock']['boot_id'],
+                'started_monotonic_ns': started, 'deadline_monotonic_ns': cutoff}
+
+    def check_fixed_read_cutoff(self, attempt):
+        self.check_active()
+        now = time.monotonic_ns()
+        if now >= attempt['deadline_monotonic_ns']:
+            raise TimeoutError('The original fixed-check read deadline expired')
+        return now
+
+    def check_fixed_proof(self, source, evidence):
+        expected = {**source, **self.fixed_review, 'status': 'validated', 'project': self.project['id'],
+                    'project_revision': self.project['revision']}
+        if (not isinstance(evidence, dict) or evidence.keys() != expected.keys() | {
+                'job_id', 'authorization_sha256', 'verification_sha256', 'fixed_check_ids'}
+                or any(type(evidence[key]) is not type(value) or evidence[key] != value for key, value in expected.items())
+                or not isinstance(evidence['job_id'], str) or not evidence['job_id']
+                or any(not isinstance(evidence[key], str) or re.fullmatch('[a-f0-9]{64}', evidence[key]) is None
+                       for key in ('authorization_sha256', 'verification_sha256'))
+                or not isinstance(evidence['fixed_check_ids'], list)
+                or not all(isinstance(key, str) for key in evidence['fixed_check_ids'])):
+            raise ValueError('Saved fixed-check proof differs from its original locator or review binding')
+
+    def fixed_read_completion(self, attempt, evidence, validated):
+        return {'schema_version': 1, 'attempt_sha256': native_sources.sha(attempt), 'evidence': evidence,
+                'evidence_sha256': hashlib.sha256(_bounded_json(evidence, self.result_limit)).hexdigest(),
+                'validated_monotonic_ns': validated}
+
     def verify_evidence(self, path, source):
         from ergora.development.application import read_candidate_verification, read_fixed_check_proof
 
         self.check_active()
         reads = self.receipt.setdefault('verification_reads', [])
         record = {'instance': path, 'source': source, 'status': 'attempted'}
+        attempt = None
+        if self.recovery is not None:
+            attempt = self.fixed_read_attempt(path, source, time.monotonic_ns())
+            _write_recovery_record(self.directory, _FIXED_READ_ATTEMPT, attempt)
+            record['attempt_sha256'] = native_sources.sha(attempt)
         reads.append(record)
         self.save()
         try:
             options = {'expected_revision': self.project['revision'], 'deadline': self.deadline,
                        'stop_requested': self.should_stop}
+            if attempt is not None:
+                self.check_fixed_read_cutoff(attempt)
+                options.update(deadline=attempt['deadline_monotonic_ns'] / 1_000_000_000, lock_fd=self.lock_fd)
             if self.nodes[path]['kind'] == 'verify-fixed-check':
                 evidence = read_fixed_check_proof(self.state, self.project['id'], source, self.fixed_review, **options)
             else:
                 evidence = read_candidate_verification(self.state, self.project['id'], source, **options)
             self.result_bytes += len(_bounded_json(evidence, self.result_limit - self.result_bytes))
             self.check_active()
+            if attempt is not None:
+                self.check_fixed_proof(source, evidence)
+                completion = self.fixed_read_completion(attempt, evidence, self.check_fixed_read_cutoff(attempt))
+                _write_recovery_record(self.directory, _FIXED_READ_COMPLETE, completion, preserve_order=True)
+                record['completion_sha256'] = native_sources.sha(completion)
         except TimeoutError:
             record['status'] = 'timed_out'
             raise
@@ -329,6 +379,67 @@ class _GraphRun:
         record.update(status='validated', evidence=evidence)
         self.save()
         return {'result': evidence}
+
+    def restore_fixed_read(self, inputs):
+        if self.fixed_review is None:
+            if ('verification_reads' in self.receipt
+                    or any(os.path.lexists(self.directory / name) for name in (_FIXED_READ_ATTEMPT, _FIXED_READ_COMPLETE))):
+                raise ValueError('Saved verification progress has no original fixed-check gate')
+            return None
+        gate, = (node['path'] for node in self.nodes.values() if node['kind'] == 'verify-fixed-check')
+        reads = _observed_attempts(self.receipt, 'verification_reads', {gate})
+        if len(reads) != 1:
+            raise ValueError('Recovery requires the original completed fixed-check proof')
+        try:
+            attempt = native_sources.packet(self.directory, _FIXED_READ_ATTEMPT, confirm_durable=True)
+            completion = native_sources.packet(self.directory, _FIXED_READ_COMPLETE, confirm_durable=True)
+        except FileNotFoundError as error:
+            raise ValueError('Recovery requires the original completed fixed-check proof') from error
+        source = inputs['check']
+        started = attempt.get('started_monotonic_ns') if isinstance(attempt, dict) else None
+        validated = completion.get('validated_monotonic_ns') if isinstance(completion, dict) else None
+        graph_start = self.recovery['deadline_monotonic_ns'] - self.receipt['timeout'] * 1_000_000_000
+        if (type(started) is not int or not graph_start <= started <= time.monotonic_ns()
+                or native_sources.encode(attempt) != native_sources.encode(self.fixed_read_attempt(gate, source, started))):
+            raise ValueError('Saved fixed-check read attempt differs from its original cutoff or authorization')
+        if type(validated) is not int or not started <= validated < attempt['deadline_monotonic_ns']:
+            raise ValueError('Saved fixed-check proof was not validated within its original read deadline')
+        if validated > self.check_fixed_read_cutoff(attempt):
+            raise ValueError('Saved fixed-check proof validation time is in the future')
+        evidence = completion.get('evidence')
+        self.check_fixed_proof(source, evidence)
+        if native_sources.encode(completion) != native_sources.encode(self.fixed_read_completion(attempt, evidence, validated)):
+            raise ValueError('Saved fixed-check completion differs from its original proof')
+        record, = reads
+        expected = {'instance': gate, 'source': source, 'status': 'attempted',
+                    'attempt_sha256': native_sources.sha(attempt)}
+        validated_record = {**expected, 'status': 'validated', 'evidence': evidence,
+                            'completion_sha256': native_sources.sha(completion)}
+        if record.get('status') == 'attempted':
+            if self.receipt.get('leaves') or any(path.name.startswith(('input-', 'reservation-')) for path in self.directory.iterdir()):
+                raise ValueError('Saved fixed-check read is still attempted with dependent work already recorded')
+        else:
+            expected = validated_record
+        if native_sources.encode(record) != native_sources.encode(expected):
+            raise ValueError('Saved verification progress differs from the original fixed-check witnesses')
+        self.result_bytes += len(_bounded_json(evidence, self.result_limit - self.result_bytes))
+        self.completed[gate] = {'result': evidence}
+        return attempt, record, validated_record
+
+    def recheck_fixed_read(self, restored):
+        if restored is None:
+            return
+        from ergora.development.application import read_fixed_check_proof
+
+        attempt, record, validated_record = restored
+        self.check_fixed_read_cutoff(attempt)
+        proof = read_fixed_check_proof(self.state, self.project['id'], attempt['source'], self.fixed_review,
+            expected_revision=self.project['revision'], deadline=attempt['deadline_monotonic_ns'] / 1_000_000_000,
+            stop_requested=self.should_stop, lock_fd=self.lock_fd)
+        self.check_fixed_read_cutoff(attempt)
+        if native_sources.encode(proof) != native_sources.encode(validated_record['evidence']):
+            raise ValueError('Original native proof differs from the saved fixed-check proof')
+        record.update(validated_record)
 
     def route_decision(self, node, source):
         analyzer = node['depends_on'][0]
@@ -539,8 +650,16 @@ def _graph_inputs(composition, inputs, max_prompt_bytes, *, recoverable=False):
     if not isinstance(inputs, dict) or inputs.keys() != composition['instances'][0]['inputs'].keys():
         raise ValueError('Workflow inputs must supply exactly the declared root ports')
     encoded_inputs = _bounded_json(inputs, max_prompt_bytes)
-    if recoverable and any(node['kind'] not in ('agent', 'workflow', 'join', 'choose-agent') for node in composition['instances']):
-        raise ValueError('Recoverable graphs support only Agent, Workflow, all-join and choose-agent nodes')
+    if recoverable:
+        kinds = {node['kind'] for node in composition['instances']}
+        if kinds - {'agent', 'workflow', 'join', 'choose-agent', 'verify-fixed-check'}:
+            raise ValueError('Recoverable graphs support only Agent, Workflow, all-join, choose-agent and the fixed-check review gate')
+        if 'verify-fixed-check' in kinds:
+            from ergora.development.verification import validate_fixed_check_source
+
+            dags.fixed_check_review(composition)
+            if 'wait_seconds' in validate_fixed_check_source(inputs['check']):
+                raise ValueError('Recoverable fixed-check review requires a completed locator with both original output digests')
     for leaf in (item for item in composition['instances'] if item['kind'] == 'agent'):
         if any(leaf['permissions'][name] for name in ('write', 'shell', 'network')):
             raise ValueError(f'Standalone workflow requires a read-only leaf: {leaf["path"]}')
@@ -626,19 +745,21 @@ def run_graph(state: State, project_id: str, manifest: Path, manifest_digest: st
                         authority_sha256=_graph_authority_sha(receipt))
     directory.parent.mkdir(parents=True, exist_ok=True)
     with ExitStack() as owner:
+        lock_fd = None
         with tempfile.TemporaryDirectory(prefix='.workflow-run-', dir=directory.parent) as temporary:
             staged = Path(temporary)/'run'
             staged.mkdir(mode=0o700)
             if recoverable:
                 lock = _enter_owner(owner, staged / '.owner.lock')
-                recovery['owner_identity'] = _owner_identity(os.fstat(lock.fileno()))
+                lock_fd = lock.fileno()
+                recovery['owner_identity'] = _owner_identity(os.fstat(lock_fd))
                 receipt['recovery_sha256'] = native_sources.sha(recovery)
                 _write_recovery_record(staged, 'recovery.json', recovery)
             shutil.copytree(manifest, staged/'manifest', symlinks=True)
             if workflows.inspect_manifest(staged/'manifest')['digest'] != manifest_digest:
                 raise ValueError('Workflow manifest changed while freezing the run')
             run = _GraphRun(state, project, composition, staged, receipt, deadline, codex_config, stop_requested,
-                            fixed_review, recovery=recovery)
+                            fixed_review, recovery=recovery, lock_fd=lock_fd)
             run.check_active()
             run.save()
             publish_directory(staged, directory)
@@ -660,7 +781,7 @@ def resume_graph(home: Path | None, project_id: str, directory: Path, manifest_d
         _, receipt = _read_graph_receipt(project_id, directory, manifest_digest)
         if receipt.get('status') != 'incomplete' or os.path.lexists(directory / 'stop.json'):
             raise ValueError('A terminal or explicitly stopped graph cannot resume')
-        if 'outputs' in receipt or 'error' in receipt or 'verification_reads' in receipt:
+        if 'outputs' in receipt or 'error' in receipt:
             raise ValueError('Saved graph progress differs from the supported incomplete recovery state')
         if any(field not in receipt for field in _RECOVERY_FIELDS):
             raise ValueError('Saved recovery is missing original graph authority')
@@ -691,9 +812,13 @@ def resume_graph(home: Path | None, project_id: str, directory: Path, manifest_d
             raise ValueError('Saved graph manifest differs from the receipt or explicitly selected digest')
         composition, inputs = checked['composition'], receipt['inputs']
         _graph_inputs(composition, inputs, receipt['max_prompt_bytes'], recoverable=True)
-        run = _GraphRun(state, project, composition, directory, receipt, deadline, None, stop_requested, None, recovery=recovery)
+        fixed_review = _fixed_review_context(composition, inputs, manifest_digest)
+        run = _GraphRun(state, project, composition, directory, receipt, deadline, None, stop_requested, fixed_review,
+                        recovery=recovery, lock_fd=original_lock.fileno())
         try:
+            restored = run.restore_fixed_read(inputs)
             run.recover(inputs)
+            run.recheck_fixed_read(restored)
             if state.project(project_id)['revision'] != project['revision']:
                 raise ValueError('Project revision changed during graph recovery')
             run.check_active()

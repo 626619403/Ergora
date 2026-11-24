@@ -502,13 +502,13 @@ def stop_candidate_check(state: State, project_id: str, operation_id: str, job_s
 
 
 def read_fixed_check_proof(state: State, project_id: str, source: dict, review: dict, *, expected_revision: int,
-                           deadline: float, stop_requested=None) -> dict:
+                           deadline: float, stop_requested=None, lock_fd: int | None = None) -> dict:
     """Validate the original fixed check and its authorized review task for the selected graph."""
     source = verification.validate_fixed_check_source(source)
     project = _project(state, project_id)
     _revision(project, expected_revision)
     return development_native.task_fixed_check_proof(project, state.root, source, review, deadline=deadline,
-                                                      stop_requested=stop_requested)
+        stop_requested=stop_requested, **({'lock_fd': lock_fd} if lock_fd is not None else {}))
 
 
 def submission(state: State, project_id: str, task_id: str) -> dict:

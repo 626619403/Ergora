@@ -18,6 +18,9 @@ from ..native.files import _read_windows_contract
 from ..native.resources import DATA, ROOT
 
 
+FIXED_CHECK_PROOF_TIMEOUT = 20
+
+
 def task_files(project: dict, *, task_id: str | None = None, limit: int = 50,
                after: str | None = None) -> dict:
     """Read native task files in a dedicated process; no optional SDK is loaded."""
@@ -338,16 +341,17 @@ def task_fixed_candidate_check(project: dict, home: Path, operation: str, payloa
 
 
 def task_fixed_check_proof(project: dict, home: Path, source: dict, review: dict, *, deadline: float,
-                           stop_requested=None) -> dict:
+                           stop_requested=None, lock_fd: int | None = None) -> dict:
     """Read an original fixed check under the standalone graph's deadline."""
     if type(deadline) not in (int, float) or not math.isfinite(deadline):
         raise ValueError('Fixed check proof requires an absolute monotonic deadline')
-    timeout = source.get('wait_seconds', 20)
+    timeout = source.get('wait_seconds', FIXED_CHECK_PROOF_TIMEOUT)
     if 'wait_seconds' in source:
         deadline = min(deadline, time.monotonic() + timeout)
     return _task_operation(project, home, 'candidate_checks', 'prove-fixed-check',
                            {'source': source, 'operation_id': source['operation_id'], 'job_sha256': source['job_sha256'],
-                            'review': review}, timeout, deadline=deadline, stop_requested=stop_requested)
+                            'review': review}, timeout, deadline=deadline, stop_requested=stop_requested,
+                           **({'lock_fd': lock_fd} if lock_fd is not None else {}))
 
 
 def task_cancellation(project: dict, home: Path, operation: str, payload: dict, *, timeout: int) -> dict:
@@ -384,13 +388,14 @@ def task_reconciliation(project: dict, home: Path, operation: str, payload: dict
     return _task_operation(project, home, 'reconciliation', operation, payload, timeout)
 
 
-def _bounded_task_read(command, home, request, environment, timeout, deadline, stop_requested):
+def _bounded_task_read(command, home, request, environment, timeout, deadline, stop_requested, *, lock_fd=None):
     from ergora.runtime import processes
 
     with tempfile.TemporaryDirectory(prefix='ergora-task-read-') as temporary:
         output = Path(temporary) / 'reader'
         result = processes.run(command, home, output, timeout, request, environment,
-                               deadline=deadline, stop_requested=stop_requested)
+                               deadline=deadline, stop_requested=stop_requested,
+                               **({'lock_fd': lock_fd} if lock_fd is not None else {}))
         if result['status'] == 'cancelled':
             raise KeyboardInterrupt
         if result['status'] == 'timed_out' or time.monotonic() >= deadline:
@@ -406,7 +411,7 @@ def _bounded_task_read(command, home, request, environment, timeout, deadline, s
 
 
 def _task_operation(project: dict, home: Path, component: str, operation: str, payload: dict, timeout: int, *,
-                    deadline: float | None = None, stop_requested=None) -> dict:
+                    deadline: float | None = None, stop_requested=None, lock_fd: int | None = None) -> dict:
     inspection = {'inspect-plan': 'Plan', 'inspect-events': 'Task event', 'inspect-job': 'Job evidence',
                   'read-candidate-verification': 'Candidate verification evidence',
                   'inspect-index': 'Task evidence index', 'inspect-amendment': 'Amendment checkpoint',
@@ -434,7 +439,8 @@ def _task_operation(project: dict, home: Path, component: str, operation: str, p
             deadline = min(deadline, time.monotonic() + timeout)
             request['deadline'] = deadline
             result = _bounded_task_read(command, home, json.dumps(request, allow_nan=False), environment,
-                                        timeout, deadline, stop_requested)
+                                        timeout, deadline, stop_requested,
+                                        **({'lock_fd': lock_fd} if lock_fd is not None else {}))
     except subprocess.TimeoutExpired as error:
         if operation.startswith('source-'):
             raise ValueError('Design source process timed out; inspect saved source state before recovering this operation') from error

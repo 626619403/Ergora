@@ -448,7 +448,8 @@ def test_text_only_cannot_silently_drop_required_skill_attachments(full_creation
 @pytest.mark.skipif(sys.platform != 'linux', reason='Native stage monitor requires Linux/WSL2')
 @pytest.mark.parametrize('case', ['full', 'serial', 'capacity', 'unread', 'source-artifact', 'source-claim', 'source-receipt',
                                  'owner-source-artifact', 'issue-source', 'development-specialists', 'method-addendum',
-                                 'fixed-candidate-check', 'fixed-candidate-check-graph'])
+                                 'fixed-candidate-check', 'fixed-candidate-check-graph',
+                                 'fixed-candidate-check-graph-recoverable'])
 def test_real_preparation_calls_and_original_stage_results(tmp_path, case):
     pytest.importorskip('temporalio')
     pytest.importorskip('mcp')
@@ -481,6 +482,12 @@ def test_real_preparation_calls_and_original_stage_results(tmp_path, case):
         assert (wait['timed_out'], wait['stopped'], wait['wrong_locator']) == ('timed_out', 'cancelled', 'failed')
         assert wait['proof']['operation_id'] == 'wait-check' and wait['proof']['status'] == 'validated'
         assert wait['proof']['wait_seconds'] == 10 and wait['reviewer_run_id'] and wait['original_native_effects_only']
+    if case == 'fixed-candidate-check-graph-recoverable':
+        recovery = proof['graph']
+        assert recovery['reused_proof'] and recovery['native_records_unchanged']
+        assert recovery['reviewer_calls'] == 1 and recovery['original_reviewer_reused']
+        assert recovery['refused'] == ['incomplete', 'altered-proof', 'stale-with-prepared-input',
+                                       'missing-native-receipt', 'expired-read']
 
 
 @pytest.mark.parametrize('full_graph,case', [(1, 'complete'), (2, 'complete'), (2, 'duplicate'), (2, 'stop')], indirect=['full_graph'])
