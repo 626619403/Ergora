@@ -319,9 +319,15 @@ print(json.dumps({"skill":request["candidate"]["skill"].replace("BASELINE","IMPR
         assert all(case["split"] != "holdout" for case in snapshot["cases"])
 
 
-def test_real_gepa_stops_with_unknown_proposer_cost_when_cost_fields_conflict(skill_project):
+@pytest.mark.parametrize("newline", [b"\n", b"\r\n"], ids=["lf", "crlf"])
+def test_real_gepa_stops_with_unknown_proposer_cost_when_cost_fields_conflict(skill_project, newline):
     pytest.importorskip("gepa")
-    state, repo, _, baseline, original = skill_project
+    state, repo, _, _, original = skill_project
+    source = repo / "cost-skill"
+    source.mkdir()
+    skill_bytes = b"---\nname: cost-skill\ndescription: Local cost fixture\n---\nBASELINE\n".replace(b"\n", newline)
+    (source / "SKILL.md").write_bytes(skill_bytes)
+    baseline = skill_assets.import_bundle(state, "demo", source)
     scorer = repo / "cost-scorer.py"
     scorer.write_text('''import json, pathlib, sys
 request = json.load(sys.stdin)
@@ -346,6 +352,14 @@ print('{"skill":' + json.dumps(skill) + ',"cost":2,"cost":0}')
     assert "Duplicate JSON key" in result["error"] and "cost" in result["error"]
     children = [evaluation.get(state, "demo", run_id) for run_id in result["evaluations"]]
     assert all(run["skill"] == baseline["digest"] and run["reported_cost_complete"] for run in children)
+    assert result["baseline"] == baseline["digest"]
+    for run in children:
+        for case in run["cases"]:
+            request = json.loads(Path(case["output"], "stdin.txt").read_bytes())
+            assert request["skill_dir"] == baseline["path"]
+            assert Path(request["skill_dir"], "SKILL.md").read_bytes() == skill_bytes
+    request = json.loads(Path(result["output"], "proposal-1", "stdin.txt").read_bytes())
+    assert request["candidate"]["skill"].encode("utf-8") == skill_bytes
     assert result["reported_cost"] == sum(run["reported_cost"] for run in children) > 0
     assert result["proposals"] == 1 and result["candidates"] == [baseline["digest"]]
     assert optimization.listing(State(state.root), "demo")[0] == result

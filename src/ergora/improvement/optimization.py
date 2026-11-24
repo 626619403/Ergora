@@ -189,7 +189,7 @@ def optimize(state: State, project_id: str, baseline_digest: str, suite_digest: 
 
     try:
         result = gepa_optimize(
-            seed_candidate={"skill": (Path(baseline["path"]) / "SKILL.md").read_text(encoding="utf-8")}, trainset=train, valset=validation,
+            seed_candidate={"skill": (Path(baseline["path"]) / "SKILL.md").read_bytes().decode("utf-8")}, trainset=train, valset=validation,
             adapter=Adapter(), custom_candidate_proposer=propose, max_metric_calls=max_evaluations,
             stop_callbacks=[TimeoutStopCondition(timeout), lambda _: document["status"] != "running"], reflection_minibatch_size=1,
             skip_perfect_score=False, run_dir=str(directory / "gepa"), raise_on_exception=True,
