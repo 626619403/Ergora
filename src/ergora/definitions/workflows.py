@@ -606,9 +606,11 @@ def verify_store(root: Path) -> int:
     return len(documents)
 
 
-def compile_input(composition: dict, instance: str, task: bytes, max_prompt_bytes: int) -> tuple[dict, bytes]:
+def compile_input(composition: dict, instance: str, task: bytes, max_prompt_bytes: int, *,
+                  input_origin: str = "operator-supplied") -> tuple[dict, bytes]:
     """Compile complete leaf prompt bytes without writing or authorizing a call."""
     contracts.validate(max_prompt_bytes, contracts.COMPOSITION_INPUT["properties"]["max_prompt_bytes"], "Input byte limit")
+    contracts.validate(input_origin, contracts.COMPOSITION_INPUT["properties"]["input_origin"], "Input origin")
     if len(task) > contracts.COMPOSITION_INPUT["properties"]["max_prompt_bytes"]["maximum"]:
         raise ValueError("Composition task exceeds the supported input byte limit")
     text = task.decode("utf-8-sig")
@@ -617,12 +619,14 @@ def compile_input(composition: dict, instance: str, task: bytes, max_prompt_byte
     selected = next((item for item in composition["instances"] if item["path"] == instance and item["kind"] == "agent"), None)
     if selected is None:
         raise ValueError(f"Select an Agent leaf instance: {instance}")
-    prompt = (selected["prompt"] + "\n\nOperator supplied task (workflow ports have not been executed):\n" + text).encode("utf-8")
+    label = {"operator-supplied": "Operator supplied task (workflow ports have not been executed):",
+             "workflow-port": "Workflow task port (JSON value):"}[input_origin]
+    prompt = (selected["prompt"] + "\n\n" + label + "\n" + text).encode("utf-8")
     if len(prompt) > max_prompt_bytes:
         raise ValueError(f"Complete composition prompt exceeds the input byte limit: {len(prompt)} > {max_prompt_bytes}")
     document = {"schema_version": 1, "kind": "composition-input", "execution_authorized": False,
                 "root": composition["root"], "instance": instance, "grant": composition["grant"],
-                "input_origin": "operator-supplied", "task_sha256": hashlib.sha256(task).hexdigest(),
+                "input_origin": input_origin, "task_sha256": hashlib.sha256(task).hexdigest(),
                 "preview_sha256": composition["preview_sha256"], "prompt_sha256": hashlib.sha256(prompt).hexdigest(),
                 "prompt_bytes": len(prompt), "max_prompt_bytes": max_prompt_bytes}
     contracts.validate(document, contracts.COMPOSITION_INPUT, "Composition input")
@@ -650,7 +654,8 @@ def _inspect_snapshot(source: Path, *, leaf_input: bool, material: bool, include
     document = library(assets).get(root["id"], root["version"], material=True)
     composition = _Compilation(assets, request["grant"]).compile(document)
     stored = definition_bundles.read_json(source / "composition.json", files["composition.json"]["sha256"])
-    expected, prompt = (compile_input(composition, request["instance"], (source / "task.txt").read_bytes(), request["max_prompt_bytes"])
+    expected, prompt = (compile_input(composition, request["instance"], (source / "task.txt").read_bytes(),
+                                      request["max_prompt_bytes"], input_origin=request["input_origin"])
                         if leaf_input else (_manifest_fields(composition), None))
     if (_encoded(stored) != _encoded(composition) or _encoded(request) != _encoded(expected) or
             (leaf_input and (source / "prompt.txt").read_bytes() != prompt)):
@@ -796,9 +801,12 @@ def freeze_manifest(root: Path, identity: str, version: str, grant: dict, previe
             {"manifest.json": _encoded(_manifest_fields(composition))}, inspect_manifest)
 
 
-def prepare_input_from_manifest(source: Path, instance: str, task: bytes, destination: Path, max_prompt_bytes: int) -> dict:
+def prepare_input_from_manifest(source: Path, instance: str, task: bytes, destination: Path, max_prompt_bytes: int, *,
+                                input_origin: str = "operator-supplied", manifest_digest: str | None = None) -> dict:
     """Use a complete static package only after fresh admission of its original graph."""
     checked = inspect_manifest(source, material=True)
+    if manifest_digest is not None and checked["digest"] != manifest_digest:
+        raise ValueError("Composition manifest differs from the explicitly selected digest")
     if destination.expanduser().resolve().is_relative_to(Path(checked["path"]).resolve()):
         raise ValueError("Composition input cannot be written inside its source manifest")
     root = Path(checked["path"]) / "assets"
@@ -806,6 +814,6 @@ def prepare_input_from_manifest(source: Path, instance: str, task: bytes, destin
     composition = preview(root, reference["id"], reference["version"], checked["manifest"]["grant"])
     if _encoded(composition) != _encoded(checked["composition"]):
         raise ValueError("Composition manifest changed before input admission")
-    request, prompt = compile_input(composition, instance, task, max_prompt_bytes)
+    request, prompt = compile_input(composition, instance, task, max_prompt_bytes, input_origin=input_origin)
     return _prepare_bundle(root, composition, destination,
         {"request.json": _encoded(request), "task.txt": task, "prompt.txt": prompt}, inspect_input)

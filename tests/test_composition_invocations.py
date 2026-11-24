@@ -92,6 +92,131 @@ def prepared(tmp_path):
     return build
 
 
+@pytest.mark.parametrize('case', ['success', 'failed-first', 'result-budget'])
+def test_standalone_graph_executes_nested_ports_and_keeps_original_attempts(prepared, tmp_path, monkeypatch, capsys, case):
+    from ergora.agents import graphs
+
+    fail_first = case == 'failed-first'
+    original_result = {'summary': 'Review', 'artifacts': {'response': 'Verified output'}, 'decision': 'approve'}
+    if case == 'result-budget':
+        single_result_bytes = len(json.dumps(original_result, sort_keys=True).encode('utf-8'))
+        monkeypatch.setattr(graphs, '_RESULT_LIMIT', single_result_bytes + single_result_bytes//2)
+    state, _, _ = prepared()
+    child = workflows.get(state, 'structure-review', '1.0.0')
+    root = child['definition']
+    leaf = root['nodes'][0]
+    draft = {**root, 'id': 'standalone-review', 'inputs': ['request'], 'outputs': {
+        'joined': {'node': 'join', 'output': 'result'}, 'original': {'input': 'request'}}, 'nodes': [
+        {'id': 'nested', 'ref': {'kind': 'workflow', 'id': root['id'], 'version': root['version'], 'digest': child['digest']},
+         'depends_on': [], 'inputs': {'task': {'input': 'request'}}},
+        {**leaf, 'id': 'followup', 'depends_on': ['nested'], 'inputs': {'task': {'node': 'nested', 'output': 'findings'}}},
+        {'id': 'join', 'join': 'all', 'depends_on': ['nested', 'followup']},
+    ]}
+    workflows.revise(state, root['id'], root['version'], child['digest'], draft, publish=True)
+    grant = {'schema_version': 1, 'permissions': draft['permissions'], 'limits': draft['limits']}
+    manifest = tmp_path / 'manifest'
+    selected = workflows.prepare_manifest(state.root, draft['id'], draft['version'], grant, manifest)
+    inputs, destination = tmp_path / 'inputs.json', tmp_path / 'graph-run'
+    supplied = {'requirement': '保留依赖', 'fail': fail_first}
+    inputs.write_text(json.dumps({'request': supplied}), encoding='utf-8')
+    script, call_log = tmp_path / 'provider.py', tmp_path / 'calls.jsonl'
+    script.write_text('''import json, sys
+from pathlib import Path
+value = json.loads(sys.stdin.read().split('Workflow task port (JSON value):\\n')[-1])
+with Path(sys.argv[2]).open('a', encoding='utf-8') as stream:
+    stream.write(json.dumps(value) + '\\n')
+if value.get('fail'):
+    sys.exit(7)
+Path(sys.argv[1]).write_text(json.dumps({'summary': 'Review', 'artifacts': {'response': 'Verified output'},
+                                       'decision': 'approve'}), encoding='utf-8')
+''', encoding='utf-8')
+    original = agent_backends.CodexBackend.command
+
+    def command(backend, request):
+        argv, prompt = original(backend, request)
+        assert argv[argv.index('--sandbox') + 1] == 'read-only'
+        return [sys.executable, str(script), argv[argv.index('--output-last-message') + 1], str(call_log)], prompt
+
+    monkeypatch.setattr(agent_backends.CodexBackend, 'command', command)
+    monkeypatch.setattr(agent_backends.CodexBackend, 'check_invocation', lambda self: None)
+    process_deadlines = []
+    native = processes.run
+
+    def observe(*args, **kwargs):
+        process_deadlines.append(kwargs['deadline'])
+        return native(*args, **kwargs)
+
+    monkeypatch.setattr(processes, 'run', observe)
+    argv = ['--home', str(state.root), 'composition', 'run-graph', 'demo', str(manifest),
+            '--inputs', str(inputs), '--max-prompt-bytes', '150000', '--timeout', '20', '--directory', str(destination)]
+    assert main([*argv, '--manifest-digest', 'f' * 64]) == 2
+    assert not destination.exists() and not call_log.exists()
+    capsys.readouterr()
+    bound = [*argv, '--manifest-digest', selected['digest']]
+    assert main(bound) == (0 if case == 'success' else 1)
+    receipt = json.loads(capsys.readouterr().out)
+    assert json.loads((destination/'run.json').read_bytes()) == receipt
+    assert receipt['manifest_digest'] == selected['digest'] and not receipt['formal_execution_authorized']
+    assert workflows.inspect_manifest(destination/'manifest')['digest'] == selected['digest']
+    calls = [json.loads(line) for line in call_log.read_text(encoding='utf-8').splitlines()]
+    assert calls[0] == supplied and len(set(process_deadlines)) == 1
+    if fail_first:
+        assert receipt['status'] == 'failed' and 'outputs' not in receipt
+        assert len(calls) == 1 and receipt['leaves'][0]['status'] == 'failed'
+    elif case == 'result-budget':
+        assert len(calls) == 2 and 'outputs' not in receipt
+        assert receipt['status'] == 'failed' and 'remaining' in receipt['error']
+    else:
+        assert len(calls) == 2 and calls[1]['artifacts']['response'] == 'Verified output'
+        assert receipt['outputs'] == {'joined': {'root/nested': {'findings': calls[1]},
+                                                 'root/followup': {'result': calls[1]}}, 'original': supplied}
+    assert [leaf['instance'] for leaf in receipt['leaves']] == (
+        ['root/nested/review'] if fail_first else ['root/nested/review', 'root/followup'])
+    for leaf in receipt['leaves']:
+        observed = agent_runs.inspect_run(state, 'demo', leaf['run_id'])
+        assert observed['input']['digest'] == leaf['input_digest']
+        assert observed['input']['request']['input_origin'] == 'workflow-port'
+    assert main(bound) == 2
+    assert len(call_log.read_text(encoding='utf-8').splitlines()) == len(calls)
+
+
+def test_standalone_graph_rejects_writable_leaf_before_reserving_any_effect(prepared, tmp_path):
+    from ergora.agents.graphs import run_graph
+
+    state, _, _ = prepared(permission=('write', ['workspace']))
+    definition = workflows.get(state, 'structure-review', '1.0.0')['definition']
+    grant = {'schema_version': 1, 'permissions': definition['permissions'], 'limits': definition['limits']}
+    manifest, destination = tmp_path/'manifest', tmp_path/'graph-run'
+    selected = workflows.prepare_manifest(state.root, definition['id'], definition['version'], grant, manifest)
+    with pytest.raises(ValueError, match='requires a read-only leaf'):
+        run_graph(state, 'demo', manifest, selected['digest'], {'task': 'test'}, destination, 50_000, 20)
+    assert not destination.exists() and agent_runs.runs(state, 'demo') == []
+
+
+def test_standalone_graph_rechecks_selected_manifest_at_each_leaf(prepared, tmp_path, monkeypatch):
+    from ergora.agents.graphs import run_graph
+
+    state, _, _ = prepared()
+    original = workflows.get(state, 'structure-review', '1.0.0')
+    root = original['definition']
+    grant = {'schema_version': 1, 'permissions': root['permissions'], 'limits': root['limits']}
+    manifest, alternate, destination = (tmp_path/name for name in ('manifest', 'alternate', 'graph-run'))
+    selected = workflows.prepare_manifest(state.root, root['id'], root['version'], grant, manifest)
+    workflows.revise(state, root['id'], root['version'], original['digest'], {**root, 'id': 'different-graph'}, publish=True)
+    workflows.prepare_manifest(state.root, 'different-graph', root['version'], grant, alternate)
+    original_prepare = workflows.prepare_input_from_manifest
+
+    def replaced(source, *args, **kwargs):
+        shutil.rmtree(source)
+        shutil.copytree(alternate, source)
+        return original_prepare(source, *args, **kwargs)
+
+    monkeypatch.setattr(workflows, 'prepare_input_from_manifest', replaced)
+    receipt = run_graph(state, 'demo', manifest, selected['digest'], {'task': 'test'}, destination, 50_000, 20)
+    assert receipt['status'] == 'failed' and 'explicitly selected digest' in receipt['error']
+    assert receipt['leaves'] == agent_runs.runs(state, 'demo') == []
+
+
 @pytest.fixture
 def cycle_analysis_case(prepared, tmp_path, monkeypatch):
     if sys.platform != 'linux':

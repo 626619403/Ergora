@@ -196,14 +196,20 @@ def run_input(state: State, project_id: str, source: Path, timeout: int = 300, *
               result_schema: dict | None = None, env: dict | None = None,
               codex_bin: str = "codex", supervised: bool = False,
               input_digest: str | None = None, stop_requested=None, remaining=None,
-              record_lifecycle: bool = False) -> dict:
+              record_lifecycle: bool = False, deadline: float | None = None, run_id: str | None = None,
+              expected_revision: int | None = None) -> dict:
     """Explicit independent restricted call; no workflow ports or formal approval."""
     contracts.validate(timeout, {"type": "integer", "minimum": 1, "maximum": 3600}, "Agent timeout")
     prepared, document = _admit_input(state, project_id, source, backend=backend, model=model, reason=reason, mode=mode,
                                       codex_config=codex_config, binding_override=binding_override, input_digest=input_digest)
+    if expected_revision is not None and document['project_revision'] != expected_revision:
+        raise ValueError('Project revision changed before the workflow leaf was admitted')
+    if run_id is not None:
+        native_sources.session_id(run_id, 'Agent run ID')
+        document['id'] = run_id
     return _run_prepared(state, prepared, document, timeout, mode=mode, codex_config=codex_config,
         result_schema=result_schema, env=env, codex_bin=codex_bin, supervised=supervised,
-        stop_requested=stop_requested, remaining=remaining, record_lifecycle=record_lifecycle)
+        stop_requested=stop_requested, remaining=remaining, record_lifecycle=record_lifecycle, deadline=deadline)
 
 
 def run_workspace(state: State, project_id: str, source: Path, cwd: Path, authority: dict, timeout: int, *,
@@ -237,7 +243,7 @@ def run_workspace(state: State, project_id: str, source: Path, cwd: Path, author
 
 def _run_prepared(state, prepared, document, timeout, *, mode, codex_config, result_schema, env,
                   codex_bin, supervised, workspace=None, stop_requested=None, remaining=None,
-                  record_lifecycle=False):
+                  record_lifecycle=False, deadline=None):
     """One immutable snapshot, MCP lifecycle and native invocation evidence owner."""
     run_id = document.get("id") or uuid.uuid4().hex
     output = state.root / "runs" / run_id
@@ -250,6 +256,8 @@ def _run_prepared(state, prepared, document, timeout, *, mode, codex_config, res
 
     def active():
         if stop_requested is not None and stop_requested():
+            if deadline is not None:
+                raise KeyboardInterrupt
             raise ValueError('Original parent stopped during composition preparation')
 
     def copy_resource(source, destination):
@@ -297,10 +305,12 @@ def _run_prepared(state, prepared, document, timeout, *, mode, codex_config, res
             min(timeout, remaining()) if remaining is not None else timeout,
             schema, codex_config=codex_config, mode=mode, task_mcp=native_mcp, env=env, codex_bin=codex_bin,
             supervised=supervised, **({'stop_requested': stop_requested} if stop_requested is not None else {}),
+            **({'deadline': deadline} if deadline is not None else {}),
             **({'record_lifecycle': True} if record_lifecycle else {})))
         if mode in ("task-mcp", "workspace-task-mcp") and document["status"] == "succeeded":
             document["task_mcp"]["native"] = task_mcp.verify_native(native_audit, scope["sha256"])
-        active()
+        if deadline is None or document['status'] != 'cancelled':
+            active()
     except KeyboardInterrupt:
         # SDK preflight runs before the native process owner handles Ctrl+C.
         document.update(status="cancelled", error="Agent preparation or invocation interrupted")

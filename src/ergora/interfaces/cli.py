@@ -310,6 +310,15 @@ def parser() -> argparse.ArgumentParser:
         operation.add_argument("--codex-config", type=Path, help="Inference settings only; native tool and permission settings are ignored")
         if name == "run-input":
             operation.add_argument("--timeout", type=int, default=300)
+    graph = operations.add_parser("run-graph", help="Run a read-only frozen workflow through its named ports")
+    graph.add_argument("project")
+    graph.add_argument("manifest", type=Path)
+    graph.add_argument("--manifest-digest", required=True)
+    graph.add_argument("--inputs", type=Path, required=True, help="JSON object of the exact root input port values")
+    graph.add_argument("--directory", type=Path, required=True, help="New directory for the original graph run and receipts")
+    graph.add_argument("--max-prompt-bytes", type=int, required=True)
+    graph.add_argument("--timeout", type=int, default=300, help="Overall graph deadline in seconds")
+    graph.add_argument("--codex-config", type=Path)
     inspection = operations.add_parser("inspect-run", help="Read an exact original composition run, complete input and result offline")
     inspection.add_argument("project")
     inspection.add_argument("id")
@@ -1477,6 +1486,32 @@ def main(argv: list[str] | None = None) -> int:
                 output = agent_runs.run_input(State(args.home), args.project, args.directory, args.timeout,
                     backend=args.backend, model=args.model, reason=args.backend_reason, codex_config=args.codex_config,
                     mode=args.mode, input_digest=args.input_digest)
+            elif args.operation == "run-graph":
+                import signal
+                from ergora.agents.graphs import run_graph
+                maximum = contracts.COMPOSITION_INPUT['properties']['max_prompt_bytes']['maximum']
+                with args.inputs.open('rb') as source:
+                    raw = source.read(maximum + 1)
+                if len(raw) > maximum:
+                    raise ValueError('Workflow input file exceeds the supported input byte limit')
+                stopped = False
+
+                def request_stop(_signum, _frame):
+                    nonlocal stopped
+                    stopped = True
+
+                handlers = {signum: signal.signal(signum, request_stop) for signum in (signal.SIGINT, signal.SIGTERM)}
+                try:
+                    output = run_graph(State(args.home), args.project, args.manifest, args.manifest_digest,
+                        definition_bundles.parse_json(raw.decode('utf-8-sig'), 'Workflow inputs', finite=True, bounded=True),
+                        args.directory, args.max_prompt_bytes, args.timeout, codex_config=args.codex_config,
+                        stop_requested=lambda: stopped)
+                except KeyboardInterrupt:
+                    print('Workflow interrupted', file=sys.stderr)
+                    return 1
+                finally:
+                    for signum, handler in handlers.items():
+                        signal.signal(signum, handler)
             elif args.operation == "inspect-run":
                 output = agent_runs.inspect_run(State(args.home), args.project, args.id, max_result_bytes=args.max_result_bytes)
             else:
@@ -1793,7 +1828,7 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         if args.command == "services" and output.get("outcome") in ("unconfirmed", "failed"):
             return 1
-        if args.command == "composition" and args.operation == "run-input" and output["status"] != "succeeded":
+        if args.command == "composition" and args.operation in ("run-input", "run-graph") and output["status"] != "succeeded":
             return 1
         return 0
     except (ValueError, OSError, RuntimeError) as error:
