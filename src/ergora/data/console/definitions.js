@@ -28,9 +28,10 @@ const currentLibrary = (home) => home === library.controlDirectory && home === a
 const editors = new Map();
 const textOf = (value) => JSON.stringify(value, null, 2) + "\n";
 const referenceText = ({ kind, id, version, digest }) => JSON.stringify({ kind, id, version, digest });
-const editorKey = (home, kind, base) => JSON.stringify(["ergora-definition-editor-v1", home, kind, base.id, base.version, base.digest]);
+const editorKey = (home, kind, base, starter) => JSON.stringify(["ergora-definition-editor-v1", home, kind, base.id, base.version,
+  base.digest, ...(starter ? [starter.id, starter.version] : [])]);
 const currentEditor = () => library.detail && editors.get(editorKey(library.controlDirectory, library.selection.kind,
-  { ...library.selection, digest: library.detail.digest }));
+  { ...library.selection, digest: library.detail.digest }, library.selection.starter));
 const pendingText = (current, except) => ["json", "yaml"].some((format) => format !== except && current.texts[format] !== current.appliedTexts[format]);
 const pendingResources = (current) => current.fileDraft !== null || current.resourceBuffer !== null;
 const pending = (current) => pendingText(current) || current.formBuffer !== null || pendingResources(current);
@@ -138,9 +139,9 @@ function editorSnapshot(current) {
     bytes: new TextEncoder().encode(text + texts.json + texts.yaml + current.canonicalTexts.json + current.canonicalTexts.yaml + resources).length };
 }
 
-async function restoreEditor(kind, detail, home) {
+async function restoreEditor(kind, detail, home, starter) {
   const base = { id: detail.definition.id, version: detail.definition.version, digest: detail.digest };
-  const key = editorKey(home, kind, base);
+  const key = editorKey(home, kind, base, starter);
   if (editors.has(key)) return;
   let saved, raw, storageError = "";
   try { raw = sessionStorage.getItem(key); }
@@ -160,6 +161,8 @@ async function restoreEditor(kind, detail, home) {
           !(saved.formBuffer === null || (object(saved.formBuffer) && Object.values(saved.formBuffer).every((value) => typeof value === "string"))) ||
           !(saved.publication === null || (object(saved.publication) && ["id", "version", "digest"].every((key) => typeof saved.publication[key] === "string"))) ||
           !sameValue(JSON.parse(saved.appliedTexts.json), saved.definition)) throw new Error("编辑缓冲格式或已应用正文无法读取");
+      if (starter && (saved.definition.id !== starter.id || saved.definition.version !== starter.version))
+        throw new Error("草稿的目标 ID 或版本与所选目标不符");
       if (legacy) Object.assign(saved, { resourceChanges: null, acceptedCandidate: null, resourceBuffer: null, fileDraft: null });
       for (const name of ["resourceChanges", "resourceBuffer"]) if (saved[name] !== null) checkResourceChanges(saved[name]);
       if (saved.fileDraft !== null) checkResourceDraft(saved.fileDraft,
@@ -177,7 +180,9 @@ async function restoreEditor(kind, detail, home) {
   }
   let converted;
   try {
-    converted = await api("/api/definition-documents/convert", { text: saved ? saved.appliedTexts.json : textOf(detail.definition) });
+    converted = await api("/api/definition-documents/convert", {
+      text: saved ? saved.appliedTexts.json : textOf({ ...detail.definition, ...starter }),
+    });
     if (saved) {
       const yaml = await api("/api/definition-documents/convert", { text: saved.appliedTexts.yaml, format: "yaml" });
       if (!sameValue(converted.definition, yaml.definition)) throw new Error("缓冲内已应用的 JSON / YAML 正文不一致");
@@ -189,14 +194,15 @@ async function restoreEditor(kind, detail, home) {
   }
   // A newer selection may have opened this same version during conversion.
   if (editors.has(key)) return;
-  const current = { key, home, kind, base, definition: converted.definition,
+  const current = { key, home, kind, base, starter, definition: converted.definition,
     texts: saved ? saved.texts : { json: converted.json, yaml: converted.yaml },
     appliedTexts: saved ? saved.appliedTexts : { json: converted.json, yaml: converted.yaml },
     canonicalTexts: { json: converted.json, yaml: converted.yaml },
     formBuffer: saved?.formBuffer || null, selectedNode: saved?.selectedNode || 0, publication: saved?.publication || null,
     resourceChanges: saved?.resourceChanges ?? null, acceptedCandidate: saved?.acceptedCandidate ?? null,
     resourceBuffer: saved?.resourceBuffer ?? null, fileDraft: saved?.fileDraft ?? null, resourcePreview: null,
-    revision: 0, sequence: 0, request: null, error: "", message: "", check: null, storageError,
+    revision: 0, sequence: 0, request: null, error: "", message: saved && starter ? "继续编辑此目标的原草稿。" : "",
+    check: null, storageError,
     expanded: { fields: true, json: true, yaml: false }, history: [], historyIndex: 0 };
   if (current.formBuffer) {
     const defaults = formValues(current);
@@ -221,6 +227,8 @@ function touchEditor(current, acceptedCandidate = null) {
 }
 
 function applyEditor(current, converted, format, original, resources) {
+  if (current.starter && (converted.definition.id !== current.starter.id || converted.definition.version !== current.starter.version))
+    throw new Error("此草稿绑定所选目标。需要其他目标时，请新建对应草稿。");
   current.history[current.historyIndex].selected = current.selectedNode;
   const unchanged = sameValue(current.definition, converted.definition);
   const texts = unchanged ? { ...current.texts } : { json: converted.json, yaml: converted.yaml };
@@ -533,13 +541,13 @@ async function loadLibrary(render) {
   }
 }
 
-async function openDefinition(kind, reference, render) {
+async function openDefinition(kind, reference, render, starter = reference.starter) {
   const home = library.controlDirectory;
   if (!currentLibrary(home)) { redraw(render); return; }
   const request = ++library.detailRequest;
   library.previewRequest++;
   Object.assign(library, {
-    selection: { kind, id: reference.id, version: reference.version }, detail: null, detailLoading: true,
+    selection: { kind, id: reference.id, version: reference.version, ...(starter ? { starter } : {}) }, detail: null, detailLoading: true,
     detailError: "", grant: "", preview: null, previewLoading: false, previewError: "", comparisonTarget: "", comparison: null,
     restoreSelection: null,
   });
@@ -549,7 +557,7 @@ async function openDefinition(kind, reference, render) {
     const result = await api(`/api/${kind}-definitions/${encodeURIComponent(reference.id)}/${encodeURIComponent(reference.version)}`);
     if (!currentLibrary(home) || request !== library.detailRequest) return;
     if (reference.digest && reference.digest !== result.digest) throw new Error("所选精确定义的摘要与当前库不符；没有切换到其他版本。");
-    await restoreEditor(kind, result, home);
+    await restoreEditor(kind, result, home, starter);
     if (!currentLibrary(home) || request !== library.detailRequest) return;
     library.detail = result;
     if (kind === "workflow") library.grant = JSON.stringify({ schema_version: 1,
@@ -564,7 +572,7 @@ async function openDefinition(kind, reference, render) {
   }
 }
 
-async function installPreset(identity, render) {
+async function installPreset(identity, render, starter = null) {
   if (library.installing) return;
   const home = library.controlDirectory, request = ++library.installRequest;
   if (!currentLibrary(home)) { redraw(render); return; }
@@ -579,8 +587,13 @@ async function installPreset(identity, render) {
     if (!currentLibrary(home) || request !== library.installRequest) return;
     library.message = `${identity} 的精确版本已导入；后续可在任务中显式选择。`;
     const loaded = await loadLibrary(render);
-    if (loaded && currentLibrary(home) && request === library.installRequest && selectionRequest === library.detailRequest && previewRequest === library.previewRequest)
-      await openDefinition("workflow", result.root, render);
+    if (loaded && currentLibrary(home) && request === library.installRequest && selectionRequest === library.detailRequest && previewRequest === library.previewRequest) {
+      if (starter) {
+        const exact = result.workflows.find((item) => referenceText(item) === referenceText(starter.reference));
+        if (!exact) throw new Error("导入结果缺少所选的精确起点图，请刷新目录后重选。");
+        await openDefinition("workflow", exact, render, starter.destination);
+      } else await openDefinition("workflow", result.root, render);
+    }
   } catch (error) {
     if (currentLibrary(home) && request === library.installRequest) library.error = error.message;
   } finally {
@@ -589,6 +602,61 @@ async function installPreset(identity, render) {
       redraw(render);
     }
   }
+}
+
+function chooseTemplateStarter(render) {
+  const home = library.controlDirectory;
+  const choices = [
+    ...library.presets.map((preset) => ({ preset: preset.id, reference: preset.starter || preset.root,
+      label: preset.starter ? `六阶段开发 · ${preset.starter.id} @ ${preset.starter.version}（默认）` : `内置 · ${preset.id}`,
+      isDefault: Boolean(preset.starter) })),
+    ...library.workflows.map((reference) => ({ reference, label: `${reference.id} @ ${reference.version}` })),
+  ];
+  const preferred = choices.findIndex((choice) => choice.isDefault);
+  const picker = select(choices.map(({ label }, index) => [String(index), label]), String(Math.max(0, preferred)), "starter");
+  const error = node("p", { role: "alert" });
+  const content = form([
+    node("label", {}, "起点流程图", picker),
+    field("目标模板 ID", "id", "", "text", { required: true }),
+    field("版本", "version", "1.0.0", "text", { required: true }),
+    node("p", {}, "可选任一图作为起点。选择内置图会导入其精确定义；选用同一目标可继续其原草稿。"),
+    error,
+  ], "从所选图开始", async (values) => {
+    if (!currentLibrary(home) || app.tab !== "definitions" || !content.closest("dialog")?.open) return;
+    const choice = choices[Number(values.get("starter"))];
+    if (!choice) return;
+    const destination = { id: values.get("id").trim(), version: values.get("version").trim() };
+    if (destination.id === choice.reference.id) {
+      error.textContent = "目标模板须使用不同的 ID。";
+      return;
+    }
+    content.closest("dialog")?.close();
+    if (choice.preset) await installPreset(choice.preset, render, { reference: choice.reference, destination });
+    else await openDefinition("workflow", choice.reference, render, destination);
+  });
+  modal("新建工作流模板", content);
+}
+
+function setTemplateTarget(current, render) {
+  if (current.restoreError || pending(current) || current.request) return;
+  const saveAsTemplate = current.definition.id !== current.base.id;
+  const error = node("p", { role: "alert" });
+  const content = form([
+    field("目标模板 ID", "id", saveAsTemplate ? current.definition.id : "", "text", { required: true }),
+    field("版本", "version", saveAsTemplate ? current.definition.version : "1.0.0", "text", { required: true }),
+    error,
+  ], "应用另存目标", (values) => {
+    if (currentEditor() !== current || !currentLibrary(current.home) || pending(current) || current.request) return;
+    const id = values.get("id").trim();
+    if (id === current.base.id) {
+      error.textContent = "另存须填写不同的模板 ID。可在字段编辑中设置原模板的新版本。";
+      return;
+    }
+    const definition = { ...current.definition, id, version: values.get("version").trim() };
+    content.closest("dialog")?.close();
+    return convertCandidate(current, render, { text: textOf(definition) });
+  });
+  modal("设置另存目标", content);
 }
 
 async function previewDefinition(render, target = null) {
@@ -715,7 +783,8 @@ function definitionForm(current, render, action, updateControls) {
   if (!defaults) return empty("当前正文尚不能生成字段表单；请在 JSON / YAML 中修正后应用。检查与发布仍由定义库校验。");
   const values = current.formBuffer || defaults;
   const fields = node("form", { onsubmit: (event) => event.preventDefault() },
-    field("新版本", "version", values.version), field("描述", "description", values.description, "textarea"));
+    field("新版本", "version", values.version, "text", { readOnly: Boolean(current.starter) }),
+    field("描述", "description", values.description, "textarea"));
   if (current.kind === "agent") {
     const roleTools = app.agentRoles.flatMap((role) => app.bootstrap.tools[role] || []);
     const tools = [...new Set(roleTools.map((item) => item.tool))];
@@ -964,30 +1033,11 @@ function editorView(render) {
       button(`下载 ${label} 原文`, () => download(`${current.kind}.${format}`, current.texts[format]))));
   });
   const saveAsTemplate = current.kind === "workflow" && current.definition.id !== current.base.id;
-  const setTemplateTarget = () => {
-    const error = node("p", { role: "alert" });
-    const content = form([
-      field("目标模板 ID", "id", saveAsTemplate ? current.definition.id : "", "text", { required: true }),
-      field("版本", "version", saveAsTemplate ? current.definition.version : "1.0.0", "text", { required: true }),
-      error,
-    ], "应用另存目标", (values) => {
-      if (currentEditor() !== current || !currentLibrary(current.home) || busyOrPending()) return;
-      const id = values.get("id").trim();
-      if (id === current.base.id) {
-        error.textContent = "另存须填写不同的模板 ID。可在字段编辑中设置原模板的新版本。";
-        return;
-      }
-      const definition = { ...current.definition, id, version: values.get("version").trim() };
-      content.closest("dialog")?.close();
-      return convertCandidate(current, render, { text: textOf(definition) });
-    });
-    modal("设置另存目标", content);
-  };
   const view = panel("编辑定义并派生新版本", "编辑基于此精确原包，原附件与目录全部保留。发布增加不可变版本，不修改原定义或在途任务。",
     pre({ base: current.base }),
     saveAsTemplate ? node("p", {}, `另存目标 ${current.definition.id} @ ${current.definition.version}`) : null,
     notice, storage, error, message,
-    row(current.kind === "workflow" ? action("设置另存目标", setTemplateTarget, busyOrPending) : null,
+    row(current.kind === "workflow" && !current.starter ? action("设置另存目标", () => setTemplateTarget(current, render), busyOrPending) : null,
       action("检查定义候选", () => reviseDefinition(current, false, render), () => busyOrPending() || uncheckedResources()),
       action(saveAsTemplate ? "另存为模板" : "发布新定义版本", () => reviseDefinition(current, true, render),
         () => busyOrPending() || uncheckedResources() || current.check?.revision !== current.revision, "primary"),
@@ -1130,7 +1180,9 @@ export function definitionsView(render) {
   });
   view.append(...[
     heading("Agent 与组合库", "复用专长 Agent 与嵌套子工作流。此库在同一控制目录内共享，可在注册项目之前使用。",
-      row(button(library.loading ? "正在读取…" : "刷新定义库", () => loadLibrary(render), "secondary", { disabled: library.loading }),
+      row(button("新建模板", () => chooseTemplateStarter(render), "primary", {
+        disabled: library.loading || Boolean(library.installing) || (!library.presets.length && !library.workflows.length),
+      }), button(library.loading ? "正在读取…" : "刷新定义库", () => loadLibrary(render), "secondary", { disabled: library.loading }),
         button("导入工作流目录", () => modal("导入工作流目录", submissionForm([
           node("p", {}, "将服务端可读的完整工作流目录导入下列共享定义库。导入增加不可变版本；不会替换旧定义或在途任务。"),
           pre({ state_directory: home }),

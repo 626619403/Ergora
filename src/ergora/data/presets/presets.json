@@ -32,6 +32,7 @@
       "description": "Shared module/current-contract validation preparation, contract then disjoint server/client implementation and independent final review.",
       "runtime": "development-v5",
       "root": "ergora-large-change-template",
+      "starter_root": "ergora-large-change-delivery",
       "agents": [
         "ergora-structure-reviewer",
         "ergora-correctness-reviewer",

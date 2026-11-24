@@ -54,6 +54,9 @@ def native_definition(budget_creation, budget_graph, tmp_path, request):
         (source / 'workflow.json').write_text(json.dumps(document))
         workflows.import_bundle(library, source)
         position = 'root/delegation/development'
+    if variant == 'root':
+        document = child['definition']
+        position = 'root'
     manifest = workflows.prepare_manifest(library.root, document['id'], document['version'], grant, tmp_path / 'native-manifest')
     option = definition['composition']
     def nested(path):
@@ -236,7 +239,7 @@ def test_original_stages_receive_selected_context_after_canonical_changes(tmp_pa
     assert len(record['selected_context_calls']) == record['original_model_slot_attempts']
 
 
-@pytest.mark.parametrize('native_definition', ['normal', 'nested'], indirect=True)
+@pytest.mark.parametrize('native_definition', ['normal', 'nested', 'root'], indirect=True)
 def test_native_call_freezes_parent_chain_and_recovers_without_source(native_definition, monkeypatch):
     pytest.importorskip('temporalio')
     from temporalio.workflow import _Definition
@@ -268,7 +271,8 @@ def test_native_call_freezes_parent_chain_and_recovers_without_source(native_def
             {'instance': path, 'definition': next(item['ref'] for item in graph['instances'] if item['path'] == path)}
             for path in chain]}
     parent_text = (EXAMPLES / 'composition/native-development/instructions.md').read_text()
-    assert all(parent_text in leaf['prompt'] for leaf in graph['instances'] if leaf['kind'] == 'agent')
+    assert all((parent_text in leaf['prompt']) == (position != 'root')
+               for leaf in graph['instances'] if leaf['kind'] == 'agent')
     assert document['budget']['instance']['scope']['project_revision'] == 1
     created = tasks.create(state, 'demo', definition, 1, preview['preview_sha256'],
                            prepare_sha256=preview['prepare_sha256'])
@@ -402,13 +406,13 @@ def test_native_route_preview_checks_known_inherited_skill_attachments(selected_
     assert not (root / 'tasks').exists()
 
 
-def test_native_selection_cannot_claim_root_or_another_stage(native_definition):
+def test_native_selection_cannot_claim_the_wrapper_or_another_stage(native_definition):
     state, _, definition = native_definition
     option = definition['composition']
     graph = workflows.inspect_manifest(Path(option['manifest']), material=True)['composition']
     for position in ('root', option['execution']['instance']):
         selection = {**option, 'native': {'protocol': 'six-stage-v1', 'instance': position}}
-        with pytest.raises(ValueError, match='ordinary parent|must belong'):
+        with pytest.raises(ValueError, match='must be direct child|must belong'):
             invocation(graph, selection, definition['task_type'])
 
 

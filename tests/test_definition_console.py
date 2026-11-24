@@ -37,6 +37,7 @@ def test_empty_global_library_imports_all_presets_and_shares_exact_cli_versions(
     assert client.get('/api/workflow-definitions').json() == []
     listed = client.get('/api/composition/presets').json()
     assert listed == workflows.presets()
+    assert [preset['id'] for preset in listed if 'starter' in preset] == ['large-change']
     for preset in listed:
         path = f"/api/composition/presets/{preset['id']}/install"
         response = client.post(path, json={})
@@ -45,6 +46,8 @@ def test_empty_global_library_imports_all_presets_and_shares_exact_cli_versions(
         assert imported['execution_authorized'] is False
         assert client.post(path, json={}).json() == imported
         root = imported['root']
+        if 'starter' in preset:
+            assert preset['starter'] in imported['workflows'] and preset['starter'] != root
         detail = client.get(f"/api/workflow-definitions/{root['id']}/{root['version']}").json()
         assert detail == workflows.get(state, root['id'], root['version'], material=True)
         assert detail['digest'] == root['digest']
@@ -188,14 +191,19 @@ def test_revision_http_and_cli_share_candidate_identity_and_keep_base(library_co
 def test_save_edited_graph_as_an_independent_workflow(library_console):
     client, state = library_console
     base = client.post('/api/composition/presets/training-flow-map/install', json={}).json()['root']
+    delivery = client.post('/api/composition/presets/large-change/install', json={}).json()
+    inventory = next(ref for ref in delivery['workflows'] if ref['id'] == 'ergora-development-inventory')
     base_url = f"/api/workflow-definitions/{base['id']}/{base['version']}"
     original = client.get(base_url).json()
     draft = deepcopy(original['definition'])
     draft.update(id='independent-flow-map', version='1.0.0')
     first, gather = draft['nodes']
+    first['depends_on'] = ['inventory']
+    draft['nodes'].insert(0, {'id': 'inventory', 'ref': inventory, 'depends_on': [],
+                              'inputs': {'task': {'input': 'task'}}})
     second = {**deepcopy(first), 'id': 'check', 'depends_on': [first['id']]}
     gather['depends_on'] = [second['id']]
-    draft['nodes'].insert(1, second)
+    draft['nodes'].insert(-1, second)
     payload = {'base_digest': base['digest'], 'definition': draft}
 
     checked = client.post(base_url + '/revisions/check', json=payload)
@@ -214,8 +222,9 @@ def test_save_edited_graph_as_an_independent_workflow(library_console):
     assert preview.status_code == 200, preview.text
     graph = preview.json()
     assert graph['root']['digest'] == published.json()['digest']
-    assert {node['path']: node['depends_on'] for node in graph['instances']} == {
-        'root': [], 'root/map': [], 'root/check': ['root/map'], 'root/gather': ['root/check']}
+    assert {node['path']: node['depends_on'] for node in graph['instances'] if node['parent'] == 'root'} == {
+        'root/inventory': [], 'root/map': ['root/inventory'], 'root/check': ['root/map'], 'root/gather': ['root/check']}
+    assert next(node['ref'] for node in graph['instances'] if node['path'] == 'root/inventory') == inventory
     saved = client.post('/api/composition/manifests', json={**preview_payload, 'preview_sha256': graph['preview_sha256']})
     assert saved.status_code == 200, saved.text
     assert saved.json()['manifest']['root'] == graph['root']

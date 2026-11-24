@@ -1,4 +1,4 @@
-"""Bind one ordinary template call to the existing six-stage task owner.
+"""Bind an explicitly selected template to the existing six-stage task owner.
 
 This is a frozen graph projection, never a graph runner or another run ledger.
 Admission and original-input readers use the same supported-shape contract.
@@ -17,8 +17,8 @@ def invocation(graph: dict, selection: dict, task_type: str) -> dict:
     instances = {item['path']: item for item in graph['instances']}
     position = native['instance']
     selected = instances.get(position)
-    if selected is None or selected['kind'] != 'workflow' or selected['parent'] is None:
-        raise RouteBlocked(position, 'Native six-stage invocation requires an instance inside an ordinary parent template')
+    if selected is None or selected['kind'] != 'workflow':
+        raise RouteBlocked(position, 'Select an existing Workflow instance for native six-stage execution')
     stages = [selection['preparation'][stage]['instance'] for stage in ('inventory', 'plan')]
     work, review = selection['execution']['instance'], selection['review_instance']
     for path in (*stages, work, review):

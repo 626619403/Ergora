@@ -150,7 +150,7 @@ export function workflowView(data, base, { refresh, render }) {
     } else draftChoice.value = "";
   });
   const contents = [
-    heading("设计可执行的协作关系", "保持六阶段合同。先应用单元或 JSON 文本，再校验、保存或下载同一份输入。"),
+    heading("编辑正式任务草稿", "先应用单元或 JSON 文本，再校验、保存或下载输入。新建和编辑流程图模板在 Agent 与组合库进行。"),
     node("div", { className: "workflow-toolbar" }, templateChoice, button("载入模板", loadTemplate, "primary"), draftChoice),
     node("div", { className: "stage-strip" }, stages.map((stage) => node("span", {}, stage))),
   ];

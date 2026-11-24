@@ -46,7 +46,7 @@ Current12's dispatch/start methods check original remaining time and bound RPC t
 
 ## Single-instance native six stages
 
-`development.six_stage` checks one supported native instance beneath an ordinary parent, with exact structural ancestors and work/review selections. `PreparationDAGWorkflow` retains the native invocation result as a read-only `native_invocation` projection. It creates no separate parent run, approval or state ledger. Unsupported extra instances, external prerequisites or mixed shapes fail original preparation; imported manifests alone do not execute them. See [native selection](../../development/preparation.md#invoke-the-six-stages-as-a-subtemplate).
+`development.six_stage` checks one explicitly selected native instance, at the root or within a supported parent, with exact structural ancestors and work/review selections. `PreparationDAGWorkflow` retains that selection as a read-only `native_invocation` projection. Its original run also owns approval and receipts. Extra instances, external prerequisites or unsupported mixed shapes fail original preparation. See [native selection](../../development/preparation.md#invoke-the-six-stages-as-a-subtemplate).
 
 ## Explicit project sources
 

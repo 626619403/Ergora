@@ -94,7 +94,7 @@ ergora task create my-project --definition task-definition.json --revision 1 --p
 
 ## 将六阶段作为一个子模板调用
 
-同一schema8／input12用`composition.native`将普通父模板内的一次调用绑定到原六阶段。先按[示例依赖顺序](../../../examples/composition/README.md)导入准备、工作及审查包，再导入[native-development](../../../examples/composition/native-development/workflow.json)并生成完整manifest。保留实际父manifest的path／digest、预算与mode，在`composition`中设置：
+同一 schema8／input12 用 `composition.native` 将选定的图绑定到原六阶段。若 manifest 的根图拥有本次盘点、计划、实施和审查，可直接填 `instance: "root"`，实施与审查选根图的直接子流程。[native-development](../../../examples/composition/native-development/workflow.json) 展示了嵌套调用。按[示例依赖顺序](../../../examples/composition/README.md)导入依赖，然后从实际要用的根图生成完整 manifest。原预算、模式和精确摘要随任务冻结；下面是嵌套选择示例。
 
 ```json
 {"native":{"protocol":"six-stage-v1","instance":"root/development"},

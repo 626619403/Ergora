@@ -56,7 +56,9 @@ def _preset_catalog() -> dict:
 def presets() -> list[dict]:
     """List shipped recipes without creating State or probing execution tools."""
     return [{"id": identity, "description": entry["description"], "runtime": entry["runtime"],
-             "root": _reference(inspect_bundle(_PRESETS / "workflows" / entry["root"]), "workflow")}
+             "root": _reference(inspect_bundle(_PRESETS / "workflows" / entry["root"]), "workflow"),
+             **({"starter": _reference(inspect_bundle(_PRESETS / "workflows" / entry["starter_root"]), "workflow")}
+                if "starter_root" in entry else {})}
             for identity, entry in _preset_catalog().items()]
 
 

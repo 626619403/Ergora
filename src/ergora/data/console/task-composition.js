@@ -27,7 +27,7 @@ export function taskComposition({ tools, projectId, base, input, active, invalid
   const repositoryPaths = field("准备阶段可读取的仓库相对路径（每行一个）", "repository_paths", "", "textarea", { required: true });
   const nativeSection = node("fieldset", {},
     node("legend", {}, "原生六阶段调用"),
-    node("p", {}, "选择普通父模板中的六阶段调用，以及其内部的盘点、计划、执行和审查实例。完整父链和全部阶段由服务端核对。原生执行支持 Linux／WSL2。"),
+    node("p", {}, "选择根工作流或其中的六阶段调用，再选择其盘点、计划、执行和审查实例。完整选择由服务端核对。原生执行支持 Linux／WSL2。"),
     node("label", {}, "六阶段工作流实例", native),
   );
   const preparationSection = node("fieldset", {},
