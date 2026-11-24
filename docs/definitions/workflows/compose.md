@@ -125,7 +125,7 @@ ergora composition install-preset optimization-report
 ergora composition install-preset pretraining-review
 ergora composition install-preset posttraining-review
 ergora composition install-preset engineering-review
-ergora composition show ergora-large-change-template 1.1.8 --material
+ergora composition show ergora-large-change-template 1.1.9 --material
 ergora agent definition show ergora-server-implementer 2.0.2 --material
 ```
 
@@ -138,7 +138,7 @@ The [evidence-report author](../../review/evidence-reports.md) provides an indep
 |Composition|Root ID/version|Default relationships and supported use|
 |---|---|---|
 |repository-governance|`ergora-governance-template@1.1.7`|Shared module/validation/coordinator inventory and planning → parallel knowledge-mapping and architecture-regression work → trusted integrate/verify and three reviews; 11 model slots|
-|large-change|`ergora-large-change-template@1.1.8`|Shared module/validation/coordinator inventory and planning → current contract → parallel server/client work → integration validation → trusted integrate/verify and three reviews; 13 model slots|
+|large-change|`ergora-large-change-template@1.1.9`|Shared module/validation/coordinator inventory and planning → current contract → parallel server/client work → integration validation → trusted integrate/verify and three reviews; 13 model slots|
 |training-optimization|`ergora-training-proposal@4.2.10`|Shared flow/design/diagnosis → retained kernel assessment → measurement proposal. Select relevant topic workflows as real descendants in an exact root revision; each leaf inherits the complete common methods and environment record. Explicit leaf calls only.|
 |refactoring|`ergora-refactoring-template@1.3.7`|Shared module/validation/coordinator inventory and planning → serial rewrite/compatibility work → trusted integrate/verify and three reviews; 11 model slots, large-change formal task type, definition8/input12|
 |optimization-performance-diagnosis|`ergora-opt-performance-diagnosis-proposal@1.2.2`|Limited symptom/compatible-reader specialist plus local test design and measurement proposal; actual profile collection stays with its original owner|

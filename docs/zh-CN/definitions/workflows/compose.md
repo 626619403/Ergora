@@ -58,7 +58,7 @@ AI 子代理限制保留原监管者按需并行启动方向专家的职责：�
 |组合|当前随包根身份|默认关系与使用范围|
 |---|---|---|
 |repository-governance|`ergora-governance-template@1.1.7`|知识地图、架构回归两个专家并行，再经可信integrate/verify接三审查；包含独立盘点／规划与原工作／审查阶段|
-|large-change|`ergora-large-change-template@1.1.8`|接口合同 → 服务端与客户端并行 → 集成/兼容验证 → 三审查；包含独立盘点／规划与原工作／审查阶段|
+|large-change|`ergora-large-change-template@1.1.9`|接口合同 → 服务端与客户端并行 → 集成/兼容验证 → 三审查；包含独立盘点／规划与原工作／审查阶段|
 |training-optimization|`ergora-training-proposal@4.2.10`|源码流程 → 并行规划／诊断 → kernel实施方案评估 → 测量审查；全部五叶继承库／环境选择规则，只读建议与手工完整交接|
 |refactoring|`ergora-refactoring-template@1.3.7`|普通父 → 原生六阶段：准备 → rewrite／compatibility串行工作 → 三类独立审查；正式task type沿用large-change，显式schema8／input12|
 |optimization-performance-diagnosis|`ergora-opt-performance-diagnosis-proposal@1.2.2`|同症状复现与兼容报告 reader；只读 design／profile→measurement 提案叶，原 runner 保留实验执行|

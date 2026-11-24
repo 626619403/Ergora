@@ -1,14 +1,14 @@
 {
   "schema_version": 2,
   "id": "ergora-large-change-template",
-  "version": "1.1.8",
+  "version": "1.1.9",
   "description": "Native parent for the large-change six-stage delivery.",
   "resources": [
     {
       "id": "ergora-large-change-template-instructions",
       "kind": "instructions",
       "path": "instructions.md",
-      "sha256": "3bb0d0cc5f756ce3edf767dcf4731b574050f08a0048fdb5bd6c084a589637f4"
+      "sha256": "bdf4c7a67230b230139dd9a2145bff24d8d49b74ce143194c56c334777b9115b"
     }
   ],
   "permissions": {

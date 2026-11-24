@@ -1,1 +1,1 @@
-Forward the original task to the sole development child. The six-stage owner retains stage order and exact plan approval.
+Give the sole development child the original task. The six-stage owner owns stage order and exact Plan approval.

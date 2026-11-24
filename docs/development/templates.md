@@ -9,7 +9,7 @@ Follow [source-branch selection](../install/linux.md#install-in-a-clean-environm
 |Template/preset|Current bundled root identity|Specialist relationships and entry points|
 |---|---|---|
 |repository-governance|`ergora-governance-template@1.1.7`|Parallel knowledge-map/boundary-test, then trusted integration/verification and structure, correctness and test-value reviews|
-|large-change|`ergora-large-change-template@1.1.8`|contract→parallel server/client→integration-tests, then trusted integration/verification and three reviews|
+|large-change|`ergora-large-change-template@1.1.9`|contract→parallel server/client→integration-tests, then trusted integration/verification and three reviews|
 |training-optimization|`ergora-training-proposal@4.2.10`|Source flow→planning/diagnosis→kernel implementation planning→measurement review; all five leaves inherit library/environment guidance, with actual experiments owned by trusted runners.|
 |refactoring|`ergora-refactoring-template@1.3.7`|Preparation→rewrite→compatibility→original trusted integration/verification→three reviews; ordinary parent references one native large-change six-stage instance|
 
