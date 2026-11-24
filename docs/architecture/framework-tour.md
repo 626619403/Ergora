@@ -4,7 +4,7 @@ English · [Documentation](../README.md) · [Architecture contract](current.md)
 
 Ergora is a control plane for project-bound specialist Agents, workflow composition, formal software delivery, training experiments and reusable improvements. Definitions describe reusable behavior. Each operation freezes its own inputs, checks its execution authority and produces evidence under its original identity.
 
-This tour describes runtime commit `52c8415beae8b05c0434230f2f18b323c11b5592` and its `src` tree `f2e667b0e250b3a56075f6e3fba33471d96b953c`. Packages, installed applications and local definition libraries have separate identities. The [current plan](../PLAN.md) and its delivery records track CI and installation status.
+This tour describes runtime revision `a2b3fd1b8328f5597666beb94cf37744f8ba5efe` and its `src` tree `89caa65ce2c1aa1a61230f906e5068d4022d2b21`. Packages, installed applications and local definition libraries have separate identities. The [current plan](../PLAN.md) and its delivery records track CI and installation status.
 
 ## The whole system
 
@@ -26,10 +26,12 @@ flowchart TB
   Select --> Improve["Retrospectives and Skill evaluation<br/>improvement"]
 
   Check --> CheckJob["Registered executor<br/>Original fixed-check Job"]
-  Graph --> GraphProof["Graph receipt and original Agent runs<br/>inspect-graph"]
-  Graph --> Gate["verify-fixed-check<br/>Exact advisory reviewer follows"]
-  CheckJob -. "completed receipt" .-> Gate
+  Graph --> GraphProof["Graph receipt, route decisions and Agent evidence<br/>inspect-graph"]
+  Graph --> Gate["verify-fixed-check<br/>Receipt gate before advisory review"]
+  CheckJob -. "receipt or bounded wait" .-> Gate
   Gate --> GraphProof
+  Graph -. "eligible Agent graph" .-> Resume["Opt-in resume-graph<br/>Original boot, directory, clock and lock"]
+  Resume --> GraphProof
   Session --> Turn["Original leaf result or Codex turn receipts"]
   Dev --> Six["Original Temporal six stages<br/>Exact approval and candidate evidence"]
   Train --> Runner["Original training executor<br/>Runner and experiment archive"]
@@ -57,9 +59,11 @@ Development's [workflow extensions](../../src/ergora/development/runtime/workflo
 
 - `choose-agent` reads the verified analyzer result and records the decision before any follow-up dispatch. Its typed route selects one declared sibling Agent or `none`. The all-join carries the selected branch's original result and explicit skipped states for untaken branches. [Routing contract](../definitions/workflows/contracts.md#conditional-agent-routing)
 - `verify-evidence` takes an exact original fixed-verify locator from a declared root input. The native reader uses the registered reference installation, original Temporal history and Job artifacts to validate the candidate, receipt, complete check results and process records. This synchronous read can delay other dispatch. The formal executor owns execution of that verify Job. [Verification readback](../definitions/workflows/compose.md#read-original-fixed-verification-evidence)
-- `verify-fixed-check` reads a passing, separately authorized fixed-check Job with confirmed cleanup. It matches the original receipt and candidate to the exact review packet, frozen manifest and prepared task. The gate must succeed before the single pinned correctness reviewer receives that task. The graph publishes the proof and advisory review as separate outputs. [Gated advisory review](../definitions/workflows/compose.md#gate-an-advisory-review-on-a-completed-fixed-check)
+- `verify-fixed-check` reads a separately authorized fixed-check Job. Given a queued or attempted Job, it can wait until the earlier of the original graph deadline and the requested observation window. The original executor owns check execution, stop and cleanup. The gate requires a passing receipt and confirmed cleanup bound to the exact candidate, review packet, frozen manifest and prepared task before the pinned correctness reviewer starts. The graph publishes the verified receipt and report identities in `proof` alongside the separate advisory result. [Gated advisory review](../definitions/workflows/compose.md#gate-an-advisory-review-on-a-completed-fixed-check)
 
 After an interrupted run, `composition inspect-graph` uses the original directory and manifest digest and opens the existing control database read-only. It reports the saved graph status and attempts alongside the observed original Agent input, prompt and result identities. A corroborated route matches the frozen branches and original analyzer evidence. Saved verification references show native receipts as `not_queried`, and process start and cleanup remain `unknown`. Use `composition inspect-run` on the exact original leaf run ID for complete result content. [Graph observation](../definitions/workflows/compose.md#observe-an-original-graph-run) · [Original leaf readback](../definitions/workflows/leaf-calls.md#read-an-original-composition-run-by-exact-id)
+
+On Linux/WSL2, graphs with read-only, text-only Agent leaves, nested Workflows, all-joins and `choose-agent` can opt into recovery at launch with `run-graph --recoverable`. `resume-graph` opens the same directory and control home on the original boot under the saved coordinator lock and deadline. It verifies original reservations and successful Agent results to reconstruct the graph's ports. Saved typed choices must match the original analyzer result. If a choice is missing and its dependent work has yet to be prepared or reserved, the coordinator records the same branch or `none` before proceeding. Only previously unreserved, ready Agent leaves can start. Active, stopped, terminal, expired or unresolved runs are refused. Graphs with verification gates use ordinary standalone execution. [Standalone recovery](../definitions/workflows/compose.md#resume-an-interrupted-graph)
 
 ### Separately authorized fixed checks
 
