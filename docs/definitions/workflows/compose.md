@@ -133,17 +133,19 @@ The gate validates the original terminal proof against the exact candidate, rece
 
 #### Resume a fixed-check-gated review
 
-Use the exact gated manifest above and launch with `--recoverable`. Supply either the completed `check` object with both terminal digests or the wait locator for an already authorized Job. If the coordinator is lost after it durably records the passing gate proof and before it reserves the reviewer, resume in the same control home and run directory.
+Use the exact gated manifest above and launch with `--recoverable`. Supply either the completed `check` object with both terminal digests or the wait locator for an already authorized Job. If the coordinator is lost, resume in the same control home and run directory under the conditions below.
 
 ```bash
 ergora composition resume-graph PROJECT ./gated-review-run --manifest-digest MANIFEST_DIGEST
 ```
 
-Recovery rechecks the saved proof through the original native reader under the cutoff recorded for the first gate observation and the original graph deadline. It verifies the original Job, receipt, report, confirmed cleanup and their binding to the authorized project revision, candidate, packet, manifest and reviewer task. The unreserved reviewer can then start under the remaining original graph budget. A previously reserved reviewer requires its verified successful original result.
+When passing proof is saved, recovery rechecks it through the original native reader under the cutoff recorded for the first gate observation and the original graph deadline. It verifies the original Job, receipt, report, confirmed cleanup and their binding to the authorized project revision, candidate, packet, manifest and reviewer task. The unreserved reviewer can then start under the remaining original graph budget. A previously reserved reviewer requires its verified successful original result.
 
-For an initial wait, recovery uses a completed lookup of the same Job, pinned to the receipt and report digests captured in the durable passing proof. The graph keeps the original wait locator and the saved `proof` value.
+If that proof came from a wait, recovery uses a completed lookup of the same Job, pinned to the receipt and report digests captured in the proof. The graph keeps the original wait locator and the saved `proof` value.
 
-A native proof reader can outlive the coordinator and keep the original graph lock. Resume can be refused until that reader exits, and the original cutoff still applies. If graph progress still says `attempted`, recovery can reconcile it from a matching durable completion witness only when no prepared dependent input or reservation exists. An unfinished wait, missing completion witness or mismatched proof blocks resumption.
+A native proof reader can outlive the coordinator and keep the original graph lock. Resume can be refused until that reader exits, and the original cutoff still applies. If graph progress still says `attempted`, recovery can reconcile it from a matching durable completion witness only when no prepared dependent input or reservation exists.
+
+An unfinished wait can continue once `resume-graph` acquires the original lock. The original durable wait attempt must match the saved `attempted` progress, and the directory must have no completion record, prepared dependent input or reservation. Resume observes the same authorized Job read-only under the first observation cutoff and the original graph deadline. It durably records passing proof before preparing the reviewer. A missing or mismatched attempt, partial or mismatched proof, stop or expired cutoff blocks resumption.
 
 The original executor retains the fixed-check Job's execution, stop and cleanup authority. Formal `verify-evidence` uses ordinary standalone execution. [Observe the original graph](#observe-an-original-graph-run)
 

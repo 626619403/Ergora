@@ -393,15 +393,16 @@ async def _exercise(root, case, app, activities, adapter, installation, state, r
         result.update(selected_context_calls=calls, canonical_changed_after_intent=True,
                       original_input_sha256=task_envelopes.identity(app.admission))
     if case.startswith('fixed-candidate-check'):
+        recovery = {'fixed-candidate-check-graph-recoverable': 'completed',
+                    'fixed-candidate-check-graph-wait-recoverable': 'saved-wait',
+                    'fixed-candidate-check-graph-wait-interrupted-recoverable': 'interrupted-wait'}.get(case)
         result['independent_check'] = await _candidate_check(
             root, state, runtime, app.spec, result['candidate'], records,
-            gated=case.startswith('fixed-candidate-check-graph'), recoverable=case.endswith('-recoverable'),
-            wait_recovery=case.endswith('-wait-recoverable'))
+            gated=case.startswith('fixed-candidate-check-graph'), recovery=recovery)
     return {**result, 'case': case, 'complete_preparation': True, 'model_intervals': model_intervals}
 
 
-async def _candidate_check(root, state, runtime, spec, candidate, records, *, gated=False,
-                           recoverable=False, wait_recovery=False):
+async def _candidate_check(root, state, runtime, spec, candidate, records, *, gated=False, recovery=None):
     """Recheck a real formal candidate and fence a live checker by its original job."""
     from types import SimpleNamespace
 
@@ -618,12 +619,12 @@ async def _candidate_check(root, state, runtime, spec, candidate, records, *, ga
 
         result['graph'] = await _candidate_check_graph(
             root, state, runtime, packet, material['packet_sha256'], manifest, passed, finished,
-            call, authorize_wait, execute_wait, recoverable=recoverable, wait_recovery=wait_recovery)
+            call, authorize_wait, execute_wait, recovery=recovery)
     return result
 
 
 async def _candidate_check_graph(root, state, runtime, packet, packet_digest, manifest, passed, stopped, call,
-                                 authorize_wait, execute_wait, *, recoverable=False, wait_recovery=False):
+                                 authorize_wait, execute_wait, *, recovery=None):
     """The graph reads actual native evidence before its one controlled reviewer."""
     from contextlib import redirect_stdout, redirect_stderr
     from concurrent.futures import ThreadPoolExecutor
@@ -675,9 +676,9 @@ Path(sys.argv[1]).write_text(json.dumps({'summary':'Exact candidate reviewed','d
     calls = root / 'graph-reviewer-calls.jsonl'
     code = root / 'graph-reviewer.py'
     code.write_text(reviewer_code, encoding='utf-8')
-    if recoverable:
+    if recovery is not None:
         original, start_wait = passed, None
-        if wait_recovery:
+        if recovery in ('saved-wait', 'interrupted-wait'):
             original, request, permit, workspace = await authorize_wait()
             assert original['status'] == 'queued' and original['receipt_sha256'] is None
             original_request, original_permit = request.read_bytes(), permit.read_bytes()
@@ -694,7 +695,7 @@ Path(sys.argv[1]).write_text(json.dumps({'summary':'Exact candidate reviewed','d
         job_id = original['job_id']
         terminal = runtime / 'receipts/fixed-candidate-check' / job_id.rsplit('-', 1)[0] / (job_id + '.json')
         return await _recover_fixed_graph(root, state, manifest, inputs, code, calls, check_records, terminal,
-                                          start_wait=start_wait)
+                                          start_wait=start_wait, interrupt_wait=recovery == 'interrupted-wait')
     original_command = backends.CodexBackend.command
     native_run, lifetimes = processes.run, []
     read_entry = 'from ergora.development.runtime.candidate_checks import main;main()'
@@ -912,8 +913,10 @@ candidate_checks.main()
                      'proof': wait_proof, 'reviewer_run_id': leaf['run_id'], 'original_native_effects_only': True}}
 
 
-async def _recover_fixed_graph(root, state, manifest, inputs, model, calls, check_records, terminal, *, start_wait=None):
+async def _recover_fixed_graph(root, state, manifest, inputs, model, calls, check_records, terminal, *,
+                               start_wait=None, interrupt_wait=False):
     """Interrupt only the graph coordinator and prove that native Job evidence is reread."""
+    from contextlib import suppress
     from copy import deepcopy
     from ergora.agents import native_sources
     from ergora.runtime import processes
@@ -953,20 +956,24 @@ def original_read(argv, *args, **kwargs):
             stream.write(json.dumps({'deadline': kwargs['deadline'], 'operation': sys.argv[9],
                                      'at': time.monotonic(), 'source': source,
                                      'owner': [owner.st_dev, owner.st_ino]}) + '\n')
-        if phase == 'complete' and 'wait_seconds' in source:
+        if phase in ('complete', 'wait-active') and 'wait_seconds' in source:
             queued = transport.with_suffix('.queued')
             probe = f"""
 from pathlib import Path
 import json
+import os
 from ergora.development.runtime import candidate_checks
+from ergora.runtime import processes
 observe = candidate_checks._observe
 marker = Path({str(queued)!r})
 async def observe_queued(*args, **kwargs):
     result = await observe(*args, **kwargs)
     if result['status'] == 'queued' and not marker.exists():
+        lock = os.fstat({kwargs['lock_fd']!r})
+        job = {{key: result[key] for key in ('status', 'job_id', 'job_sha256', 'request_file_sha256')}}
         pending = marker.with_suffix('.queued-pending')
-        pending.write_text(json.dumps({{key: result[key] for key in
-            ('status', 'job_id', 'job_sha256', 'request_file_sha256')}}), encoding='utf-8')
+        pending.write_text(json.dumps({{'job': job, 'reader': processes.identity(os.getpid()),
+                                        'owner': [lock.st_dev, lock.st_ino]}}), encoding='utf-8')
         pending.replace(marker)
     return result
 candidate_checks._observe = observe_queued
@@ -1058,25 +1065,36 @@ raise SystemExit(main(sys.argv[6:]))
             argv = command(directory, phase, 'run-graph', 'demo', manifest['path'], '--manifest-digest', manifest['digest'],
                            '--inputs', str(serialized), '--directory', str(directory), '--max-prompt-bytes', '100000',
                            '--timeout', '55', '--recoverable')
-        marker = ready_marker(directory, phase)
+        active_wait = phase == 'wait-active'
+        queued = directory.with_suffix('.queued')
+        marker = queued if active_wait else ready_marker(directory, phase)
+        environment = None
+        if active_wait:
+            reader_temp = directory.with_suffix('.native-tmp')
+            reader_temp.mkdir()
+            environment = {**os.environ, 'TMPDIR': str(reader_temp)}
         stderr_path = directory.with_suffix('.' + phase + '.stderr')
         with directory.with_suffix('.' + phase + '.stdout').open('wb') as stdout, stderr_path.open('wb') as stderr:
-            process = subprocess.Popen(argv, stdout=stdout, stderr=stderr)
+            process = subprocess.Popen(argv, stdout=stdout, stderr=stderr, env=environment)
             try:
                 async with asyncio.timeout(15):
                     if phase == 'complete' and waiting:
-                        queued = directory.with_suffix('.queued')
                         while not queued.exists():
                             assert process.poll() is None and not marker.exists(), stderr_path.read_text(encoding='utf-8')
                             await asyncio.sleep(.01)
                         assert check_records() == before and ledger.read_bytes() == ledger_before
                         assert not calls.exists() and executed is None
-                        executed = await start_wait(json.loads(queued.read_bytes()))
+                        executed = await start_wait(json.loads(queued.read_bytes())['job'])
                         before, ledger_before = check_records(), ledger.read_bytes()
                     while not marker.exists():
                         assert process.poll() is None, stderr_path.read_text(encoding='utf-8')
                         await asyncio.sleep(.01)
-                assert json.loads(marker.read_bytes()) == processes.identity(process.pid)
+                observed = json.loads(marker.read_bytes())
+                if active_wait:
+                    assert observed['reader']['pid'] != process.pid
+                    assert processes.identity(observed['reader']['pid']) == observed['reader']
+                else:
+                    assert observed == processes.identity(process.pid)
                 receipt = json.loads((directory / 'run.json').read_bytes())
                 assert receipt['status'] == 'incomplete'
                 if phase == 'review-complete':
@@ -1102,7 +1120,7 @@ raise SystemExit(main(sys.argv[6:]))
         assert read['attempt_sha256'] == native_sources.sha(attempt)
         assert attempt['source'] == values['check'] and attempt['mode'] == ('wait' if waiting else 'completed')
         assert attempt['recovery_sha256'] == receipt['recovery_sha256']
-        assert (directory / 'verification-complete.json').exists() == (phase != 'incomplete')
+        assert (directory / 'verification-complete.json').exists() == (phase not in ('incomplete', 'wait-active'))
         return directory, receipt
 
     async def resume(directory):
@@ -1122,7 +1140,8 @@ raise SystemExit(main(sys.argv[6:]))
         prepared = directory / 'input-1'
         prior_input = workflows.inspect_input(prepared)['digest'] if prepared.exists() else None
         completed = await resume(directory)
-        assert completed.returncode == 2 and diagnostic in completed.stderr.lower(), completed.stderr
+        assert completed.returncode == 2 and completed.stderr, completed.stderr
+        assert diagnostic is None or diagnostic in completed.stderr.lower(), completed.stderr
         assert receipt.read_bytes() == original_receipt and authority.read_bytes() == original_authority
         assert (workflows.inspect_input(prepared)['digest'] if prepared.exists() else None) == prior_input
         assert {path: path.read_bytes() for path in directory.glob('verification-*.json')} == witnesses
@@ -1130,10 +1149,133 @@ raise SystemExit(main(sys.argv[6:]))
         assert (calls.read_bytes() if calls.exists() else None) == prior_calls
         assert len(reads(directory)) == len(before_reads) + int(expect_read)
         refused.append(name)
+        return completed
+
+    if interrupt_wait:
+        directory = root / 'interrupted-fixed-wait'
+        queued = directory.with_suffix('.queued')
+        processes.prepare_supervised()
+        reader_reaped = False
+        try:
+            ready, saved = await interrupt(directory.name, 'wait-active')
+            observed = json.loads(queued.read_bytes())
+            reader = observed['reader']
+            assert processes.identity(reader['pid']) == reader
+            assert check_records() == before and ledger.read_bytes() == ledger_before and not terminal.exists()
+            attempt_path = ready / 'verification-attempt.json'
+            attempt_bytes = attempt_path.read_bytes()
+            attempt = json.loads(attempt_bytes)
+            recovery_bytes = (ready / 'recovery.json').read_bytes()
+            ready.with_suffix('.before-resume.json').write_bytes((ready / 'run.json').read_bytes())
+            started, = reads(ready)
+            deadline = attempt['deadline_monotonic_ns'] / 1_000_000_000
+            assert started['deadline'] == deadline and started['owner'] == observed['owner']
+            refusal = await blocked('active-reader', ready, 'original graph coordinator is still active')
+            ready.with_suffix('.lock-refusal.stderr').write_text(refusal.stderr, encoding='utf-8')
+            assert processes.identity(reader['pid']) == reader
+            assert check_records() == before and ledger.read_bytes() == ledger_before and not terminal.exists()
+
+            executed = await start_wait(observed['job'])
+            async with asyncio.timeout(10):
+                while True:
+                    pid, status = os.waitpid(reader['pid'], os.WNOHANG)
+                    if pid == reader['pid']:
+                        reader_reaped = True
+                        break
+                    await asyncio.sleep(.01)
+            assert os.waitstatus_to_exitcode(status) == 0
+            native_stdout, = ready.with_suffix('.native-tmp').glob('ergora-task-read-*/reader/stdout.txt')
+            original_proof = json.loads(native_stdout.read_bytes())
+            assert original_proof['job_id'] == observed['job']['job_id']
+            assert original_proof['receipt_sha256'] == native_sources.sha(executed)
+            assert original_proof['fixed_results_sha256'] == executed['artifacts'][0]['sha256']
+            assert (ready / 'run.json').read_bytes() == ready.with_suffix('.before-resume.json').read_bytes()
+            assert not (ready / 'verification-complete.json').exists() and not calls.exists()
+        finally:
+            if not reader_reaped and queued.exists():
+                original = json.loads(queued.read_bytes())['reader']
+                with suppress(FileNotFoundError, ProcessLookupError, ValueError):
+                    processes.notify_identity(original, signal.SIGKILL)
+                with suppress(ChildProcessError):
+                    os.waitpid(original['pid'], 0)
+
+        finished_records, finished_ledger = check_records(), ledger.read_bytes()
+        completion_path = ready / 'verification-complete.json'
+        completion_path.write_bytes(b'{"schema_version":')
+        try:
+            await blocked('partial-completion', ready, None)
+        finally:
+            completion_path.unlink()
+
+        from ergora.configuration import projects
+
+        reviewer_path = 'root/correctness/review'
+        reviewer_id = native_sources.sha([saved['recovery_sha256'], reviewer_path])[:32]
+        foreign = 'foreign-reviewer'
+        projects.create(state, foreign, Path(state.project('demo')['repo']))
+        foreign_document = {'id': reviewer_id, 'project': foreign, 'role': 'reviewer', 'status': 'succeeded'}
+        foreign_bytes = (json.dumps(foreign_document, indent=2) + '\n').encode('utf-8')
+        with state.connect() as db:
+            db.execute('INSERT INTO agent_runs (id, project, document) VALUES (?, ?, ?)',
+                       (reviewer_id, foreign, foreign_bytes.decode('utf-8')))
+        ready.with_suffix('.foreign-row-before.json').write_bytes(foreign_bytes)
+        try:
+            collision = await blocked('foreign-reviewer', ready, 'agent run id is already recorded outside')
+            assert foreign not in collision.stderr
+            ready.with_suffix('.foreign-refusal.stderr').write_text(collision.stderr, encoding='utf-8')
+        finally:
+            with state.connect() as db:
+                foreign_after = db.execute('SELECT id, project, CAST(document AS BLOB) FROM agent_runs WHERE id=?',
+                                           (reviewer_id,)).fetchone()
+                db.execute('DELETE FROM agent_runs WHERE id=? AND project=?', (reviewer_id, foreign))
+                db.execute('DELETE FROM projects WHERE id=?', (foreign,))
+            if foreign_after is not None:
+                ready.with_suffix('.foreign-row-after.json').write_bytes(foreign_after[2])
+        assert foreign_after is not None and tuple(foreign_after) == (reviewer_id, foreign, foreign_bytes)
+
+        resumed = await resume(ready)
+        assert resumed.returncode == 0, resumed.stdout + resumed.stderr
+        result = json.loads(resumed.stdout)
+        assert result['status'] == 'succeeded'
+        proof = result['outputs']['proof']
+        proof_bytes = json.dumps(proof, ensure_ascii=False, allow_nan=False, separators=(',', ':')).encode('utf-8')
+        assert proof_bytes == json.dumps(original_proof, ensure_ascii=False, allow_nan=False,
+                                          separators=(',', ':')).encode('utf-8')
+        completion = json.loads(completion_path.read_bytes())
+        assert attempt['started_monotonic_ns'] <= completion['validated_monotonic_ns'] < attempt['deadline_monotonic_ns']
+        assert completion['attempt_sha256'] == native_sources.sha(attempt)
+        assert completion['evidence'] == proof and completion['evidence_sha256'] == hashlib.sha256(proof_bytes).hexdigest()
+        assert result['verification_reads'] == [{**saved['verification_reads'][0], 'status': 'validated',
+                                                 'completion_sha256': native_sources.sha(completion), 'evidence': proof}]
+        assert attempt_path.read_bytes() == attempt_bytes and (ready / 'recovery.json').read_bytes() == recovery_bytes
+        initial, continued = reads(ready)
+        assert initial['operation'] == 'run-graph' and continued['operation'] == 'resume-graph'
+        assert initial['source'] == continued['source'] == inputs['check']
+        assert initial['deadline'] == continued['deadline'] == deadline and initial['owner'] == continued['owner']
+        assert continued['at'] < deadline
+        leaf, = result['leaves']
+        reviewer = agent_runs.inspect_run(state, 'demo', leaf['run_id'])
+        assert leaf['instance'] == reviewer_path and leaf['run_id'] == reviewer_id and leaf['status'] == 'succeeded'
+        assert reviewer['run']['status'] == 'succeeded' and reviewer['result']['sha256'] == leaf['result_sha256']
+        assert reviewer['input']['digest'] == leaf['input_digest']
+        assert json.loads(calls.read_bytes()) == inputs['task'] and len(agent_runs.runs(state, 'demo')) == len(before_runs) + 1
+        assert check_records() == finished_records and ledger.read_bytes() == finished_ledger
+        return {'original_job_id': observed['job']['job_id'], 'original_reader': reader, 'reader_exit_code': 0,
+                'read_deadline': deadline, 'native_reads': 2, 'refused': refused, 'reviewer_calls': 1,
+                'reviewer_run_id': leaf['run_id'], 'native_records_unchanged': True, 'foreign_row_preserved': True}
 
     incomplete, pending = await interrupt('incomplete-fixed-proof', 'incomplete')
     assert pending['verification_reads'][0]['status'] == 'attempted' and not reads(incomplete)
-    await blocked('incomplete', incomplete, 'original completed fixed-check proof')
+    if waiting:
+        attempt_path = incomplete / 'verification-attempt.json'
+        attempt_bytes = attempt_path.read_bytes()
+        attempt_path.unlink()
+        try:
+            await blocked('missing-attempt', incomplete, 'immutable original fixed-check read attempt')
+        finally:
+            attempt_path.write_bytes(attempt_bytes)
+    else:
+        await blocked('incomplete', incomplete, 'original completed fixed-check proof')
     if not waiting:
         expired, _ = await interrupt('expired-fixed-proof', 'proof')
         altered, saved = await interrupt('altered-fixed-proof', 'proof')

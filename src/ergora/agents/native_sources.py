@@ -153,6 +153,12 @@ def find_run(state, project, ident):
     return document
 
 
+def run_id_exists(state, ident):
+    """Check the global allocation without reading any project's run document."""
+    with state.connect() as db:
+        return db.execute('SELECT 1 FROM agent_runs WHERE id=?', (ident,)).fetchone() is not None
+
+
 def directory_identity(path):
     details = path.stat(follow_symlinks=False)
     if is_link(path) or not stat.S_ISDIR(details.st_mode):

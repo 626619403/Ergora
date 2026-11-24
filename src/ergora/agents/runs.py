@@ -42,8 +42,11 @@ _PROCESS_START_FIELDS = frozenset({'process_start_receipt', 'process_start_sha25
 
 def _store(state: State, document: dict) -> None:
     with state.connect() as db:
-        db.execute("INSERT INTO agent_runs VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET document=excluded.document",
-                   (document["id"], document["project"], json.dumps(document)))
+        written = db.execute("INSERT INTO agent_runs VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET document=excluded.document "
+                             "WHERE agent_runs.project=excluded.project",
+                             (document["id"], document["project"], json.dumps(document)))
+        if written.rowcount != 1:
+            raise ValueError('Agent run ID belongs to another project')
 
 
 def _prepare_role(state, project_id, role, prompt, timeout, skill_names, recall, template, freeze=None):

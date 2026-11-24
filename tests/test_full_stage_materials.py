@@ -449,7 +449,8 @@ def test_text_only_cannot_silently_drop_required_skill_attachments(full_creation
 @pytest.mark.parametrize('case', ['full', 'serial', 'capacity', 'unread', 'source-artifact', 'source-claim', 'source-receipt',
                                  'owner-source-artifact', 'issue-source', 'development-specialists', 'method-addendum',
                                  'fixed-candidate-check', 'fixed-candidate-check-graph',
-                                 'fixed-candidate-check-graph-recoverable', 'fixed-candidate-check-graph-wait-recoverable'])
+                                 'fixed-candidate-check-graph-recoverable', 'fixed-candidate-check-graph-wait-recoverable',
+                                 'fixed-candidate-check-graph-wait-interrupted-recoverable'])
 def test_real_preparation_calls_and_original_stage_results(tmp_path, case):
     pytest.importorskip('temporalio')
     pytest.importorskip('mcp')
@@ -482,13 +483,20 @@ def test_real_preparation_calls_and_original_stage_results(tmp_path, case):
         assert (wait['timed_out'], wait['stopped'], wait['wrong_locator']) == ('timed_out', 'cancelled', 'failed')
         assert wait['proof']['operation_id'] == 'wait-check' and wait['proof']['status'] == 'validated'
         assert wait['proof']['wait_seconds'] == 10 and wait['reviewer_run_id'] and wait['original_native_effects_only']
-    if case.endswith('-recoverable'):
+    if case.endswith('-wait-interrupted-recoverable'):
+        recovery = proof['graph']
+        assert recovery['original_reader']['pid'] and recovery['reader_exit_code'] == 0
+        assert recovery['original_job_id'] and recovery['reviewer_run_id'] and recovery['reviewer_calls'] == 1
+        assert recovery['native_reads'] == 2 and recovery['native_records_unchanged']
+        assert recovery['foreign_row_preserved']
+        assert recovery['refused'] == ['active-reader', 'partial-completion', 'foreign-reviewer']
+    elif case.endswith('-recoverable'):
         recovery = proof['graph']
         assert recovery['reused_proof'] and recovery['native_records_unchanged']
         assert recovery['reviewer_calls'] == 1 and recovery['original_reviewer_reused']
         if case.endswith('-wait-recoverable'):
             assert recovery['original_wait_observed']
-            assert recovery['refused'] == ['incomplete', 'changed-terminal-identity', 'reordered-proof', 'expired-read']
+            assert recovery['refused'] == ['missing-attempt', 'changed-terminal-identity', 'reordered-proof', 'expired-read']
         else:
             assert recovery['refused'] == ['incomplete', 'altered-proof', 'stale-with-prepared-input',
                                            'missing-native-receipt', 'expired-read']

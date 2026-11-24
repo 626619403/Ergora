@@ -138,6 +138,7 @@ class _GraphRun:
         self.lock_fd = lock_fd
         self.result_limit = recovery['result_limit'] if recovery is not None else _RESULT_LIMIT
         self.unreserved = None
+        self.resumed_wait = None
 
     def save(self):
         self.check_owner()
@@ -346,15 +347,19 @@ class _GraphRun:
         from ergora.development.application import read_candidate_verification, read_fixed_check_proof
 
         self.check_active()
-        reads = self.receipt.setdefault('verification_reads', [])
-        record = {'instance': path, 'source': source, 'status': 'attempted'}
-        attempt = None
-        if self.recovery is not None:
-            attempt = self.fixed_read_attempt(path, source, time.monotonic_ns())
-            _write_recovery_record(self.directory, _FIXED_READ_ATTEMPT, attempt)
-            record['attempt_sha256'] = native_sources.sha(attempt)
-        reads.append(record)
-        self.save()
+        if self.resumed_wait is None:
+            reads = self.receipt.setdefault('verification_reads', [])
+            record = {'instance': path, 'source': source, 'status': 'attempted'}
+            attempt = None
+            if self.recovery is not None:
+                attempt = self.fixed_read_attempt(path, source, time.monotonic_ns())
+                _write_recovery_record(self.directory, _FIXED_READ_ATTEMPT, attempt)
+                record['attempt_sha256'] = native_sources.sha(attempt)
+            reads.append(record)
+            self.save()
+        else:
+            record, attempt = self.resumed_wait
+            self.resumed_wait = None
         try:
             options = {'expected_revision': self.project['revision'], 'deadline': self.deadline,
                        'stop_requested': self.should_stop}
@@ -397,16 +402,39 @@ class _GraphRun:
             raise ValueError('Recovery requires the original completed fixed-check proof')
         try:
             attempt = native_sources.packet(self.directory, _FIXED_READ_ATTEMPT, confirm_durable=True)
-            completion = native_sources.packet(self.directory, _FIXED_READ_COMPLETE, confirm_durable=True)
         except FileNotFoundError as error:
-            raise ValueError('Recovery requires the original completed fixed-check proof') from error
+            raise ValueError('Recovery requires the immutable original fixed-check read attempt') from error
         source = inputs['check']
         started = attempt.get('started_monotonic_ns') if isinstance(attempt, dict) else None
-        validated = completion.get('validated_monotonic_ns') if isinstance(completion, dict) else None
         graph_start = self.recovery['deadline_monotonic_ns'] - self.receipt['timeout'] * 1_000_000_000
         if (type(started) is not int or not graph_start <= started <= time.monotonic_ns()
                 or native_sources.encode(attempt) != native_sources.encode(self.fixed_read_attempt(gate, source, started))):
             raise ValueError('Saved fixed-check read attempt differs from its original cutoff or authorization')
+        record, = reads
+        expected = {'instance': gate, 'source': source, 'status': 'attempted',
+                    'attempt_sha256': native_sources.sha(attempt)}
+        pending = record.get('status') == 'attempted'
+        if pending:
+            if self.receipt.get('leaves') or any(path.name.startswith(('input-', 'reservation-')) for path in self.directory.iterdir()):
+                raise ValueError('Saved fixed-check read is still attempted with dependent work already recorded')
+            if native_sources.encode(record) != native_sources.encode(expected):
+                raise ValueError('Saved verification progress differs from the original fixed-check witnesses')
+        if not os.path.lexists(self.directory / _FIXED_READ_COMPLETE):
+            if not pending or attempt['mode'] != 'wait':
+                raise ValueError('Recovery requires the original completed fixed-check proof')
+            self.check_fixed_read_cutoff(attempt)
+            run_id = self.recovery_run_id(self.fixed_review['instance'])
+            try:
+                entries = (self.state.root / 'runs').iterdir()
+                if any(path.name == run_id or path.name.startswith(run_id + '.') for path in entries):
+                    raise ValueError('Saved fixed-check wait has dependent Agent run artifacts')
+            except FileNotFoundError:
+                pass
+            self.resumed_wait = record, attempt
+            return None
+        # A present completion must corroborate the proof, including after an interrupted write.
+        completion = native_sources.packet(self.directory, _FIXED_READ_COMPLETE, confirm_durable=True)
+        validated = completion.get('validated_monotonic_ns') if isinstance(completion, dict) else None
         if type(validated) is not int or not started <= validated < attempt['deadline_monotonic_ns']:
             raise ValueError('Saved fixed-check proof was not validated within its original read deadline')
         if validated > self.check_fixed_read_cutoff(attempt):
@@ -415,17 +443,9 @@ class _GraphRun:
         self.check_fixed_proof(source, evidence)
         if native_sources.encode(completion) != native_sources.encode(self.fixed_read_completion(attempt, evidence, validated)):
             raise ValueError('Saved fixed-check completion differs from its original proof')
-        record, = reads
-        expected = {'instance': gate, 'source': source, 'status': 'attempted',
-                    'attempt_sha256': native_sources.sha(attempt)}
         validated_record = {**expected, 'status': 'validated', 'evidence': evidence,
                             'completion_sha256': native_sources.sha(completion)}
-        if record.get('status') == 'attempted':
-            if self.receipt.get('leaves') or any(path.name.startswith(('input-', 'reservation-')) for path in self.directory.iterdir()):
-                raise ValueError('Saved fixed-check read is still attempted with dependent work already recorded')
-        else:
-            expected = validated_record
-        if native_sources.encode(record) != native_sources.encode(expected):
+        if not pending and native_sources.encode(record) != native_sources.encode(validated_record):
             raise ValueError('Saved verification progress differs from the original fixed-check witnesses')
         self.result_bytes += len(_bounded_json(evidence, self.result_limit - self.result_bytes))
         self.completed[gate] = {'result': evidence}
@@ -599,8 +619,8 @@ class _GraphRun:
             raise ValueError(f'Saved route decision is unreachable through its original dependencies: {decisions[0]["instance"]}')
         for path in agent_nodes.keys() - reserved:
             self.check_active()
-            if native_sources.find_run(self.state, self.project['id'], self.recovery_run_id(path)) is not None:
-                raise ValueError(f'An original Agent run is missing from the graph reservations: {path}')
+            if native_sources.run_id_exists(self.state, self.recovery_run_id(path)):
+                raise ValueError(f'An Agent run ID is already recorded outside the graph reservations: {path}')
         if next_slot in slots:
             source = self.directory / next_slot
             path = workflows.inspect_input(source)['request']['instance']
