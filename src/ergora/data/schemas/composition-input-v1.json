@@ -15,7 +15,7 @@
     },
     "instance": {"type": "string", "maxLength": 1100, "pattern": "^root(?:/[a-z0-9]+(?:-[a-z0-9]+)*)+$"},
     "grant": {"type": "object", "description": "Validated by the composition grant contract before compilation."},
-    "input_origin": {"const": "operator-supplied"},
+    "input_origin": {"enum": ["operator-supplied", "workflow-port"]},
     "task_sha256": {"$ref": "#/$defs/digest"},
     "preview_sha256": {"$ref": "#/$defs/digest"},
     "prompt_sha256": {"$ref": "#/$defs/digest"},

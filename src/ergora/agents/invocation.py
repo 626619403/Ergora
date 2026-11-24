@@ -50,7 +50,8 @@ def invoke(binding: dict, role: str, prompt: str, cwd: Path, output: Path, timeo
            codex_options: list[str] | None = None, codex_bin: str = "codex", supervised: bool = False,
            codex_config: str | Path | None = None, mode: str = "native", task_mcp: dict | None = None,
            lock_fd: int | None = None,
-           session: dict | None = None, stop_requested=None, record_lifecycle: bool = False) -> dict:
+           session: dict | None = None, stop_requested=None, record_lifecycle: bool = False,
+           deadline: float | None = None) -> dict:
     """A successful process is not evidence acceptance; structured consumers validate separately."""
     validate_binding(role, binding, formal=bool(schema))
     backend = agent_backends.for_binding(binding, {"codex": {
@@ -73,6 +74,7 @@ def invoke(binding: dict, role: str, prompt: str, cwd: Path, output: Path, timeo
         return {'status': 'cancelled', 'returncode': None, 'error': 'Parent stopped before native spawn'}
     document = processes.run(argv, cwd, output, timeout, stdin, env, supervised=supervised,
                              command_record=protocol / "command.json" if mode != "native" or session is not None else None,
+                             **({'deadline': deadline} if deadline is not None else {}),
                              **({"stop_requested": stop_requested} if stop_requested is not None else {}),
                              **({'record_lifecycle': True} if record_lifecycle else {}),
                              **({"lock_fd": lock_fd} if lock_fd is not None else {}))

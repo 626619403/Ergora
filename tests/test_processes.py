@@ -92,7 +92,7 @@ def test_powershell_utf8_bom_inputs_roundtrip(tmp_path, capsys):
     assert skill_assets.get(state, 'demo', imported['digest'])['name'] == 'bom-skill'
 
 
-@pytest.mark.parametrize('finish', ['normal', 'timeout', 'deadline'])
+@pytest.mark.parametrize('finish', ['normal', 'timeout', 'deadline', 'stop-request'])
 def test_command_completion_stops_descendants(tmp_path, finish):
     ready, late = tmp_path / 'ready', tmp_path / 'late'
     child = f'import time;from pathlib import Path;Path({str(ready)!r}).touch();time.sleep(4);Path({str(late)!r}).touch()'
@@ -103,10 +103,12 @@ def test_command_completion_stops_descendants(tmp_path, finish):
         + ('time.sleep(20)' if finish != 'normal' else '')
     )
     limits = {'deadline': time.monotonic() + 2} if finish == 'deadline' else {}
+    if finish == 'stop-request':
+        limits['stop_requested'] = ready.exists
     result = processes.run([sys.executable, '-c', code], tmp_path, tmp_path / 'output',
                            2 if finish == 'timeout' else 10, **limits)
     assert ready.exists(), 'The real descendant must start before completion/timeout'
-    assert result['status'] == ('succeeded' if finish == 'normal' else 'timed_out')
+    assert result['status'] == {'normal': 'succeeded', 'stop-request': 'cancelled'}.get(finish, 'timed_out')
     time.sleep(4.2)
     assert not late.exists()
 

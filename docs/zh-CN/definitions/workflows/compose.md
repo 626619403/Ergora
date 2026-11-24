@@ -8,7 +8,20 @@
 
 Web控制台的“Agent 与组合库”复用同一版本库、导入和preview用例，无需先注册项目。选择精确工作流版本，检查根声明初始化的静态上限后明确预览，即可查看每个实例的结构父链、先行依赖、具名端口、完整资源来源及装配提示；详见[页面操作](#在页面浏览与预览定义)。静态上限不构成项目授权，后端字段仅为请求。页面下载的定义JSON和预览JSON用于阅读与比较；分享完整资源和精确依赖应使用下文`export`、`prepare-manifest`或[固定当前预览](#固定当前预览到持久控制目录)。标准正文可在页面[明确修订](revisions.md#在页面修订工作流)；嵌套画布与正式交接见[工作流指南](../../../definitions/workflows/revisions.md#view-published-nested-relationships)。
 
-当前可用性：导入、预览和固定 manifest 不会执行或采用图、批准候选，也不证明后端／SDK 已就绪。一般 Repeat 和任意混合节点图执行仍未实现。已登记设计政策目前只保存要求，并明确拒绝不支持的执行；可信人类通道不可用。只读[source-journal记录](../../../development/design-and-approval.md#store-complete-design-sources-and-reported-answers)不授执行权；有限训练控制器须[明确授权](../../../training/controllers.md#start-a-local-training-budget-and-recover-original-authorization)。见[当前计划](../../../PLAN.md)、[设计政策执行门禁](../../../../src/ergora/development/design.py)和[训练 controller 门禁](../../../../src/ergora/training/cycles.py)。
+导入、预览和固定 manifest 提供静态图产物。[独立图命令](#运行独立工作流图)显式执行受支持的只读工作流。一般 Repeat 和任意混合节点图执行仍未实现。已登记设计政策目前只保存要求，并明确拒绝不支持的执行；可信人类通道不可用。有限训练控制器须[明确授权](../../../training/controllers.md#start-a-local-training-budget-and-recover-original-authorization)。见[当前计划](../../../PLAN.md)和[设计政策执行门禁](../../../../src/ergora/development/design.py)。
+
+## 运行独立工作流图
+
+普通项目可用完整 manifest 和摘要运行图。输入 JSON 的键须与根端口完全一致，例如根端口是 `task` 时，填写 `{"task":"阅读所给资料并梳理依赖。"}`。
+
+```bash
+ergora composition run-graph my-project ./complete-manifest --manifest-digest MANIFEST_DIGEST \
+  --inputs ./graph-inputs.json --directory ./original-graph-run --max-prompt-bytes 150000 --timeout 300
+```
+
+命令按依赖串行运行，沿具名端口传递完整叶子结果。子工作流可以嵌套，all-join 按完整实例路径汇集声明的前序输出。每个叶子使用支持纯文本的后端和只读权限，启动与等待共享一个总体截止时间。正式代码交付使用现有审批和验证流程。
+
+运行目录的 `run.json` 记录原 manifest、输入、已尝试叶子的 ID 和具名输出。可用 `composition inspect-run` 查询各叶子。整图保留的完整叶子结果累计上限是 8 MiB，最终输出也遵守 8 MiB 上限。超限时保留原叶子记录并返回失败。Ctrl+C 通过原进程所有者请求取消，Linux/WSL2 上的 SIGTERM 也走同一条路径。中断后沿原记录核对，执行命令要求一个尚未使用的目录。图未完整成功时返回非零退出码。
 
 ## 使用内置领域组合
 

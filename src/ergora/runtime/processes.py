@@ -64,7 +64,7 @@ def resolve_program(program: str, cwd: Path) -> str:
     return resolved
 
 
-def _run_windows(argv, cwd, output, timeout, stdin, env, deadline=None):
+def _run_windows(argv, cwd, output, timeout, stdin, env, deadline=None, stop_requested=None):
     from ergora.runtime.windows_job import Job
 
     environment = dict(os.environ if env is None else env, PYTHONUTF8="1", PYTHONIOENCODING="utf-8")
@@ -74,6 +74,8 @@ def _run_windows(argv, cwd, output, timeout, stdin, env, deadline=None):
         with Job() as job:
             if deadline is not None and time.monotonic() >= deadline:
                 return {"status": "timed_out", "returncode": None, "output": str(output)}
+            if stop_requested is not None and stop_requested():
+                return {"status": "cancelled", "returncode": None, "output": str(output)}
             process = subprocess.Popen([sys.executable, "-m", "ergora.runtime.processes", "--windows-child"],
                                        cwd=cwd, env=environment, stdin=subprocess.PIPE, stdout=stdout,
                                        stderr=stderr, text=True, encoding="utf-8",
@@ -84,6 +86,9 @@ def _run_windows(argv, cwd, output, timeout, stdin, env, deadline=None):
                 wait_deadline = deadline if deadline is not None else time.monotonic() + timeout
                 payload = request
                 while True:
+                    if stop_requested is not None and stop_requested():
+                        status = "cancelled"
+                        break
                     remaining = wait_deadline - time.monotonic()
                     if remaining <= 0:
                         status = "timed_out"
@@ -187,7 +192,7 @@ def run(argv: list[str], cwd: Path, output: Path, timeout: float, stdin: str = "
             raise ValueError('Supervised processes require their original stop owner, not an ordinary deadline')
         deadline = min(deadline, time.monotonic() + timeout)
     def should_stop():
-        return _cancel_requested or (stop_requested is not None and stop_requested())
+        return (supervised and _cancel_requested) or (stop_requested is not None and stop_requested())
     output.mkdir(parents=True, exist_ok=False, mode=0o700)
     (output / "stdin.txt").write_text(stdin, encoding="utf-8", newline="\n")
     if os.name == "nt":
@@ -197,7 +202,7 @@ def run(argv: list[str], cwd: Path, output: Path, timeout: float, stdin: str = "
     if command_record is not None:
         command_record.write_text(json.dumps(argv), encoding="utf-8", newline="\n")
     if os.name == "nt":
-        return _run_windows(argv, cwd, output, timeout, stdin, env, deadline)
+        return _run_windows(argv, cwd, output, timeout, stdin, env, deadline, stop_requested)
     status = "succeeded"
     if supervised:
         _adopt_children()
@@ -210,7 +215,9 @@ def run(argv: list[str], cwd: Path, output: Path, timeout: float, stdin: str = "
         try:
             if deadline is not None and time.monotonic() >= deadline:
                 status = "timed_out"
-            elif not (supervised and should_stop()):
+            elif should_stop():
+                status = "cancelled"
+            else:
                 process = subprocess.Popen(
                     argv, cwd=cwd, env=env, stdin=recorded_input, stdout=stdout, stderr=stderr,
                     text=True, start_new_session=not supervised,
@@ -218,11 +225,16 @@ def run(argv: list[str], cwd: Path, output: Path, timeout: float, stdin: str = "
                 if record_lifecycle:
                     model = _process_stamp(process.pid)
                 try:
-                    if supervised:
+                    if supervised or stop_requested is not None:
                         # TERM only requests cancellation, including during final cleanup.
+                        wait_deadline = None if supervised else (deadline if deadline is not None else time.monotonic() + timeout)
                         while not should_stop():
+                            interval = 0.2 if wait_deadline is None else min(0.2, wait_deadline - time.monotonic())
+                            if interval <= 0:
+                                status = "timed_out"
+                                break
                             try:
-                                process.wait(timeout=0.2)
+                                process.wait(timeout=interval)
                                 break
                             except subprocess.TimeoutExpired:
                                 pass
@@ -256,7 +268,7 @@ def run(argv: list[str], cwd: Path, output: Path, timeout: float, stdin: str = "
                         'descendants': descendants, 'remaining_children':
                         Path(f'/proc/{os.getpid()}/task/{os.getpid()}/children').read_text().split()})
     code = process.returncode if process is not None else None
-    if supervised and should_stop():
+    if should_stop():
         status = "cancelled"
     if code and status == "succeeded":
         status = "failed"
