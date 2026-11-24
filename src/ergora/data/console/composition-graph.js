@@ -1,6 +1,7 @@
 import { node, button, pre, empty, row, badge, table } from "./ui.js";
 
-const instanceLabels = { workflow: "子工作流", join: "all 汇合", "verify-evidence": "证据验证" };
+const instanceLabels = { workflow: "子工作流", join: "all 汇合", "verify-evidence": "证据验证", "choose-agent": "条件分派" };
+const relationLabels = { dependency: "先行依赖", data: "具名数据", branch: "条件分支" };
 
 // Private presentation of an already compiled preview. Paths identify instances;
 // port nodes are display anchors, never additional workflow instances.
@@ -44,8 +45,11 @@ export function compositionGraphView(preview, session, agents, openDefinition) {
           id: portId(item.path, direction, name), parent: item.path, path: item.path,
           label: `${direction === "input" ? "入" : "出"} · ${name}` }, classes: "port" });
     }
-    for (const dependency of item.depends_on)
-      edge("dependency", dependency, item.path, "先行", [dependency, item.path, "depends_on"]);
+    for (const dependency of item.depends_on) {
+      if (instances.get(dependency).branches?.includes(item.path))
+        edge("branch", dependency, item.path, "条件分支", [dependency, item.path, "depends_on + branches"]);
+      else edge("dependency", dependency, item.path, "先行", [dependency, item.path, "depends_on"]);
+    }
     if (item.parent) for (const [name, binding] of Object.entries(item.inputs || {})) {
       const target = item.kind === "workflow" ? portId(item.path, "input", name) : item.path;
       const from = binding.input !== undefined ? `${item.parent} · input.${binding.input}` : `${item.parent}/${binding.node} · output.${binding.output}`;
@@ -252,7 +256,8 @@ export function compositionGraphView(preview, session, agents, openDefinition) {
   selectInstance(instances.has(session.selected) ? session.selected : "root");
   refreshSearch();
   const element = node("div", {},
-    row(badge("嵌套框：结构继承"), badge("虚线箭头：先行依赖"), badge("蓝色实线：具名数据"), badge("入 / 出：工作流端口")),
+    row(badge("嵌套框：结构继承"), badge("虚线箭头：先行依赖"), badge("蓝色实线：具名数据"),
+      relations.some((item) => item.kind === "branch") ? badge("紫色箭头：条件分支") : null, badge("入 / 出：工作流端口")),
     row(button("适配组合图", () => graph?.resize().fit(undefined, 35)),
       button("定位所选实例", () => locate(session.selected)), button("重排组合图", rebuild), selectedFold, expandAll), container,
     node("p", { className: "muted" }, "折叠 / 展开按原层级重排当前视图。摘要线只代表原跨组关系，点击连线或下方关系ID可查原始端点；组内关系仍在完整表中。拖动、缩放、折叠和查找只属于本页会话，刷新重置。图不修改草稿、依赖或权限。端口不是额外实例，连线不是运行值。"),
@@ -261,7 +266,7 @@ export function compositionGraphView(preview, session, agents, openDefinition) {
     searchStatus, searchResults, instanceTable, selectedLabel, inspector, relationInspector,
     node("details", {}, node("summary", {}, "依赖与具名数据关系表"),
       table(["原关系ID / 查看", "关系", "来源", "目标", "原绑定"], relations.map((item) => [button(item.id, () => inspectRelation(item.id), "text-button"),
-        item.kind === "dependency" ? "先行依赖" : "具名数据", ...item.facts]))));
+        relationLabels[item.kind], ...item.facts]))));
 
   function remember() {
     if (!graph) return;
@@ -291,6 +296,7 @@ export function compositionGraphView(preview, session, agents, openDefinition) {
           { selector: "edge", style: { width: 1.5, "curve-style": "bezier", "target-arrow-shape": "triangle", label: "data(label)", "font-size": 10, "text-background-color": "#f5f7f2", "text-background-opacity": 0.85, "text-background-padding": 2 } },
           { selector: "edge.dependency", style: { "line-style": "dashed", "line-color": "#9b7046", "target-arrow-color": "#9b7046", color: "#79522e" } },
           { selector: "edge.data", style: { "line-color": "#527fa3", "target-arrow-color": "#527fa3", color: "#345f81" } },
+          { selector: "edge.branch", style: { "line-style": "dotted", "line-color": "#795999", "target-arrow-color": "#795999", color: "#594174" } },
           { selector: "edge.summary", style: { width: 2.5 } },
         ],
       });

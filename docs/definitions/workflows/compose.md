@@ -43,6 +43,59 @@ For a Workflow v2 graph with a `verify-evidence` node, run the same command with
 
 Replace the placeholders and example event ID with values from the original run. The read requires the project's original Linux/WSL2 reference installation, Temporal history and job files. It runs synchronously in the graph coordinator and can delay independent dispatch and observation of other Agent results. Active Agent calls retain their original deadline and stop handling. A successful node returns the verified evidence identity on its `result` port. The graph receipt records each original locator and the read outcome in `verification_reads`. Formal verification, approval and candidate release continue through their original owners. [Node and port contract](contracts.md#original-fixed-verification-evidence)
 
+### Choose a follow-up Agent
+
+Use the fragment in a Workflow v2 `workflow.json` with ID `conditional-review` and version `1.0.0`. Keep the usual root description, resources, read-only permissions and limits. Replace each example `ref` with an imported Agent's exact ID, version and bundle digest. Give the analyzer instructions for choosing `structure`, `dependency` or `none` in `artifacts.route`. Both reviewers take the root task as input. [Agent definitions](../agents.md#create-and-modify-definitions) · [Routing contract](contracts.md#conditional-agent-routing)
+
+```json
+{
+  "schema_version": 2,
+  "inputs": ["task"],
+  "outputs": {"findings": {"node": "gather", "output": "result"}},
+  "nodes": [
+    {
+      "id": "analyze", "depends_on": [],
+      "ref": {"kind": "agent", "id": "route-analyzer", "version": "1.0.0", "digest": "ANALYZER_DIGEST"},
+      "role": "inspector", "permissions": {"read": ["definitions"], "write": [], "shell": false, "network": []},
+      "inputs": {"task": {"input": "task"}}
+    },
+    {
+      "id": "select", "operation": "choose-agent", "depends_on": ["analyze"],
+      "inputs": {"source": {"node": "analyze", "output": "result"}},
+      "branches": ["structure", "dependency"]
+    },
+    {
+      "id": "structure", "depends_on": ["select"],
+      "ref": {"kind": "agent", "id": "structure-reviewer", "version": "1.0.0", "digest": "STRUCTURE_DIGEST"},
+      "role": "reviewer", "review_requirement": "required",
+      "permissions": {"read": ["definitions"], "write": [], "shell": false, "network": []},
+      "inputs": {"task": {"input": "task"}}
+    },
+    {
+      "id": "dependency", "depends_on": ["select"],
+      "ref": {"kind": "agent", "id": "dependency-reviewer", "version": "1.0.0", "digest": "DEPENDENCY_DIGEST"},
+      "role": "reviewer", "review_requirement": "required",
+      "permissions": {"read": ["definitions"], "write": [], "shell": false, "network": []},
+      "inputs": {"task": {"input": "task"}}
+    },
+    {"id": "gather", "join": "all", "depends_on": ["structure", "dependency"]}
+  ]
+}
+```
+
+With a preview grant in `./preview-grant.json`, import and preview the exact definition, then freeze the complete manifest. Use the `digest` returned by `verify-manifest` as `MANIFEST_DIGEST`. Put the task text under `"task"` in `./graph-inputs.json`.
+
+```bash
+ergora composition import ./conditional-review
+ergora composition preview conditional-review 1.0.0 --grant ./preview-grant.json
+ergora composition prepare-manifest conditional-review 1.0.0 --grant ./preview-grant.json --directory ./conditional-review-manifest
+ergora composition verify-manifest ./conditional-review-manifest
+ergora composition run-graph my-project ./conditional-review-manifest --manifest-digest MANIFEST_DIGEST \
+  --inputs ./graph-inputs.json --directory ./conditional-review-run --max-prompt-bytes 150000 --timeout 300
+```
+
+Read `route_decisions` and the joined `findings` in the original `run.json`. A `none` decision marks both branches skipped. Use the standalone graph route for this operation. [Routing and evidence contract](contracts.md#conditional-agent-routing)
+
 ## Use bundled domain compositions
 
 Installing the wheel is enough to import the default specialists and all their subworkflows; no repository examples download, model call or service startup is required:

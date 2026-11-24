@@ -16,6 +16,8 @@ def require_formal_nodes(graph: dict) -> None:
     for node in graph['instances']:
         if node['kind'] == 'verify-evidence':
             raise RouteBlocked(node['path'], 'Candidate verification evidence reads require standalone graph execution')
+        if node['kind'] == 'choose-agent':
+            raise RouteBlocked(node['path'], 'Conditional Agent selection requires standalone graph execution')
 
 
 def require_root_task(instances: dict, leaf: dict) -> None:

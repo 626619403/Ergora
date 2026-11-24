@@ -12,7 +12,7 @@ from threading import Event
 import time
 import uuid
 
-from ergora.agents import backends, native_sources, runs
+from ergora.agents import backends, invocation, native_sources, runs
 from ergora.configuration import validation as contracts
 from ergora.definitions import agents, workflows
 from ergora.storage.assets import publish_directory
@@ -100,6 +100,11 @@ class _GraphRun:
         prepared = workflows.prepare_input_from_manifest(self.directory/'manifest', path,
             _bounded_json(task, limit), source, limit, input_origin='workflow-port',
             manifest_digest=self.receipt['manifest_digest'])
+        options = {}
+        if 'route_choices' in node:
+            schema = invocation.result_schema(['response', 'route'], review=node['role'] == 'reviewer')
+            schema['properties']['artifacts']['properties']['route'] = {'type': 'string', 'enum': node['route_choices']}
+            options['result_schema'] = schema
         self.check_leaf_admission()
         attempt = {'instance': path, 'run_id': uuid.uuid4().hex, 'input_digest': prepared['digest'], 'status': 'attempted'}
         self.receipt['leaves'].append(attempt)
@@ -113,7 +118,7 @@ class _GraphRun:
             raise
         future = executor.submit(runs.run_input, self.state, self.project['id'], source, self.receipt['timeout'], mode='text-only',
             codex_config=self.codex_config, deadline=self.deadline, input_digest=prepared['digest'], run_id=attempt['run_id'],
-            expected_revision=self.project['revision'], stop_requested=self.should_stop)
+            expected_revision=self.project['revision'], stop_requested=self.should_stop, **options)
         self.running[future] = attempt
         self.active_slots.update(scope['path'] for scope in node['concurrency_scopes'])
         if settled:
@@ -192,6 +197,24 @@ class _GraphRun:
         self.save()
         return {'result': evidence}
 
+    def choose_agent(self, node, source):
+        self.check_active()
+        analyzer = node['depends_on'][0]
+        artifacts = source.get('artifacts')
+        choice = artifacts.get('route') if isinstance(artifacts, dict) else None
+        if choice not in self.nodes[analyzer]['route_choices']:
+            raise ValueError(f'Original analyzer result lacks an eligible route choice: {analyzer}')
+        attempt = next(item for item in self.receipt['leaves'] if item['instance'] == analyzer)
+        selected = None if choice == 'none' else f"{node['parent']}/{choice}"
+        skipped = [path for path in node['branches'] if path != selected]
+        record = {'instance': node['path'], 'choice': choice, 'eligible': node['branches'], 'selected': selected,
+                  'skipped': skipped, 'source': {key: attempt[key] for key in
+                                                ('instance', 'run_id', 'input_digest', 'result_sha256')}}
+        self.receipt.setdefault('route_decisions', []).append(record)
+        self.save()
+        self.check_active()
+        return {'result': {'choice': choice}}, skipped
+
     def ports(self, path, inputs, bindings):
         return {name: inputs[binding['input']] if 'input' in binding else
                 self.completed[path + '/' + binding['node']][binding['output']] for name, binding in bindings.items()}
@@ -236,8 +259,16 @@ class _GraphRun:
                     opened[path] = ports
                 elif node['kind'] == 'verify-evidence':
                     self.completed[path] = self.verify_evidence(path, ports['source'])
-                else:
+                elif node['kind'] == 'choose-agent':
+                    result, skipped = self.choose_agent(node, ports['source'])
+                    self.completed[path] = result
+                    for branch in skipped:
+                        del pending[branch]
+                        self.completed[branch] = {'status': 'skipped'}
+                elif node['kind'] == 'agent':
                     self.dispatch_leaf(executor, node, ports['task'])
+                else:
+                    raise ValueError(f'Unsupported standalone workflow node: {path}')
         except BaseException:
             self.stop.set()
             raise

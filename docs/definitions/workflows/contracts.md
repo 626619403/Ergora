@@ -26,7 +26,7 @@ The package entry point is `workflow.json`; see [schema v1](../../../src/ergora/
 |`resources`|Ordered local instructions/context/Skills; may be empty. Reuses Agent resource formats and complete digest checks.|
 |`inputs`|Array of input-port names; mappings are checked statically, and formal `dag-v1` projects the root task or completed predecessors' named outputs using frozen bindings.|
 |`outputs`|Output port → source binding, from this workflow's inputs or local nodes' outputs.|
-|`nodes`|Agent references, Workflow references, all-join and the Workflow v2 `verify-evidence` operation determine instances and the local graph.|
+|`nodes`|Agent references, Workflow references, all-join and the Workflow v2 `verify-evidence` and `choose-agent` operations determine instances and the local graph.|
 |`permissions`|This workflow's request/child ceilings; checked along the complete structural ancestor chain and against the project grant.|
 |`limits`|This subtree's depth, instance, concurrency and complete static-material ceilings; root/project totals cover every subtree.|
 
@@ -57,6 +57,14 @@ Use `operation: "verify-evidence"` in a Workflow v2 definition and execute it th
 ```
 
 The locator binds the original `task_id`, `run_id`, `event_id`, `candidate_sha` and `receipt_sha256`. The native reader revalidates the exact successful fixed-verify job against the original history and complete check-results and process records. Missing or mismatched evidence fails the node. A successful read returns the locator, original project and project revision, `check_results_sha256`, `fixed_check_ids` and `status: validated`. The read leaves check execution, approval, release and changes to the original task with their existing formal owners. [Standalone graph input and runtime requirements](compose.md#read-original-fixed-verification-evidence)
+
+## Conditional Agent routing
+
+A Workflow v2 `choose-agent` node takes its `source` from the `result` of its sole dependency, a sibling analyzer Agent. Declare one to eight distinct sibling Agent IDs in `branches`, in order. Each branch depends directly on the selector and can use unconditional inputs. Each analyzer supplies one selector, and each branch belongs to one selector. The original analyzer reply includes required `artifacts.route`, a string enum of those local IDs plus the reserved `none` for an explicit no-follow-up decision. The existing Agent runner validates and saves the original result. A missing or invalid route fails the graph before any branch dispatch.
+
+The selector's `result` contains the chosen local ID or `none`, for example `{"choice":"structure"}`. Use an all-join to depend on a conditional branch or expose its output. The join maps each skipped branch's full instance path to `{"status":"skipped"}` and each executed branch's path to its usual `{"result":...}` wrapper. A conditional branch cannot feed another branch or act as another selector’s analyzer. Formal task admission rejects `choose-agent`. [Define and run a conditional workflow](compose.md#choose-a-follow-up-agent)
+
+Each `run.json` entry in `route_decisions` binds the selector decision to the analyzer's exact source instance, original run ID, input digest and result digest. It records eligible and skipped full instance paths in declaration order and the chosen path or null. Use the saved analyzer run ID with `composition inspect-run` to read the original input and reply.
 
 ## Static required and advisory review declarations
 

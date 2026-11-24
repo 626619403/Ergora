@@ -29,7 +29,7 @@ const labels = {
   material_bytes: "装配材料字节", concurrency_scopes: "并发范围", depends_on: "先行依赖",
   inputs: "具名输入绑定", outputs: "具名输出绑定", levels: "原编译层级",
   resource_content: "资源内容身份与顺序", resource_provenance: "资源来源与声明",
-  prompt_sha256: "装配提示身份", join: "汇合规则",
+  prompt_sha256: "装配提示身份", join: "汇合规则", branches: "候选分支", route_choices: "可返回的分支值",
 };
 
 export function compositionComparisonView(before, after) {

@@ -450,6 +450,29 @@
             "operation": {"const": "verify-evidence"},
             "inputs": {"$ref": "#/$defs/bindings"}
           }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "depends_on", "operation", "inputs", "branches"],
+          "properties": {
+            "id": {"$ref": "#/$defs/id"},
+            "depends_on": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 1,
+              "items": {"$ref": "#/$defs/id"}
+            },
+            "operation": {"const": "choose-agent"},
+            "inputs": {"$ref": "#/$defs/bindings"},
+            "branches": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 8,
+              "uniqueItems": true,
+              "items": {"allOf": [{"$ref": "#/$defs/id"}, {"not": {"const": "none"}}]}
+            }
+          }
         }
       ]
     },

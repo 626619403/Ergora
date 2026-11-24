@@ -413,6 +413,229 @@ def test_standalone_graph_rejects_writable_leaf_before_reserving_any_effect(prep
     assert not destination.exists() and agent_runs.runs(state, 'demo') == []
 
 
+@pytest.fixture
+def conditional_definition(prepared, tmp_path):
+    state, _, _ = prepared()
+    base = workflows.get(state, 'structure-review', '1.0.0')
+    root = base['definition']
+    agent = {**root['nodes'][0], 'review_requirement': 'required'}
+    draft = {**root, 'schema_version': 2, 'id': 'bounded-route', 'outputs': {
+        'selection': {'node': 'choose', 'output': 'result'}, 'followups': {'node': 'gather', 'output': 'result'}},
+        'nodes': [
+            {**agent, 'id': 'analyze'},
+            {'id': 'choose', 'operation': 'choose-agent', 'depends_on': ['analyze'],
+             'inputs': {'source': {'node': 'analyze', 'output': 'result'}}, 'branches': ['structure', 'dependency']},
+            *[{**agent, 'id': name, 'depends_on': ['choose', 'analyze'],
+               'inputs': {'task': {'node': 'analyze', 'output': 'result'}}} for name in ('structure', 'dependency')],
+            {'id': 'gather', 'join': 'all', 'depends_on': ['dependency', 'structure']},
+        ]}
+
+    def publish(definition):
+        source = tmp_path / 'conditional-definition'
+        shutil.copytree(EXAMPLES / 'composition/structure-review', source)
+        (source / 'workflow.json').write_text(json.dumps(definition), encoding='utf-8')
+        return workflows.import_bundle(state, source)
+
+    return state, base, draft, publish
+
+
+@pytest.mark.parametrize('case', ['structure', 'dependency', 'none', 'missing', 'unknown', 'changed-result', 'stopped'])
+def test_standalone_graph_routes_only_the_typed_choice(conditional_definition, tmp_path, monkeypatch, capsys, case):
+    from ergora.agents import graphs
+    from ergora.development import application
+    from ergora.development.route_errors import RouteBlocked
+
+    state, base, draft, publish = conditional_definition
+    imported = publish(draft)
+    prefix = 'root'
+    if case == 'dependency':
+        root = base['definition']
+        wrapper = {**root, 'id': 'outer-route', 'outputs': {
+            name: {'node': 'nested', 'output': name} for name in draft['outputs']}, 'nodes': [
+                {'id': 'nested', 'ref': {'kind': 'workflow', 'id': draft['id'], 'version': draft['version'],
+                                         'digest': imported['digest']}, 'depends_on': [],
+                 'inputs': {'task': {'input': 'task'}}},
+            ]}
+        workflows.revise(state, root['id'], root['version'], base['digest'], wrapper, publish=True)
+        draft, prefix = wrapper, 'root/nested'
+
+    grant = {'schema_version': 1, 'permissions': draft['permissions'], 'limits': draft['limits']}
+    manifest, directory = tmp_path/'manifest', tmp_path/'graph-run'
+    pinned = workflows.prepare_manifest(state.root, draft['id'], draft['version'], grant, manifest)
+    compiled = workflows.inspect_manifest(manifest, material=True)['composition']
+    nodes = {node['path']: node for node in compiled['instances']}
+    analyzer, selector = f'{prefix}/analyze', f'{prefix}/choose'
+    eligible = [f'{prefix}/structure', f'{prefix}/dependency']
+    assert nodes[analyzer]['route_choices'] == ['structure', 'dependency', 'none']
+    assert nodes[selector]['branches'] == eligible
+    with pytest.raises(RouteBlocked, match='Conditional Agent selection requires standalone graph execution') as error:
+        application._composition_selection(compiled, {}, {})
+    assert error.value.instance == selector
+
+    script, calls = tmp_path/'provider.py', tmp_path/'calls.jsonl'
+    script.write_text('''import json, sys
+from pathlib import Path
+result, calls = map(Path, sys.argv[1:3])
+task = json.loads(sys.stdin.read().rsplit('Workflow task port (JSON value):\\n', 1)[1])
+analyzer = sys.argv[3] == 'analyzer'
+with calls.open('a', encoding='utf-8') as stream:
+    stream.write(json.dumps(task) + '\\n')
+output = {'summary': 'Review', 'decision': 'approve', 'artifacts': {'response': 'Free-form: choose dependency.'}}
+if analyzer and task['choice'] is not None:
+    output['artifacts']['route'] = task['choice']
+result.write_text(json.dumps(output), encoding='utf-8')
+''', encoding='utf-8')
+    original = agent_backends.CodexBackend.command
+    schemas = []
+
+    def command(backend, request):
+        argv, prompt = original(backend, request)
+        artifacts = request.schema['properties']['artifacts']
+        schemas.append(artifacts)
+        analyzing = 'route' in artifacts['required']
+        if not analyzing:
+            decisions = json.loads((directory/'run.json').read_bytes())['route_decisions']
+            decision, = decisions
+            assert decision['instance'] == selector and decision['selected'] == f'{prefix}/{case}'
+        return [sys.executable, str(script), argv[argv.index('--output-last-message') + 1], str(calls),
+                'analyzer' if analyzing else 'follow-up'], prompt
+
+    monkeypatch.setattr(agent_backends.CodexBackend, 'command', command)
+    monkeypatch.setattr(agent_backends.CodexBackend, 'check_invocation', lambda self: None)
+    if case == 'changed-result':
+        original_run = agent_runs.run_input
+
+        def swap_result(*args, **kwargs):
+            job = original_run(*args, **kwargs)
+            if 'result_schema' in kwargs:
+                path = Path(job['result'])
+                changed = json.loads(path.read_bytes())
+                changed['artifacts']['route'] = 'dependency'
+                path.write_text(json.dumps(changed), encoding='utf-8')
+            return job
+
+        monkeypatch.setattr(agent_runs, 'run_input', swap_result)
+
+    choice = {'missing': None, 'unknown': 'undeclared', 'changed-result': 'structure', 'stopped': 'structure'}.get(case, case)
+    inputs = {'task': {'choice': choice}}
+    failure = case in ('missing', 'unknown', 'changed-result')
+    if case == 'stopped':
+        original_save = graphs._GraphRun.save
+        stopped = []
+
+        def stop_after_decision(graph):
+            original_save(graph)
+            if graph.receipt.get('route_decisions'):
+                stopped.append(True)
+
+        monkeypatch.setattr(graphs._GraphRun, 'save', stop_after_decision)
+        receipt = graphs.run_graph(state, 'demo', manifest, pinned['digest'], inputs, directory, 50_000, 20,
+                                   stop_requested=lambda: bool(stopped))
+    else:
+        supplied = tmp_path/'inputs.json'
+        supplied.write_text(json.dumps(inputs), encoding='utf-8')
+        assert main(['--home', str(state.root), 'composition', 'run-graph', 'demo', str(manifest),
+                     '--manifest-digest', pinned['digest'], '--inputs', str(supplied), '--directory', str(directory),
+                     '--max-prompt-bytes', '50000', '--timeout', '20']) == (1 if failure else 0)
+        receipt = json.loads(capsys.readouterr().out)
+
+    assert receipt == json.loads((directory/'run.json').read_bytes())
+    assert receipt['manifest_digest'] == pinned['digest']
+    assert schemas[0]['required'] == ['response', 'route']
+    assert schemas[0]['properties']['route'] == {'type': 'string', 'enum': ['structure', 'dependency', 'none']}
+    executed = [json.loads(line) for line in calls.read_text(encoding='utf-8').splitlines()]
+    assert executed[0] == inputs['task']
+    before, *followups = receipt['leaves']
+    assert before['instance'] == analyzer
+    original = agent_runs.inspect_run(state, 'demo', before['run_id'])
+    assert original['input']['digest'] == before['input_digest']
+    assert {job['id'] for job in agent_runs.runs(state, 'demo')} == {leaf['run_id'] for leaf in receipt['leaves']}
+    if failure:
+        assert receipt['status'] == 'failed' and 'route_decisions' not in receipt and 'outputs' not in receipt
+        assert not followups and len(executed) == 1
+        assert not original['result']['available']
+        if case == 'changed-result':
+            assert 'SHA256' in original['result']['error']
+        else:
+            assert 'Invalid structured agent result' in original['run']['error']
+        return
+
+    selected = None if choice == 'none' else f'{prefix}/{choice}'
+    decision, = receipt['route_decisions']
+    assert decision == {'instance': selector, 'choice': choice, 'eligible': eligible, 'selected': selected,
+                        'skipped': [path for path in eligible if path != selected],
+                        'source': {'instance': analyzer, 'run_id': before['run_id'], 'input_digest': before['input_digest'],
+                                   'result_sha256': original['result']['sha256']}}
+    if case == 'stopped':
+        assert receipt['status'] == 'cancelled' and not followups and len(executed) == 1 and 'outputs' not in receipt
+        return
+    assert receipt['status'] == 'succeeded' and receipt['outputs']['selection'] == {'choice': choice}
+    joined = receipt['outputs']['followups']
+    assert list(joined) == eligible[::-1]
+    assert all(joined[branch] == {'status': 'skipped'} for branch in decision['skipped'])
+    if selected is None:
+        assert not followups and len(executed) == 1
+    else:
+        branch, = followups
+        assert branch['instance'] == selected and schemas[1]['required'] == ['response']
+        observed = agent_runs.inspect_run(state, 'demo', branch['run_id'])
+        assert executed[1:] == [original['result']['document']]
+        assert joined[selected] == {'result': observed['result']['document']}
+
+
+@pytest.mark.parametrize('case,diagnostic', [
+    ('reserved', 'Workflow definition at /nodes/1'), ('too-many', 'Workflow definition at /nodes/1'),
+    ('duplicate', 'Workflow definition at /nodes/1'), ('root-source', 'sole sibling Agent dependency'),
+    ('unknown-source', 'Unknown Workflow dependency at choose'),
+    ('missing-branch', 'sibling Agent depending directly'), ('indirect-branch', 'sibling Agent depending directly'),
+    ('two-owners', 'only one route selector'), ('two-selectors', 'only one route selector'),
+    ('ordinary-dependent', 'Conditional Agent dependencies require an all-join'),
+    ('output-binding', 'Conditional Agent outputs require an all-join'),
+    ('conditional-analyzer', 'Conditional Agent dependencies require an all-join'),
+])
+def test_choose_agent_rejects_invalid_conditional_graphs(conditional_definition, case, diagnostic):
+    state, _, draft, publish = conditional_definition
+    analyzer, selector, structure, dependency, join = draft['nodes']
+    if case == 'reserved':
+        selector['branches'] = ['none']
+    elif case == 'too-many':
+        selector['branches'] = [f'branch-{index}' for index in range(9)]
+    elif case == 'duplicate':
+        selector['branches'] = ['structure', 'structure']
+    elif case == 'root-source':
+        selector['inputs'] = {'source': {'input': 'task'}}
+    elif case == 'unknown-source':
+        selector['depends_on'] = ['foreign-source']
+        selector['inputs'] = {'source': {'node': 'foreign-source', 'output': 'result'}}
+    elif case == 'missing-branch':
+        selector['branches'] = ['foreign-branch']
+    elif case == 'indirect-branch':
+        structure['depends_on'] = ['analyze']
+    elif case == 'two-owners':
+        draft['nodes'] += [
+            {**analyzer, 'id': 'other-analyzer'},
+            {**selector, 'id': 'other-choose', 'depends_on': ['other-analyzer'], 'branches': ['structure'],
+             'inputs': {'source': {'node': 'other-analyzer', 'output': 'result'}}},
+        ]
+        structure['depends_on'].append('other-choose')
+    elif case == 'two-selectors':
+        draft['nodes'].append({**selector, 'id': 'other-choose', 'branches': ['dependency']})
+        dependency['depends_on'].append('other-choose')
+    elif case == 'ordinary-dependent':
+        draft['nodes'].append({**analyzer, 'id': 'ordinary', 'depends_on': ['structure'],
+                               'inputs': {'task': {'node': 'structure', 'output': 'result'}}})
+    elif case == 'output-binding':
+        draft['outputs']['conditional'] = {'node': 'structure', 'output': 'result'}
+    else:
+        draft['nodes'] += [{**analyzer, 'id': 'other-branch', 'depends_on': ['other-choose']},
+                           {**selector, 'id': 'other-choose', 'depends_on': ['structure'], 'branches': ['other-branch'],
+                            'inputs': {'source': {'node': 'structure', 'output': 'result'}}}]
+        join['depends_on'].append('other-branch')
+    with pytest.raises(ValueError, match=diagnostic):
+        publish(draft)
+    assert agent_runs.runs(state, 'demo') == []
+
+
 @pytest.mark.parametrize('case', ['validated', 'invalid-evidence', 'cancelled', 'invalid-source', 'agent-source'])
 def test_workflow_verification_read_binds_an_operator_source_before_analysis(prepared, tmp_path, monkeypatch, capsys, case):
     from ergora.development import application

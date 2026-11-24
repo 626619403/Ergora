@@ -290,8 +290,39 @@ class _Compilation:
             self.documents[key] = document
         return self.documents[key]
 
-    def _links(self, definition: dict, path: str, *, project: bool) -> None:
+    def _routes(self, definition: dict, path: str, nodes: dict) -> dict:
+        choices, controlled = {}, set()
+        for identity, node in nodes.items():
+            if node.get('operation') != 'choose-agent':
+                continue
+            self.path = f'{path}/{identity}'
+            analyzer, = node['depends_on']
+            if (node['inputs'] != {'source': {'node': analyzer, 'output': 'result'}}
+                    or nodes.get(analyzer, {}).get('ref', {}).get('kind') != 'agent'):
+                raise ValueError(f'Route selector requires the result of its sole sibling Agent dependency: {self.path}')
+            if analyzer in choices:
+                raise ValueError(f'An analyzer can supply only one route selector: {path}/{analyzer}')
+            choices[analyzer] = [*node['branches'], 'none']
+            for branch in node['branches']:
+                target = nodes.get(branch, {})
+                if target.get('ref', {}).get('kind') != 'agent' or identity not in target['depends_on']:
+                    raise ValueError(f'Route branch must be a sibling Agent depending directly on its selector: {path}/{branch}')
+                if branch in controlled:
+                    raise ValueError(f'An Agent can belong to only one route selector: {path}/{branch}')
+                controlled.add(branch)
+        if controlled:
+            for identity, node in nodes.items():
+                if 'join' not in node and controlled.intersection(node['depends_on']):
+                    self.path = f'{path}/{identity}'
+                    raise ValueError(f'Conditional Agent dependencies require an all-join: {self.path}')
+            if any(binding.get('node') in controlled for binding in definition['outputs'].values()):
+                self.path = path
+                raise ValueError(f'Conditional Agent outputs require an all-join: {path}')
+        return choices
+
+    def _links(self, definition: dict, path: str, *, project: bool) -> dict:
         nodes = {node["id"]: node for node in definition["nodes"]}
+        choices = self._routes(definition, path, nodes)
         ports = {}
         for identity, node in nodes.items():
             self.path = f"{path}/{identity}"
@@ -323,6 +354,7 @@ class _Compilation:
         self.path = path
         for value in definition["outputs"].values():
             binding(value, nodes)
+        return choices
 
     @staticmethod
     def _count(scopes: list[dict], path: str) -> None:
@@ -357,7 +389,7 @@ class _Compilation:
         self._count(scopes, path)
         materials = _materials(inherited, document, "workflow", path)
         _readable(materials, permissions, path)
-        self._links(definition, path, project=project)
+        route_choices = self._links(definition, path, project=project)
         levels = _levels(definition)
         instance = {"path": path, "parent": path.rpartition("/")[0] or None, "kind": "workflow", "ref": reference,
                     "permissions": permissions, "inputs": inputs, "outputs": definition["outputs"], "depends_on": dependencies,
@@ -377,7 +409,9 @@ class _Compilation:
                     self._count(scopes, child_path)
                     self.instances.append({"path": child_path, "parent": path, "kind": node["operation"],
                                            "depends_on": dependencies, "inputs": node["inputs"],
-                                           "outputs": ["result"], "permissions": permissions})
+                                           "outputs": ["result"], "permissions": permissions,
+                                           **({"branches": [f"{path}/{branch}" for branch in node["branches"]]}
+                                              if node["operation"] == "choose-agent" else {})})
                 elif node["ref"]["kind"] == "workflow":
                     child = self._resolve(node["ref"], child_path, project=project)
                     self._workflow(child, child_path, materials, permissions,
@@ -404,6 +438,7 @@ class _Compilation:
                                               if "invocation_minimum" in child["definition"] else {}),
                                            **({"review_requirement": node["review_requirement"]}
                                               if "review_requirement" in node else {}),
+                                           **({"route_choices": route_choices[name]} if name in route_choices else {}),
                                            "depends_on": dependencies, "inputs": node["inputs"], "outputs": ["result"],
                                            "permissions": node["permissions"], "resources": selected, "prompt": prompt,
                                            "prompt_sha256": hashlib.sha256(prompt.encode("utf-8")).hexdigest(),
