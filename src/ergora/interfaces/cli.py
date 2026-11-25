@@ -1006,6 +1006,23 @@ def parser() -> argparse.ArgumentParser:
         if name == "compare":
             operation.add_argument("baseline_run")
             operation.add_argument("candidate_run")
+    campaigns = commands.add_parser("campaign", help="Record a finite local operator plan and read its original Temporal run")
+    operations = campaigns.add_subparsers(dest="operation", required=True)
+    for name, help_text in (
+        ("create", "Confirm an exact plan and start it once, or recover its original start"),
+        ("status", "Read the original local record, optionally checking Temporal"),
+        ("worker", "Run a foreground Worker on the original campaign queue"),
+    ):
+        operation = operations.add_parser(name, help=help_text)
+        operation.add_argument("project")
+        operation.add_argument("id")
+        if name == "create":
+            operation.add_argument("plan", type=Path)
+            operation.add_argument("--revision", type=int, required=True)
+            operation.add_argument("--plan-sha256", required=True)
+            operation.add_argument("--confirm", action="store_true")
+        if name == "status":
+            operation.add_argument("--online", action="store_true")
     sources = commands.add_parser("research", help="Bounded source snapshots and optional Temporal schedules")
     operations = sources.add_subparsers(dest="operation", required=True)
     for name in ("run", "list", "show", "cancel", "proposal", "review", "schedule", "worker"):
@@ -1072,7 +1089,22 @@ def main(argv: list[str] | None = None) -> int:
         return native_compiler.workflow(argv[1:])
     args = parser().parse_args(argv)
     try:
-        if args.command == "gpu-pool":
+        if args.command == "campaign":
+            from ergora.campaigns import application as campaigns
+
+            state = State(args.home, read_only=True)
+            if args.operation == "create":
+                operation = campaigns.create(state, args.project, args.id, args.plan, args.revision,
+                                             args.plan_sha256, confirm=args.confirm)
+            elif args.operation == "status":
+                operation = campaigns.status(state, args.project, args.id, online=args.online)
+            else:
+                operation = campaigns.worker(state, args.project, args.id)
+            try:
+                output = asyncio.run(operation)
+            except KeyboardInterrupt:
+                return 130
+        elif args.command == "gpu-pool":
             from ergora.runtime import gpu_pool as local_gpu_pool
 
             def document(path):
@@ -1868,6 +1900,11 @@ def main(argv: list[str] | None = None) -> int:
         else:
             return native_compiler.workflow(args.arguments)
         print(json.dumps(output, ensure_ascii=False, indent=2))
+        if args.command == "campaign":
+            if output["remote_status"] in ("unavailable", "original_not_found"):
+                return 1
+            if output.get("worker_status") in ("closed", "already_closed") and output["workflow_state_status"] != "observed":
+                return 1
         if args.command == "gpu-pool" and output["status"] in ("unavailable", "rejected", "unknown"):
             return 1
         if args.command == "reference" and args.operation == "executor" and output and output["state"] != "SUCCEEDED":

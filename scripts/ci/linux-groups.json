@@ -20,6 +20,7 @@
       "src/ergora/data/reference/platform/upstream/platform/tests/test_workflow.py",
       "tests/test_architecture_boundaries.py",
       "tests/test_budget_jobs.py",
+      "tests/test_campaigns.py",
       "tests/test_components.py",
       "tests/test_ci_runner.py",
       "tests/test_composition_tasks.py",

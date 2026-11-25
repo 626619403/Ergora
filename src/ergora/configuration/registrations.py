@@ -204,6 +204,24 @@ def published_project(control_home: str | Path, project_id: str, operation_id: s
     return project
 
 
+def publication_identity(state: State, project: dict) -> dict:
+    """Authenticate the current State registration against its original local publication."""
+    registration = project.get('registration', {})
+    if registration.get('status') != 'published':
+        raise ValueError('Project requires a published registration')
+    project_id, operation_id = project['id'], registration['operation_id']
+    if not isinstance(operation_id, str) or re.fullmatch('[a-f0-9]{32}', operation_id) is None:
+        raise ValueError('Project registration has an invalid publication operation ID')
+    relative = Path('registrations') / project_id / (operation_id + '.result.json')
+    result = _recovery_document(state.root, relative, 1_048_576)
+    intent_sha = result.get('intent_sha256')
+    original = published_project(state.root, project_id, operation_id, intent_sha)
+    if (original['registration'] != registration or original['repo'] != project['repo']
+            or original['revision'] > project['revision']):
+        raise ValueError('Project does not match its original published registration')
+    return {'operation_id': operation_id, 'intent_sha256': intent_sha, 'sha256': registration['sha256']}
+
+
 def _prepare(state: State, definition: dict, before: dict | None) -> dict:
     if before and 'registration' in before and ('trusted_checks' in definition
             or 'trusted_checks' in before['registration']['definition']):
