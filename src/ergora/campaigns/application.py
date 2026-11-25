@@ -8,7 +8,7 @@ from uuid import uuid4
 
 from ergora.campaigns.records import (
     FIXED_TASK_UPDATE_PREFIX, PENDING_JOB_STATES, WORKFLOW_TYPE, CampaignFiles, attempt_document, check_intent,
-    check_record_name, fixed_tasks, identity, original_check_evidence, project_selection, read_plan,
+    check_record_name, fixed_tasks, identity, original_check_evidence, project_selection, read_plan, readback_task,
     require_check_project, result_document, sha256, stop_intent, update_attempt, uuid_text, verify_registration,
     worker_queue, workflow_id,
 )
@@ -99,7 +99,8 @@ async def _observe(runtime, output, client, handle, description, opening, stop_r
     return observed
 
 
-async def _read_original(runtime, output, opening, attempt, run_id, *, client=None, read_state=False, stop_records=None):
+async def _read_original(runtime, output, opening, attempt, run_id, *, client=None, read_state=False,
+                         stop_records=None, status_files=None):
     try:
         async with asyncio.timeout(runtime.RPC_SECONDS):
             if client is None:
@@ -111,7 +112,19 @@ async def _read_original(runtime, output, opening, attempt, run_id, *, client=No
         return {**output, 'remote_status': 'unavailable', 'remote_error': error.status.name}
     except (TimeoutError, ConnectionError):
         return {**output, 'remote_status': 'unavailable', 'remote_error': 'connection_or_lookup'}
-    return await _observe(runtime, output, client, handle, description, opening, stop_records, read_state)
+    observed = await _observe(runtime, output, client, handle, description, opening, stop_records, read_state)
+    task = readback_task(opening) if status_files is not None else None
+    if task is not None and observed['workflow_state_status'] == 'unavailable':
+        command = status_files.load_check(opening, attempt, description.run_id, task, waiting=True)
+        if command is not None:
+            try:
+                async with asyncio.timeout(runtime.RPC_SECONDS):
+                    completion = await runtime.readback_completion(client, handle, opening, task, command)
+            except (TimeoutError, runtime.RPCError):
+                return observed
+            if completion is not None:
+                observed['readback_completion'] = completion
+    return observed
 
 
 async def status(state: State, project: str, campaign: str, *, online: bool = False) -> dict:
@@ -128,7 +141,7 @@ async def status(state: State, project: str, campaign: str, *, online: bool = Fa
     if online and attempt is not None:
         run_id = stop_records[0]['run_id'] if stop_records[0] is not None else output['run_id']
         output = await _read_original(_temporal(), output, opening, attempt, run_id, read_state=True,
-                                      stop_records=stop_records)
+                                      stop_records=stop_records, status_files=files)
         for task in output.get('tasks', {}).values():
             if task['receipt'] is None:
                 command = files.load_check(opening, attempt, output['run_id'], task)

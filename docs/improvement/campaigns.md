@@ -117,4 +117,6 @@ To opt in, add `"readback": {"due_at": DUE, "deadline_at": DEADLINE}` to one tas
 
 Online status reports `readback_observation` for the opted-in task. It starts at `not_armed`. `armed` identifies a bound waiting receipt and `scheduled` identifies an Activity request. `available` links `activity_id` and `waiting_receipt_sha256` to the original `receipt_sha256`, `fixed_results_sha256`, `observation_sha256` and `reader_cleanup_sha256`. `unknown` gives the reason, such as an unavailable or still-pending original read, a closed campaign or an already observed task.
 
+When the Worker cannot return Workflow state, `status --online` can show `readback_completion` for a passing Activity recorded in the original Temporal History. This includes the original schedule and completion event IDs, the accepted waiting receipt digest and the readback proof digests. Current Workflow state remains unavailable until the Worker can return it.
+
 Use a confirmed `observe-check` to verify the original Job, record its passing terminal receipt and make dependents eligible. Reader cleanup covers the local status reader. Read any late Job outcome through the original fixed-check status and obtain resource release evidence from the original resource owner.

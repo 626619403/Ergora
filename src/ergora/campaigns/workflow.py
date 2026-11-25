@@ -25,7 +25,7 @@ with workflow.unsafe.imports_passed_through():
     from ergora.campaigns.records import (
         ATTEMPT_MEMO, OPENING_MEMO, READBACK_ACTIVITY, READBACK_CLEANUP_SECONDS, WORKFLOW_TYPE,
         check_receipt, checked_readback, fixed_task_state, fixed_tasks, has_pending_checks, identity,
-        original_check_evidence, readback_grant, readback_id, readback_task, require_check_receipt,
+        readback_grant, readback_id, readback_result, readback_task, require_check_receipt,
         require_stop_receipt, sha256, stop_intent, update_receipt, validate_check_command,
         validate_stop_attempt,
     )
@@ -129,9 +129,7 @@ class Campaign:
             self._readback_unknown('task_already_observed')
             return
         try:
-            if (result['activity_id'] != activity_id or not sha256(result['reader_cleanup_sha256'])):
-                raise ValueError('Original fixed-check readback result identity differs')
-            evidence, job = original_check_evidence(self.opening, task, result['observation'])
+            evidence, job = readback_result(self.opening, task, activity_id, result)
         except (KeyError, TypeError, ValueError):
             self._readback_unknown('original_read_unavailable')
             return
@@ -327,6 +325,55 @@ async def read_stop(client, handle, command):
 
 async def read_check(client, handle, command):
     return await _read_update(client, handle, command, CHECK_UPDATE, require_check_receipt)
+
+
+async def readback_completion(client, handle, opening, task, command):
+    """Read the native completion for the passing readback Activity on the original Run."""
+    waiting = await read_check(client, handle, command)
+    if waiting is None:
+        return None
+    grant = readback_grant(opening, handle.run_id, task, waiting)
+    activity_id = readback_id(grant)
+    converter = client.data_converter.with_context(WorkflowSerializationContext(client.namespace, handle.id))
+    scheduled_id = started_id = completed = None
+    async for event in handle.fetch_history_events(rpc_timeout=RPC_TIMEOUT):
+        if event.HasField('activity_task_scheduled_event_attributes'):
+            scheduled = event.activity_task_scheduled_event_attributes
+            if scheduled.activity_id == activity_id:
+                values = await converter.decode(scheduled.input.payloads)
+                if (scheduled_id is not None or scheduled.activity_type.name != READBACK_ACTIVITY
+                        or scheduled.task_queue.name != opening['task_queue'] or scheduled.retry_policy.maximum_attempts != 1
+                        or identity(values) != identity([grant])):
+                    raise ValueError('Campaign readback Activity differs from its original grant')
+                scheduled_id = event.event_id
+        elif event.HasField('activity_task_started_event_attributes'):
+            started = event.activity_task_started_event_attributes
+            if started.scheduled_event_id == scheduled_id:
+                if started_id is not None or started.attempt != 1:
+                    raise ValueError('Campaign readback differs from its original Activity attempt')
+                started_id = event.event_id
+        elif event.HasField('activity_task_completed_event_attributes'):
+            result_event = event.activity_task_completed_event_attributes
+            if result_event.scheduled_event_id == scheduled_id:
+                if completed is not None or started_id is None or result_event.started_event_id != started_id:
+                    raise ValueError('Campaign readback completion does not bind its original Activity attempt')
+                completed = event
+    if completed is None:
+        return None
+    values = await converter.decode(completed.activity_task_completed_event_attributes.result.payloads)
+    if len(values) != 1 or not isinstance(values[0], dict):
+        raise ValueError('Campaign original readback Activity has an invalid result')
+    result = values[0]
+    try:
+        evidence, job = readback_result(opening, task, activity_id, result)
+    except (KeyError, TypeError) as error:
+        raise ValueError('Campaign original readback Activity has an invalid result') from error
+    if job['status'] != 'succeeded':
+        return None
+    return {'task_id': task['task_id'], 'activity_id': activity_id, 'waiting_receipt_sha256': identity(waiting),
+            'scheduled_event_id': scheduled_id, 'completed_event_id': completed.event_id,
+            'receipt_sha256': job['receipt_sha256'], 'fixed_results_sha256': job['fixed_results_sha256'],
+            'observation_sha256': evidence, 'reader_cleanup_sha256': result['reader_cleanup_sha256']}
 
 
 async def _read_update(client, handle, command, update_name, require_receipt):

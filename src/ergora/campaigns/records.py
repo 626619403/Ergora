@@ -179,6 +179,12 @@ def readback_id(grant):
     return 'fixed-check-readback:' + identity(grant)
 
 
+def readback_result(opening, task, activity_id, result):
+    if result['activity_id'] != activity_id or not sha256(result['reader_cleanup_sha256']):
+        raise ValueError('Original fixed-check readback result identity differs')
+    return original_check_evidence(opening, task, result['observation'])
+
+
 def checked_readback(opening, run_id, waits, observation):
     task = readback_task(opening)
     if not isinstance(observation, dict):
