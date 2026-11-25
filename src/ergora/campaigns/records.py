@@ -376,11 +376,28 @@ class CampaignFiles:
     def load_check(self, opening, start_attempt, run_id, task, *, waiting=False):
         command = self._read(check_record_name(task['task_id'], waiting=waiting))
         if command is not None:
+            if run_id is None:
+                intent = command.get('intent')
+                run_id = intent.get('run_id') if isinstance(intent, dict) else None
+                if not uuid_text(run_id):
+                    raise ValueError('Saved original check attempt has no valid first Run ID')
             validate_check_command(opening, identity(start_attempt), run_id, command)
             if (command['intent']['task_id'] != task['task_id']
                     or (command['intent']['operation'] == 'wait_check') != waiting):
                 raise ValueError('Saved original check attempt names another campaign task or stage')
         return command
+
+    def load_checks(self, opening, start_attempt, run_id):
+        """Read saved attempts and keep them all pinned to the same candidate first Run."""
+        commands = []
+        for task in fixed_tasks(opening).values():
+            stages = (False, True) if task['source'].get('pending') is True else (False,)
+            for waiting in stages:
+                command = self.load_check(opening, start_attempt, run_id, task, waiting=waiting)
+                if command is not None:
+                    run_id = command['intent']['run_id']
+                    commands.append(command)
+        return run_id, commands
 
     def _validate_opening(self, opening):
         fields = {'schema_version', 'mode', 'control_home', 'project', 'project_revision', 'registration',

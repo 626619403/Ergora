@@ -823,8 +823,10 @@ def test_campaign_one_pending_readback_window_is_frozen():
         validate_plan({**plan, 'tasks': [{**task, 'source': pinned}]})
 
 
-@pytest.mark.parametrize('outcome', ['passing', 'unrelated', 'pending', 'unaccepted', 'changed-grant'])
-def test_status_recovers_only_a_passing_original_readback_completion(registration, tmp_path, monkeypatch, outcome):
+@pytest.mark.parametrize('outcome', ['passing', 'unrelated', 'pending', 'unaccepted', 'changed-grant',
+                                     'history-unavailable', 'service-unavailable', 'no-timer',
+                                     'changed-command', 'wrong-acceptance', 'changed-receipt', 'accepted-only'])
+def test_status_recovers_original_task_history_without_worker(registration, tmp_path, monkeypatch, outcome):
     pytest.importorskip('temporalio')
     from temporalio.api.history.v1 import HistoryEvent
     from temporalio.converter import DataConverter
@@ -845,8 +847,14 @@ def test_status_recovers_only_a_passing_original_readback_completion(registratio
     now = int(time.time())
     task = {'task_id': 'wait', 'depends_on': [], 'source': source,
             'readback': {'due_at': now - 1, 'deadline_at': now + 60}}
+    if outcome == 'no-timer':
+        del task['readback']
+    pinned = {key: value for key, value in source.items() if key != 'pending'}
+    pinned.update(receipt_sha256='d' * 64, fixed_results_sha256='e' * 64)
+    no_attempt = {'task_id': 'no-attempt', 'depends_on': ['wait'], 'source': pinned}
+    unresolved = {'task_id': 'unresolved', 'depends_on': [], 'source': pinned}
     path = tmp_path / 'readback-plan.json'
-    sha = plan_file(path, now + 90, tasks=[task])
+    sha = plan_file(path, now + 90, tasks=[task, no_attempt, unresolved])
     owner = CampaignFiles(state.root, 'demo', 'readback-history')
     owner.ensure_directory()
     run_id = 'ef6f5ea1-b9c1-4918-ac9f-178802fd6aa8'
@@ -857,12 +865,23 @@ def test_status_recovers_only_a_passing_original_readback_completion(registratio
     update_id = 'ergora-campaign-check:76b46055-eca1-42e6-9649-0f9adc562720'
     command = {'intent': intent, 'attempt': update_attempt(intent, update_id)}
     waiting = check_receipt(command)
-    grant = readback_grant(opening, run_id, task, waiting)
-    activity_id = readback_id(grant)
+    terminal_job = {'status': 'succeeded', 'waiting_receipt_sha256': identity(waiting),
+                    'receipt_sha256': 'd' * 64, 'fixed_results_sha256': 'e' * 64}
+    terminal_intent = check_intent(opening, identity(attempt), run_id, 'wait', 'e' * 64, job=terminal_job)
+    terminal_id = 'ergora-campaign-check:1d36d638-cadb-42ec-8be8-7d8aa3a1ea4b'
+    terminal_command = {'intent': terminal_intent, 'attempt': update_attempt(terminal_intent, terminal_id)}
+    terminal_receipt = check_receipt(terminal_command)
+    unresolved_intent = check_intent(opening, identity(attempt), run_id, 'unresolved', 'f' * 64)
+    unresolved_id = 'ergora-campaign-check:53038d63-20d9-4580-80f2-2632e6258c99'
+    unresolved_command = {'intent': unresolved_intent, 'attempt': update_attempt(unresolved_intent, unresolved_id)}
     owner.write('start-intent', opening)
     owner.write('start-attempt', attempt)
-    owner.write('start-result', result_document(opening, attempt, run_id))
+    if outcome != 'service-unavailable':
+        owner.write('start-result', result_document(opening, attempt, run_id))
     owner.write('wait-check-wait', command)
+    if outcome != 'unaccepted':
+        owner.write('check-wait', terminal_command)
+    owner.write('check-unresolved', unresolved_command)
     before = files(state.root)
 
     async def exercise():
@@ -872,36 +891,63 @@ def test_status_recovers_only_a_passing_original_readback_completion(registratio
                            receipt_sha256='d' * 64, fixed_results_sha256='e' * 64)
         if outcome == 'pending':
             observation.update(status='queued', cleanup_confirmed=None, receipt_sha256=None, fixed_results_sha256=None)
-        activity_result = {'activity_id': activity_id, 'observation': observation, 'reader_cleanup_sha256': 'f' * 64}
-        events = [] if outcome == 'unaccepted' else [
-            HistoryEvent(event_id=2, workflow_execution_update_accepted_event_attributes={
-                'protocol_instance_id': update_id, 'accepted_request': {'meta': {'update_id': update_id},
-                    'input': {'name': runtime.CHECK_UPDATE, 'args': {'payloads': await converter.encode([command])}}}}),
-            HistoryEvent(event_id=3, workflow_execution_update_completed_event_attributes={
-                'meta': {'update_id': update_id}, 'accepted_event_id': 2,
-                'outcome': {'success': {'payloads': await converter.encode([waiting])}}}),
-        ]
-        scheduled_grant = {**grant, 'deadline_at': now + 61} if outcome == 'changed-grant' else grant
-        events.extend([
-            HistoryEvent(event_id=4, activity_task_scheduled_event_attributes={
-                'activity_id': activity_id, 'activity_type': {'name': runtime.READBACK_ACTIVITY},
-                'task_queue': {'name': opening['task_queue']}, 'retry_policy': {'maximum_attempts': 1},
-                'input': {'payloads': await converter.encode([scheduled_grant])}}),
-            HistoryEvent(event_id=5, activity_task_started_event_attributes={'scheduled_event_id': 4, 'attempt': 1}),
-            HistoryEvent(event_id=6, activity_task_completed_event_attributes={
-                'scheduled_event_id': 99 if outcome == 'unrelated' else 4, 'started_event_id': 5,
-                'result': {'payloads': await converter.encode([activity_result])}}),
-        ])
+        async def update_events(command, receipt, event_id):
+            update_id = command['attempt']['update_id']
+            return [
+                HistoryEvent(event_id=event_id, workflow_execution_update_accepted_event_attributes={
+                    'protocol_instance_id': update_id, 'accepted_request': {'meta': {'update_id': update_id},
+                        'input': {'name': runtime.CHECK_UPDATE, 'args': {'payloads': await converter.encode([command])}}}}),
+                HistoryEvent(event_id=event_id + 1, workflow_execution_update_completed_event_attributes={
+                    'meta': {'update_id': update_id}, 'accepted_event_id': event_id,
+                    'outcome': {'success': {'payloads': await converter.encode([receipt])}}}),
+            ]
+
+        events = [] if outcome == 'unaccepted' else await update_events(command, waiting, 2)
+        if 'readback' in task:
+            grant = readback_grant(opening, run_id, task, waiting)
+            activity_id = readback_id(grant)
+            activity_result = {'activity_id': activity_id, 'observation': observation, 'reader_cleanup_sha256': 'f' * 64}
+            scheduled_grant = {**grant, 'deadline_at': now + 61} if outcome == 'changed-grant' else grant
+            events.extend([
+                HistoryEvent(event_id=4, activity_task_scheduled_event_attributes={
+                    'activity_id': activity_id, 'activity_type': {'name': runtime.READBACK_ACTIVITY},
+                    'task_queue': {'name': opening['task_queue']}, 'retry_policy': {'maximum_attempts': 1},
+                    'input': {'payloads': await converter.encode([scheduled_grant])}}),
+                HistoryEvent(event_id=5, activity_task_started_event_attributes={'scheduled_event_id': 4, 'attempt': 1}),
+                HistoryEvent(event_id=6, activity_task_completed_event_attributes={
+                    'scheduled_event_id': 99 if outcome == 'unrelated' else 4, 'started_event_id': 5,
+                    'result': {'payloads': await converter.encode([activity_result])}}),
+            ])
+        if outcome != 'unaccepted':
+            accepted, completed = await update_events(terminal_command, terminal_receipt, 7)
+            if outcome == 'changed-command':
+                request = accepted.workflow_execution_update_accepted_event_attributes.accepted_request
+                request.input.args.payloads[0].data = (await converter.encode([command]))[0].data
+            if outcome == 'wrong-acceptance':
+                completed.workflow_execution_update_completed_event_attributes.accepted_event_id = 2
+            if outcome == 'changed-receipt':
+                result = completed.workflow_execution_update_completed_event_attributes.outcome.success
+                result.payloads[0].data = (await converter.encode([waiting]))[0].data
+            events.append(accepted)
+            if outcome != 'accepted-only':
+                events.append(completed)
+        history_reads = 0
 
         async def history(**_):
+            nonlocal history_reads
+            history_reads += 1
             for event in events:
                 yield event
+            if outcome == 'history-unavailable':
+                raise RPCError('Controlled incomplete History', RPCStatusCode.UNAVAILABLE, b'')
 
         async def query(*args, **kwargs):
             raise RPCError('Controlled unavailable Worker', RPCStatusCode.UNAVAILABLE, b'')
 
         async def connect(original_opening):
             assert original_opening == opening
+            if outcome == 'service-unavailable':
+                raise ConnectionError('Controlled unavailable service')
             return SimpleNamespace(data_converter=converter, namespace='default')
 
         async def original(client, original_opening, original_attempt, pinned_run):
@@ -911,13 +957,39 @@ def test_status_recovers_only_a_passing_original_readback_completion(registratio
 
         monkeypatch.setattr(runtime, 'connect', connect)
         monkeypatch.setattr(runtime, 'original', original)
-        if outcome == 'changed-grant':
-            with pytest.raises(ValueError, match='Activity differs from its original grant'):
+        refusals = {'changed-grant': 'Activity differs from its original grant',
+                    'changed-command': 'changed or duplicate Update',
+                    'wrong-acceptance': 'completion does not bind its original accepted Update',
+                    'changed-receipt': 'receipt differs from its exact original Update'}
+        if outcome in refusals:
+            with pytest.raises(ValueError, match=refusals[outcome]):
                 await application.status(state, 'demo', owner.campaign, online=True)
             return
         observed = await application.status(state, 'demo', owner.campaign, online=True)
-        assert observed['workflow_state_status'] == 'unavailable' and 'tasks' not in observed
-        if outcome == 'passing':
+        assert observed['workflow_state_status'] == ('not_observed' if outcome == 'service-unavailable' else 'unavailable')
+        assert 'tasks' not in observed
+        assert history_reads == (0 if outcome == 'service-unavailable' else 1)
+        readable = outcome not in ('history-unavailable', 'service-unavailable')
+        unresolved_status = 'unresolved' if readable else 'unavailable'
+        observations = observed['task_observation_history']
+        assert set(observations) == {'wait', 'unresolved'}
+        assert observations['unresolved'] == {
+            'terminal': {'run_id': run_id, 'update_id': unresolved_id, 'status': unresolved_status, 'receipt': None},
+        }
+        if readable and outcome != 'unaccepted':
+            assert observations['wait']['waiting'] == {
+                'run_id': run_id, 'update_id': update_id, 'status': 'verified',
+                'receipt': waiting, 'accepted_event_id': 2, 'completed_event_id': 3,
+            }
+            terminal = {'run_id': run_id, 'update_id': terminal_id, 'status': unresolved_status, 'receipt': None}
+            if outcome != 'accepted-only':
+                terminal.update(status='verified', receipt=terminal_receipt, accepted_event_id=7, completed_event_id=8)
+            assert observations['wait']['terminal'] == terminal
+        else:
+            assert observations['wait']['waiting'] == {
+                'run_id': run_id, 'update_id': update_id, 'status': unresolved_status, 'receipt': None,
+            }
+        if outcome in ('passing', 'accepted-only'):
             assert observed['readback_completion'] == {
                 'task_id': 'wait', 'activity_id': activity_id, 'waiting_receipt_sha256': identity(waiting),
                 'scheduled_event_id': 4, 'completed_event_id': 6, 'receipt_sha256': 'd' * 64,

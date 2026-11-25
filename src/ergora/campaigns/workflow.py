@@ -327,25 +327,57 @@ async def read_check(client, handle, command):
     return await _read_update(client, handle, command, CHECK_UPDATE, require_check_receipt)
 
 
-async def readback_completion(client, handle, opening, task, command):
-    """Read the native completion for the passing readback Activity on the original Run."""
-    waiting = await read_check(client, handle, command)
-    if waiting is None:
-        return None
-    grant = readback_grant(opening, handle.run_id, task, waiting)
-    activity_id = readback_id(grant)
+async def read_task_history(client, handle, opening, commands):
+    """Read saved task Updates and the opted-in Activity from one pinned History."""
+    entries = {}
+    for command in commands:
+        entry = _update_entry(handle, command)
+        update_id = command['attempt']['update_id']
+        if update_id in entries:
+            raise ValueError('Saved campaign task attempts share an original Update ID')
+        entries[update_id] = entry
+    task = readback_task(opening)
+    timer_wait = next((command for command in commands if task is not None
+                       and command['intent']['task_id'] == task['task_id']
+                       and command['intent']['operation'] == 'wait_check'), None)
+    grant = readback_grant(opening, handle.run_id, task, check_receipt(timer_wait)) if timer_wait is not None else None
+    activity_id = readback_id(grant) if grant is not None else None
+    activity_events = []
+    schedule_ids = set()
     converter = client.data_converter.with_context(WorkflowSerializationContext(client.namespace, handle.id))
-    scheduled_id = started_id = completed = None
     async for event in handle.fetch_history_events(rpc_timeout=RPC_TIMEOUT):
+        await _read_update_event(converter, event, entries, CHECK_UPDATE, require_check_receipt)
+        # Keep at most one schedule, start and completion, plus one event to detect a duplicate.
+        if activity_id is None or len(activity_events) == 4:
+            continue
+        if event.HasField('activity_task_scheduled_event_attributes'):
+            if event.activity_task_scheduled_event_attributes.activity_id == activity_id:
+                schedule_ids.add(event.event_id)
+                activity_events.append(event)
+        elif (event.HasField('activity_task_started_event_attributes')
+              and event.activity_task_started_event_attributes.scheduled_event_id in schedule_ids
+              or event.HasField('activity_task_completed_event_attributes')
+              and event.activity_task_completed_event_attributes.scheduled_event_id in schedule_ids):
+            activity_events.append(event)
+    verified = {key: {field: entry[field] for field in ('accepted_event_id', 'completed_event_id', 'receipt')}
+                for key, entry in entries.items() if entry.get('receipt') is not None}
+    completion = None
+    if timer_wait is not None and timer_wait['attempt']['update_id'] in verified:
+        completion = await _readback_completion(converter, activity_events, opening, task, grant, activity_id)
+    return verified, completion
+
+
+async def _readback_completion(converter, events, opening, task, grant, activity_id):
+    scheduled_id = started_id = completed = None
+    for event in events:
         if event.HasField('activity_task_scheduled_event_attributes'):
             scheduled = event.activity_task_scheduled_event_attributes
-            if scheduled.activity_id == activity_id:
-                values = await converter.decode(scheduled.input.payloads)
-                if (scheduled_id is not None or scheduled.activity_type.name != READBACK_ACTIVITY
-                        or scheduled.task_queue.name != opening['task_queue'] or scheduled.retry_policy.maximum_attempts != 1
-                        or identity(values) != identity([grant])):
-                    raise ValueError('Campaign readback Activity differs from its original grant')
-                scheduled_id = event.event_id
+            values = await converter.decode(scheduled.input.payloads)
+            if (scheduled_id is not None or scheduled.activity_type.name != READBACK_ACTIVITY
+                    or scheduled.task_queue.name != opening['task_queue'] or scheduled.retry_policy.maximum_attempts != 1
+                    or identity(values) != identity([grant])):
+                raise ValueError('Campaign readback Activity differs from its original grant')
+            scheduled_id = event.event_id
         elif event.HasField('activity_task_started_event_attributes'):
             started = event.activity_task_started_event_attributes
             if started.scheduled_event_id == scheduled_id:
@@ -370,35 +402,50 @@ async def readback_completion(client, handle, opening, task, command):
         raise ValueError('Campaign original readback Activity has an invalid result') from error
     if job['status'] != 'succeeded':
         return None
-    return {'task_id': task['task_id'], 'activity_id': activity_id, 'waiting_receipt_sha256': identity(waiting),
+    return {'task_id': task['task_id'], 'activity_id': activity_id,
+            'waiting_receipt_sha256': grant['waiting_receipt_sha256'],
             'scheduled_event_id': scheduled_id, 'completed_event_id': completed.event_id,
             'receipt_sha256': job['receipt_sha256'], 'fixed_results_sha256': job['fixed_results_sha256'],
             'observation_sha256': evidence, 'reader_cleanup_sha256': result['reader_cleanup_sha256']}
 
 
-async def _read_update(client, handle, command, update_name, require_receipt):
-    """Read the exact accepted and completed Update pair in the pinned original History."""
-    intent, attempt = command['intent'], command['attempt']
+def _update_entry(handle, command):
+    intent = command['intent']
     if handle.id != intent['workflow_id'] or handle.run_id != intent['run_id']:
         raise ValueError('Campaign Update readback cannot follow another run')
+    return {'command': command}
+
+
+async def _read_update_event(converter, event, entries, update_name, require_receipt):
+    if event.HasField('workflow_execution_update_accepted_event_attributes'):
+        selected = event.workflow_execution_update_accepted_event_attributes
+        entry = entries.get(selected.protocol_instance_id)
+        if entry is not None:
+            request = selected.accepted_request
+            values = await converter.decode(request.input.args.payloads)
+            if ('accepted_event_id' in entry or request.meta.update_id != selected.protocol_instance_id
+                    or request.input.name != update_name or identity(values) != identity([entry['command']])):
+                raise ValueError('Campaign original History has a changed or duplicate Update')
+            entry['accepted_event_id'] = event.event_id
+    elif event.HasField('workflow_execution_update_completed_event_attributes'):
+        completed = event.workflow_execution_update_completed_event_attributes
+        entry = entries.get(completed.meta.update_id)
+        if entry is not None:
+            if completed.accepted_event_id != entry.get('accepted_event_id') or 'completed_event_id' in entry:
+                raise ValueError('Campaign completion does not bind its original accepted Update')
+            entry['completed_event_id'] = event.event_id
+            entry['receipt'] = await _update_outcome(converter, entry['command'], completed.outcome, require_receipt)
+
+
+async def _read_update(client, handle, command, update_name, require_receipt):
+    """Read the exact accepted and completed Update pair in the pinned original History."""
+    entry = _update_entry(handle, command)
+    entries = {command['attempt']['update_id']: entry}
     converter = client.data_converter.with_context(WorkflowSerializationContext(client.namespace, handle.id))
-    accepted_event = None
     async for event in handle.fetch_history_events(rpc_timeout=RPC_TIMEOUT):
-        if event.HasField('workflow_execution_update_accepted_event_attributes'):
-            selected = event.workflow_execution_update_accepted_event_attributes
-            if selected.protocol_instance_id == attempt['update_id']:
-                request = selected.accepted_request
-                values = await converter.decode(request.input.args.payloads)
-                if (accepted_event is not None or request.meta.update_id != attempt['update_id']
-                        or request.input.name != update_name or identity(values) != identity([command])):
-                    raise ValueError('Campaign original History has a changed or duplicate Update')
-                accepted_event = event.event_id
-        if event.HasField('workflow_execution_update_completed_event_attributes'):
-            completed = event.workflow_execution_update_completed_event_attributes
-            if completed.meta.update_id == attempt['update_id']:
-                if accepted_event is None or completed.accepted_event_id != accepted_event:
-                    raise ValueError('Campaign completion does not bind its original accepted Update')
-                return await _update_outcome(converter, command, completed.outcome, require_receipt)
+        await _read_update_event(converter, event, entries, update_name, require_receipt)
+        if 'completed_event_id' in entry:
+            return entry['receipt']
     return None
 
 
