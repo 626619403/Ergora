@@ -6,25 +6,32 @@ import signal
 import time
 
 from temporalio import workflow
-from temporalio.api.common.v1 import WorkflowType
+from temporalio.api.common.v1 import WorkflowExecution, WorkflowType
+from temporalio.api.enums.v1 import UpdateWorkflowExecutionLifecycleStage
 from temporalio.api.taskqueue.v1 import TaskQueue
-from temporalio.api.workflowservice.v1 import StartWorkflowExecutionRequest
+from temporalio.api.update.v1 import Input, Meta, Request, WaitPolicy
+from temporalio.api.workflowservice.v1 import StartWorkflowExecutionRequest, UpdateWorkflowExecutionRequest
 from temporalio.client import (
     Client, WorkflowContinuedAsNewError, WorkflowExecutionStatus, WorkflowFailureError, WorkflowQueryFailedError,
     WorkflowQueryRejectedError,
 )
-from temporalio.common import WorkflowIDConflictPolicy, WorkflowIDReusePolicy
+from temporalio.common import QueryRejectCondition, WorkflowIDConflictPolicy, WorkflowIDReusePolicy
 from temporalio.converter import WorkflowSerializationContext
 from temporalio.exceptions import ApplicationError
 from temporalio.service import RPCError, RPCStatusCode
 from temporalio.worker import Worker
 
 with workflow.unsafe.imports_passed_through():
-    from ergora.campaigns.records import ATTEMPT_MEMO, OPENING_MEMO, WORKFLOW_TYPE, identity, sha256
+    from ergora.campaigns.records import (
+        ATTEMPT_MEMO, OPENING_MEMO, WORKFLOW_TYPE, identity, require_stop_receipt, sha256, stop_intent, stop_receipt,
+        validate_stop_attempt,
+    )
 
 
 RPC_SECONDS = 10
 RPC_TIMEOUT = timedelta(seconds=RPC_SECONDS)
+STOP_UPDATE = 'ergora_campaign_stop'
+UPDATE_COMPLETED = UpdateWorkflowExecutionLifecycleStage.UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_COMPLETED
 
 
 def record_state(opening, run_id, phase):
@@ -37,6 +44,8 @@ class Campaign:
     @workflow.init
     def __init__(self, opening: dict):
         self.opening = opening
+        self.stop_decision = None
+        self.expiry_timer = None
         info = workflow.info()
         if (info.workflow_id != opening['workflow_id'] or info.run_id != info.first_execution_run_id
                 or info.namespace != opening['scheduler']['namespace']
@@ -47,13 +56,56 @@ class Campaign:
     @workflow.run
     async def run(self, opening: dict) -> dict:
         remaining = opening['plan']['limits']['expires_at'] - workflow.time()
-        if remaining > 0:
-            await workflow.sleep(remaining)
+        if remaining > 0 and self.stop_decision is None:
+            self.expiry_timer = asyncio.create_task(workflow.sleep(remaining))
+            try:
+                await self.expiry_timer
+            except asyncio.CancelledError:
+                if self.stop_decision is None:
+                    raise
+        if self.stop_decision is not None:
+            await workflow.wait_condition(workflow.all_handlers_finished)
+            return {**record_state(opening, workflow.info().run_id, 'stopped'),
+                    'stop_receipt_sha256': identity(self.stop_decision)}
         return record_state(opening, workflow.info().run_id, 'expired')
+
+    @workflow.update(name=STOP_UPDATE)
+    def stop(self, command: dict) -> dict:
+        intent, attempt = command['intent'], command['attempt']
+        if self.stop_decision is not None:
+            if self.stop_decision['attempt_sha256'] != identity(attempt):
+                raise ApplicationError('Campaign already has a different stop decision', non_retryable=True)
+            return self.stop_decision
+        if workflow.time() >= self.opening['plan']['limits']['expires_at']:
+            return stop_receipt(intent, attempt, 'expired')
+        self.stop_decision = stop_receipt(intent, attempt, 'accepted')
+        if self.expiry_timer is not None:
+            self.expiry_timer.cancel()
+        return self.stop_decision
+
+    @stop.validator
+    def validate_stop(self, command: dict):
+        info = workflow.info()
+        expected = stop_intent(self.opening, workflow.memo_value(ATTEMPT_MEMO), info.run_id)
+        try:
+            if (not isinstance(command, dict) or command.keys() != {'intent', 'attempt'}
+                    or identity(command['intent']) != identity(expected) or not isinstance(command['attempt'], dict)):
+                raise ValueError('Campaign stop does not bind its original opening and first Run')
+            validate_stop_attempt(expected, command['attempt'])
+            if (workflow.current_update_info().id != command['attempt']['update_id']
+                    or (self.stop_decision is not None
+                        and self.stop_decision['attempt_sha256'] != identity(command['attempt']))):
+                raise ValueError('Campaign stop does not bind its original Update attempt')
+        except ValueError as error:
+            raise ApplicationError(str(error), non_retryable=True) from error
 
     @workflow.query
     def state(self) -> dict:
         return record_state(self.opening, workflow.info().run_id, 'waiting_for_expiry')
+
+    @workflow.query(name='ergora_campaign_stop_capability')
+    def stop_capability(self) -> dict:
+        return record_state(self.opening, workflow.info().run_id, 'stop_supported')
 
 
 async def connect(opening):
@@ -87,6 +139,76 @@ async def start(client, opening, attempt):
     response = await client.workflow_service.start_workflow_execution(request, retry=False, timeout=RPC_TIMEOUT)
     if response.started:
         return response.first_execution_run_id or response.run_id
+    return None
+
+
+async def stop_supported(handle, opening):
+    """Check a current Worker on the pinned original run before sealing a stop attempt."""
+    try:
+        async with asyncio.timeout(2):
+            observed = await handle.query(Campaign.stop_capability, reject_condition=QueryRejectCondition.NOT_OPEN,
+                                          rpc_timeout=timedelta(seconds=2))
+    except (RPCError, TimeoutError, WorkflowQueryFailedError, WorkflowQueryRejectedError):
+        return False
+    require_state(observed, opening, handle.run_id, 'stop_supported')
+    return True
+
+
+async def send_stop(client, command):
+    intent, attempt = command['intent'], command['attempt']
+    run = WorkflowExecution(workflow_id=intent['workflow_id'], run_id=intent['run_id'])
+    converter = client.data_converter.with_context(WorkflowSerializationContext(client.namespace, run.workflow_id))
+    request = UpdateWorkflowExecutionRequest(
+        namespace=client.namespace, workflow_execution=run, first_execution_run_id=run.run_id,
+        wait_policy=WaitPolicy(lifecycle_stage=UPDATE_COMPLETED),
+        request=Request(meta=Meta(update_id=attempt['update_id'], identity=client.identity),
+                        input=Input(name=STOP_UPDATE)),
+    )
+    request.request.input.args.payloads.extend(await converter.encode([command]))
+    response = await client.workflow_service.update_workflow_execution(request, retry=False, timeout=RPC_TIMEOUT)
+    if (response.stage != UPDATE_COMPLETED or response.update_ref.workflow_execution != run
+            or response.update_ref.update_id != attempt['update_id'] or not response.outcome.HasField('success')):
+        return None
+    try:
+        return await _stop_outcome(converter, command, response.outcome)
+    except (ValueError, RuntimeError):
+        # A mismatched acknowledgement cannot witness a decision. Read the
+        # original History with the same attempt ID instead.
+        return None
+
+
+async def _stop_outcome(converter, command, outcome):
+    if not outcome.HasField('success'):
+        return None
+    value = await converter.decode(outcome.success.payloads)
+    if len(value) != 1:
+        raise ValueError('Original campaign stop has an invalid Update result')
+    return require_stop_receipt(command['intent'], command['attempt'], value[0])
+
+
+async def read_stop(client, handle, command):
+    """Read the exact accepted and completed Update pair in the pinned original History."""
+    intent, attempt = command['intent'], command['attempt']
+    if handle.id != intent['workflow_id'] or handle.run_id != intent['run_id']:
+        raise ValueError('Campaign stop readback cannot follow another run')
+    converter = client.data_converter.with_context(WorkflowSerializationContext(client.namespace, handle.id))
+    accepted_event = None
+    async for event in handle.fetch_history_events(rpc_timeout=RPC_TIMEOUT):
+        if event.HasField('workflow_execution_update_accepted_event_attributes'):
+            selected = event.workflow_execution_update_accepted_event_attributes
+            if selected.protocol_instance_id == attempt['update_id']:
+                request = selected.accepted_request
+                values = await converter.decode(request.input.args.payloads)
+                if (accepted_event is not None or request.meta.update_id != attempt['update_id']
+                        or request.input.name != STOP_UPDATE or identity(values) != identity([command])):
+                    raise ValueError('Campaign original stop History has a changed or duplicate Update')
+                accepted_event = event.event_id
+        if event.HasField('workflow_execution_update_completed_event_attributes'):
+            completed = event.workflow_execution_update_completed_event_attributes
+            if completed.meta.update_id == attempt['update_id']:
+                if accepted_event is None or completed.accepted_event_id != accepted_event:
+                    raise ValueError('Campaign stop completion does not bind its original accepted Update')
+                return await _stop_outcome(converter, command, completed.outcome)
     return None
 
 
@@ -130,7 +252,7 @@ def require_state(observed, opening, run_id, phase):
     return observed
 
 
-async def runtime_status(handle, description, opening):
+async def runtime_status(handle, description, opening, stop=None):
     temporal_status = description.status
     if temporal_status == WorkflowExecutionStatus.RUNNING:
         try:
@@ -142,10 +264,19 @@ async def runtime_status(handle, description, opening):
                 'workflow_state': require_state(observed, opening, description.run_id, 'waiting_for_expiry')}
     if temporal_status == WorkflowExecutionStatus.COMPLETED:
         observed = await handle.result(follow_runs=False, rpc_timeout=RPC_TIMEOUT)
-        if description.close_time is None or description.close_time.timestamp() < opening['plan']['limits']['expires_at']:
-            raise ValueError('Campaign Workflow completion preceded its original expiry')
-        return {'temporal_status': temporal_status.name, 'workflow_state_status': 'observed',
-                'workflow_state': require_state(observed, opening, description.run_id, 'expired')}
+        if isinstance(observed, dict) and observed.get('phase') == 'stopped':
+            if stop is None or stop['decision'] != 'accepted':
+                return {'temporal_status': temporal_status.name, 'workflow_state_status': 'unavailable'}
+            expected = {**record_state(opening, description.run_id, 'stopped'), 'stop_receipt_sha256': identity(stop)}
+            if identity(observed) != identity(expected):
+                raise ValueError('Campaign completion differs from its exact original stop decision')
+        else:
+            if stop is not None and stop['decision'] == 'accepted':
+                raise ValueError('Campaign completion does not reflect its original stop decision')
+            if description.close_time is None or description.close_time.timestamp() < opening['plan']['limits']['expires_at']:
+                raise ValueError('Campaign Workflow completion preceded its original expiry')
+            require_state(observed, opening, description.run_id, 'expired')
+        return {'temporal_status': temporal_status.name, 'workflow_state_status': 'observed', 'workflow_state': observed}
     return {'temporal_status': temporal_status.name, 'workflow_state_status': 'unavailable'}
 
 
@@ -171,7 +302,7 @@ async def run_worker(client, handle, opening):
                 await asyncio.wait((closing, stopping), return_when=asyncio.FIRST_COMPLETED)
                 if closing.done():
                     try:
-                        require_state(closing.result(), opening, handle.run_id, 'expired')
+                        closing.result()
                     except (WorkflowFailureError, WorkflowContinuedAsNewError):
                         # The caller reads this pinned run again and reports its actual terminal status.
                         pass

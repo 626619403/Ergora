@@ -7,7 +7,7 @@ from uuid import uuid4
 
 from ergora.campaigns.records import (
     WORKFLOW_TYPE, CampaignFiles, attempt_document, identity, read_plan, result_document, sha256, uuid_text,
-    worker_queue, workflow_id,
+    stop_attempt, stop_intent, worker_queue, workflow_id,
 )
 from ergora.configuration import projects, registrations
 from ergora.storage.state import State, file_lock
@@ -76,7 +76,44 @@ def _snapshot(files, opening, attempt, result):
             'workflow_id': opening['workflow_id'], 'run_id': result['run_id'] if result else None}
 
 
-async def _read_original(runtime, output, opening, attempt, run_id, *, client=None, read_state=False):
+def _stop_snapshot(records):
+    intent, attempt, result = records
+    phase = 'recorded' if result else 'unknown' if attempt else 'prepared' if intent else 'not_recorded'
+    return {'status': phase, 'result_saved': result is not None, 'remote_status': 'not_requested', 'retryable': False,
+            'update_id': attempt['update_id'] if attempt else None, 'receipt': result['receipt'] if result else None}
+
+
+async def _observe(runtime, output, client, handle, description, opening, stop_records, read_state):
+    observed = {**output, 'status': 'observed', 'run_id': description.run_id, 'remote_status': 'original_observed',
+                'temporal_status': description.status.name}
+    stop_receipt = None
+    if stop_records is not None:
+        intent, attempt, _ = stop_records
+        if attempt is not None:
+            command = {'intent': intent, 'attempt': attempt}
+            try:
+                async with asyncio.timeout(runtime.RPC_SECONDS):
+                    stop_receipt = await runtime.read_stop(client, handle, command)
+            except (TimeoutError, runtime.RPCError):
+                observed['stop'] = {**output['stop'], 'remote_status': 'unavailable'}
+            else:
+                if stop_receipt is None:
+                    observed['stop'] = {**output['stop'], 'remote_status': 'not_found'}
+                elif output['stop']['receipt'] is not None and output['stop']['receipt'] != stop_receipt:
+                    raise ValueError('Campaign stop record and original History differ')
+                else:
+                    observed['stop'] = {**output['stop'], 'status': 'observed', 'remote_status': 'observed',
+                                        'receipt': stop_receipt}
+    if read_state:
+        try:
+            async with asyncio.timeout(runtime.RPC_SECONDS):
+                observed.update(await runtime.runtime_status(handle, description, opening, stop_receipt))
+        except (TimeoutError, runtime.RPCError):
+            observed['workflow_state_status'] = 'unavailable'
+    return observed
+
+
+async def _read_original(runtime, output, opening, attempt, run_id, *, client=None, read_state=False, stop_records=None):
     try:
         async with asyncio.timeout(runtime.RPC_SECONDS):
             if client is None:
@@ -88,27 +125,24 @@ async def _read_original(runtime, output, opening, attempt, run_id, *, client=No
         return {**output, 'remote_status': 'unavailable', 'remote_error': error.status.name}
     except (TimeoutError, ConnectionError):
         return {**output, 'remote_status': 'unavailable', 'remote_error': 'connection_or_lookup'}
-    observed = {**output, 'status': 'observed', 'run_id': description.run_id, 'remote_status': 'original_observed',
-                'temporal_status': description.status.name}
-    if read_state:
-        try:
-            async with asyncio.timeout(runtime.RPC_SECONDS):
-                observed.update(await runtime.runtime_status(handle, description, opening))
-        except (TimeoutError, runtime.RPCError):
-            observed['workflow_state_status'] = 'unavailable'
-    return observed
+    return await _observe(runtime, output, client, handle, description, opening, stop_records, read_state)
 
 
 async def status(state: State, project: str, campaign: str, *, online: bool = False) -> dict:
     """Read the saved evidence, optionally observing the verified original Workflow on the saved route."""
     files = CampaignFiles(state.root, project, campaign)
     opening, attempt, result = files.load()
-    output = _snapshot(files, opening, attempt, result)
+    stop_records = (None, None, None)
     if opening is not None:
         _verify_registration(state, opening)
+    if attempt is not None:
+        # A concurrent writer may start and stop after a prepared-only snapshot.
+        stop_records = files.load_stop(opening, attempt, result)
+    output = {**_snapshot(files, opening, attempt, result), 'stop': _stop_snapshot(stop_records)}
     if online and attempt is not None:
-        runtime = _temporal()
-        return await _read_original(runtime, output, opening, attempt, output['run_id'], read_state=True)
+        run_id = stop_records[0]['run_id'] if stop_records[0] is not None else output['run_id']
+        return await _read_original(_temporal(), output, opening, attempt, run_id, read_state=True,
+                                    stop_records=stop_records)
     return output
 
 
@@ -133,7 +167,7 @@ async def create(state: State, project: str, campaign: str, path: Path, revision
                 db.execute('BEGIN IMMEDIATE')
                 opening = _opening(files, revision, plan, plan_sha, _selection(state, state.project(project), revision))
                 _future(opening)
-                files.write('intent', opening)
+                files.write('start-intent', opening)
         elif (opening['project_revision'] != revision or opening['plan_sha256'] != plan_sha
               or opening['plan_document_sha256'] != identity(plan)):
             raise ValueError('Campaign ID already binds a different original plan or project revision')
@@ -155,7 +189,7 @@ async def create(state: State, project: str, campaign: str, path: Path, revision
                     raise ValueError('Original project registration or scheduler changed before attempt')
                 _future(opening)
                 attempt = attempt_document(opening, str(uuid4()))
-                files.write('attempt', attempt)
+                files.write('start-attempt', attempt)
             output = _snapshot(files, opening, attempt, None)
             remaining = opening['plan']['limits']['expires_at'] - time.time()
             if remaining <= 0:
@@ -172,9 +206,65 @@ async def create(state: State, project: str, campaign: str, path: Path, revision
         if observed['remote_status'] != 'original_observed':
             return observed
         if result is None:
-            files.write('result', result_document(opening, attempt, observed['run_id']))
+            files.write('start-result', result_document(opening, attempt, observed['run_id']))
         return {**observed, 'status': 'created' if attempted_here and acknowledged_run else 'observed',
                 'result_saved': True}
+
+
+async def stop(state: State, project: str, campaign: str, *, confirm: bool) -> dict:
+    """Request one stop on the original Run. A saved attempt only permits readback."""
+    if confirm is not True:
+        raise ValueError('Campaign stop requires explicit --confirm')
+    files = CampaignFiles(state.root, project, campaign)
+    _, start_attempt, _ = files.load()
+    if start_attempt is None:
+        raise ValueError('Campaign stop requires a saved original start attempt')
+    runtime = _temporal()
+    files.ensure_directory()
+    with file_lock(files.lock, blocking=False):
+        opening, start_attempt, start_result = files.load()
+        _verify_registration(state, opening)
+        records = files.load_stop(opening, start_attempt, start_result)
+        intent, attempt, result = records
+        output = {**_snapshot(files, opening, start_attempt, start_result), 'stop': _stop_snapshot(records)}
+        run_id = intent['run_id'] if intent else output['run_id']
+        try:
+            async with asyncio.timeout(runtime.RPC_SECONDS):
+                client = await runtime.connect(opening)
+                handle, description = await runtime.original(client, opening, start_attempt, run_id)
+        except runtime.RPCError as error:
+            remote_status = 'original_not_found' if error.status == runtime.RPCStatusCode.NOT_FOUND else 'unavailable'
+            return {**output, 'remote_status': remote_status, 'remote_error': error.status.name}
+        except (TimeoutError, ConnectionError):
+            return {**output, 'remote_status': 'unavailable', 'remote_error': 'connection_or_lookup'}
+        if attempt is None and description.status == runtime.WorkflowExecutionStatus.RUNNING:
+            if not await runtime.stop_supported(handle, opening):
+                output['stop'].update(remote_status='worker_unavailable', retryable=True)
+                return await _observe(runtime, output, client, handle, description, opening, records, False)
+            if intent is None:
+                intent = stop_intent(opening, identity(start_attempt), description.run_id)
+                files.write('stop-intent', intent)
+            attempt = stop_attempt(intent, 'ergora-campaign-stop:' + str(uuid4()))
+            files.write('stop-attempt', attempt)
+            command = {'intent': intent, 'attempt': attempt}
+            try:
+                async with asyncio.timeout(runtime.RPC_SECONDS):
+                    receipt = await runtime.send_stop(client, command)
+            except (TimeoutError, ConnectionError, runtime.RPCError):
+                receipt = None
+            if receipt is not None:
+                result = {'receipt': receipt}
+                files.write('stop-result', result)
+            records = (intent, attempt, result)
+            output['stop'] = _stop_snapshot(records)
+            observed = await _read_original(runtime, output, opening, start_attempt, description.run_id, client=client,
+                                            read_state=True, stop_records=records)
+        else:
+            observed = await _observe(runtime, output, client, handle, description, opening, records, True)
+        if result is None and observed['stop']['receipt'] is not None:
+            files.write('stop-result', {'receipt': observed['stop']['receipt']})
+            observed['stop']['result_saved'] = True
+        return observed
 
 
 async def worker(state: State, project: str, campaign: str) -> dict:
@@ -185,28 +275,31 @@ async def worker(state: State, project: str, campaign: str) -> dict:
         raise ValueError('Campaign worker requires a saved original start attempt')
     _verify_registration(state, opening)
     runtime = _temporal()
-    output = _snapshot(files, opening, attempt, result)
+    stop_records = files.load_stop(opening, attempt, result)
+    output = {**_snapshot(files, opening, attempt, result), 'stop': _stop_snapshot(stop_records)}
+    run_id = stop_records[0]['run_id'] if stop_records[0] is not None else output['run_id']
     try:
         async with asyncio.timeout(runtime.RPC_SECONDS):
             client = await runtime.connect(opening)
-            handle, description = await runtime.original(client, opening, attempt, output['run_id'])
+            handle, description = await runtime.original(client, opening, attempt, run_id)
     except runtime.RPCError as error:
         raise ValueError(f'Cannot verify original campaign for worker: {error.status.name}') from error
     except (TimeoutError, ConnectionError) as error:
         raise ValueError('Cannot connect to or verify the original campaign for worker') from error
     observed = {**output, 'status': 'observed', 'run_id': description.run_id, 'remote_status': 'original_observed'}
     if description.status != runtime.WorkflowExecutionStatus.RUNNING:
-        try:
-            async with asyncio.timeout(runtime.RPC_SECONDS):
-                return {**observed, **await runtime.runtime_status(handle, description, opening),
-                        'worker_status': 'already_closed'}
-        except (TimeoutError, runtime.RPCError) as error:
-            raise ValueError('Original closure evidence remains unavailable') from error
+        # A concurrent stop can close the run during the first remote observation.
+        stop_records = files.load_stop(opening, attempt, result)
+        output['stop'] = _stop_snapshot(stop_records)
+        return {**await _observe(runtime, output, client, handle, description, opening, stop_records, True),
+                'worker_status': 'already_closed'}
     try:
         worker_status = await runtime.run_worker(client, handle, opening)
     except (TimeoutError, runtime.RPCError) as error:
         raise ValueError('Campaign worker exited without observing original closure') from error
     if worker_status == 'closed':
-        return {**await _read_original(runtime, observed, opening, attempt, description.run_id,
-                                       client=client, read_state=True), 'worker_status': worker_status}
+        stop_records = files.load_stop(opening, attempt, result)
+        observed['stop'] = _stop_snapshot(stop_records)
+        return {**await _read_original(runtime, observed, opening, attempt, description.run_id, client=client,
+                                       read_state=True, stop_records=stop_records), 'worker_status': worker_status}
     return {**observed, 'worker_status': worker_status}

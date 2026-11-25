@@ -132,7 +132,7 @@ class CampaignFiles:
         _owned(self.lock, kind='file', private=True)
 
     def _read(self, name):
-        path = self.directory / f'start-{name}.json'
+        path = self.directory / f'{name}.json'
         try:
             _owned(path, kind='file', private=True)
             raw = _bytes(path, MAX_RECORD_BYTES)
@@ -140,7 +140,7 @@ class CampaignFiles:
             return None
         value = parse_json(raw.decode('utf-8'), path.name, finite=True, bounded=True)
         if not isinstance(value, dict):
-            raise ValueError(f'Campaign start {name} is not a JSON object')
+            raise ValueError(f'Campaign {name} is not a JSON object')
         return value
 
     def write(self, name, value):
@@ -153,7 +153,7 @@ class CampaignFiles:
                 stream.write(raw)
                 stream.flush()
                 os.fsync(stream.fileno())
-            os.link(temporary, self.directory / f'start-{name}.json')
+            os.link(temporary, self.directory / f'{name}.json')
         finally:
             Path(temporary).unlink(missing_ok=True)
         _sync_directory(self.directory)
@@ -164,12 +164,12 @@ class CampaignFiles:
                 _owned(directory, kind='directory', private=True)
             except FileNotFoundError:
                 return None, None, None
-        opening = self._read('intent')
+        opening = self._read('start-intent')
         # Read completion before attempt so later publications can only make the snapshot incomplete.
-        result = self._read('result')
-        attempt = self._read('attempt')
+        result = self._read('start-result')
+        attempt = self._read('start-attempt')
         if opening is None and (attempt is not None or result is not None):
-            opening = self._read('intent')
+            opening = self._read('start-intent')
             if opening is None:
                 raise ValueError('Campaign has dispatch evidence without its original intent')
         if opening is not None:
@@ -183,6 +183,29 @@ class CampaignFiles:
                     or identity(result) != identity(result_document(opening, attempt, result['run_id']))):
                 raise ValueError('Campaign result differs from its original intent or attempt')
         return opening, attempt, result
+
+    def load_stop(self, opening, start_attempt, start_result):
+        intent = self._read('stop-intent')
+        result = self._read('stop-result')
+        attempt = self._read('stop-attempt')
+        if intent is None and (attempt is not None or result is not None):
+            intent = self._read('stop-intent')
+            if intent is None:
+                raise ValueError('Campaign stop evidence lacks its original intent')
+        if intent is None:
+            return None, None, None
+        run_id = intent.get('run_id')
+        if (opening is None or start_attempt is None or not uuid_text(run_id)
+                or (start_result is not None and start_result['run_id'] != run_id)
+                or identity(intent) != identity(stop_intent(opening, identity(start_attempt), run_id))):
+            raise ValueError('Campaign stop intent differs from the original start or first Run')
+        if attempt is not None:
+            validate_stop_attempt(intent, attempt)
+        if result is not None:
+            if attempt is None or result.keys() != {'receipt'}:
+                raise ValueError('Campaign stop result lacks its original attempt or receipt')
+            require_stop_receipt(intent, attempt, result['receipt'])
+        return intent, attempt, result
 
     def _validate_opening(self, opening):
         fields = {'schema_version', 'mode', 'control_home', 'project', 'project_revision', 'registration',
@@ -223,3 +246,32 @@ def attempt_document(opening, attempt_id):
 def result_document(opening, attempt, run_id):
     return {'schema_version': 1, 'workflow_id': opening['workflow_id'], 'run_id': run_id,
             'opening_sha256': identity(opening), 'attempt_sha256': identity(attempt)}
+
+
+def stop_intent(opening, start_attempt_sha256, run_id):
+    return {'schema_version': 1, 'operation': 'stop', 'workflow_id': opening['workflow_id'], 'run_id': run_id,
+            'opening_sha256': identity(opening), 'start_attempt_sha256': start_attempt_sha256}
+
+
+def stop_attempt(intent, update_id):
+    return {'schema_version': 1, 'intent_sha256': identity(intent), 'update_id': update_id}
+
+
+def validate_stop_attempt(intent, attempt):
+    update_id = attempt.get('update_id')
+    prefix = 'ergora-campaign-stop:'
+    if (not isinstance(update_id, str) or not update_id.startswith(prefix) or not uuid_text(update_id[len(prefix):])
+            or identity(attempt) != identity(stop_attempt(intent, update_id))):
+        raise ValueError('Campaign stop attempt differs from the original intent or Update ID')
+
+
+def stop_receipt(intent, attempt, decision):
+    return {'schema_version': 1, 'decision': decision, 'intent_sha256': identity(intent),
+            'attempt_sha256': identity(attempt), 'update_id': attempt['update_id'], 'run_id': intent['run_id']}
+
+
+def require_stop_receipt(intent, attempt, receipt):
+    if (not isinstance(receipt, dict) or receipt.get('decision') not in ('accepted', 'expired')
+            or identity(receipt) != identity(stop_receipt(intent, attempt, receipt['decision']))):
+        raise ValueError('Campaign stop receipt differs from its exact original Update')
+    return receipt

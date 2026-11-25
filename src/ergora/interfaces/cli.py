@@ -1011,6 +1011,7 @@ def parser() -> argparse.ArgumentParser:
     for name, help_text in (
         ("create", "Confirm an exact plan and start it once, or recover its original start"),
         ("status", "Read the original local record, optionally checking Temporal"),
+        ("stop", "Confirm one stop request against the original campaign run"),
         ("worker", "Run a foreground Worker on the original campaign queue"),
     ):
         operation = operations.add_parser(name, help=help_text)
@@ -1020,6 +1021,7 @@ def parser() -> argparse.ArgumentParser:
             operation.add_argument("plan", type=Path)
             operation.add_argument("--revision", type=int, required=True)
             operation.add_argument("--plan-sha256", required=True)
+        if name in ("create", "stop"):
             operation.add_argument("--confirm", action="store_true")
         if name == "status":
             operation.add_argument("--online", action="store_true")
@@ -1098,6 +1100,8 @@ def main(argv: list[str] | None = None) -> int:
                                              args.plan_sha256, confirm=args.confirm)
             elif args.operation == "status":
                 operation = campaigns.status(state, args.project, args.id, online=args.online)
+            elif args.operation == "stop":
+                operation = campaigns.stop(state, args.project, args.id, confirm=args.confirm)
             else:
                 operation = campaigns.worker(state, args.project, args.id)
             try:
@@ -1903,6 +1907,9 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "campaign":
             if output["remote_status"] in ("unavailable", "original_not_found"):
                 return 1
+            if args.operation == "stop":
+                receipt = output["stop"]["receipt"]
+                return 0 if receipt is not None and receipt["decision"] == "accepted" else 1
             if output.get("worker_status") in ("closed", "already_closed") and output["workflow_state_status"] != "observed":
                 return 1
         if args.command == "gpu-pool" and output["status"] in ("unavailable", "rejected", "unknown"):
