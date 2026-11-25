@@ -52,13 +52,13 @@
 
 ## 训练与测量
 
-从[训练概览和 CPU 合同演示（English）](training/overview.md)开始，继续阅读[实验准备（English）](training/prepare-experiments.md)、[原执行与恢复（English）](training/execution.md)、[有限控制器授权（English）](training/controllers.md)或[证据/轮次/精确批准（English）](training/evidence-and-approval.md)。
+从[训练概览和 CPU 合同演示（English）](training/overview.md)开始，继续阅读[实验准备（English）](training/prepare-experiments.md)、[原执行与恢复（English）](training/execution.md)、[有限控制器授权（English）](training/controllers.md)或[证据/轮次/精确批准（English）](training/evidence-and-approval.md)。执行未成功时，可通过[保留归档读取（English）](training/evidence-and-approval.md#read-a-retained-local-archive-after-unsuccessful-execution)核对原实验保存的本地归档。
 
 [专家提案（English）](training/proposals.md)将源码流程与瓶颈分析映射到实验合同；[优化专家（English）](training/specialists.md)选择聚焦方向。提案叶和合成 CPU 检查不能认证真实 GPU 质量或性能。
 
 ## 改进后续任务
 
-[记录有限的优化 campaign（English）](improvement/campaigns.md)并读取原始 Temporal Run。按[停止原计划的操作步骤（English）](improvement/campaigns.md#stop-the-original-campaign-plan)，通过当前 Worker 提交停止请求，再核对原 Run 的终态。
+在 campaign 中保存精确的操作员计划，通过原队列上的 Worker 停止计划，或观察已授权的固定检查。工作流状态不可用时，在线状态可从原 Temporal History 核对已保存的观察回执，以及携带 Job 通过结果的定时 Activity 完成记录。[Campaign 操作指南（English）](improvement/campaigns.md) · [停止原计划（English）](improvement/campaigns.md#stop-the-original-campaign-plan) · [定时回读（English）](improvement/campaigns.md#allow-one-timed-readback-of-a-waiting-check)
 
 [改进工作流（English）](improvement/workflow.md)连接[来源绑定的复盘候选](zh-CN/improvement/retrospectives.md)、[项目记忆与可选 ReMe](zh-CN/improvement/memory.md)、[可信 Skill 评价/采用（English）](improvement/skills-and-evaluation.md)及[有界调研/调度（English）](improvement/research-and-schedules.md)。生成、评价、采用和新任务冻结上下文是独立操作。
 

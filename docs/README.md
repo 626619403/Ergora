@@ -52,13 +52,13 @@ Start with [exact local/PR/MR material](review/materials.md), then [invoke and a
 
 ## Train and measure
 
-Start with the [training overview and CPU contract demo](training/overview.md). Continue to [experiment preparation](training/prepare-experiments.md), [original execution and recovery](training/execution.md), [finite controller authorization](training/controllers.md), or [evidence/rounds/exact approval](training/evidence-and-approval.md).
+Start with the [training overview and CPU contract demo](training/overview.md). Continue to [experiment preparation](training/prepare-experiments.md), [original execution and recovery](training/execution.md), [finite controller authorization](training/controllers.md), or [evidence/rounds/exact approval](training/evidence-and-approval.md). Verify an unsuccessful experiment’s saved local archive through the [retained archive reader](training/evidence-and-approval.md#read-a-retained-local-archive-after-unsuccessful-execution).
 
 [Expert proposals](training/proposals.md) map source flow and bottleneck analysis into experiment contracts; [optimization specialists](training/specialists.md) select a focused direction. Proposal leaves and synthetic CPU checks do not certify real GPU quality or performance.
 
 ## Improve the next task
 
-[Record a finite optimization campaign](improvement/campaigns.md) to save an exact local operator plan and read back its original Temporal run. [Stop the original campaign plan](improvement/campaigns.md#stop-the-original-campaign-plan) through the current worker and verify the original terminal outcome.
+Use the campaign guide to save an exact local operator plan, stop it through the Worker on its original queue, or observe an authorized fixed check. When Workflow state is unavailable, online status can verify saved observation receipts and a passing opt-in Activity completion from original Temporal History. [Campaign operator guide](improvement/campaigns.md) · [Stop the original campaign](improvement/campaigns.md#stop-the-original-campaign-plan) · [Timed readback](improvement/campaigns.md#allow-one-timed-readback-of-a-waiting-check)
 
 The [improvement workflow](improvement/workflow.md) connects [source-bound retrospective candidates](improvement/retrospectives.md), [project memory and optional ReMe](improvement/memory.md), [trusted Skill evaluation/adoption](improvement/skills-and-evaluation.md), and [bounded research/scheduling](improvement/research-and-schedules.md). Generation, evaluation, adoption and a new task's frozen context are separate operations.
 
