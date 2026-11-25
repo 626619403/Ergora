@@ -11,7 +11,7 @@ from temporalio.exceptions import ApplicationError
 
 from ergora.campaigns.records import (
     READBACK_ACTIVITY, READBACK_CLEANUP_SECONDS, CampaignFiles, check_receipt, identity,
-    readback_grant, readback_id, readback_task,
+    readback_grant, readback_id, readback_task, require_check_project, verify_registration,
 )
 from ergora.runtime import processes
 from ergora.storage.state import State
@@ -65,7 +65,6 @@ class FixedCheckReadback:
 
 
 def _guard(home, project, campaign):
-    from ergora.campaigns.application import _require_check_project, _verify_registration
     from ergora.development.application import _candidate_check_status_request
     from ergora.development.native import task_fixed_candidate_check
     from ergora.native.resources import validate_installation
@@ -91,8 +90,8 @@ def _guard(home, project, campaign):
     waiting = files.load_check(opening, attempt, run_id, task, waiting=True)
     if waiting is None or grant != readback_grant(opening, run_id, task, check_receipt(waiting)) or activity_id != readback_id(grant):
         raise ValueError('Readback guard does not bind the original wait')
-    _verify_registration(state, opening)
-    selected = _require_check_project(state, opening)
+    verify_registration(state, opening)
+    selected = require_check_project(state, opening)
     validate_installation(Path(selected['registration']['definition']['execution']['installation']))
 
     def stopped():

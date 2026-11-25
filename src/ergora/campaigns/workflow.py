@@ -455,7 +455,9 @@ async def run_worker(client, handle, opening, files, attempt):
     """Poll only the saved queue until the original run closes, or the foreground worker stops."""
     stopped = asyncio.Event()
     loop = asyncio.get_running_loop()
-    loop.add_signal_handler(signal.SIGTERM, stopped.set)
+    previous = signal.getsignal(signal.SIGTERM)
+    if previous is not None:
+        signal.signal(signal.SIGTERM, lambda *_: loop.call_soon_threadsafe(stopped.set))
 
     async def wait_for_completion():
         # Only a bounded final poll is needed if the operator starts a worker after expiry.
@@ -489,4 +491,5 @@ async def run_worker(client, handle, opening, files, attempt):
                     task.cancel()
                 await asyncio.gather(closing, stopping, return_exceptions=True)
     finally:
-        loop.remove_signal_handler(signal.SIGTERM)
+        if previous is not None:
+            signal.signal(signal.SIGTERM, previous)

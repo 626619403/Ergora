@@ -57,6 +57,42 @@ def worker_queue(project, campaign, scheduler, creation_id):
     return f'ergora-campaign-{project}-{campaign}-{suffix}'
 
 
+def project_selection(state, project, revision):
+    """Read the scheduler and published registration for the approved project revision."""
+    from ergora.configuration import projects, registrations
+
+    if project['revision'] != revision:
+        raise ValueError('Project revision changed; use the original approved revision before dispatch')
+    config = projects.effective_configuration(project)
+    scheduler = config['layers']['scheduler']
+    if scheduler['source']['kind'] != 'project' or scheduler['binding']['tool'] != 'temporal':
+        raise ValueError('Campaign creation requires an explicitly bound Temporal scheduler')
+    if not scheduler['validation']['valid']:
+        raise ValueError(scheduler['validation']['error'])
+    return {'registration': registrations.publication_identity(state, project),
+            'configuration_sha256': config['sha256'], 'scheduler': scheduler['binding']}
+
+
+def verify_registration(state, opening):
+    """Verify the original published registration for this saved campaign."""
+    from ergora.configuration import registrations
+
+    selected = opening['registration']
+    original = registrations.published_project(state.root, opening['project'], selected['operation_id'],
+                                               selected['intent_sha256'])
+    if original['registration']['sha256'] != selected['sha256'] or original['revision'] > opening['project_revision']:
+        raise ValueError('Campaign original registration identity differs')
+
+
+def require_check_project(state, opening):
+    """Return the same project snapshot that matches the original fixed-check authority."""
+    project = state.project(opening['project'])
+    selected = project_selection(state, project, opening['project_revision'])
+    if any(opening[key] != value for key, value in selected.items()):
+        raise ValueError('Original project registration or scheduler changed before task observation')
+    return project
+
+
 def validate_plan(plan):
     required = {'schema_version', 'goal', 'acceptance', 'baseline_commit', 'evidence_format', 'limits'}
     if (not isinstance(plan, dict) or set(plan) - {'tasks'} != required

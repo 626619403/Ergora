@@ -8,11 +8,10 @@ from uuid import uuid4
 
 from ergora.campaigns.records import (
     FIXED_TASK_UPDATE_PREFIX, PENDING_JOB_STATES, WORKFLOW_TYPE, CampaignFiles, attempt_document, check_intent,
-    check_record_name, fixed_tasks, identity,
-    original_check_evidence, read_plan, result_document, sha256, stop_intent, update_attempt, uuid_text, worker_queue,
-    workflow_id,
+    check_record_name, fixed_tasks, identity, original_check_evidence, project_selection, read_plan,
+    require_check_project, result_document, sha256, stop_intent, update_attempt, uuid_text, verify_registration,
+    worker_queue, workflow_id,
 )
-from ergora.configuration import projects, registrations
 from ergora.storage.state import State, file_lock
 
 
@@ -26,19 +25,6 @@ def _temporal():
     return workflow
 
 
-def _selection(state, project, revision):
-    if project['revision'] != revision:
-        raise ValueError('Project revision changed; use the original approved revision before dispatch')
-    config = projects.effective_configuration(project)
-    scheduler = config['layers']['scheduler']
-    if scheduler['source']['kind'] != 'project' or scheduler['binding']['tool'] != 'temporal':
-        raise ValueError('Campaign creation requires an explicitly bound Temporal scheduler')
-    if not scheduler['validation']['valid']:
-        raise ValueError(scheduler['validation']['error'])
-    return {'registration': registrations.publication_identity(state, project),
-            'configuration_sha256': config['sha256'], 'scheduler': scheduler['binding']}
-
-
 def _opening(files, revision, plan, plan_sha, selection):
     creation_id = str(uuid4())
     return {'schema_version': 1, 'mode': 'record_only', 'control_home': str(files.home), 'project': files.project,
@@ -46,14 +32,6 @@ def _opening(files, revision, plan, plan_sha, selection):
             'plan_sha256': plan_sha, 'plan_document_sha256': identity(plan), 'creation_id': creation_id,
             'task_queue': worker_queue(files.project, files.campaign, selection['scheduler'], creation_id),
             'workflow_id': workflow_id(files.project, files.campaign), 'workflow_type': WORKFLOW_TYPE, **selection}
-
-
-def _verify_registration(state, opening):
-    selected = opening['registration']
-    original = registrations.published_project(state.root, opening['project'], selected['operation_id'],
-                                               selected['intent_sha256'])
-    if original['registration']['sha256'] != selected['sha256'] or original['revision'] > opening['project_revision']:
-        raise ValueError('Campaign original registration identity differs')
 
 
 def _future(opening):
@@ -142,7 +120,7 @@ async def status(state: State, project: str, campaign: str, *, online: bool = Fa
     opening, attempt, result = files.load()
     stop_records = (None, None, None)
     if opening is not None:
-        _verify_registration(state, opening)
+        verify_registration(state, opening)
     if attempt is not None:
         # A concurrent writer may start and stop after a prepared-only snapshot.
         stop_records = files.load_stop(opening, attempt, result)
@@ -172,7 +150,8 @@ async def create(state: State, project: str, campaign: str, path: Path, revision
     opening, _, _ = files.load()
     if opening is None:
         # Reject unsupported or stale authorization before creating the campaign namespace.
-        preview = _opening(files, revision, plan, plan_sha, _selection(state, state.project(project), revision))
+        selected = project_selection(state, state.project(project), revision)
+        preview = _opening(files, revision, plan, plan_sha, selected)
         _future(preview)
     files.ensure_directory()
     with file_lock(files.lock, blocking=False):
@@ -180,13 +159,14 @@ async def create(state: State, project: str, campaign: str, path: Path, revision
         if opening is None:
             with State(state.root).connect() as db:
                 db.execute('BEGIN IMMEDIATE')
-                opening = _opening(files, revision, plan, plan_sha, _selection(state, state.project(project), revision))
+                selected = project_selection(state, state.project(project), revision)
+                opening = _opening(files, revision, plan, plan_sha, selected)
                 _future(opening)
                 files.write('start-intent', opening)
         elif (opening['project_revision'] != revision or opening['plan_sha256'] != plan_sha
               or opening['plan_document_sha256'] != identity(plan)):
             raise ValueError('Campaign ID already binds a different original plan or project revision')
-        _verify_registration(state, opening)
+        verify_registration(state, opening)
         output = _snapshot(files, opening, attempt, result)
         client = None
         acknowledged_run = output['run_id']
@@ -199,7 +179,7 @@ async def create(state: State, project: str, campaign: str, path: Path, revision
                 return {**output, 'remote_status': 'unavailable', 'remote_error': 'connection_before_attempt'}
             with State(state.root).connect() as db:
                 db.execute('BEGIN IMMEDIATE')
-                selected = _selection(state, state.project(project), revision)
+                selected = project_selection(state, state.project(project), revision)
                 if any(opening[key] != value for key, value in selected.items()):
                     raise ValueError('Original project registration or scheduler changed before attempt')
                 _future(opening)
@@ -238,7 +218,7 @@ async def stop(state: State, project: str, campaign: str, *, confirm: bool) -> d
     files.ensure_directory()
     with file_lock(files.lock, blocking=False):
         opening, start_attempt, start_result = files.load()
-        _verify_registration(state, opening)
+        verify_registration(state, opening)
         records = files.load_stop(opening, start_attempt, start_result)
         intent, attempt, result = records
         output = {**_snapshot(files, opening, start_attempt, start_result), 'stop': _stop_snapshot(records)}
@@ -317,14 +297,6 @@ async def _require_ready_check(runtime, handle, description, opening, attempt, t
     return task
 
 
-def _require_check_project(state, opening):
-    project = state.project(opening['project'])
-    selected = _selection(state, project, opening['project_revision'])
-    if any(opening[key] != value for key, value in selected.items()):
-        raise ValueError('Original project registration or scheduler changed before task observation')
-    return project
-
-
 async def _read_check(runtime, client, handle, command):
     try:
         async with asyncio.timeout(runtime.RPC_SECONDS):
@@ -385,7 +357,7 @@ async def observe_check(state: State, project: str, campaign: str, task_id: str,
     opening, attempt, result = files.load()
     if attempt is None:
         raise ValueError('Campaign task observation requires a saved original start attempt')
-    _verify_registration(state, opening)
+    verify_registration(state, opening)
     task = fixed_tasks(opening).get(task_id)
     if task is None:
         raise ValueError('Campaign task is absent from the original frozen plan')
@@ -406,7 +378,7 @@ async def observe_check(state: State, project: str, campaign: str, task_id: str,
                 or time.time() >= expires_at):
             return _check_response(opening, task, waiting_command, waiting_receipt)
 
-    _require_check_project(state, opening)
+    require_check_project(state, opening)
     view = await _require_ready_check(runtime, handle, description, opening, attempt, task_id)
     if waiting_command is None and view.get('waiting_receipt') is not None:
         raise ValueError('Campaign original waiting task attempt is missing')
@@ -443,7 +415,7 @@ async def observe_check(state: State, project: str, campaign: str, task_id: str,
         with State(state.root).connect() as db:
             db.execute('BEGIN IMMEDIATE')
             _require_check_window(expires_at)
-            _require_check_project(state, opening)
+            require_check_project(state, opening)
             if stopped():
                 raise ValueError('Campaign no longer admits original task observations')
             files.write(check_record_name(task_id, waiting=waiting), command,
@@ -467,7 +439,7 @@ async def worker(state: State, project: str, campaign: str) -> dict:
     opening, attempt, result = files.load()
     if attempt is None:
         raise ValueError('Campaign worker requires a saved original start attempt')
-    _verify_registration(state, opening)
+    verify_registration(state, opening)
     runtime = _temporal()
     stop_records = files.load_stop(opening, attempt, result)
     output = {**_snapshot(files, opening, attempt, result), 'stop': _stop_snapshot(stop_records)}

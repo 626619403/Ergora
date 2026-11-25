@@ -544,6 +544,50 @@ def test_campaign_observation_restores_term_and_wakeup_fd(tmp_path, monkeypatch,
         os.close(write_fd)
 
 
+@pytest.mark.parametrize('interrupted', [False, True])
+def test_campaign_worker_preserves_caller_signal_settings(monkeypatch, interrupted):
+    pytest.importorskip('temporalio')
+    from ergora.campaigns import workflow as runtime
+
+    def prior_term(*_):
+        raise AssertionError('The Worker should handle SIGTERM while running')
+
+    class Worker:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            if interrupted:
+                asyncio.get_running_loop().call_soon(os.kill, os.getpid(), signal.SIGTERM)
+
+        async def __aexit__(self, *exc):
+            pass
+
+    async def result(*, follow_runs):
+        if interrupted:
+            await asyncio.Event().wait()
+
+    monkeypatch.setattr(runtime, 'Worker', Worker)
+    handler = signal.SIG_IGN if interrupted else prior_term
+    read_fd, write_fd = os.pipe2(os.O_NONBLOCK | os.O_CLOEXEC)
+    previous_handler = signal.signal(signal.SIGTERM, handler)
+    previous_fd = signal.set_wakeup_fd(write_fd)
+    opening = {'plan': {'limits': {'expires_at': time.time() + 1}}, 'task_queue': 'original'}
+    try:
+        assert asyncio.run(runtime.run_worker(None, SimpleNamespace(result=result), opening, None, None)) == (
+            'interrupted' if interrupted else 'closed')
+        actual_handler = signal.getsignal(signal.SIGTERM)
+        actual_fd = signal.set_wakeup_fd(-1)
+        assert (actual_handler, actual_fd) == (handler, write_fd)
+        if interrupted:
+            assert os.read(read_fd, 1) == bytes([signal.SIGTERM])
+    finally:
+        signal.signal(signal.SIGTERM, previous_handler)
+        signal.set_wakeup_fd(previous_fd)
+        os.close(read_fd)
+        os.close(write_fd)
+
+
 @pytest.mark.parametrize('mode', ['deadline', 'stop', 'cancel', 'terminate'])
 def test_campaign_native_observation_reaps_reader_tree(registration, tmp_path, mode):
     from ergora.runtime import processes
@@ -697,8 +741,8 @@ def test_readback_guard_dispatch_uses_the_validated_registration_snapshot(regist
     from copy import deepcopy
     from ergora.campaigns.readback import _guard
     from ergora.campaigns.records import (CampaignFiles, FIXED_TASK_LOCATOR, attempt_document, check_intent,
-                                         check_receipt, identity, read_plan, readback_grant, readback_id,
-                                         result_document, update_attempt)
+                                         check_receipt, identity, project_selection, read_plan, readback_grant,
+                                         readback_id, result_document, update_attempt)
     from ergora.development import native
     from ergora.runtime import processes
 
@@ -718,7 +762,7 @@ def test_readback_guard_dispatch_uses_the_validated_registration_snapshot(regist
     files = CampaignFiles(state.root, 'demo', 'readback-snapshot')
     files.ensure_directory()
     opening = application._opening(files, bound['revision'], plan, sha,
-                                   application._selection(state, bound, bound['revision']))
+                                   project_selection(state, bound, bound['revision']))
     run_id = 'ef6f5ea1-b9c1-4918-ac9f-178802fd6aa8'
     attempt = attempt_document(opening, '4f2f29c3-5e22-446e-a6b4-21febdc545dc')
     intent = check_intent(opening, identity(attempt), run_id, 'wait', 'c' * 64, job={'status': 'queued'})
