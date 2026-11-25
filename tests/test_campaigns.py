@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import signal
 import subprocess
 import sys
 import threading
@@ -514,6 +515,124 @@ def test_stop_reconciles_one_exact_update_and_keeps_original_closure(registratio
     asyncio.run(exercise())
 
 
+@pytest.mark.parametrize(('kind', 'refused'), [('custom', False), ('ignored', True)])
+def test_campaign_observation_restores_term_and_wakeup_fd(tmp_path, monkeypatch, kind, refused):
+    state = State(tmp_path / 'control')
+
+    async def observe(*args, **kwargs):
+        if refused:
+            raise ValueError('Controlled original observation refusal')
+        return {'status': 'observed'}
+
+    def prior_term(*_):
+        raise AssertionError('This control does not deliver SIGTERM')
+
+    monkeypatch.setattr(application, 'observe_check', observe)
+    handler = prior_term if kind == 'custom' else signal.SIG_IGN
+    read_fd, write_fd = os.pipe2(os.O_NONBLOCK | os.O_CLOEXEC)
+    previous_handler = signal.signal(signal.SIGTERM, handler)
+    previous_fd = signal.set_wakeup_fd(write_fd)
+    try:
+        assert main(campaign_args(state, 'observe-check', 'plan', 'check', '--confirm')) == (2 if refused else 0)
+        actual_handler = signal.getsignal(signal.SIGTERM)
+        actual_fd = signal.set_wakeup_fd(-1)
+        assert (actual_handler, actual_fd) == (handler, write_fd)
+    finally:
+        signal.signal(signal.SIGTERM, previous_handler)
+        signal.set_wakeup_fd(previous_fd)
+        os.close(read_fd)
+        os.close(write_fd)
+
+
+@pytest.mark.parametrize('mode', ['deadline', 'stop', 'cancel', 'terminate'])
+def test_campaign_native_observation_reaps_reader_tree(registration, tmp_path, mode):
+    from ergora.runtime import processes
+
+    state, definition = registration
+    installation = tmp_path / 'controlled-installation'
+    shutil.copytree(definition['execution']['installation'], installation, ignore=shutil.ignore_patterns('.venv'))
+    definition['execution']['installation'] = str(installation)
+    registrations.register(state, definition, 0)
+    marker = tmp_path / 'native-reader.json'
+    python = installation / '.venv/bin/python'
+    python.parent.mkdir(parents=True)
+    python.write_text(f"""#!{sys.executable}
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+import time
+from ergora.runtime.processes import identity
+
+child = subprocess.Popen([sys.executable, '-I', '-S', '-c', 'import time; time.sleep(50)'])
+marker = Path({str(marker)!r})
+pending = marker.with_suffix('.pending')
+pending.write_text(json.dumps([identity(os.getpid()), identity(child.pid)]))
+pending.replace(marker)
+time.sleep(50)
+""", encoding='utf-8')
+    python.chmod(0o700)
+    source = {'operation_id': 'private-proof', 'job_sha256': 'a' * 64, 'pending': True}
+    stopped = threading.Event()
+
+    async def exercise():
+        if mode == 'terminate':
+            program = """
+import asyncio
+import sys
+import time
+from pathlib import Path
+from ergora.campaigns import application
+from ergora.interfaces.cli import _campaign_check_observation
+from ergora.storage.state import State
+state = State(Path(sys.argv[1]), read_only=True)
+source = {'operation_id': 'private-proof', 'job_sha256': 'a' * 64, 'pending': True}
+asyncio.run(_campaign_check_observation(application._read_original_check(state, 'demo', source,
+    time.time() + 20, lambda: False)))
+"""
+            reader = await asyncio.create_subprocess_exec(sys.executable, '-c', program, str(state.root),
+                stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+        else:
+            expires = time.time() + (3 if mode == 'deadline' else 20)
+            read_state = State(state.root, read_only=True)
+            reader = asyncio.create_task(application._read_original_check(read_state, 'demo', source, expires, stopped.is_set))
+        try:
+            async with asyncio.timeout(6):
+                while not marker.is_file():
+                    await asyncio.sleep(.02)
+            original = json.loads(marker.read_bytes())
+            assert len(original) == 2 and all(processes.identity(item['pid']) == item for item in original)
+            if mode == 'terminate':
+                reader.terminate()
+                _, stderr = await asyncio.wait_for(reader.communicate(), 5)
+                assert reader.returncode == 143, stderr.decode()
+            elif mode == 'cancel':
+                reader.cancel()
+                with pytest.raises(asyncio.CancelledError):
+                    await reader
+            else:
+                if mode == 'stop':
+                    stopped.set()
+                detail = 'reached its deadline' if mode == 'deadline' else 'was cancelled'
+                with pytest.raises(ValueError, match=detail):
+                    await asyncio.wait_for(reader, 5)
+            for item in original:
+                try:
+                    assert processes.identity(item['pid']) != item
+                except (OSError, ValueError):
+                    pass
+        finally:
+            if mode == 'terminate' and reader.returncode is None:
+                reader.terminate()
+                await asyncio.wait_for(reader.communicate(), 8)
+            elif mode != 'terminate' and not reader.done():
+                reader.cancel()
+                await asyncio.gather(reader, return_exceptions=True)
+
+    asyncio.run(exercise())
+
+
 def test_campaign_check_native_send_is_bounded_by_the_original_cutoff(monkeypatch):
     pytest.importorskip('temporalio')
     from temporalio.api.workflowservice.v1 import UpdateWorkflowExecutionResponse
@@ -752,7 +871,8 @@ def test_frozen_tasks_observe_only_the_original_passing_fixed_check(tmp_path, mo
                     if name == 'check-sealed':
                         after_seal = True
 
-                clock = SimpleNamespace(time=lambda: created['plan']['limits']['expires_at'] if after_seal else time.time())
+                clock = SimpleNamespace(time=lambda: created['plan']['limits']['expires_at'] if after_seal else time.time(),
+                                        monotonic=time.monotonic)
                 with monkeypatch.context() as patch:
                     patch.setattr(CampaignFiles, 'write', exhaust_window_after_seal)
                     patch.setattr(application, 'time', clock)

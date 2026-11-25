@@ -2,6 +2,7 @@
 
 import asyncio
 from pathlib import Path
+from threading import Event
 import time
 from uuid import uuid4
 
@@ -339,6 +340,41 @@ def _check_response(opening, task, command, receipt):
             'receipt': receipt}
 
 
+async def _read_original_check(state, project, source, expires_at, stop_requested):
+    """Own the bounded native reader until its subprocess returns or is reaped."""
+    from ergora.development.application import candidate_check_status
+
+    monotonic_start = time.monotonic()
+    remaining = expires_at - time.time()
+    if remaining <= 0:
+        raise ValueError('Campaign no longer admits original task observations')
+    deadline = monotonic_start + remaining
+    cancelled = Event()
+
+    def read():
+        try:
+            return candidate_check_status(state, project, source['operation_id'], job_sha256=source['job_sha256'],
+                verify_pending=source.get('pending') is True, deadline=deadline,
+                stop_requested=lambda: cancelled.is_set() or stop_requested())
+        except KeyboardInterrupt:
+            raise ValueError('Original fixed-check observation was cancelled') from None
+        except TimeoutError:
+            raise ValueError('Original fixed-check observation reached its deadline') from None
+
+    reader = asyncio.create_task(asyncio.to_thread(read))
+    try:
+        return await asyncio.shield(reader)
+    except asyncio.CancelledError:
+        cancelled.set()
+        reaped = asyncio.gather(reader, return_exceptions=True)
+        while not reaped.done():
+            try:
+                await asyncio.shield(reaped)
+            except asyncio.CancelledError:
+                continue
+        raise
+
+
 async def observe_check(state: State, project: str, campaign: str, task_id: str, *, confirm: bool) -> dict:
     """Record one already-authorized original Job observation as the trusted local operator."""
     if confirm is not True:
@@ -372,10 +408,11 @@ async def observe_check(state: State, project: str, campaign: str, task_id: str,
     view = await _require_ready_check(runtime, handle, description, opening, attempt, task_id)
     if waiting_command is None and view.get('waiting_receipt') is not None:
         raise ValueError('Campaign original waiting task attempt is missing')
-    from ergora.development.application import candidate_check_status
+    def stopped():
+        _, _, saved_stop = files.load_stop(opening, attempt, result)
+        return saved_stop is not None and saved_stop['receipt']['decision'] == 'accepted'
 
-    status = await asyncio.to_thread(candidate_check_status, state, project, source['operation_id'],
-                                     job_sha256=source['job_sha256'], verify_pending=pending)
+    status = await _read_original_check(state, project, source, expires_at, stopped)
     evidence_sha256, job = original_check_evidence(opening, task, status)
     waiting = job is not None and job['status'] in PENDING_JOB_STATES
     if waiting and waiting_receipt is not None:
@@ -405,8 +442,7 @@ async def observe_check(state: State, project: str, campaign: str, task_id: str,
             db.execute('BEGIN IMMEDIATE')
             _require_check_window(expires_at)
             _require_check_project(state, opening)
-            _, _, saved_stop = files.load_stop(opening, attempt, result)
-            if saved_stop is not None and saved_stop['receipt']['decision'] == 'accepted':
+            if stopped():
                 raise ValueError('Campaign no longer admits original task observations')
             files.write(check_record_name(task_id, waiting=waiting), command,
                         before_publish=lambda: _require_check_window(expires_at))

@@ -483,7 +483,7 @@ def authorize_candidate_check(state: State, project_id: str, operation_id: str, 
 
 
 def candidate_check_status(state: State, project_id: str, operation_id: str, *, job_sha256: str | None = None,
-                           verify_pending: bool = False) -> dict:
+                           verify_pending: bool = False, deadline: float | None = None, stop_requested=None) -> dict:
     """Observe the original check, optionally requiring an unrejected pending request."""
     if type(verify_pending) is not bool or (verify_pending and job_sha256 is None):
         raise ValueError('Pending fixed-check observation requires its exact original Job digest')
@@ -493,7 +493,8 @@ def candidate_check_status(state: State, project_id: str, operation_id: str, *, 
     payload = {'operation_id': operation_id, 'job_sha256': job_sha256}
     if verify_pending:
         payload['verify_pending'] = True
-    return development_native.task_fixed_candidate_check(project, state.root, 'status-fixed-check', payload)
+    return development_native.task_fixed_candidate_check(project, state.root, 'status-fixed-check', payload,
+                                                         deadline=deadline, stop_requested=stop_requested)
 
 
 def stop_candidate_check(state: State, project_id: str, operation_id: str, job_sha256: str, *, confirm: bool = False) -> dict:

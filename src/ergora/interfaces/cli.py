@@ -5,7 +5,9 @@ import asyncio
 import json
 import os
 from pathlib import Path
+import signal
 import sys
+from threading import current_thread, main_thread
 
 from ergora import __version__
 import ergora.native.commands as native_commands
@@ -1084,6 +1086,31 @@ def _method_file(path: Path) -> dict:
     return methods
 
 
+async def _campaign_check_observation(operation):
+    if (sys.platform != 'linux' or current_thread() is not main_thread()
+            or signal.getsignal(signal.SIGTERM) is None):
+        return await operation
+    loop = asyncio.get_running_loop()
+    task = asyncio.current_task()
+    terminated = False
+
+    def terminate():
+        nonlocal terminated
+        if not terminated:
+            terminated = True
+            task.cancel()
+
+    previous = signal.signal(signal.SIGTERM, lambda *_: loop.call_soon_threadsafe(terminate))
+    try:
+        return await operation
+    except asyncio.CancelledError:
+        if terminated:
+            raise SystemExit(128 + signal.SIGTERM) from None
+        raise
+    finally:
+        signal.signal(signal.SIGTERM, previous)
+
+
 def main(argv: list[str] | None = None) -> int:
     if os.name == "nt":
         for stream in (sys.stdout, sys.stderr):
@@ -1106,7 +1133,8 @@ def main(argv: list[str] | None = None) -> int:
             elif args.operation == "stop":
                 operation = campaigns.stop(state, args.project, args.id, confirm=args.confirm)
             elif args.operation == "observe-check":
-                operation = campaigns.observe_check(state, args.project, args.id, args.task_id, confirm=args.confirm)
+                operation = _campaign_check_observation(
+                    campaigns.observe_check(state, args.project, args.id, args.task_id, confirm=args.confirm))
             else:
                 operation = campaigns.worker(state, args.project, args.id)
             try:

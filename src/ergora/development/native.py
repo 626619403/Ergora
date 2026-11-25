@@ -335,9 +335,15 @@ def task_candidate_verification(project: dict, home: Path, source: dict, *, dead
                            stop_requested=stop_requested)
 
 
-def task_fixed_candidate_check(project: dict, home: Path, operation: str, payload: dict) -> dict:
+def task_fixed_candidate_check(project: dict, home: Path, operation: str, payload: dict, *,
+                               deadline: float | None = None, stop_requested=None) -> dict:
     """Use the registered native runtime for one independent fixed-check operation."""
-    return _task_operation(project, home, 'candidate_checks', operation, payload, 20)
+    if deadline is None and stop_requested is None:
+        return _task_operation(project, home, 'candidate_checks', operation, payload, 20)
+    if operation != 'status-fixed-check' or type(deadline) not in (int, float) or not math.isfinite(deadline):
+        raise ValueError('Bounded fixed-check status requires an absolute monotonic deadline')
+    return _task_operation(project, home, 'candidate_checks', operation, payload, 20,
+                           deadline=deadline, stop_requested=stop_requested)
 
 
 def task_fixed_check_proof(project: dict, home: Path, source: dict, review: dict, *, deadline: float,
