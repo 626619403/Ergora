@@ -10,7 +10,7 @@ Follow [source-branch selection](../install/linux.md#install-in-a-clean-environm
 |---|---|---|
 |repository-governance|`ergora-governance-template@1.1.7`|Parallel knowledge-map/boundary-test, then trusted integration/verification and structure, correctness and test-value reviews|
 |large-change|`ergora-large-change-template@1.1.9`|contract→parallel server/client→integration-tests, then trusted integration/verification and three reviews|
-|training-optimization|`ergora-training-proposal@4.2.10`|Source flow→planning/diagnosis→kernel implementation planning→measurement review; all five leaves inherit library/environment guidance, with actual experiments owned by trusted runners.|
+|training-optimization|`ergora-training-proposal@4.2.11`|Source flow→planning/diagnosis→kernel implementation planning→measurement review; all five leaves inherit library/environment guidance, with actual experiments owned by trusted runners.|
 |refactoring|`ergora-refactoring-template@1.3.7`|Preparation→rewrite→compatibility→original trusted integration/verification→three reviews; ordinary parent references one native large-change six-stage instance|
 
 The supervisor retains one expert per direction and aims for 4–8 active experts with distinct assigned tasks. On completion or a blocker, record the next step and reassess ready work under the existing stage order, candidate bindings and budgets. See the [supervisor dispatch and recovery rules](../definitions/workflows/compose.md#use-bundled-domain-compositions).

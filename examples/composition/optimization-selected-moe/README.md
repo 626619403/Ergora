@@ -2,7 +2,7 @@
 
 This current example selects a fixed MoE dispatcher/overlap workload. A single ordinary parent invokes `root/development`, whose original six-stage owner runs inventory and plan groups, waits for exact owner plan approval, and retains work, trusted integrate/verify and independent final review. It does not choose among the sixteen optimization directions and three support roles automatically or execute training experiments.
 
-[publication.json](publication.json) pins every current revision base, published reference and policy file. The shared source is `ergora-training-proposal@4.2.10`; its complete two Skills and environment record are added to the development ancestor through the existing resource-preview/accepted-candidate/revise interface. The source tree contains one policy copy. Stored immutable revisions preserve their original bytes and executable bits.
+[publication.json](publication.json) pins every current revision base, published reference and policy file. The shared source is `ergora-training-proposal@4.2.11`; its complete two Skills and environment record are added to the development ancestor through the existing resource-preview/accepted-candidate/revise interface. The source tree contains one policy copy. Stored immutable revisions preserve their original bytes and executable bits.
 
 The exact current root is declared by `published.root` in [publication.json](publication.json); the publisher verifies and emits that immutable ID, version and digest.
 
