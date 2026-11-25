@@ -93,8 +93,8 @@ def status(state: State, project_id: str, experiment_id: str, *, run_id: str | N
 
 def evidence(state: State, project_id: str, experiment_id: str, *, artifact: str | None = None,
              evidence_sha256: str | None = None, screen_result_sha256: str | None = None,
-             offset: int = 0, limit: int = 12_000) -> dict:
-    """Read the original archive and one explicitly selected, fully hashed text window."""
+             offset: int = 0, limit: int = 12_000, retained_archive: bool = False) -> dict:
+    """Read original training evidence through its accepted or retained archive entry."""
     if type(offset) is not int or offset < 0 or type(limit) is not int or not 1 <= limit <= 65_536:
         raise ValueError('Training evidence uses a nonnegative character offset and limit of 1–65,536')
     if evidence_sha256 is not None and screen_result_sha256 is not None:
@@ -105,9 +105,12 @@ def evidence(state: State, project_id: str, experiment_id: str, *, artifact: str
         raise ValueError('Training artifact reads require a path from the index and the exact evidence SHA-256')
     if artifact is None and (selected_sha is not None or offset != 0):
         raise ValueError('Evidence SHA and character offset apply only to a selected artifact')
+    if type(retained_archive) is not bool or retained_archive and artifact is not None:
+        raise ValueError('Retained archive observation requires an experiment without an artifact selector')
     return training_native.training_evidence(_project(state, project_id), state.root,
         {'operation': 'inspect', 'experiment_id': experiment_id, 'artifact': artifact, 'evidence_sha256': evidence_sha256,
-         'screen_result_sha256': screen_result_sha256, 'offset': offset, 'limit': limit})
+         'screen_result_sha256': screen_result_sha256, 'offset': offset, 'limit': limit,
+         'retained_archive': retained_archive})
 
 
 def baseline_reference(state: State, project_id: str, experiment_id: str, *, evidence_sha256: str) -> dict:

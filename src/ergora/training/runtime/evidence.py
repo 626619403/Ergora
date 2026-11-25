@@ -13,7 +13,7 @@ from ergora.training.native import _training_records
 from ergora.training.materials import decode_record
 
 
-def _accepted_archive(project, ident, binding, baseline_id, gate, read):
+def _accepted_archive(project, ident, binding, baseline_id, gate, read, *, max_artifacts=None):
     """Verify original accepted metadata for the diagnostic and full-inventory readers."""
     import perfctl
     import ergora.training.execution_protocol as protocol
@@ -68,6 +68,8 @@ def _accepted_archive(project, ident, binding, baseline_id, gate, read):
     artifacts = {}
     if not isinstance(evidence.get('artifacts'), list) or not evidence['artifacts']:
         raise ValueError('Archived evidence has no artifact index')
+    if max_artifacts is not None and len(evidence['artifacts']) > max_artifacts:
+        raise ValueError(f'capacity_exceeded: archived evidence indexes more than {max_artifacts} artifacts')
     for item in evidence['artifacts']:
         name = item['path']
         perfctl.local_file(archive, name)
@@ -79,6 +81,70 @@ def _accepted_archive(project, ident, binding, baseline_id, gate, read):
     return {'evidence_sha256': evidence_sha, 'path': str(archive), 'evidence': evidence,
             'gate_result': archive_gate, 'manifest': manifest, 'baseline': baseline,
             'comparator_sha256': comparator_sha, 'artifact_content_status': 'not_read'}, artifacts
+
+
+def _retained_archive(project, experiment, files):
+    """Verify the locked executor's saved local gate after an unsuccessful managed job."""
+    ident, state = experiment['experiment_id'], experiment['recorded_result_state']
+    unavailable = {'status': 'unavailable', 'native_result_state': state}
+    if experiment['execution']['operation'] != 'full-verify' or state not in (None, 'FAILED', 'CANCELLED'):
+        return {**unavailable, 'reason': 'Original job is outside retained full archive observation'}
+    if experiment['job_request'] is None or experiment['started'] is None:
+        return {**unavailable, 'reason': 'Original native job request or start is missing'}
+
+    inventory = _Inventory()
+    root = project.root
+    job = f'training/jobs/{ident}/'
+    gate_name, result_name = job + 'gate-report.json', job + 'result.json'
+
+    def read(relative, expected=None, *, optional=False):
+        return inventory.read(root, relative, 'archive', expected, evidence=False, optional=optional)
+
+    try:
+        chain = protocol.ExecutionRecords(project.project, ident, project.payload['control_home']).load()
+        stopped = chain.records['stopped']
+        if stopped is None:
+            return {**unavailable, 'reason': 'Original managed execution owner has no saved reap record'}
+        process = stopped['process']
+        if state is None and process['status'] == 'succeeded':
+            return {**unavailable, 'reason': 'Missing native result has no unsuccessful original executor observation'}
+        request = chain.records['request']
+        if request['native_request_sha256'] != files['state/' + job + 'request.json']:
+            raise ValueError('Original native request differs from the managed attempt')
+        project.registration(inventory)
+        for path, raw in chain.originals.items():
+            inventory.read(root, path.relative_to(root).as_posix(), 'execution',
+                           hashlib.sha256(raw).hexdigest(), 16 * 1_048_576, evidence=False)
+        for relative in (job + 'started.json', f'training/manifests/{ident}.json', f'training/specs/{ident}.json',
+                         f'training/projects/{project.project["id"]}/perf/experiments/{ident}/manifest.json'):
+            read(relative, files['state/' + relative])
+        saved_result = read(result_name, files.get('state/' + result_name), optional=True)
+        if (saved_result is None) != (state is None):
+            raise ValueError('Original native result changed during retained archive observation')
+        gate_raw = read(gate_name, files.get('state/' + gate_name))
+        gate = decode_record(gate_raw)
+        binding = experiment['binding']
+        if (gate['passed'] is not True or gate['binding'] != binding
+                or gate['manifest_sha256'] != binding['manifest_sha']):
+            raise ValueError('No passing local gate matches the original native job')
+        archive_output = read(job + 'archive-output/execution.log')
+        # The native executor consumes the leading JSON and leaves the trailing log intact.
+        archive_report, _ = json.JSONDecoder().raw_decode(archive_output.decode('utf-8').lstrip())
+        if project.sha(archive_report) != project.sha(gate['archive_report']):
+            raise ValueError('Original native archive output differs from the retained gate report')
+        archive, artifacts = _accepted_archive(project, ident, binding, experiment['baseline_id'], gate, read, max_artifacts=256)
+        for name, artifact in artifacts.items():
+            inventory.read(archive['path'], name, 'archive', artifact['sha256'], 16 * 1_048_576, evidence=False)
+        inventory.confirm()
+    except (OSError, KeyError, TypeError, ValueError, project.core.Blocked) as error:
+        return {**unavailable, 'reason': str(error)}
+    return {'status': 'verified', 'native_result_state': state, 'job_id': request['job_id'],
+            'run_id': request['run_id'], 'attempt_sha256': chain.sha(chain.records['attempt']),
+            'reap_record_sha256': chain.sha(stopped),
+            'executor_process': {key: process[key] for key in ('status', 'returncode')},
+            'gate_report_sha256': hashlib.sha256(gate_raw).hexdigest(),
+            'archive_output_sha256': hashlib.sha256(archive_output).hexdigest(),
+            'archive': {**archive, 'artifact_content_status': 'verified'}}
 
 
 def inspect(payload: dict) -> dict:
@@ -115,6 +181,10 @@ def inspect(payload: dict) -> dict:
               'integration_ticket': None, 'files': files,
               'artifact_limit_bytes': 16_777_216, 'response_limit_bytes': 8_388_608,
               'scope': 'Saved native records only; no live phase, statistical re-evaluation, artifact-wide verification, authorization or integration completion claim'}
+    if payload.get('retained_archive'):
+        result['retained_archive'] = _retained_archive(project, experiment, files)
+        result['scope'] = ('Saved native records and bounded retained archive verification; '
+                           'no live runtime query, statistical re-evaluation, authorization or integration completion claim')
     if experiment.get('screen_ref') is not None:
         native = experiment['job_request']
         job = {'binding': binding, 'job_id': native['job_id']}
@@ -138,6 +208,8 @@ def inspect(payload: dict) -> dict:
             raise ValueError('No accepted archive is recorded for the selected artifact')
         return result
     if experiment['recorded_result_state'] != 'SUCCEEDED':
+        if payload.get('retained_archive'):
+            return result
         raise ValueError('Accepted training evidence has no successful original job result')
     archive, artifacts = _accepted_archive(project, ident, binding, experiment['baseline_id'], gate, read)
     result.update(archive_status='recorded', archive=archive)
@@ -218,27 +290,29 @@ class _Inventory:
                 raise ValueError('archive_changed: original baseline reference file disappeared')
             self.absences.add(path)
             return None
+        existing = self.originals.get(path)
+        read_limit = min(limit, 64 * 1_048_576 - self.total) if existing is None else limit
         with os.fdopen(descriptor, 'rb') as stream:
             details = os.fstat(stream.fileno())
-            if details.st_size > limit or self.total + (0 if path in self.originals else details.st_size) > 64 * 1_048_576:
+            if details.st_size > read_limit:
                 raise ValueError('capacity_exceeded: complete baseline reference inventory')
             chunks, length, digest = [], 0, hashlib.sha256()
-            while chunk := stream.read(min(65_536, limit + 1 - length)):
+            while chunk := stream.read(min(65_536, read_limit + 1 - length)):
                 chunks.append(chunk)
                 length += len(chunk)
                 digest.update(chunk)
-                if length > limit:
+                if length > read_limit:
                     break
+            if length > read_limit:
+                raise ValueError('capacity_exceeded: complete baseline reference inventory')
             raw = b''.join(chunks)
-            if len(raw) > limit:
-                raise ValueError('capacity_exceeded: complete baseline reference artifact')
         digest = digest.hexdigest()
         if path in self.absences:
             raise ValueError('archive_changed: original baseline reference absence changed')
         if expected is not None and digest != expected:
             raise ValueError('archive_changed: original baseline reference digest differs: ' + relative)
-        if path in self.originals:
-            original, device, inode, record = self.originals[path]
+        if existing is not None:
+            original, device, inode, record = existing
             if original != raw or (device, inode) != (details.st_dev, details.st_ino):
                 raise ValueError('archive_changed: baseline reference path, inode or raw changed during inventory')
             if evidence and record is None:

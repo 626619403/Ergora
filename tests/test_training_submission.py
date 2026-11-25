@@ -1228,6 +1228,113 @@ def test_configuration_driver_runs_actual_cpu_work_and_original_managed_archive(
 
 
 @pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('failure, native_state, executor_returncode',
+                         [('missing-module', None, 1), ('service', 'FAILED', 0)])
+def test_training_evidence_verifies_retained_archive_after_tracking_failure(
+        configuration_execution, monkeypatch, failure, native_state, executor_returncode):
+    item = configuration_execution
+    monkeypatch.setenv('ERGORA_TEST_TRAINING_TRACKING_FAILURE', failure)
+    execution = run_configuration_execution(item)
+    state, job = item['state'], item['job']
+    stopped_path = job / 'managed-execution/stopped.json'
+    terminal = job / 'result.json'
+    if native_state is None:
+        assert not terminal.exists()
+    else:
+        saved = json.loads(terminal.read_bytes())
+        assert saved['state'] == native_state and saved['gate'] is None
+        assert 'tracking service unavailable' in saved['detail']
+
+    gate = json.loads((job / 'gate-report.json').read_bytes())
+    assert gate['passed'] is True
+    archive = Path(gate['archive_report']['archive_path'])
+    originals = {path: path.read_bytes() for location in (archive, job) for path in location.rglob('*')
+                 if path.is_file()}
+    plain = training.evidence(state, 'demo', 'alpha')
+    assert 'retained_archive' not in plain and plain['archive_status'] == 'no_accepted_archive'
+    result = training.evidence(state, 'demo', 'alpha', retained_archive=True)
+    retained = result['retained_archive']
+    assert result['archive'] is result['recorded_gate_report'] is result['execution_success'] is None
+    assert result['archive_status'] == 'no_accepted_archive'
+    assert result['approval_status'] == 'not_evaluated' and result['runtime_status'] == 'not_queried'
+    assert retained['status'] == 'verified' and retained['native_result_state'] == native_state
+    assert retained['executor_process']['returncode'] == executor_returncode
+    assert retained['attempt_sha256'] == execution['record_sha256']['attempt']
+    assert retained['reap_record_sha256'] == execution['record_sha256']['stopped']
+    assert retained['archive']['evidence_sha256'] == gate['evidence_sha256']
+    assert retained['archive']['artifact_content_status'] == 'verified'
+    with pytest.raises(ValueError):
+        training.baseline_reference(state, 'demo', 'alpha', evidence_sha256=gate['evidence_sha256'])
+
+    stopped_path.unlink()
+    try:
+        unavailable = training.evidence(state, 'demo', 'alpha', retained_archive=True)['retained_archive']
+        assert unavailable['status'] == 'unavailable' and 'reap record' in unavailable['reason']
+    finally:
+        stopped_path.write_bytes(originals[stopped_path])
+    artifact = archive / 'configuration-receipt.json'
+    try:
+        artifact.write_bytes(b'replaced artifact')
+        unavailable = training.evidence(state, 'demo', 'alpha', retained_archive=True)['retained_archive']
+        assert unavailable['status'] == 'unavailable' and 'digest differs' in unavailable['reason']
+        with artifact.open('wb') as stream:
+            stream.truncate(16 * 1_048_576 + 1)
+        unavailable = training.evidence(state, 'demo', 'alpha', retained_archive=True)['retained_archive']
+        assert unavailable['status'] == 'unavailable' and 'capacity_exceeded' in unavailable['reason']
+    finally:
+        artifact.write_bytes(originals[artifact])
+    assert all(path.read_bytes() == raw for path, raw in originals.items())
+    assert terminal.exists() == (native_state is not None)
+    assert json.loads(item['service'][1].read_bytes())['starts'] == 1
+
+
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+def test_retained_archive_requires_the_original_archive_output(configuration_execution, monkeypatch):
+    item = configuration_execution
+    monkeypatch.setenv('ERGORA_TEST_TRAINING_TRACKING_FAILURE', 'missing-module')
+    run_configuration_execution(item)
+    state, job = item['state'], item['job']
+    gate_path = job / 'gate-report.json'
+    output_path = job / 'archive-output/execution.log'
+    original_gate = gate_path.read_bytes()
+    original_output = output_path.read_bytes()
+    gate = json.loads(original_gate)
+
+    alternate_bundle = item['tmp_path'] / 'alternate-bundle'
+    shutil.copytree(job / 'run-output', alternate_bundle)
+    evidence = alternate_bundle / 'evidence.json'
+    evidence.write_bytes(evidence.read_bytes() + b'\n')
+    perfctl = Path(item['definition']['execution']['installation']) / 'upstream/perfctl.py'
+    proc = subprocess.run([sys.executable, str(perfctl), '--root', str(item['prefix']), 'archive', 'alpha',
+                           '--bundle', str(evidence)], check=True, capture_output=True, text=True, timeout=15)
+    alternate = json.loads(proc.stdout)
+    assert alternate['manifest_sha256'] == gate['manifest_sha256']
+    assert alternate['evidence_sha256'] != gate['evidence_sha256']
+    gate_path.write_text(json.dumps({**gate, 'evidence_sha256': alternate['evidence_sha256'],
+                                    'archive_report': alternate}))
+    try:
+        observation = training.evidence(state, 'demo', 'alpha', retained_archive=True)['retained_archive']
+        assert output_path.read_bytes() == original_output
+        assert observation['status'] == 'unavailable' and 'archive output differs' in observation['reason']
+        assert 'archive' not in observation
+    finally:
+        gate_path.write_bytes(original_gate)
+
+    output_path.unlink()
+    try:
+        observation = training.evidence(state, 'demo', 'alpha', retained_archive=True)['retained_archive']
+        assert observation['status'] == 'unavailable' and 'archive-output/execution.log' in observation['reason']
+    finally:
+        output_path.write_bytes(original_output)
+    restored = training.evidence(state, 'demo', 'alpha', retained_archive=True)['retained_archive']
+    assert restored['status'] == 'verified'
+    assert restored['archive']['evidence_sha256'] == gate['evidence_sha256']
+    assert restored['archive_output_sha256'] == hashlib.sha256(original_output).hexdigest()
+    assert not (job / 'result.json').exists()
+    assert json.loads(item['service'][1].read_bytes())['starts'] == 1
+
+
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
 @pytest.mark.parametrize('configuration_execution', [{'precision': 'float16'}, {'fault': 'describe-drift'},
                                                    {'fault': 'nonfinite'}, {'fault': 'oversize'},
                                                    {'fault': 'source-drift'}, {'fault': 'configuration-drift'},

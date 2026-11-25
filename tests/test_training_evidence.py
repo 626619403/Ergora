@@ -379,6 +379,48 @@ def test_reference_inventory_checks_every_indexed_artifact_without_blocking_on_f
         training.baseline_reference(state, 'demo', 'alpha', evidence_sha256=report['evidence_sha256'])
 
 
+def test_inventory_enforces_remaining_capacity_after_stat(tmp_path, monkeypatch):
+    from ergora.training.runtime.evidence import _Inventory
+
+    inventory = _Inventory()
+    capacity = 64 * 1_048_576
+    # Model the bytes already committed by unaffected earlier inventory entries.
+    inventory.total = capacity - 1
+    bound = tmp_path / 'last-byte'
+    empty = tmp_path / 'empty'
+    growing = tmp_path / 'growing'
+    bound.write_bytes(b'x')
+    empty.touch()
+    growing.touch()
+    assert inventory.read(tmp_path, bound.name, 'archive') == b'x'
+    assert inventory.total == capacity
+    assert inventory.read(tmp_path, bound.name, 'archive') == b'x'
+    assert inventory.read(tmp_path, empty.name, 'archive') == b''
+    assert inventory.total == capacity
+
+    stat = os.fstat
+    inode = growing.stat().st_ino
+    stats = 0
+
+    def grow_after_stat(fd):
+        nonlocal stats
+        observed = stat(fd)
+        if observed.st_ino == inode:
+            stats += 1
+            if stats == 2:  # _fd has already checked the descriptor type.
+                assert observed.st_size == 0
+                growing.write_bytes(b'y')
+        return observed
+
+    with monkeypatch.context() as patch:
+        patch.setattr(os, 'fstat', grow_after_stat)
+        with pytest.raises(ValueError, match='capacity_exceeded'):
+            inventory.read(tmp_path, growing.name, 'archive')
+    assert stats == 2 and growing.read_bytes() == b'y'
+    assert inventory.total == capacity and growing not in inventory.originals
+    inventory.confirm()
+
+
 def test_inventory_keeps_the_first_file_identity_across_repeated_reads(tmp_path):
     from ergora.training.runtime.evidence import _Inventory
 
@@ -686,7 +728,14 @@ def test_no_archive_and_cli_http_share_the_observation(experiments):
     with TestClient(create_app(state.root), base_url=headers['Origin'], headers=headers) as client:
         response = client.get('/api/projects/demo/training/alpha/evidence')
         assert response.status_code == 200 and response.json() == json.loads(output.getvalue())
+        assert 'retained_archive' not in response.json()
+        retained = client.get('/api/projects/demo/training/alpha/evidence', params={'retained_archive': True})
+        assert retained.status_code == 200
+        assert retained.json() == training.evidence(state, 'demo', 'alpha', retained_archive=True)
+        assert retained.json()['retained_archive']['status'] == 'unavailable'
         assert client.get('/api/projects/demo/training/alpha/evidence', params={'artifact': 'notes.txt'}).status_code == 400
+        assert client.get('/api/projects/demo/training/alpha/evidence', params={
+            'retained_archive': True, 'artifact': 'notes.txt', 'evidence_sha256': '0' * 64}).status_code == 400
 
 
 def test_round_index_retains_negative_unknown_and_offline_cli_read(experiments, tmp_path, monkeypatch):

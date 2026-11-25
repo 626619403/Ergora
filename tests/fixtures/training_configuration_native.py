@@ -19,4 +19,13 @@ def install():
                                       env=environment, timeout=options['timeout'], check=False).returncode
 
     training_executor.Sandbox = LocalRunner
-    training_executor.track = lambda *args: 'test-only-tracking-leaf-not-a-service'
+
+    def track(*args):
+        failure = os.environ.get('ERGORA_TEST_TRAINING_TRACKING_FAILURE')
+        if failure == 'missing-module':
+            raise ModuleNotFoundError("No module named 'mlflow'", name='mlflow')
+        if failure == 'service':
+            raise RuntimeError('Test tracking service unavailable after local archive')
+        return 'test-only-tracking-leaf-not-a-service'
+
+    training_executor.track = track
