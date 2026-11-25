@@ -214,7 +214,9 @@ def _publish_selected_moe(state):
     return example, runpy.run_path(str(example / 'publish.py'))['publish'](state, example)
 
 
-def test_selected_moe_revision_freezes_shared_policy_for_every_actual_leaf(tmp_path):
+@pytest.fixture(scope='module')
+def selected_moe_frozen_material(tmp_path_factory):
+    tmp_path = tmp_path_factory.mktemp('selected-moe')
     state = State(tmp_path / 'state')
     example, published = _publish_selected_moe(state)
     assert _publish_selected_moe(state)[1] == published
@@ -259,21 +261,29 @@ def test_selected_moe_revision_freezes_shared_policy_for_every_actual_leaf(tmp_p
         assert all(item['concurrency_scopes'][0]['limit'] == cap for item in preview['instances'] if item['kind'] == 'agent')
     shutil.rmtree(state.root / 'agent-definitions')
     shutil.rmtree(state.root / 'workflow-definitions')
-    for path, leaf in leaves.items():
-        prepared = workflows.prepare_input_from_manifest(manifest, path,
-            b'Original exact source, workload and complete supplied predecessor results.',
-            tmp_path / path.replace('/', '-'), 1000000)
-        actual = workflows.inspect_input(Path(prepared['path']), material=True)
-        assert actual['composition'] == graph
-        for resource in common:
-            inherited = next(item for item in leaf['resources'] if resource['id'] == item['id'])
-            assert inherited['text'] == resource['text'] and resource['text'] in actual['prompt']
-            assert {source['instance'] for source in inherited['sources']} == {'root/development'}
-        writable = leaf['role'] == 'implementer'
-        assert bool(leaf['permissions']['write']) is writable and leaf['permissions']['shell'] is writable
-        assert not leaf['permissions']['network']
-        if leaf['role'] == 'planner':
-            assert leaf['backend_request']['reasoning_effort'] == leaf['invocation_minimum']['reasoning_effort'] == 'max'
+    return manifest, graph, tuple(leaves.items()), common
+
+
+@pytest.mark.parametrize('leaf_index', range(18))
+def test_selected_moe_revision_freezes_shared_policy_for_every_actual_leaf(
+    selected_moe_frozen_material, leaf_index, tmp_path,
+):
+    manifest, graph, leaves, common = selected_moe_frozen_material
+    path, leaf = leaves[leaf_index]
+    prepared = workflows.prepare_input_from_manifest(manifest, path,
+        b'Original exact source, workload and complete supplied predecessor results.',
+        tmp_path / path.replace('/', '-'), 1000000)
+    actual = workflows.inspect_input(Path(prepared['path']), material=True)
+    assert actual['composition'] == graph
+    for resource in common:
+        inherited = next(item for item in leaf['resources'] if resource['id'] == item['id'])
+        assert inherited['text'] == resource['text'] and resource['text'] in actual['prompt']
+        assert {source['instance'] for source in inherited['sources']} == {'root/development'}
+    writable = leaf['role'] == 'implementer'
+    assert bool(leaf['permissions']['write']) is writable and leaf['permissions']['shell'] is writable
+    assert not leaf['permissions']['network']
+    if leaf['role'] == 'planner':
+        assert leaf['backend_request']['reasoning_effort'] == leaf['invocation_minimum']['reasoning_effort'] == 'max'
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Budgeted native preparation requires Linux/WSL2')
