@@ -6,7 +6,8 @@ import time
 from uuid import uuid4
 
 from ergora.campaigns.records import (
-    FIXED_TASK_UPDATE_PREFIX, WORKFLOW_TYPE, CampaignFiles, attempt_document, check_intent, fixed_tasks, identity,
+    FIXED_TASK_UPDATE_PREFIX, PENDING_JOB_STATES, WORKFLOW_TYPE, CampaignFiles, attempt_document, check_intent,
+    check_record_name, fixed_tasks, identity,
     original_check_evidence, read_plan, result_document, sha256, stop_intent, update_attempt, uuid_text, worker_queue,
     workflow_id,
 )
@@ -152,6 +153,8 @@ async def status(state: State, project: str, campaign: str, *, online: bool = Fa
         for task in output.get('tasks', {}).values():
             if task['receipt'] is None:
                 command = files.load_check(opening, attempt, output['run_id'], task)
+                if command is None and task['source'].get('pending') is True and task['waiting_receipt'] is None:
+                    command = files.load_check(opening, attempt, output['run_id'], task, waiting=True)
                 if command is not None:
                     task.update(eligible=False, attempt_status='unknown', update_id=command['attempt']['update_id'])
     return output
@@ -306,10 +309,11 @@ async def _require_ready_check(runtime, handle, description, opening, attempt, t
     if 'tasks' not in view:
         raise ValueError('Original campaign task Worker is unavailable')
     task = view['tasks'][task_id]
-    if task['status'] != 'ready':
+    if task['status'] not in ('ready', 'waiting_job'):
         raise ValueError('Campaign task requires readiness and original observations for all dependencies')
     if not task['eligible']:
         raise ValueError('Campaign no longer admits original task observations')
+    return task
 
 
 def _require_check_project(state, opening):
@@ -318,8 +322,25 @@ def _require_check_project(state, opening):
         raise ValueError('Original project registration or scheduler changed before task observation')
 
 
+async def _read_check(runtime, client, handle, command):
+    try:
+        async with asyncio.timeout(runtime.RPC_SECONDS):
+            return await runtime.read_check(client, handle, command)
+    except (TimeoutError, runtime.RPCError):
+        return None
+
+
+def _check_response(opening, task, command, receipt):
+    intent, attempt = command['intent'], command['attempt']
+    return {'status': receipt['decision'] if receipt is not None else 'unknown', 'run_id': intent['run_id'],
+            'workflow_id': opening['workflow_id'], 'project': opening['project'], 'campaign': opening['campaign'],
+            'task_id': task['task_id'], 'campaign_project_revision': opening['project_revision'],
+            'job_project_revision': task['source']['project_revision'], 'update_id': attempt['update_id'],
+            'receipt': receipt}
+
+
 async def observe_check(state: State, project: str, campaign: str, task_id: str, *, confirm: bool) -> dict:
-    """Record one passing original Job observation through the trusted local operator."""
+    """Record one already-authorized original Job observation as the trusted local operator."""
     if confirm is not True:
         raise ValueError('Campaign task observation requires explicit --confirm')
     files = CampaignFiles(state.root, project, campaign)
@@ -333,55 +354,73 @@ async def observe_check(state: State, project: str, campaign: str, task_id: str,
     runtime = _temporal()
     client, handle, description = await _check_run(runtime, opening, attempt, result['run_id'] if result else None)
     run_id = description.run_id
-    evidence_sha256 = None
-    if files.load_check(opening, attempt, run_id, task) is None:
-        _require_check_project(state, opening)
-        await _require_ready_check(runtime, handle, description, opening, attempt, task_id)
-        from ergora.development.application import candidate_check_status
+    command = files.load_check(opening, attempt, run_id, task)
+    if command is not None:
+        return _check_response(opening, task, command, await _read_check(runtime, client, handle, command))
+    source = task['source']
+    pending = source.get('pending') is True
+    waiting_command = files.load_check(opening, attempt, run_id, task, waiting=True) if pending else None
+    waiting_receipt = None
+    expires_at = opening['plan']['limits']['expires_at']
+    if waiting_command is not None:
+        waiting_receipt = await _read_check(runtime, client, handle, waiting_command)
+        if (waiting_receipt is None or description.status != runtime.WorkflowExecutionStatus.RUNNING
+                or time.time() >= expires_at):
+            return _check_response(opening, task, waiting_command, waiting_receipt)
 
-        source = task['source']
-        status = await asyncio.to_thread(candidate_check_status, state, project, source['operation_id'],
-                                         job_sha256=source['job_sha256'])
-        evidence_sha256 = original_check_evidence(opening, task, status)
+    _require_check_project(state, opening)
+    view = await _require_ready_check(runtime, handle, description, opening, attempt, task_id)
+    if waiting_command is None and view.get('waiting_receipt') is not None:
+        raise ValueError('Campaign original waiting task attempt is missing')
+    from ergora.development.application import candidate_check_status
+
+    status = await asyncio.to_thread(candidate_check_status, state, project, source['operation_id'],
+                                     job_sha256=source['job_sha256'], verify_pending=pending)
+    evidence_sha256, job = original_check_evidence(opening, task, status)
+    waiting = job is not None and job['status'] in PENDING_JOB_STATES
+    if waiting and waiting_receipt is not None:
+        return _check_response(opening, task, waiting_command, waiting_receipt)
 
     files.ensure_directory()
     with file_lock(files.lock, blocking=False):
         client, handle, description = await _check_run(runtime, opening, attempt, run_id, client)
         command = files.load_check(opening, attempt, run_id, task)
+        if command is not None:
+            return _check_response(opening, task, command, await _read_check(runtime, client, handle, command))
+        current_wait = files.load_check(opening, attempt, run_id, task, waiting=True) if pending else None
+        if waiting_command is not None and current_wait != waiting_command:
+            raise ValueError('Campaign original waiting task attempt changed')
+        if current_wait is not None and waiting_command is None:
+            waiting_receipt = await _read_check(runtime, client, handle, current_wait)
+        if current_wait is not None and (waiting_receipt is None or waiting):
+            return _check_response(opening, task, current_wait, waiting_receipt)
+        view = await _require_ready_check(runtime, handle, description, opening, attempt, task_id)
+        if current_wait is None and view.get('waiting_receipt') is not None:
+            raise ValueError('Campaign original waiting task attempt is missing')
+        if waiting_receipt is not None:
+            job = {**job, 'waiting_receipt_sha256': identity(waiting_receipt)}
+        intent = check_intent(opening, identity(attempt), run_id, task_id, evidence_sha256, job=job)
+        command = {'intent': intent, 'attempt': update_attempt(intent, FIXED_TASK_UPDATE_PREFIX + str(uuid4()))}
+        with State(state.root).connect() as db:
+            db.execute('BEGIN IMMEDIATE')
+            _require_check_window(expires_at)
+            _require_check_project(state, opening)
+            _, _, saved_stop = files.load_stop(opening, attempt, result)
+            if saved_stop is not None and saved_stop['receipt']['decision'] == 'accepted':
+                raise ValueError('Campaign no longer admits original task observations')
+            files.write(check_record_name(task_id, waiting=waiting), command,
+                        before_publish=lambda: _require_check_window(expires_at))
         receipt = None
-        if command is None:
-            if evidence_sha256 is None:
-                raise ValueError('Campaign original task attempt disappeared')
-            await _require_ready_check(runtime, handle, description, opening, attempt, task_id)
-            intent = check_intent(opening, identity(attempt), run_id, task_id, evidence_sha256)
-            command = {'intent': intent, 'attempt': update_attempt(intent, FIXED_TASK_UPDATE_PREFIX + str(uuid4()))}
-            expires_at = opening['plan']['limits']['expires_at']
-            with State(state.root).connect() as db:
-                db.execute('BEGIN IMMEDIATE')
-                _require_check_window(expires_at)
-                _require_check_project(state, opening)
-                _, _, saved_stop = files.load_stop(opening, attempt, result)
-                if saved_stop is not None and saved_stop['receipt']['decision'] == 'accepted':
-                    raise ValueError('Campaign no longer admits original task observations')
-                files.write('check-' + task_id, command, before_publish=lambda: _require_check_window(expires_at))
-            remaining = expires_at - time.time()
-            if remaining > 0:
-                try:
-                    async with asyncio.timeout(min(runtime.RPC_SECONDS, remaining)):
-                        receipt = await runtime.send_check(client, command, expires_at=expires_at)
-                except (TimeoutError, ConnectionError, runtime.RPCError):
-                    pass
-        if receipt is None:
+        remaining = expires_at - time.time()
+        if remaining > 0:
             try:
-                async with asyncio.timeout(runtime.RPC_SECONDS):
-                    receipt = await runtime.read_check(client, handle, command)
-            except (TimeoutError, runtime.RPCError):
+                async with asyncio.timeout(min(runtime.RPC_SECONDS, remaining)):
+                    receipt = await runtime.send_check(client, command, expires_at=expires_at)
+            except (TimeoutError, ConnectionError, runtime.RPCError):
                 pass
-        return {'status': 'observed' if receipt is not None else 'unknown', 'run_id': run_id,
-                'workflow_id': opening['workflow_id'], 'project': project, 'campaign': campaign, 'task_id': task_id,
-                'campaign_project_revision': opening['project_revision'],
-                'job_project_revision': task['source']['project_revision'],
-                'update_id': command['attempt']['update_id'], 'receipt': receipt}
+        if receipt is None:
+            receipt = await _read_check(runtime, client, handle, command)
+        return _check_response(opening, task, command, receipt)
 
 
 async def worker(state: State, project: str, campaign: str) -> dict:

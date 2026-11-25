@@ -139,7 +139,10 @@ async def _operate(payload: dict) -> dict:
         require(payload.get('confirm') is True, 'Stopping a candidate check requires explicit confirmation')
         with file_lock(lock, blocking=False):
             return await _observe(adapter, payload, task_id, admission, stop=True)
-    return await _observe(adapter, payload, task_id, admission, stop=False)
+    verify_pending = payload.get('verify_pending', False)
+    require(type(verify_pending) is bool and (not verify_pending or payload.get('job_sha256') is not None),
+            'Pending fixed-check observation requires its exact original Job digest')
+    return await _observe(adapter, payload, task_id, admission, stop=False, waiting=verify_pending)
 
 
 async def _observe(adapter: FileAdapter, payload: dict, task_id: str, admission: dict, *, stop: bool,

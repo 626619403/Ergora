@@ -75,16 +75,26 @@ def validate_fixed_check_source(source: dict) -> dict:
     waiting = isinstance(source, dict) and 'wait_seconds' in source
     outputs = ('receipt_sha256', 'fixed_results_sha256')
     _fields(source, fields + (('wait_seconds',) if waiting else outputs), 'Fixed check source')
+    validate_fixed_check_locator({key: source[key] for key in fields})
+    if waiting:
+        seconds = source['wait_seconds']
+        if type(seconds) is not int or not 1 <= seconds <= 3600:
+            raise ValueError('Fixed check wait must be 1–3600 integer seconds')
+    else:
+        for key in outputs:
+            _digest(source[key])
+    return source
+
+
+def validate_fixed_check_locator(source: dict) -> dict:
+    """Validate the original request identity before terminal proof exists."""
+    _fields(source, ('operation_id', 'request_file_sha256', 'job_sha256', 'candidate_sha'), 'Fixed check locator')
     identifier, candidate = source['operation_id'], source['candidate_sha']
     if not isinstance(identifier, str) or re.fullmatch('[A-Za-z0-9][A-Za-z0-9_-]{0,79}', identifier) is None:
         raise ValueError('Invalid original fixed check operation ID')
     if not isinstance(candidate, str) or re.fullmatch('[a-f0-9]{40}', candidate) is None:
         raise ValueError('Fixed check source requires a full SHA-1 candidate commit')
-    if waiting:
-        seconds = source['wait_seconds']
-        if type(seconds) is not int or not 1 <= seconds <= 3600:
-            raise ValueError('Fixed check wait must be 1–3600 integer seconds')
-    for key in ('request_file_sha256', 'job_sha256') + (() if waiting else outputs):
+    for key in ('request_file_sha256', 'job_sha256'):
         _digest(source[key])
     return source
 

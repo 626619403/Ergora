@@ -1011,7 +1011,7 @@ def parser() -> argparse.ArgumentParser:
     for name, help_text in (
         ("create", "Confirm an exact plan and start it once, or recover its original start"),
         ("status", "Read the original local record, optionally checking Temporal"),
-        ("observe-check", "Record an exact original successful fixed check for a frozen task"),
+        ("observe-check", "Observe the exact original fixed check for a frozen task"),
         ("stop", "Confirm one stop request against the original campaign run"),
         ("worker", "Run a foreground Worker on the original campaign queue"),
     ):
@@ -1911,7 +1911,7 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(output, ensure_ascii=False, indent=2))
         if args.command == "campaign":
             if args.operation == "observe-check":
-                return 0 if output["status"] == "observed" else 1
+                return 0 if output["status"] in ("observed", "waiting_job") else 1
             if output["remote_status"] in ("unavailable", "original_not_found"):
                 return 1
             if args.operation == "stop":

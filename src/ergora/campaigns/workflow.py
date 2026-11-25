@@ -23,7 +23,7 @@ from temporalio.worker import Worker
 
 with workflow.unsafe.imports_passed_through():
     from ergora.campaigns.records import (
-        ATTEMPT_MEMO, OPENING_MEMO, WORKFLOW_TYPE, check_receipt, fixed_task_state, fixed_tasks, identity,
+        ATTEMPT_MEMO, OPENING_MEMO, WORKFLOW_TYPE, check_receipt, fixed_task_state, fixed_tasks, has_pending_checks, identity,
         require_check_receipt, require_stop_receipt, sha256, stop_intent, update_receipt, validate_check_command,
         validate_stop_attempt,
     )
@@ -49,6 +49,7 @@ class Campaign:
         self.stop_decision = None
         self.expiry_timer = None
         self.check_receipts = {}
+        self.check_waits = {}
         info = workflow.info()
         if (info.workflow_id != opening['workflow_id'] or info.run_id != info.first_execution_run_id
                 or info.namespace != opening['scheduler']['namespace']
@@ -75,12 +76,16 @@ class Campaign:
         result = record_state(self.opening, workflow.info().run_id, phase)
         if 'tasks' in self.opening['plan']:
             result['check_receipts'] = self.check_receipts.copy()
+        if has_pending_checks(self.opening):
+            result['check_waits'] = self.check_waits.copy()
         return result
 
     @workflow.update(name=CHECK_UPDATE)
     def observe_check(self, command: dict) -> dict:
         receipt = check_receipt(command)
-        previous = self.check_receipts.get(receipt['task_id'])
+        waiting = receipt['decision'] == 'waiting_job'
+        receipts = self.check_waits if waiting else self.check_receipts
+        previous = receipts.get(receipt['task_id'])
         if previous is not None:
             if previous != receipt:
                 raise ApplicationError('Campaign task already has different original evidence', non_retryable=True)
@@ -90,7 +95,13 @@ class Campaign:
             raise ApplicationError('Campaign no longer admits new task observations', non_retryable=True)
         if not set(task['depends_on']) <= self.check_receipts.keys():
             raise ApplicationError('Campaign task dependencies lack an original observation', non_retryable=True)
-        self.check_receipts[receipt['task_id']] = receipt
+        if waiting and receipt['task_id'] in self.check_receipts:
+            raise ApplicationError('Campaign task already has original terminal evidence', non_retryable=True)
+        if not waiting and 'job' in receipt:
+            prior_wait = self.check_waits.get(receipt['task_id'])
+            if receipt['job'].get('waiting_receipt_sha256') != (identity(prior_wait) if prior_wait is not None else None):
+                raise ApplicationError('Campaign terminal check differs from its original waiting receipt', non_retryable=True)
+        receipts[receipt['task_id']] = receipt
         return receipt
 
     @observe_check.validator
@@ -343,9 +354,11 @@ async def runtime_status(handle, description, opening, stop=None, *, start_attem
 def _observed_state(observed, expected, opening, start_attempt_sha256, temporal_status, *, stop=None):
     extra = {}
     if 'tasks' in opening['plan'] and isinstance(observed, dict) and 'check_receipts' in observed:
-        tasks = fixed_task_state(opening, start_attempt_sha256, expected['run_id'], observed['check_receipts'])
         observed = dict(observed)
-        observed.pop('check_receipts')
+        if has_pending_checks(opening) and not isinstance(observed.get('check_waits'), dict):
+            return {'temporal_status': temporal_status.name, 'workflow_state_status': 'unavailable'}
+        waits = observed.pop('check_waits') if has_pending_checks(opening) else None
+        tasks = fixed_task_state(opening, start_attempt_sha256, expected['run_id'], observed.pop('check_receipts'), waits)
         active = False
         if temporal_status == WorkflowExecutionStatus.RUNNING:
             admitting = observed.pop('check_admission_open', None)
@@ -353,7 +366,7 @@ def _observed_state(observed, expected, opening, start_attempt_sha256, temporal_
                 return {'temporal_status': temporal_status.name, 'workflow_state_status': 'unavailable'}
             active = (admitting and time.time() < expected['expires_at']
                       and (stop is None or stop['decision'] != 'accepted'))
-        extra['tasks'] = {task_id: {**task, 'eligible': active and task['status'] == 'ready'}
+        extra['tasks'] = {task_id: {**task, 'eligible': active and task['status'] in ('ready', 'waiting_job')}
                           for task_id, task in tasks.items()}
     elif 'tasks' in opening['plan']:
         return {'temporal_status': temporal_status.name, 'workflow_state_status': 'unavailable'}

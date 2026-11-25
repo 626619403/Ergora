@@ -12,7 +12,7 @@ from uuid import UUID
 
 from ergora.definitions.bundles import parse_json
 from ergora.development.envelopes import identity
-from ergora.development.verification import validate_fixed_check_source
+from ergora.development.verification import validate_fixed_check_locator, validate_fixed_check_source
 
 
 WORKFLOW_TYPE = 'ErgoraCampaign'
@@ -22,10 +22,11 @@ MAX_PLAN_BYTES = 65_536
 MAX_RECORD_BYTES = 2 * MAX_PLAN_BYTES
 MAX_FIXED_TASKS = 8
 FIXED_TASK_UPDATE_PREFIX = 'ergora-campaign-check:'
-FIXED_CHECK_LOCATOR = ('operation_id', 'request_file_sha256', 'job_sha256', 'candidate_sha',
-                       'receipt_sha256', 'fixed_results_sha256')
-FIXED_TASK_SOURCE = (*FIXED_CHECK_LOCATOR, 'project_revision', 'job_id', 'authorization_sha256',
-                     'verification_sha256')
+FIXED_CHECK_LOCATOR = ('operation_id', 'request_file_sha256', 'job_sha256', 'candidate_sha')
+FIXED_CHECK_TERMINAL = ('receipt_sha256', 'fixed_results_sha256')
+FIXED_TASK_LOCATOR = (*FIXED_CHECK_LOCATOR, 'project_revision', 'job_id', 'authorization_sha256', 'verification_sha256')
+FIXED_TASK_SOURCE = (*FIXED_TASK_LOCATOR, *FIXED_CHECK_TERMINAL)
+PENDING_JOB_STATES = ('queued', 'attempted')
 # Last whole UTC second supported by both Python datetime and protobuf Timestamp.
 MAX_EXPIRY = 253_402_300_799
 
@@ -87,12 +88,18 @@ def validate_fixed_tasks(tasks):
             raise ValueError('Campaign task requires a unique safe ID')
         if not isinstance(parents, list) or not all(safe_id(item) for item in parents) or len(set(parents)) != len(parents):
             raise ValueError('Campaign task dependencies require distinct safe IDs')
-        if (not isinstance(source, dict) or source.keys() != set(FIXED_TASK_SOURCE)
+        pending = isinstance(source, dict) and source.get('pending') is True
+        required = {*FIXED_TASK_LOCATOR, 'pending'} if pending else set(FIXED_TASK_SOURCE)
+        if (not isinstance(source, dict) or source.keys() != required
                 or type(source['project_revision']) is not int or source['project_revision'] < 1
                 or not isinstance(source['job_id'], str) or re.fullmatch(r'check-[0-9a-f]{40}-[0-9a-f]{24}', source['job_id']) is None
                 or not all(sha256(source[key]) for key in ('authorization_sha256', 'verification_sha256'))):
             raise ValueError('Campaign task source requires the exact original fixed-check Job identity')
-        validate_fixed_check_source({key: source[key] for key in FIXED_CHECK_LOCATOR})
+        locator = {key: source[key] for key in FIXED_CHECK_LOCATOR}
+        if pending:
+            validate_fixed_check_locator(locator)
+        else:
+            validate_fixed_check_source({**locator, **{key: source[key] for key in FIXED_CHECK_TERMINAL}})
         dependencies[task_id] = parents
     if any(parent not in dependencies for parents in dependencies.values() for parent in parents):
         raise ValueError('Campaign task dependency is absent from the frozen plan')
@@ -106,14 +113,26 @@ def fixed_tasks(opening):
     return {task['task_id']: task for task in opening['plan'].get('tasks', ())}
 
 
+def has_pending_checks(opening):
+    return any(task['source'].get('pending') is True for task in fixed_tasks(opening).values())
+
+
 def original_check_evidence(opening, task, observation):
+    source = task['source']
     if (not isinstance(observation, dict) or observation.get('project') != opening['project']
-            or observation.get('status') != 'succeeded'
-            or observation.get('cleanup_confirmed') is not True or observation.get('stop_requested') is not False
-            or any(observation.get(key) != value for key, value in task['source'].items())
-            or type(observation.get('project_revision')) is not int):
+            or observation.get('stop_requested') is not False or type(observation.get('project_revision')) is not int
+            or any(observation.get(key) != value for key, value in source.items() if key != 'pending')):
         raise ValueError('Task requires the exact successful original fixed check with confirmed cleanup')
-    return identity(observation)
+    status = observation.get('status')
+    if (source.get('pending') is True and status in PENDING_JOB_STATES
+            and observation.get('cleanup_confirmed') is None
+            and all(observation.get(key) is None for key in FIXED_CHECK_TERMINAL)):
+        return identity(observation), {'status': status}
+    if (status == 'succeeded' and observation.get('cleanup_confirmed') is True
+            and all(sha256(observation.get(key)) for key in FIXED_CHECK_TERMINAL)):
+        job = {'status': status, **{key: observation[key] for key in FIXED_CHECK_TERMINAL}}
+        return identity(observation), job if source.get('pending') is True else None
+    raise ValueError('Task requires the exact successful original fixed check with confirmed cleanup')
 
 
 def operator():
@@ -260,12 +279,13 @@ class CampaignFiles:
             require_stop_receipt(intent, attempt, result['receipt'])
         return intent, attempt, result
 
-    def load_check(self, opening, start_attempt, run_id, task):
-        command = self._read('check-' + task['task_id'])
+    def load_check(self, opening, start_attempt, run_id, task, *, waiting=False):
+        command = self._read(check_record_name(task['task_id'], waiting=waiting))
         if command is not None:
             validate_check_command(opening, identity(start_attempt), run_id, command)
-            if command['intent']['task_id'] != task['task_id']:
-                raise ValueError('Saved original check attempt names another campaign task')
+            if (command['intent']['task_id'] != task['task_id']
+                    or (command['intent']['operation'] == 'wait_check') != waiting):
+                raise ValueError('Saved original check attempt names another campaign task or stage')
         return command
 
     def _validate_opening(self, opening):
@@ -342,9 +362,30 @@ def require_stop_receipt(intent, attempt, receipt):
     return receipt
 
 
-def check_intent(opening, start_attempt_sha256, run_id, task_id, evidence_sha256):
-    return {**_update_intent(opening, start_attempt_sha256, run_id, 'observe_check'),
-            'task_id': task_id, 'observation_sha256': evidence_sha256}
+def check_record_name(task_id, *, waiting):
+    return ('wait-check-' if waiting else 'check-') + task_id
+
+
+def check_intent(opening, start_attempt_sha256, run_id, task_id, evidence_sha256, *, job=None):
+    operation = 'wait_check' if job is not None and job['status'] in PENDING_JOB_STATES else 'observe_check'
+    intent = {**_update_intent(opening, start_attempt_sha256, run_id, operation),
+              'task_id': task_id, 'observation_sha256': evidence_sha256}
+    return {**intent, 'job': job} if job is not None else intent
+
+
+def _validate_check_job(task, job):
+    if task['source'].get('pending') is not True:
+        if job is not None:
+            raise ValueError('Completed-pin task does not admit staged evidence')
+        return
+    if isinstance(job, dict):
+        if job.keys() == {'status'} and job['status'] in PENDING_JOB_STATES:
+            return
+        if (job.keys() - {'waiting_receipt_sha256'} == {'status', *FIXED_CHECK_TERMINAL}
+                and job['status'] == 'succeeded' and all(sha256(job[key]) for key in FIXED_CHECK_TERMINAL)
+                and ('waiting_receipt_sha256' not in job or sha256(job['waiting_receipt_sha256']))):
+            return
+    raise ValueError('Pending-source task requires exact queued, attempted or passing terminal evidence')
 
 
 def validate_check_command(opening, start_attempt_sha256, run_id, command):
@@ -353,9 +394,11 @@ def validate_check_command(opening, start_attempt_sha256, run_id, command):
     intent, attempt = command['intent'], command['attempt']
     if not isinstance(intent, dict) or not isinstance(attempt, dict):
         raise ValueError('Campaign check requires its structured intent and attempt')
-    task_id, evidence = intent.get('task_id'), intent.get('observation_sha256')
-    if (not safe_id(task_id) or task_id not in fixed_tasks(opening) or not sha256(evidence)
-            or identity(intent) != identity(check_intent(opening, start_attempt_sha256, run_id, task_id, evidence))):
+    task_id, evidence, job = intent.get('task_id'), intent.get('observation_sha256'), intent.get('job')
+    if not safe_id(task_id) or task_id not in fixed_tasks(opening) or not sha256(evidence):
+        raise ValueError('Campaign check intent does not bind the original opening, task and first Run')
+    _validate_check_job(fixed_tasks(opening)[task_id], job)
+    if identity(intent) != identity(check_intent(opening, start_attempt_sha256, run_id, task_id, evidence, job=job)):
         raise ValueError('Campaign check intent does not bind the original opening, task and first Run')
     update_id = attempt.get('update_id')
     if (not isinstance(update_id, str) or not update_id.startswith(FIXED_TASK_UPDATE_PREFIX)
@@ -366,8 +409,10 @@ def validate_check_command(opening, start_attempt_sha256, run_id, command):
 
 def check_receipt(command):
     intent, attempt = command['intent'], command['attempt']
-    receipt = update_receipt(intent, attempt, 'observed')
-    return {**receipt, 'task_id': intent['task_id'], 'observation_sha256': intent['observation_sha256']}
+    decision = 'waiting_job' if intent['operation'] == 'wait_check' else 'observed'
+    receipt = {**update_receipt(intent, attempt, decision), 'task_id': intent['task_id'],
+               'observation_sha256': intent['observation_sha256']}
+    return {**receipt, 'job': intent['job']} if 'job' in intent else receipt
 
 
 def require_check_receipt(intent, attempt, receipt):
@@ -376,17 +421,33 @@ def require_check_receipt(intent, attempt, receipt):
     return receipt
 
 
-def fixed_task_state(opening, start_attempt_sha256, run_id, observations):
+def fixed_task_state(opening, start_attempt_sha256, run_id, observations, waits=None):
     tasks = fixed_tasks(opening)
-    if not isinstance(observations, dict) or set(observations) - set(tasks):
-        raise ValueError('Campaign task state differs from the original plan task set')
-    for task_id, receipt in observations.items():
-        if not isinstance(receipt, dict) or not set(tasks[task_id]['depends_on']) <= observations.keys():
-            raise ValueError('Campaign task receipt is missing its original dependencies')
-        intent = check_intent(opening, start_attempt_sha256, run_id, task_id, receipt.get('observation_sha256'))
-        attempt = update_attempt(intent, receipt.get('update_id'))
-        validate_check_command(opening, start_attempt_sha256, run_id, {'intent': intent, 'attempt': attempt})
-        require_check_receipt(intent, attempt, receipt)
-    return {task_id: {**task, 'status': 'observed' if task_id in observations else
-                     'ready' if set(task['depends_on']) <= observations.keys() else 'waiting_dependencies',
-                     'receipt': observations.get(task_id)} for task_id, task in tasks.items()}
+    waits = {} if waits is None else waits
+    for expected, receipts in (('observed', observations), ('waiting_job', waits)):
+        if not isinstance(receipts, dict) or set(receipts) - set(tasks):
+            raise ValueError('Campaign task state differs from the original plan task set')
+        for task_id, receipt in receipts.items():
+            if (not isinstance(receipt, dict) or receipt.get('decision') != expected
+                    or not set(tasks[task_id]['depends_on']) <= observations.keys()):
+                raise ValueError('Campaign task receipt differs from its original stage or dependencies')
+            job = receipt.get('job')
+            _validate_check_job(tasks[task_id], job)
+            if expected == 'observed' and job is not None:
+                wait = waits.get(task_id)
+                if job.get('waiting_receipt_sha256') != (identity(wait) if wait is not None else None):
+                    raise ValueError('Campaign terminal check differs from its original waiting receipt')
+            intent = check_intent(opening, start_attempt_sha256, run_id, task_id,
+                                  receipt.get('observation_sha256'), job=job)
+            attempt = update_attempt(intent, receipt.get('update_id'))
+            validate_check_command(opening, start_attempt_sha256, run_id, {'intent': intent, 'attempt': attempt})
+            require_check_receipt(intent, attempt, receipt)
+    views = {}
+    for task_id, task in tasks.items():
+        status = ('observed' if task_id in observations else 'waiting_job' if task_id in waits else
+                  'ready' if set(task['depends_on']) <= observations.keys() else 'waiting_dependencies')
+        view = {**task, 'status': status, 'receipt': observations.get(task_id)}
+        if task['source'].get('pending') is True:
+            view['waiting_receipt'] = waits.get(task_id)
+        views[task_id] = view
+    return views

@@ -565,6 +565,43 @@ def test_campaign_fixed_task_plan_checks_exact_dag_and_source():
     with pytest.raises(ValueError, match='exact original'):
         validate_fixed_tasks([{**first, 'source': {**source, 'project_revision': True}}])
 
+    pending = {key: value for key, value in source.items() if key not in ('receipt_sha256', 'fixed_results_sha256')}
+    validate_fixed_tasks([{**first, 'source': {**pending, 'pending': True}}])
+    with pytest.raises(ValueError, match='exact original'):
+        validate_fixed_tasks([{**first, 'source': {**source, 'pending': True}}])
+    with pytest.raises(ValueError, match='exact original'):
+        validate_fixed_tasks([{**first, 'source': {**pending, 'pending': 1}}])
+
+
+def test_pending_task_retains_exact_stage_receipts():
+    from ergora.campaigns.records import check_intent, check_receipt, fixed_task_state, identity, update_attempt
+
+    task = {'task_id': 'wait', 'depends_on': [], 'source': {'pending': True}}
+    dependent = {'task_id': 'next', 'depends_on': ['wait'], 'source': {'pending': True}}
+    opening = {'workflow_id': 'ergora-campaign:demo:original', 'plan': {'tasks': [task, dependent]}}
+    run = '76b46055-eca1-42e6-9649-0f9adc562720'
+    start = 'a' * 64
+
+    def receipt(job, update):
+        intent = check_intent(opening, start, run, 'wait', 'b' * 64, job=job)
+        return check_receipt({'intent': intent, 'attempt': update_attempt(intent, 'ergora-campaign-check:' + update)})
+
+    pending = receipt({'status': 'queued'}, 'ef6f5ea1-b9c1-4918-ac9f-178802fd6aa8')
+    waits = {'wait': pending}
+    waiting = fixed_task_state(opening, start, run, {}, waits)
+    assert waiting['wait']['status'] == 'waiting_job' and waiting['wait']['waiting_receipt'] == pending
+    assert waiting['next']['status'] == 'waiting_dependencies'
+    terminal = {'status': 'succeeded', 'receipt_sha256': 'c' * 64, 'fixed_results_sha256': 'd' * 64}
+    completed_id = '4f2f29c3-5e22-446e-a6b4-21febdc545dc'
+    result = receipt({**terminal, 'waiting_receipt_sha256': identity(pending)}, completed_id)
+    complete = fixed_task_state(opening, start, run, {'wait': result}, waits)
+    assert complete['wait']['status'] == 'observed' and complete['wait']['waiting_receipt'] == pending
+    assert complete['next']['status'] == 'ready'
+    direct = receipt(terminal, completed_id)
+    assert fixed_task_state(opening, start, run, {'wait': direct})['wait']['waiting_receipt'] is None
+    with pytest.raises(ValueError, match='original waiting receipt'):
+        fixed_task_state(opening, start, run, {'wait': direct}, waits)
+
 
 @pytest.mark.skipif(not os.environ.get('ERGORA_TEST_TEMPORAL_BIN'), reason='Requires the optional local Temporal CLI')
 def test_frozen_tasks_observe_only_the_original_passing_fixed_check(tmp_path, monkeypatch):

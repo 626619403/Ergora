@@ -997,7 +997,7 @@ BudgetedJob.supervise = lost
 
 
 @pytest.mark.parametrize('case', ['stop-first-terminal', 'link-first', 'stop-first-checker',
-                                  'spawn-first', 'cross-boot', 'clock-discontinuity'])
+                                  'spawn-first', 'cross-boot', 'clock-discontinuity', 'rejected-pending-status'])
 def test_scoped_candidate_check_launch_and_terminal_boundaries(tmp_path, case):
     """Real scope gate and job owner with controlled order at the last effect."""
     pytest.importorskip('temporalio')
@@ -1078,6 +1078,26 @@ def stop():
 def ledger_state():
     with closing(original.ledger()) as db:
         return db.execute('SELECT state FROM jobs WHERE id=?', (job.job_id,)).fetchone()[0]
+
+if case == 'rejected-pending-status':
+    status = operate('status-fixed-check')
+    assert status['status'] == 'queued' and status['receipt_sha256'] is None
+    witness = STATE / 'rejected-envelopes' / (hashlib.sha256(str(path).encode()).hexdigest() + '.json')
+    publish(witness, {'request_file': str(path), 'error_type': 'Blocked',
+                      'detail': 'Original budget owner failed before attempt publication'})
+    before = {path: path.read_bytes() for path in STATE.rglob('*.json')}
+    assert operate('status-fixed-check') == status
+    strict = dict(payload, operation='status-fixed-check', verify_pending=True)
+    try:
+        asyncio.run(candidate_checks._operate(strict))
+    except original.Blocked as error:
+        assert str(error) == 'Original fixed check request was rejected by its executor'
+    else:
+        raise AssertionError('A rejected original request was admitted as pending')
+    assert {path: path.read_bytes() for path in STATE.rglob('*.json')} == before
+    assert not (job.folder / 'attempt.json').exists()
+    print(case, 'original pending request refused, ordinary historical status retained')
+    sys.exit()
 
 if case in ('cross-boot', 'clock-discontinuity'):
     if case == 'cross-boot':
