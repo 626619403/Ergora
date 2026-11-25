@@ -4,7 +4,7 @@ English · [Documentation](../README.md) · [Architecture contract](current.md)
 
 Ergora is a control plane for project-bound specialist Agents, workflow composition, formal software delivery, training experiments and reusable improvements. Definitions describe reusable behavior. Each operation freezes its own inputs, checks its execution authority and produces evidence under its original identity.
 
-This tour uses runtime revision `526483be1cd4c912cce7c443b4cfe132d4ca4381` and its `src` tree `07f321e7bfd9f8be982370623c6176b312130a4d` as the exact source reference. Packages, installed applications and local definition libraries have separate identities. The [current plan](../PLAN.md) and its delivery records track review, CI and installation status.
+This tour uses runtime revision `dd480e2b1c7c4d18c97108f6e4575d97e52ed73d` and its `src` tree `010ff07aba3239d5adf01ac21a0f18a6b5e9b2ab` as the exact source reference. Packages, installed applications and local definition libraries have separate identities. The [current plan](../PLAN.md) and its delivery records track review, CI and installation status.
 
 ## The whole system
 
@@ -23,20 +23,21 @@ flowchart TB
   Select --> Session["Prepared leaf or native project session<br/>agents.runs"]
   Select --> Dev["Formal task<br/>Explicit native root or nested invocation"]
   Select --> Train["Training experiments and finite controllers<br/>training.application"]
-  Select --> Campaign["Campaign operator CLI<br/>Record or stop a plan"]
+  Select --> Campaign["Campaign operator CLI<br/>Record, observe or stop"]
   Select --> Improve["Retrospectives and Skill evaluation<br/>improvement"]
 
   Check --> CheckJob["Registered executor<br/>Original fixed-check Job"]
   Graph --> GraphProof["Offline inspect-graph<br/>Saved recovery and historical Agent evidence"]
   Graph --> Gate["verify-fixed-check<br/>Receipt gate before advisory review"]
   CheckJob -. "receipt or bounded wait" .-> Gate
+  CheckJob -. "read original passing check" .-> Campaign
   Gate --> GraphProof
   Graph -. "Agent graph, saved proof or interrupted wait" .-> Resume["Opt-in resume-graph<br/>Acquire original lock and check saved cutoffs"]
   Resume --> GraphProof
   Session --> Turn["Original leaf result or Codex turn receipts"]
   Dev --> Six["Original Temporal six stages<br/>Exact approval and candidate evidence"]
   Train --> Runner["Original training executor<br/>Runner and experiment archive"]
-  Campaign --> CampaignRun["Original Temporal campaign<br/>Start, stop decision and terminal phase"]
+  Campaign --> CampaignRun["Original Temporal campaign<br/>Start, task evidence, STOP and closure"]
   Improve --> Eval["Trusted evaluation<br/>Explicit adoption"]
 
   GraphProof -.-> Recover["Read original IDs, receipts and outcomes"]
@@ -86,6 +87,8 @@ On Unix, `campaign create` binds an exact confirmed plan to the original publish
 
 `campaign stop` binds the local operator's confirmed request to the original first Run and scheduler. Before saving the stop attempt, the CLI checks that the current worker on the original queue can handle the Update. Readback follows the saved Update identity and verifies the stop decision independently of the original terminal phase. [Stop the campaign plan](../improvement/campaigns.md#stop-the-original-campaign-plan)
 
+A campaign can freeze up to eight tasks in a dependency DAG, each bound to one original fixed-check Job. The confirmed `campaign observe-check` command uses the fixed-check status reader to verify the passing Job, exact source identities and cleanup. The original Workflow records the observation after its prerequisites have been observed. Online status reads per-task readiness and receipts. After a lost reply, repeat the same command to read the saved Update. STOP and expiry close admission to new observations. The fixed-check executor retains control of the Job. [Record an original fixed check](../improvement/campaigns.md#record-an-original-fixed-check-for-a-task)
+
 ### One leaf or a native project session
 
 `composition run-input` explicitly runs one admitted leaf. Supply its prerequisite evidence with the prepared input. The backend validates the requested mode; fixed task MCP, when used, exposes the frozen resource table and records resource reads. Backend admission, delivered bytes, actual reading and model quality are separate observations. [Leaf calls](../definitions/workflows/leaf-calls.md)
@@ -134,7 +137,7 @@ PR/MR review also works without creating a formal development task. `development
 |Development and review|[application](../../src/ergora/development/application.py), [native](../../src/ergora/development/native.py), [runtime](../../src/ergora/development/runtime), [review](../../src/ergora/development/review), [verification](../../src/ergora/development/verification.py). Exact task/candidate decisions and trusted evidence.|
 |External sources|[issue backends](../../src/ergora/issues/backends.py), [snapshots](../../src/ergora/issues/snapshots.py), [writebacks](../../src/ergora/issues/writebacks.py). Platform identity, frozen context and attempted external effects.|
 |Training|[application](../../src/ergora/training/application.py), [execution protocol](../../src/ergora/training/execution_protocol.py), [runtime](../../src/ergora/training/runtime), [cycles](../../src/ergora/training/cycles.py), [rounds](../../src/ergora/training/rounds.py). Original experiments, finite controllers and observation links.|
-|Campaign operator records|[application](../../src/ergora/campaigns/application.py), [records](../../src/ergora/campaigns/records.py), [workflow](../../src/ergora/campaigns/workflow.py). Local operator plan, original Start and stop evidence, and terminal closure.|
+|Campaign operator records|[application](../../src/ergora/campaigns/application.py), [records](../../src/ergora/campaigns/records.py), [workflow](../../src/ergora/campaigns/workflow.py). Frozen operator plan, original Start, fixed-check observation and STOP, and terminal closure.|
 |Improvement|[retrospectives](../../src/ergora/improvement/retrospectives.py), [memory](../../src/ergora/improvement/memory.py), [evaluation](../../src/ergora/improvement/evaluation.py), [optimization](../../src/ergora/improvement/optimization.py), [adoption](../../src/ergora/improvement/skill_adoption.py). Generation, evaluation and explicit reuse.|
 |Persistence and live resources|[State](../../src/ergora/storage/state.py), [assets](../../src/ergora/storage/assets.py), [Git material](../../src/ergora/storage/git.py), [processes](../../src/ergora/runtime/processes.py), [budget clock](../../src/ergora/runtime/budget_clock.py), [GPU pool](../../src/ergora/runtime/gpu_pool.py). Durable control records, complete material and owned lifetimes.|
 |Native integration and operations|[resources](../../src/ergora/native/resources.py), [compiler](../../src/ergora/native/compiler.py), [registration](../../src/ergora/native/registration.py), [operations](../../src/ergora/operations). Source identity, isolated integration, diagnostics, services and coordinated backups.|
