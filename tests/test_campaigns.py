@@ -692,6 +692,93 @@ def test_campaign_fixed_task_plan_checks_exact_dag_and_source():
         validate_fixed_tasks([{**first, 'source': {**pending, 'pending': 1}}])
 
 
+def test_readback_guard_dispatch_uses_the_validated_registration_snapshot(registration, tmp_path, monkeypatch):
+    pytest.importorskip('temporalio')
+    from copy import deepcopy
+    from ergora.campaigns.readback import _guard
+    from ergora.campaigns.records import (CampaignFiles, FIXED_TASK_LOCATOR, attempt_document, check_intent,
+                                         check_receipt, identity, read_plan, readback_grant, readback_id,
+                                         result_document, update_attempt)
+    from ergora.development import native
+    from ergora.runtime import processes
+
+    state, definition = registration
+    registrations.register(state, definition, 0)
+    bound = projects.bind(state, 'demo', 'scheduler', {'tool': 'temporal', 'address': '127.0.0.1:1',
+                          'namespace': 'default', 'task_queue': 'private-test'}, 1)
+    source = dict.fromkeys(FIXED_TASK_LOCATOR, 'a' * 64)
+    source.update(project_revision=bound['revision'], candidate_sha='b' * 40, operation_id='check',
+                  pending=True, job_id='check-' + 'a' * 40 + '-' + 'b' * 24)
+    now = int(time.time())
+    task = {'task_id': 'wait', 'depends_on': [], 'source': source,
+            'readback': {'due_at': now - 1, 'deadline_at': now + 60}}
+    path = tmp_path / 'plan.json'
+    sha = plan_file(path, now + 90, tasks=[task])
+    plan = read_plan(path, sha)
+    files = CampaignFiles(state.root, 'demo', 'readback-snapshot')
+    files.ensure_directory()
+    opening = application._opening(files, bound['revision'], plan, sha,
+                                   application._selection(state, bound, bound['revision']))
+    run_id = 'ef6f5ea1-b9c1-4918-ac9f-178802fd6aa8'
+    attempt = attempt_document(opening, '4f2f29c3-5e22-446e-a6b4-21febdc545dc')
+    intent = check_intent(opening, identity(attempt), run_id, 'wait', 'c' * 64, job={'status': 'queued'})
+    waiting = {'intent': intent, 'attempt': update_attempt(intent,
+               'ergora-campaign-check:76b46055-eca1-42e6-9649-0f9adc562720')}
+    grant = readback_grant(opening, run_id, task, check_receipt(waiting))
+    files.write('start-intent', opening)
+    files.write('start-attempt', attempt)
+    files.write('start-result', result_document(opening, attempt, run_id))
+    files.write('wait-check-wait', waiting)
+    files.write('readback-attempt', {'grant': grant, 'activity_id': readback_id(grant),
+                                     'worker': processes.identity(os.getppid())})
+
+    changed = deepcopy(bound)
+    changed['revision'] += 1
+    changed_execution = changed['registration']['definition']['execution']
+    changed_execution['config_directory'] = str(tmp_path / 'changed-config')
+    changed_execution['state_directory'] = str(tmp_path / 'changed-state')
+    reads, dispatched = [], []
+
+    def concurrent_registration(*args):
+        reads.append(args[1])
+        return bound if len(reads) == 1 else changed
+
+    def capture(project, home, operation, payload, **kwargs):
+        dispatched.append((project, home, operation, payload))
+        raise ValueError('controlled boundary before native launch')
+
+    monkeypatch.setattr(State, 'project', concurrent_registration)
+    monkeypatch.setattr(native, 'task_fixed_candidate_check', capture)
+    with pytest.raises(ValueError, match='controlled boundary before native launch'):
+        _guard(state.root, 'demo', files.campaign)
+    assert reads == ['demo']
+    assert dispatched == [(bound, state.root, 'status-fixed-check', {'operation_id': 'check',
+                           'job_sha256': source['job_sha256'], 'verify_pending': True})]
+    assert not (files.directory / 'readback-result.json').exists()
+
+
+def test_campaign_one_pending_readback_window_is_frozen():
+    from ergora.campaigns.records import FIXED_TASK_LOCATOR, validate_plan
+
+    source = dict.fromkeys(FIXED_TASK_LOCATOR, 'a' * 64)
+    source.update(project_revision=7, candidate_sha='b' * 40, operation_id='check', pending=True,
+                  job_id='check-' + 'a' * 40 + '-' + 'b' * 24)
+    task = {'task_id': 'wait', 'depends_on': [], 'source': source, 'readback': {'due_at': 99, 'deadline_at': 100}}
+    plan = {'schema_version': 1, 'goal': 'Bound one read', 'acceptance': 'Read original evidence',
+            'baseline_commit': 'c' * 40, 'evidence_format': 'fixed-check', 'limits': {'expires_at': 100}, 'tasks': [task]}
+    validate_plan(plan)
+    with pytest.raises(ValueError, match='one original readback window'):
+        validate_plan({**plan, 'tasks': [task, {**task, 'task_id': 'other'}]})
+    with pytest.raises(ValueError, match='original expiry'):
+        validate_plan({**plan, 'limits': {'expires_at': 99}})
+    with pytest.raises(ValueError, match='one original readback window'):
+        validate_plan({**plan, 'tasks': [{**task, 'readback': {'due_at': 100, 'deadline_at': 100}}]})
+    pinned = {key: value for key, value in source.items() if key != 'pending'}
+    pinned.update(receipt_sha256='d' * 64, fixed_results_sha256='e' * 64)
+    with pytest.raises(ValueError, match='explicitly pending'):
+        validate_plan({**plan, 'tasks': [{**task, 'source': pinned}]})
+
+
 def test_pending_task_retains_exact_stage_receipts():
     from ergora.campaigns.records import check_intent, check_receipt, fixed_task_state, identity, update_attempt
 

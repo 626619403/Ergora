@@ -336,14 +336,14 @@ def task_candidate_verification(project: dict, home: Path, source: dict, *, dead
 
 
 def task_fixed_candidate_check(project: dict, home: Path, operation: str, payload: dict, *,
-                               deadline: float | None = None, stop_requested=None) -> dict:
+                               deadline: float | None = None, stop_requested=None, supervised_cleanup=None) -> dict:
     """Use the registered native runtime for one independent fixed-check operation."""
-    if deadline is None and stop_requested is None:
+    if deadline is None and stop_requested is None and supervised_cleanup is None:
         return _task_operation(project, home, 'candidate_checks', operation, payload, 20)
     if operation != 'status-fixed-check' or type(deadline) not in (int, float) or not math.isfinite(deadline):
         raise ValueError('Bounded fixed-check status requires an absolute monotonic deadline')
     return _task_operation(project, home, 'candidate_checks', operation, payload, 20,
-                           deadline=deadline, stop_requested=stop_requested)
+                           deadline=deadline, stop_requested=stop_requested, supervised_cleanup=supervised_cleanup)
 
 
 def task_fixed_check_proof(project: dict, home: Path, source: dict, review: dict, *, deadline: float,
@@ -400,14 +400,23 @@ def task_reconciliation(project: dict, home: Path, operation: str, payload: dict
     return _task_operation(project, home, 'reconciliation', operation, payload, timeout)
 
 
-def _bounded_task_read(command, home, request, environment, timeout, deadline, stop_requested, *, lock_fd=None):
+def _bounded_task_read(command, home, request, environment, timeout, deadline, stop_requested, *, lock_fd=None,
+                       supervised_cleanup=None):
     from ergora.runtime import processes
 
     with tempfile.TemporaryDirectory(prefix='ergora-task-read-') as temporary:
         output = Path(temporary) / 'reader'
-        result = processes.run(command, home, output, timeout, request, environment,
-                               deadline=deadline, stop_requested=stop_requested,
-                               **({'lock_fd': lock_fd} if lock_fd is not None else {}))
+        if supervised_cleanup is None:
+            result = processes.run(command, home, output, timeout, request, environment,
+                                   deadline=deadline, stop_requested=stop_requested,
+                                   **({'lock_fd': lock_fd} if lock_fd is not None else {}))
+        else:
+            def expired_or_stopped():
+                return time.monotonic() >= deadline or (stop_requested is not None and stop_requested())
+
+            result = processes.run(command, home, output, timeout, request, environment,
+                                   supervised=True, record_lifecycle=True, stop_requested=expired_or_stopped)
+            supervised_cleanup(json.loads((output / 'process-cleanup.json').read_bytes()))
         if result['status'] == 'cancelled':
             raise KeyboardInterrupt
         if result['status'] == 'timed_out' or time.monotonic() >= deadline:
@@ -423,7 +432,8 @@ def _bounded_task_read(command, home, request, environment, timeout, deadline, s
 
 
 def _task_operation(project: dict, home: Path, component: str, operation: str, payload: dict, timeout: int, *,
-                    deadline: float | None = None, stop_requested=None, lock_fd: int | None = None) -> dict:
+                    deadline: float | None = None, stop_requested=None, lock_fd: int | None = None,
+                    supervised_cleanup=None) -> dict:
     inspection = {'inspect-plan': 'Plan', 'inspect-events': 'Task event', 'inspect-job': 'Job evidence',
                   'read-candidate-verification': 'Candidate verification evidence',
                   'inspect-index': 'Task evidence index', 'inspect-amendment': 'Amendment checkpoint',
@@ -452,7 +462,8 @@ def _task_operation(project: dict, home: Path, component: str, operation: str, p
             request['deadline'] = deadline
             result = _bounded_task_read(command, home, json.dumps(request, allow_nan=False), environment,
                                         timeout, deadline, stop_requested,
-                                        **({'lock_fd': lock_fd} if lock_fd is not None else {}))
+                                        **({'lock_fd': lock_fd} if lock_fd is not None else {}),
+                                        **({'supervised_cleanup': supervised_cleanup} if supervised_cleanup is not None else {}))
     except subprocess.TimeoutExpired as error:
         if operation.startswith('source-'):
             raise ValueError('Design source process timed out; inspect saved source state before recovering this operation') from error

@@ -27,6 +27,8 @@ FIXED_CHECK_TERMINAL = ('receipt_sha256', 'fixed_results_sha256')
 FIXED_TASK_LOCATOR = (*FIXED_CHECK_LOCATOR, 'project_revision', 'job_id', 'authorization_sha256', 'verification_sha256')
 FIXED_TASK_SOURCE = (*FIXED_TASK_LOCATOR, *FIXED_CHECK_TERMINAL)
 PENDING_JOB_STATES = ('queued', 'attempted')
+READBACK_CLEANUP_SECONDS = 0.8
+READBACK_ACTIVITY = 'ergora_campaign_fixed_check_readback'
 # Last whole UTC second supported by both Python datetime and protobuf Timestamp.
 MAX_EXPIRY = 253_402_300_799
 
@@ -72,6 +74,9 @@ def validate_plan(plan):
         raise ValueError('Campaign expiry requires a representable absolute UTC Unix second')
     if 'tasks' in plan:
         validate_fixed_tasks(plan['tasks'])
+        task = readback_task({'plan': plan})
+        if task is not None and task['readback']['deadline_at'] > limits['expires_at']:
+            raise ValueError('Campaign readback window exceeds the original expiry')
     # Also rejects unpaired Unicode surrogates before an intent can be saved.
     identity(plan)
 
@@ -80,8 +85,9 @@ def validate_fixed_tasks(tasks):
     if not isinstance(tasks, list) or not 1 <= len(tasks) <= MAX_FIXED_TASKS:
         raise ValueError(f'Campaign plan requires 1–{MAX_FIXED_TASKS} original fixed-check tasks when configured')
     dependencies = {}
+    scheduled = False
     for task in tasks:
-        if not isinstance(task, dict) or task.keys() != {'task_id', 'depends_on', 'source'}:
+        if not isinstance(task, dict) or task.keys() - {'readback'} != {'task_id', 'depends_on', 'source'}:
             raise ValueError('Campaign task requires task_id, depends_on and an exact fixed-check source')
         task_id, parents, source = task['task_id'], task['depends_on'], task['source']
         if not safe_id(task_id) or task_id in dependencies:
@@ -100,6 +106,13 @@ def validate_fixed_tasks(tasks):
             validate_fixed_check_locator(locator)
         else:
             validate_fixed_check_source({**locator, **{key: source[key] for key in FIXED_CHECK_TERMINAL}})
+        if 'readback' in task:
+            window = task['readback']
+            if (scheduled or not pending or not isinstance(window, dict) or window.keys() != {'due_at', 'deadline_at'}
+                    or type(window['due_at']) is not int or type(window['deadline_at']) is not int
+                    or not 1 <= window['due_at'] < window['deadline_at'] <= MAX_EXPIRY):
+                raise ValueError('Campaign admits one original readback window on an explicitly pending task')
+            scheduled = True
         dependencies[task_id] = parents
     if any(parent not in dependencies for parents in dependencies.values() for parent in parents):
         raise ValueError('Campaign task dependency is absent from the frozen plan')
@@ -115,6 +128,45 @@ def fixed_tasks(opening):
 
 def has_pending_checks(opening):
     return any(task['source'].get('pending') is True for task in fixed_tasks(opening).values())
+
+
+def readback_task(opening):
+    return next((task for task in opening['plan'].get('tasks', ()) if 'readback' in task), None)
+
+
+def readback_grant(opening, run_id, task, waiting):
+    return {'opening_sha256': identity(opening), 'run_id': run_id, 'task_id': task['task_id'],
+            'waiting_receipt_sha256': identity(waiting), **task['readback']}
+
+
+def readback_id(grant):
+    return 'fixed-check-readback:' + identity(grant)
+
+
+def checked_readback(opening, run_id, waits, observation):
+    task = readback_task(opening)
+    if not isinstance(observation, dict):
+        raise ValueError('Campaign readback is missing its original state')
+    status = observation.get('status')
+    if observation == {'status': 'not_armed'}:
+        return observation
+    waiting = waits.get(task['task_id'])
+    fields = {'status', 'activity_id', 'waiting_receipt_sha256'}
+    if (waiting is None or observation.get('waiting_receipt_sha256') != identity(waiting)
+            or observation.get('activity_id') != readback_id(readback_grant(opening, run_id, task, waiting))):
+        raise ValueError('Campaign readback differs from its original wait and window')
+    if status == 'available':
+        proof = {*FIXED_CHECK_TERMINAL, 'observation_sha256', 'reader_cleanup_sha256'}
+        if observation.keys() == fields | proof and all(sha256(observation[k]) for k in proof):
+            return observation
+    elif status == 'unknown':
+        if observation.keys() == fields | {'reason'} and observation['reason'] in (
+                'campaign_closed', 'read_window_expired', 'original_read_unavailable', 'original_still_pending',
+                'task_already_observed'):
+            return observation
+    elif status in ('armed', 'scheduled') and observation.keys() == fields:
+        return observation
+    raise ValueError('Campaign readback state differs from its original evidence')
 
 
 def original_check_evidence(opening, task, observation):

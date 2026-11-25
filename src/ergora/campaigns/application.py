@@ -318,9 +318,11 @@ async def _require_ready_check(runtime, handle, description, opening, attempt, t
 
 
 def _require_check_project(state, opening):
-    selected = _selection(state, state.project(opening['project']), opening['project_revision'])
+    project = state.project(opening['project'])
+    selected = _selection(state, project, opening['project_revision'])
     if any(opening[key] != value for key, value in selected.items()):
         raise ValueError('Original project registration or scheduler changed before task observation')
+    return project
 
 
 async def _read_check(runtime, client, handle, command):
@@ -486,7 +488,7 @@ async def worker(state: State, project: str, campaign: str) -> dict:
         return {**await _observe(runtime, output, client, handle, description, opening, stop_records, True),
                 'worker_status': 'already_closed'}
     try:
-        worker_status = await runtime.run_worker(client, handle, opening)
+        worker_status = await runtime.run_worker(client, handle, opening, files, attempt)
     except (TimeoutError, runtime.RPCError) as error:
         raise ValueError('Campaign worker exited without observing original closure') from error
     if worker_status == 'closed':

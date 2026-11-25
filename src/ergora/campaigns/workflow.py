@@ -15,16 +15,18 @@ from temporalio.client import (
     Client, WorkflowContinuedAsNewError, WorkflowExecutionStatus, WorkflowFailureError, WorkflowQueryFailedError,
     WorkflowQueryRejectedError,
 )
-from temporalio.common import QueryRejectCondition, WorkflowIDConflictPolicy, WorkflowIDReusePolicy
+from temporalio.common import QueryRejectCondition, RetryPolicy, WorkflowIDConflictPolicy, WorkflowIDReusePolicy
 from temporalio.converter import WorkflowSerializationContext
-from temporalio.exceptions import ApplicationError
+from temporalio.exceptions import ActivityError, ApplicationError
 from temporalio.service import RPCError, RPCStatusCode
 from temporalio.worker import Worker
 
 with workflow.unsafe.imports_passed_through():
     from ergora.campaigns.records import (
-        ATTEMPT_MEMO, OPENING_MEMO, WORKFLOW_TYPE, check_receipt, fixed_task_state, fixed_tasks, has_pending_checks, identity,
-        require_check_receipt, require_stop_receipt, sha256, stop_intent, update_receipt, validate_check_command,
+        ATTEMPT_MEMO, OPENING_MEMO, READBACK_ACTIVITY, READBACK_CLEANUP_SECONDS, WORKFLOW_TYPE,
+        check_receipt, checked_readback, fixed_task_state, fixed_tasks, has_pending_checks, identity,
+        original_check_evidence, readback_grant, readback_id, readback_task, require_check_receipt,
+        require_stop_receipt, sha256, stop_intent, update_receipt, validate_check_command,
         validate_stop_attempt,
     )
 
@@ -50,6 +52,7 @@ class Campaign:
         self.expiry_timer = None
         self.check_receipts = {}
         self.check_waits = {}
+        self.readback = {'status': 'not_armed'} if readback_task(opening) is not None else None
         info = workflow.info()
         if (info.workflow_id != opening['workflow_id'] or info.run_id != info.first_execution_run_id
                 or info.namespace != opening['scheduler']['namespace']
@@ -59,18 +62,85 @@ class Campaign:
 
     @workflow.run
     async def run(self, opening: dict) -> dict:
-        remaining = opening['plan']['limits']['expires_at'] - workflow.time()
-        if remaining > 0 and self.stop_decision is None:
-            self.expiry_timer = asyncio.create_task(workflow.sleep(remaining))
-            try:
-                await self.expiry_timer
-            except asyncio.CancelledError:
-                if self.stop_decision is None:
-                    raise
+        task = readback_task(opening)
+        readback = asyncio.create_task(self._one_readback(task)) if task is not None else None
+        try:
+            remaining = opening['plan']['limits']['expires_at'] - workflow.time()
+            if remaining > 0 and self.stop_decision is None:
+                self.expiry_timer = asyncio.create_task(workflow.sleep(remaining))
+                try:
+                    await self.expiry_timer
+                except asyncio.CancelledError:
+                    if self.stop_decision is None:
+                        raise
+        finally:
+            if readback is not None:
+                readback.cancel()
+                await asyncio.gather(readback, return_exceptions=True)
+                if self.readback['status'] in ('armed', 'scheduled'):
+                    self._readback_unknown('campaign_closed')
         if self.stop_decision is not None:
             await workflow.wait_condition(workflow.all_handlers_finished)
             return {**self._state('stopped'), 'stop_receipt_sha256': identity(self.stop_decision)}
         return self._state('expired')
+
+    def _readback_unknown(self, reason):
+        self.readback = {**self.readback, 'status': 'unknown', 'reason': reason}
+
+    async def _one_readback(self, task):
+        task_id = task['task_id']
+        await workflow.wait_condition(lambda: task_id in self.check_waits or task_id in self.check_receipts)
+        if task_id in self.check_receipts or self.stop_decision is not None:
+            return
+        grant = readback_grant(self.opening, workflow.info().run_id, task, self.check_waits[task_id])
+        activity_id = readback_id(grant)
+        self.readback = {'status': 'armed', 'activity_id': activity_id,
+                         'waiting_receipt_sha256': grant['waiting_receipt_sha256']}
+        delay = grant['due_at'] - workflow.time()
+        if delay > 0:
+            await workflow.sleep(delay)
+        remaining = grant['deadline_at'] - workflow.time()
+        if self.stop_decision is not None:
+            self._readback_unknown('campaign_closed')
+        elif task_id in self.check_receipts:
+            self._readback_unknown('task_already_observed')
+        elif remaining <= READBACK_CLEANUP_SECONDS:
+            self._readback_unknown('read_window_expired')
+        else:
+            await self._observe_readback(task, grant, activity_id, remaining)
+
+    async def _observe_readback(self, task, grant, activity_id, remaining):
+        self.readback['status'] = 'scheduled'
+        try:
+            result = await workflow.execute_activity(READBACK_ACTIVITY, grant, activity_id=activity_id,
+                schedule_to_close_timeout=timedelta(seconds=remaining), start_to_close_timeout=timedelta(seconds=remaining),
+                heartbeat_timeout=timedelta(seconds=min(2, remaining)), retry_policy=RetryPolicy(maximum_attempts=1),
+                cancellation_type=workflow.ActivityCancellationType.TRY_CANCEL, result_type=dict)
+        except ActivityError:
+            self._readback_unknown('original_read_unavailable')
+            return
+        if self.stop_decision is not None:
+            self._readback_unknown('campaign_closed')
+            return
+        if workflow.time() >= grant['deadline_at']:
+            self._readback_unknown('read_window_expired')
+            return
+        if task['task_id'] in self.check_receipts:
+            self._readback_unknown('task_already_observed')
+            return
+        try:
+            if (result['activity_id'] != activity_id or not sha256(result['reader_cleanup_sha256'])):
+                raise ValueError('Original fixed-check readback result identity differs')
+            evidence, job = original_check_evidence(self.opening, task, result['observation'])
+        except (KeyError, TypeError, ValueError):
+            self._readback_unknown('original_read_unavailable')
+            return
+        if job['status'] != 'succeeded':
+            self._readback_unknown('original_still_pending')
+            return
+        self.readback = {**self.readback, 'status': 'available', 'observation_sha256': evidence,
+                         'receipt_sha256': job['receipt_sha256'], 'fixed_results_sha256': job['fixed_results_sha256'],
+                         'reader_cleanup_sha256': result['reader_cleanup_sha256']}
 
     def _state(self, phase):
         result = record_state(self.opening, workflow.info().run_id, phase)
@@ -78,6 +148,8 @@ class Campaign:
             result['check_receipts'] = self.check_receipts.copy()
         if has_pending_checks(self.opening):
             result['check_waits'] = self.check_waits.copy()
+        if self.readback is not None:
+            result['timer_readback'] = self.readback.copy()
         return result
 
     @workflow.update(name=CHECK_UPDATE)
@@ -366,6 +438,10 @@ def _observed_state(observed, expected, opening, start_attempt_sha256, temporal_
                 return {'temporal_status': temporal_status.name, 'workflow_state_status': 'unavailable'}
             active = (admitting and time.time() < expected['expires_at']
                       and (stop is None or stop['decision'] != 'accepted'))
+        selected = readback_task(opening)
+        if selected is not None:
+            tasks[selected['task_id']]['readback_observation'] = checked_readback(
+                opening, expected['run_id'], waits, observed.pop('timer_readback', None))
         extra['tasks'] = {task_id: {**task, 'eligible': active and task['status'] in ('ready', 'waiting_job')}
                           for task_id, task in tasks.items()}
     elif 'tasks' in opening['plan']:
@@ -375,7 +451,7 @@ def _observed_state(observed, expected, opening, start_attempt_sha256, temporal_
     return {'temporal_status': temporal_status.name, 'workflow_state_status': 'observed', 'workflow_state': observed, **extra}
 
 
-async def run_worker(client, handle, opening):
+async def run_worker(client, handle, opening, files, attempt):
     """Poll only the saved queue until the original run closes, or the foreground worker stops."""
     stopped = asyncio.Event()
     loop = asyncio.get_running_loop()
@@ -388,8 +464,13 @@ async def run_worker(client, handle, opening):
             return await handle.result(follow_runs=False)
 
     try:
-        worker = Worker(client, task_queue=opening['task_queue'], workflows=[Campaign],
-                        graceful_shutdown_timeout=timedelta(0))
+        activities = []
+        if readback_task(opening) is not None:
+            from ergora.campaigns.readback import FixedCheckReadback
+
+            activities = [FixedCheckReadback(files, opening, attempt, handle.run_id).read]
+        worker = Worker(client, task_queue=opening['task_queue'], workflows=[Campaign], activities=activities,
+                        graceful_shutdown_timeout=timedelta(seconds=READBACK_CLEANUP_SECONDS if activities else 0))
         async with worker:
             closing = asyncio.create_task(wait_for_completion())
             stopping = asyncio.create_task(stopped.wait())
