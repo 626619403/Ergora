@@ -78,7 +78,7 @@ def artifact(directory: Path, name: str, byte_limit: int, *, confirm_durable: bo
         raise ValueError("Run artifact requires an ordinary file: " + name)
     directory_stamp = directory_identity(directory) if confirm_durable else None
     stream = (os.fdopen(os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK), 'rb')
-              if confirm_durable else path.open('rb'))
+              if os.name == 'posix' else path.open('rb'))
     with stream:
         before = os.fstat(stream.fileno())
         if not stat.S_ISREG(before.st_mode):

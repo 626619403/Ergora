@@ -809,8 +809,24 @@ raise SystemExit(main(sys.argv[6:]))
         project = state.project('demo')
         projects.set_correction_suggestions(state, 'demo', False, project['revision'])
     elif case == 'expired':
-        deadline = json.loads(original_budget)['deadline_monotonic_ns'] / 1_000_000_000
+        deadline_ns = json.loads(original_budget)['deadline_monotonic_ns']
+        deadline = deadline_ns / 1_000_000_000
         time.sleep(max(0, deadline - time.monotonic()) + .05)
+        inspected = subprocess.run(command('inspect-graph', *common), env=env,
+                                   capture_output=True, text=True, timeout=15)
+        assert inspected.returncode == 0, inspected.stdout + inspected.stderr
+        (tmp_path / 'expired-inspection.json').write_text(inspected.stdout, encoding='utf-8')
+        observation = json.loads(inspected.stdout)
+        assert observation['graph_receipt']['status'] == 'incomplete'
+        assert observation['graph_receipt']['sha256'] == hashlib.sha256(original_receipt).hexdigest()
+        assert observation['recovery']['authorization']['state'] == 'corroborated'
+        assert observation['recovery']['clock']['state'] == 'expired'
+        assert observation['recovery']['clock']['deadline_monotonic_ns'] == deadline_ns
+        assert observation['recovery']['fixed_check']['state'] == 'not_applicable'
+        observed, = observation['agent_attempts']
+        assert observed['run_id'] == first['run_id']
+        assert observed['original_run']['result']['sha256'] == first['result_sha256']
+        unchanged()
 
     resumed = resume(clock='jump' if case == 'clock' else 'actual')
     diagnostics = {'unknown': 'Unknown agent run', 'clock': 'clock discontinuity',
@@ -896,6 +912,31 @@ def _assert_resumed_route(settled, saved, choice, original, repeated, calls, tas
     assert {row['id'] for row in agent_runs.runs(state, 'demo')} == {leaf['run_id'] for leaf in settled['leaves']}
 
 
+@pytest.mark.skipif(not all(hasattr(os, flag) for flag in ('O_NOFOLLOW', 'O_NONBLOCK', 'O_ACCMODE')),
+                    reason='POSIX read-only descriptor flags are unavailable')
+def test_nondurable_artifact_read_opens_an_ordinary_file_with_guarded_flags(tmp_path, monkeypatch):
+    witness = tmp_path / 'recovery.json'
+    original = b'{"schema_version": 2}\n'
+    witness.write_bytes(original)
+    open_descriptor = os.open
+    opened = []
+
+    def observe_open(path, flags, *args, **kwargs):
+        if Path(path) == witness:
+            opened.append(flags)
+        return open_descriptor(path, flags, *args, **kwargs)
+
+    def forbidden_sync(*args, **kwargs):
+        pytest.fail('Local observation attempted durable confirmation')
+
+    monkeypatch.setattr(os, 'open', observe_open)
+    monkeypatch.setattr(os, 'fsync', forbidden_sync)
+    assert native_sources.artifact(tmp_path, witness.name, len(original)) == original
+    assert len(opened) == 1
+    guarded = os.O_NOFOLLOW | os.O_NONBLOCK
+    assert opened[0] & guarded == guarded and opened[0] & os.O_ACCMODE == os.O_RDONLY
+
+
 def test_inspect_graph_joins_original_attempts_after_a_lost_reply(parallel_graph, tmp_path, monkeypatch, capsys):
     receipt, witnesses, state = parallel_graph(2, 2, 1)
     directory = tmp_path / 'run'
@@ -928,7 +969,8 @@ def test_inspect_graph_joins_original_attempts_after_a_lost_reply(parallel_graph
     receipt_path.write_text(json.dumps(before_publication), encoding='utf-8')
     staged_receipt = receipt_path.with_name('staged.json')
     staged_receipt.write_bytes(raw)
-    open_path = Path.open
+    open_owner = os if os.name == 'posix' else Path
+    open_path = open_owner.open
 
     def open_after_publication(path, *args, **kwargs):
         if path == receipt_path and staged_receipt.exists():
@@ -936,7 +978,7 @@ def test_inspect_graph_joins_original_attempts_after_a_lost_reply(parallel_graph
         return open_path(path, *args, **kwargs)
 
     with monkeypatch.context() as replacing:
-        replacing.setattr(Path, 'open', open_after_publication)
+        replacing.setattr(open_owner, 'open', open_after_publication)
         assert main(argv) == 0
     observed = json.loads(capsys.readouterr().out)
     assert observed['graph_receipt']['sha256'] == hashlib.sha256(raw).hexdigest()

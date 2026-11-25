@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import stat
 from sqlite3 import Error as StateError
 import tempfile
 from threading import Event
@@ -117,6 +118,72 @@ def _route_record(node, choice, source):
     return {'instance': node['path'], 'choice': choice, 'eligible': node['branches'], 'selected': selected,
             'skipped': [path for path in node['branches'] if path != selected],
             'source': {key: source[key] for key in ('instance', 'run_id', 'input_digest', 'result_sha256')}}
+
+
+def _fixed_read_attempt(receipt, recovery, review, path, source, started):
+    waiting = 'wait_seconds' in source
+    window = source['wait_seconds'] if waiting else development_native.FIXED_CHECK_PROOF_TIMEOUT
+    cutoff = min(recovery['deadline_monotonic_ns'], started + window * 1_000_000_000)
+    return {'schema_version': 1, 'instance': path, 'recovery_sha256': receipt['recovery_sha256'],
+            'mode': 'wait' if waiting else 'completed', 'source': source, 'source_sha256': native_sources.sha(source),
+            'review': review, 'boot_id': recovery['clock']['boot_id'],
+            'started_monotonic_ns': started, 'deadline_monotonic_ns': cutoff}
+
+
+def _check_fixed_proof(receipt, review, source, evidence):
+    expected = {**source, **review, 'status': 'validated', 'project': receipt['project'],
+                'project_revision': receipt['project_revision']}
+    digests = {'authorization_sha256', 'verification_sha256'}
+    if 'wait_seconds' in source:
+        digests.update(_FIXED_OUTPUT_DIGESTS)
+    if (not isinstance(evidence, dict) or evidence.keys() != expected.keys() | {'job_id', 'fixed_check_ids'} | digests
+            or any(type(evidence[key]) is not type(value) or evidence[key] != value for key, value in expected.items())
+            or not isinstance(evidence['job_id'], str) or not evidence['job_id']
+            or any(not isinstance(evidence[key], str) or re.fullmatch('[a-f0-9]{64}', evidence[key]) is None
+                   for key in digests)
+            or not isinstance(evidence['fixed_check_ids'], list)
+            or not all(isinstance(key, str) for key in evidence['fixed_check_ids'])):
+        raise native_sources.ArtifactIdentityError('Saved fixed-check proof differs from its original locator or review binding')
+
+
+def _fixed_read_completion(attempt, evidence, validated, result_limit):
+    return {'schema_version': 1, 'attempt_sha256': native_sources.sha(attempt), 'evidence': evidence,
+            'evidence_sha256': hashlib.sha256(_bounded_json(evidence, result_limit)).hexdigest(),
+            'validated_monotonic_ns': validated}
+
+
+def _fixed_attempt_progress(receipt, recovery, review, gate, source, attempt, *, now_ns=None):
+    started = attempt.get('started_monotonic_ns') if isinstance(attempt, dict) else None
+    graph_start = recovery['deadline_monotonic_ns'] - receipt['timeout'] * 1_000_000_000
+    detail = 'Saved fixed-check read attempt differs from its original cutoff or authorization'
+    if type(started) is not int or started < graph_start or (now_ns is not None and started > now_ns):
+        raise ValueError(detail)
+    if native_sources.encode(attempt) != native_sources.encode(_fixed_read_attempt(receipt, recovery, review, gate, source, started)):
+        raise native_sources.ArtifactIdentityError(detail)
+    return {'instance': gate, 'source': source, 'status': 'attempted', 'attempt_sha256': native_sources.sha(attempt)}
+
+
+def _check_attempted_progress(receipt, record, expected):
+    if receipt.get('leaves'):
+        raise native_sources.ArtifactIdentityError('Saved fixed-check read is still attempted with dependent work already recorded')
+    if native_sources.encode(record) != native_sources.encode(expected):
+        raise native_sources.ArtifactIdentityError('Saved verification progress differs from the original fixed-check witnesses')
+
+
+def _fixed_completion_tick(attempt, completion):
+    validated = completion.get('validated_monotonic_ns') if isinstance(completion, dict) else None
+    if type(validated) is not int or not attempt['started_monotonic_ns'] <= validated < attempt['deadline_monotonic_ns']:
+        raise ValueError('Saved fixed-check proof was not validated within its original read deadline')
+    return validated
+
+
+def _fixed_completed_progress(receipt, recovery, review, attempt, expected, completion, validated):
+    evidence = completion.get('evidence')
+    _check_fixed_proof(receipt, review, expected['source'], evidence)
+    original = _fixed_read_completion(attempt, evidence, validated, recovery['result_limit'])
+    if native_sources.encode(completion) != native_sources.encode(original):
+        raise native_sources.ArtifactIdentityError('Saved fixed-check completion differs from its original proof')
+    return {**expected, 'status': 'validated', 'evidence': evidence, 'completion_sha256': native_sources.sha(completion)}
 
 
 class _GraphRun:
@@ -306,42 +373,12 @@ class _GraphRun:
         self.result_bytes += result['bytes']
         return {'result': result['document']}
 
-    def fixed_read_attempt(self, path, source, started):
-        waiting = 'wait_seconds' in source
-        window = source['wait_seconds'] if waiting else development_native.FIXED_CHECK_PROOF_TIMEOUT
-        cutoff = min(self.recovery['deadline_monotonic_ns'], started + window * 1_000_000_000)
-        return {'schema_version': 1, 'instance': path, 'recovery_sha256': self.receipt['recovery_sha256'],
-                'mode': 'wait' if waiting else 'completed', 'source': source, 'source_sha256': native_sources.sha(source),
-                'review': self.fixed_review, 'boot_id': self.recovery['clock']['boot_id'],
-                'started_monotonic_ns': started, 'deadline_monotonic_ns': cutoff}
-
     def check_fixed_read_cutoff(self, attempt):
         self.check_active()
         now = time.monotonic_ns()
         if now >= attempt['deadline_monotonic_ns']:
             raise TimeoutError('The original fixed-check read deadline expired')
         return now
-
-    def check_fixed_proof(self, source, evidence):
-        expected = {**source, **self.fixed_review, 'status': 'validated', 'project': self.project['id'],
-                    'project_revision': self.project['revision']}
-        digests = {'authorization_sha256', 'verification_sha256'}
-        if 'wait_seconds' in source:
-            digests.update(_FIXED_OUTPUT_DIGESTS)
-        if (not isinstance(evidence, dict) or evidence.keys() != expected.keys() | {
-                'job_id', 'fixed_check_ids'} | digests
-                or any(type(evidence[key]) is not type(value) or evidence[key] != value for key, value in expected.items())
-                or not isinstance(evidence['job_id'], str) or not evidence['job_id']
-                or any(not isinstance(evidence[key], str) or re.fullmatch('[a-f0-9]{64}', evidence[key]) is None
-                       for key in digests)
-                or not isinstance(evidence['fixed_check_ids'], list)
-                or not all(isinstance(key, str) for key in evidence['fixed_check_ids'])):
-            raise ValueError('Saved fixed-check proof differs from its original locator or review binding')
-
-    def fixed_read_completion(self, attempt, evidence, validated):
-        return {'schema_version': 1, 'attempt_sha256': native_sources.sha(attempt), 'evidence': evidence,
-                'evidence_sha256': hashlib.sha256(_bounded_json(evidence, self.result_limit)).hexdigest(),
-                'validated_monotonic_ns': validated}
 
     def verify_evidence(self, path, source):
         from ergora.development.application import read_candidate_verification, read_fixed_check_proof
@@ -352,7 +389,7 @@ class _GraphRun:
             record = {'instance': path, 'source': source, 'status': 'attempted'}
             attempt = None
             if self.recovery is not None:
-                attempt = self.fixed_read_attempt(path, source, time.monotonic_ns())
+                attempt = _fixed_read_attempt(self.receipt, self.recovery, self.fixed_review, path, source, time.monotonic_ns())
                 _write_recovery_record(self.directory, _FIXED_READ_ATTEMPT, attempt)
                 record['attempt_sha256'] = native_sources.sha(attempt)
             reads.append(record)
@@ -373,8 +410,8 @@ class _GraphRun:
             self.result_bytes += len(_bounded_json(evidence, self.result_limit - self.result_bytes))
             self.check_active()
             if attempt is not None:
-                self.check_fixed_proof(source, evidence)
-                completion = self.fixed_read_completion(attempt, evidence, self.check_fixed_read_cutoff(attempt))
+                _check_fixed_proof(self.receipt, self.fixed_review, source, evidence)
+                completion = _fixed_read_completion(attempt, evidence, self.check_fixed_read_cutoff(attempt), self.result_limit)
                 _write_recovery_record(self.directory, _FIXED_READ_COMPLETE, completion, preserve_order=True)
                 record['completion_sha256'] = native_sources.sha(completion)
         except TimeoutError:
@@ -405,20 +442,14 @@ class _GraphRun:
         except FileNotFoundError as error:
             raise ValueError('Recovery requires the immutable original fixed-check read attempt') from error
         source = inputs['check']
-        started = attempt.get('started_monotonic_ns') if isinstance(attempt, dict) else None
-        graph_start = self.recovery['deadline_monotonic_ns'] - self.receipt['timeout'] * 1_000_000_000
-        if (type(started) is not int or not graph_start <= started <= time.monotonic_ns()
-                or native_sources.encode(attempt) != native_sources.encode(self.fixed_read_attempt(gate, source, started))):
-            raise ValueError('Saved fixed-check read attempt differs from its original cutoff or authorization')
+        expected = _fixed_attempt_progress(self.receipt, self.recovery, self.fixed_review, gate, source, attempt,
+                                           now_ns=time.monotonic_ns())
         record, = reads
-        expected = {'instance': gate, 'source': source, 'status': 'attempted',
-                    'attempt_sha256': native_sources.sha(attempt)}
         pending = record.get('status') == 'attempted'
         if pending:
-            if self.receipt.get('leaves') or any(path.name.startswith(('input-', 'reservation-')) for path in self.directory.iterdir()):
+            _check_attempted_progress(self.receipt, record, expected)
+            if any(path.name.startswith(('input-', 'reservation-')) for path in self.directory.iterdir()):
                 raise ValueError('Saved fixed-check read is still attempted with dependent work already recorded')
-            if native_sources.encode(record) != native_sources.encode(expected):
-                raise ValueError('Saved verification progress differs from the original fixed-check witnesses')
         if not os.path.lexists(self.directory / _FIXED_READ_COMPLETE):
             if not pending or attempt['mode'] != 'wait':
                 raise ValueError('Recovery requires the original completed fixed-check proof')
@@ -434,19 +465,14 @@ class _GraphRun:
             return None
         # A present completion must corroborate the proof, including after an interrupted write.
         completion = native_sources.packet(self.directory, _FIXED_READ_COMPLETE, confirm_durable=True)
-        validated = completion.get('validated_monotonic_ns') if isinstance(completion, dict) else None
-        if type(validated) is not int or not started <= validated < attempt['deadline_monotonic_ns']:
-            raise ValueError('Saved fixed-check proof was not validated within its original read deadline')
+        validated = _fixed_completion_tick(attempt, completion)
         if validated > self.check_fixed_read_cutoff(attempt):
             raise ValueError('Saved fixed-check proof validation time is in the future')
-        evidence = completion.get('evidence')
-        self.check_fixed_proof(source, evidence)
-        if native_sources.encode(completion) != native_sources.encode(self.fixed_read_completion(attempt, evidence, validated)):
-            raise ValueError('Saved fixed-check completion differs from its original proof')
-        validated_record = {**expected, 'status': 'validated', 'evidence': evidence,
-                            'completion_sha256': native_sources.sha(completion)}
+        validated_record = _fixed_completed_progress(self.receipt, self.recovery, self.fixed_review,
+                                                     attempt, expected, completion, validated)
         if not pending and native_sources.encode(record) != native_sources.encode(validated_record):
             raise ValueError('Saved verification progress differs from the original fixed-check witnesses')
+        evidence = validated_record['evidence']
         self.result_bytes += len(_bounded_json(evidence, self.result_limit - self.result_bytes))
         self.completed[gate] = {'result': evidence}
         return attempt, record, validated_record
@@ -720,17 +746,42 @@ def _execute_graph(run, inputs, composition):
     return receipt
 
 
-def _graph_deadline(recovery, timeout):
+def _saved_graph_deadline(recovery, timeout, *, now_ns=None):
     clock, deadline_ns = recovery['clock'], recovery['deadline_monotonic_ns']
     if (not isinstance(clock, dict) or clock.keys() != set(budget_clock.FIELDS)
             or type(deadline_ns) is not int or deadline_ns < timeout * 1_000_000_000
-            or time.monotonic_ns() + timeout * 1_000_000_000 < deadline_ns):
+            or (now_ns is not None and now_ns + timeout * 1_000_000_000 < deadline_ns)):
         raise ValueError('Saved graph clock or deadline is invalid')
     budget_clock.validate(clock, timeout)
-    deadline = deadline_ns / 1_000_000_000
+    return deadline_ns / 1_000_000_000
+
+
+def _graph_deadline(recovery, timeout):
+    deadline = _saved_graph_deadline(recovery, timeout, now_ns=time.monotonic_ns())
+    clock = recovery['clock']
     if time.monotonic() >= deadline or budget_clock.remaining(clock, timeout) <= 0:
         raise TimeoutError('The original workflow deadline expired')
     return deadline
+
+
+def _check_recovery_authority(receipt, recovery, directory, state_home, owner_identity):
+    detail = 'Recovery authorization differs from the original graph, directory or State home'
+    if (not isinstance(recovery, dict) or recovery.keys() != {
+            'schema_version', 'clock', 'deadline_monotonic_ns', 'result_limit', 'directory', 'state_home',
+            'authority_sha256', 'owner_identity'}
+            or type(recovery['schema_version']) is not int or recovery['schema_version'] != 2):
+        raise ValueError(detail)
+    if (recovery['directory'] != str(directory) or recovery['state_home'] != str(state_home)
+            or native_sources.encode(recovery['owner_identity']) != native_sources.encode(owner_identity)
+            or recovery['authority_sha256'] != _graph_authority_sha(receipt)
+            or receipt.get('recovery_sha256') != native_sources.sha(recovery)):
+        raise native_sources.ArtifactIdentityError(detail)
+
+
+def _check_recovery_result_limit(recovery):
+    limit = recovery['result_limit']
+    if type(limit) is not int or not 1 <= limit <= _RESULT_LIMIT:
+        raise ValueError('Saved graph result capacity is unsupported')
 
 
 def run_graph(state: State, project_id: str, manifest: Path, manifest_digest: str, inputs: dict, directory: Path,
@@ -819,22 +870,11 @@ def resume_graph(home: Path | None, project_id: str, directory: Path, manifest_d
         if any(field not in receipt for field in _RECOVERY_FIELDS):
             raise ValueError('Saved recovery is missing original graph authority')
         recovery = native_sources.packet(directory, 'recovery.json')
-        if (not isinstance(recovery, dict) or recovery.keys() != {
-                'schema_version', 'clock', 'deadline_monotonic_ns', 'result_limit', 'directory', 'state_home',
-                'authority_sha256', 'owner_identity'}
-                or type(recovery['schema_version']) is not int or recovery['schema_version'] != 2
-                or recovery['directory'] != str(directory) or recovery['state_home'] != str(state_home)
-                or native_sources.encode(recovery['owner_identity']) != native_sources.encode(
-                    _owner_identity(os.fstat(original_lock.fileno())))
-                or recovery['authority_sha256'] != _graph_authority_sha(receipt)
-                or receipt.get('recovery_sha256') != native_sources.sha(recovery)):
-            raise ValueError('Recovery authorization differs from the original graph, directory or State home')
+        _check_recovery_authority(receipt, recovery, directory, state_home, _owner_identity(os.fstat(original_lock.fileno())))
         contracts.validate(receipt['timeout'], {'type': 'integer', 'minimum': 1, 'maximum': 3600}, 'Receipt workflow timeout')
         contracts.validate(receipt['max_prompt_bytes'], contracts.COMPOSITION_INPUT['properties']['max_prompt_bytes'],
                            'Receipt input byte limit')
-        limit = recovery['result_limit']
-        if type(limit) is not int or not 1 <= limit <= _RESULT_LIMIT:
-            raise ValueError('Saved graph result capacity is unsupported')
+        _check_recovery_result_limit(recovery)
         deadline = _graph_deadline(recovery, receipt['timeout'])
         state = State(state_home, read_only=True)
         project = state.project(project_id)
@@ -1024,6 +1064,110 @@ def _read_graph_receipt(project, directory, manifest_digest):
     return raw, receipt
 
 
+def _local_evidence_state(error):
+    state = native_sources.observation_failure(error)['state']
+    return 'invalid' if state == 'over_capacity' else state
+
+
+def _observe_recovery_clock(recovery, timeout):
+    deadline_ns = recovery['deadline_monotonic_ns']
+    clock = {'deadline_monotonic_ns': deadline_ns} if type(deadline_ns) is int else {}
+    try:
+        _saved_graph_deadline(recovery, timeout)
+    except (ValueError, OverflowError, TypeError, RecursionError):
+        return {**clock, 'state': 'invalid'}, None
+    try:
+        remaining = budget_clock.remaining(recovery['clock'], timeout)
+        now = time.monotonic_ns()
+        if now + timeout * 1_000_000_000 < deadline_ns:
+            raise ValueError('Saved graph clock or deadline is invalid')
+    except (OSError, ValueError, OverflowError, TypeError, RecursionError):
+        return {**clock, 'state': 'unknown'}, None
+    return {**clock, 'state': 'expired' if now >= deadline_ns or remaining <= 0 else 'within_deadline'}, now
+
+
+def _observe_recovery_stop(directory):
+    if not os.path.lexists(directory / 'stop.json'):
+        return {'state': 'not_recorded'}
+    try:
+        marker = native_sources.packet(directory, 'stop.json')
+    except (OSError, ValueError, RecursionError) as error:
+        state = _local_evidence_state(error)
+        return {'state': 'invalid' if state == 'missing' else state}
+    return {'state': 'recorded' if marker == {'status': 'cancelled'} else 'invalid'}
+
+
+def _observe_fixed_recovery(directory, receipt, recovery, review, gate, record, now):
+    observation = {'original_receipt': {'state': 'not_queried'}}
+    if record is None:
+        present = any(os.path.lexists(directory / name) for name in (_FIXED_READ_ATTEMPT, _FIXED_READ_COMPLETE))
+        return {**observation, 'state': 'missing' if present else 'not_recorded'}
+    observation['progress_status'] = record['status']
+    try:
+        _saved_graph_deadline(recovery, receipt['timeout'])
+        attempt = native_sources.packet(directory, _FIXED_READ_ATTEMPT)
+        if now is not None:
+            now = time.monotonic_ns()
+        expected = _fixed_attempt_progress(receipt, recovery, review, gate, receipt['inputs']['check'], attempt, now_ns=now)
+        started, deadline_ns = attempt['started_monotonic_ns'], attempt['deadline_monotonic_ns']
+        cutoff = 'not_checked' if now is None else 'expired' if now >= deadline_ns else 'within_deadline'
+        observation.update(mode=attempt['mode'], attempt_sha256=expected['attempt_sha256'], started_monotonic_ns=started,
+                           read_cutoff={'state': cutoff, 'deadline_monotonic_ns': deadline_ns})
+        pending = record['status'] == 'attempted'
+        if pending:
+            _check_attempted_progress(receipt, record, expected)
+        if not os.path.lexists(directory / _FIXED_READ_COMPLETE):
+            if record['status'] == 'validated':
+                return {**observation, 'state': 'missing'}
+            if native_sources.encode(record) != native_sources.encode({**expected, 'status': record['status']}):
+                raise native_sources.ArtifactIdentityError('Saved verification progress differs from the original attempt')
+            return {**observation, 'state': 'attempted'}
+        completion = native_sources.packet(directory, _FIXED_READ_COMPLETE)
+        validated = _fixed_completion_tick(attempt, completion)
+        if now is not None and validated > time.monotonic_ns():
+            raise ValueError('Saved fixed-check proof validation time is in the future')
+        completed = _fixed_completed_progress(receipt, recovery, review, attempt, expected, completion, validated)
+        if not pending and native_sources.encode(record) != native_sources.encode(completed):
+            raise native_sources.ArtifactIdentityError('Saved verification progress differs from the original fixed-check witnesses')
+        return {**observation, 'state': 'recorded_complete', 'completion_sha256': completed['completion_sha256'],
+                'validated_monotonic_ns': validated}
+    except (OSError, ValueError, OverflowError, TypeError, RecursionError) as error:
+        return {**observation, 'state': _local_evidence_state(error)}
+
+
+def _observe_graph_recovery(directory, state_home, receipt, selected_project, review, gate, reads):
+    status = receipt['status']
+    revision = selected_project.get('revision')
+    revision_state = ('unknown' if type(revision) is not int else
+                      'matching' if revision == receipt['project_revision'] else 'mismatch')
+    observation = {'owner_activity': 'unknown', 'terminal_status': status if status in _TERMINAL_STATUSES else None,
+                   'project_revision': {'state': revision_state, 'original': receipt['project_revision']},
+                   'stop': _observe_recovery_stop(directory), 'clock': {'state': 'not_checked'},
+                   'fixed_check': {'state': 'not_checked' if review is not None else 'not_applicable'}}
+    if type(revision) is int:
+        observation['project_revision']['current'] = revision
+    if 'recovery_sha256' not in receipt and not any(os.path.lexists(directory / name) for name in
+            ('recovery.json', '.owner.lock', 'stop.json', _FIXED_READ_ATTEMPT, _FIXED_READ_COMPLETE)):
+        return {**observation, 'authorization': {'state': 'ordinary'}}
+    try:
+        recovery = native_sources.packet(directory, 'recovery.json')
+        lock = directory / '.owner.lock'
+        details = lock.stat(follow_symlinks=False)
+        if is_link(lock) or not stat.S_ISREG(details.st_mode):
+            raise ValueError('Original graph lock entry is invalid')
+        identity = _owner_identity(details)
+        _check_recovery_authority(receipt, recovery, directory.resolve(), state_home.resolve(), identity)
+        _check_recovery_result_limit(recovery)
+    except (OSError, ValueError, RecursionError, RuntimeError) as error:
+        return {**observation, 'authorization': {'state': _local_evidence_state(error)}}
+    observation['authorization'] = {'state': 'corroborated', 'sha256': receipt['recovery_sha256'], 'owner_identity': identity}
+    observation['clock'], now = _observe_recovery_clock(recovery, receipt['timeout'])
+    if review is not None:
+        record = next((row for row in reads if row['instance'] == gate), None)
+        observation['fixed_check'] = _observe_fixed_recovery(directory, receipt, recovery, review, gate, record, now)
+    return observation
+
+
 def inspect_graph(state: State, project: str, directory: Path, manifest_digest: str) -> dict:
     """Reconstruct graph receipt and Agent observations offline without acquiring execution authority."""
     directory = directory.expanduser().absolute()
@@ -1033,7 +1177,7 @@ def inspect_graph(state: State, project: str, directory: Path, manifest_digest: 
     if checked['digest'] != manifest_digest or receipt.get('root') != manifest['root']:
         raise ValueError('Saved graph manifest differs from the receipt or explicitly selected digest')
     try:
-        state.project(project)
+        selected_project = state.project(project)
     except StateError as error:
         raise ValueError('Cannot read the selected project state: ' + str(error)) from error
     nodes = composition['instances']
@@ -1052,12 +1196,12 @@ def inspect_graph(state: State, project: str, directory: Path, manifest_digest: 
     if outputs is not None:
         _bounded_json(outputs, _RESULT_LIMIT)
     sources = _verify_sources(composition, inputs)
-    fixed_review = _fixed_review_context(composition, inputs, manifest_digest)
+    review = fixed_review = _fixed_review_context(composition, inputs, manifest_digest)
     if fixed_review is not None:
         revision = receipt['project_revision']
         if type(revision) is not int:
             raise ValueError('Fixed-check graph receipt requires an integer project revision')
-        fixed_review['project_revision'] = revision
+        fixed_review = {**fixed_review, 'project_revision': revision}
     agent_nodes = {node['path']: node for node in nodes if node['kind'] == 'agent'}
     selectors = {node['path']: node for node in nodes if node['kind'] == 'choose-agent'}
     leaves = _observed_attempts(receipt, 'leaves', agent_nodes, required=True)
@@ -1090,6 +1234,8 @@ def inspect_graph(state: State, project: str, directory: Path, manifest_digest: 
     decisions = [_observe_route(sequence, record, selectors[record['instance']], attempts, choices, status)
                  for sequence, record in enumerate(route_records, 1)]
     recorded_paths = {'root', *attempts, *(item['instance'] for item in reads + decisions)}
+    gate = next((node['path'] for node in nodes if node['kind'] == 'verify-fixed-check'), None)
+    recovery = _observe_graph_recovery(directory, state.root, receipt, selected_project, review, gate, verification_reads)
     return {'schema_version': 1, 'kind': 'standalone-workflow-observation', 'project': project,
             'project_revision': receipt['project_revision'], 'root': receipt['root'], 'manifest_digest': manifest_digest,
             'graph_receipt': {'directory': str(directory), 'sha256': hashlib.sha256(raw).hexdigest(), 'bytes': len(raw),
@@ -1101,5 +1247,6 @@ def inspect_graph(state: State, project: str, directory: Path, manifest_digest: 
                        'graph_record': 'recorded' if node['path'] in recorded_paths else 'not_recorded'}
                       for node in nodes],
             'agent_attempts': list(attempts.values()), 'verification_reads': reads, 'route_decisions': decisions,
+            'recovery': recovery,
             'process_start': 'unknown',
             'stop_and_cleanup': 'unknown', 'formal_execution_authorized': False}

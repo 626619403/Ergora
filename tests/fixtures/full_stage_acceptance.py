@@ -982,6 +982,32 @@ candidate_checks._observe = observe_queued
     return run(argv, *args, **kwargs)
 processes.run = original_read
 
+if phase in ('inspect', 'inspect-across-progress'):
+    import fcntl
+    import subprocess
+    from ergora.agents import native_sources
+    from ergora.storage.state import State
+
+    def unexpected_effect(*args, **kwargs):
+        raise AssertionError('Graph inspection attempted to lock, sync or launch a process')
+
+    fcntl.flock = unexpected_effect
+    os.fsync = unexpected_effect
+    subprocess.Popen = unexpected_effect
+    open_state = State._open
+    def readonly_database(self):
+        assert self._read_only, 'Graph inspection opened writable State'
+        return open_state(self)
+    State._open = readonly_database
+    if phase == 'inspect-across-progress':
+        read_artifact = native_sources.artifact
+        def read_earlier_receipt(directory, name, *args, **kwargs):
+            if directory == transport.with_suffix('') and name == 'run.json':
+                native_sources.artifact = read_artifact
+                return directory.with_suffix('.before-resume.json').read_bytes()
+            return read_artifact(directory, name, *args, **kwargs)
+        native_sources.artifact = read_earlier_receipt
+
 def hold():
     staged = marker.with_suffix('.pending')
     staged.write_text(json.dumps(processes.identity(os.getpid())), encoding='utf-8')
@@ -1127,6 +1153,30 @@ raise SystemExit(main(sys.argv[6:]))
         argv = command(directory, 'resume', 'resume-graph', 'demo', str(directory), '--manifest-digest', manifest['digest'])
         return await asyncio.to_thread(subprocess.run, argv, capture_output=True, text=True, timeout=20)
 
+    async def inspect(name, directory, *, earlier_receipt=False):
+        def snapshots():
+            graph = {path: path.read_bytes() for path in directory.rglob('*') if not path.is_symlink() and path.is_file()}
+            owner = (directory / '.owner.lock').stat(follow_symlinks=False)
+            return (graph, owner.st_dev, owner.st_ino, owner.st_mtime_ns, reads(directory), check_records(),
+                    ledger.read_bytes(), (state.root / 'ergora.sqlite3').read_bytes(),
+                    calls.read_bytes() if calls.exists() else None)
+
+        original = snapshots()
+        phase = 'inspect-across-progress' if earlier_receipt else 'inspect'
+        argv = command(directory, phase, 'inspect-graph', 'demo', str(directory), '--manifest-digest', manifest['digest'])
+        result = await asyncio.to_thread(subprocess.run, argv, capture_output=True, text=True, timeout=10)
+        assert result.returncode == 0, result.stdout + result.stderr
+        assert snapshots() == original
+        directory.with_suffix(f'.observed-{name}.json').write_text(result.stdout, encoding='utf-8')
+        observed = json.loads(result.stdout)
+        graph, *_ = original
+        receipt_bytes = (directory.with_suffix('.before-resume.json').read_bytes() if earlier_receipt else
+                         graph[directory / 'run.json'])
+        assert observed['graph_receipt']['sha256'] == hashlib.sha256(receipt_bytes).hexdigest()
+        assert observed['graph_receipt']['status'] == json.loads(receipt_bytes)['status']
+        assert observed['formal_execution_authorized'] is False
+        return observed
+
     refused = []
 
     async def blocked(name, directory, diagnostic, *, expect_read=False):
@@ -1170,6 +1220,24 @@ raise SystemExit(main(sys.argv[6:]))
             started, = reads(ready)
             deadline = attempt['deadline_monotonic_ns'] / 1_000_000_000
             assert started['deadline'] == deadline and started['owner'] == observed['owner']
+            active_inspection = await inspect('active-reader', ready)
+            active_recovery = active_inspection['recovery']
+            assert active_recovery['authorization']['state'] == 'corroborated'
+            assert active_recovery['authorization']['sha256'] == saved['recovery_sha256']
+            assert active_recovery['authorization']['owner_identity'] == observed['owner']
+            assert active_recovery['owner_activity'] == 'unknown' and active_recovery['terminal_status'] is None
+            assert active_recovery['clock']['state'] == 'within_deadline' and active_recovery['stop']['state'] == 'not_recorded'
+            assert active_recovery['clock']['deadline_monotonic_ns'] == json.loads(recovery_bytes)['deadline_monotonic_ns']
+            fixed = active_recovery['fixed_check']
+            assert fixed['state'] == fixed['progress_status'] == 'attempted' and fixed['mode'] == 'wait'
+            assert fixed['original_receipt'] == {'state': 'not_queried'}
+            assert fixed['attempt_sha256'] == native_sources.sha(attempt)
+            assert fixed['started_monotonic_ns'] == attempt['started_monotonic_ns']
+            assert fixed['read_cutoff']['state'] == 'within_deadline'
+            assert fixed['read_cutoff']['deadline_monotonic_ns'] == attempt['deadline_monotonic_ns']
+            active_read, = active_inspection['verification_reads']
+            assert active_read['status'] == 'attempted' and active_read['recorded_evidence'] == {'state': 'not_recorded'}
+            assert active_inspection['agent_attempts'] == []
             refusal = await blocked('active-reader', ready, 'original graph coordinator is still active')
             ready.with_suffix('.lock-refusal.stderr').write_text(refusal.stderr, encoding='utf-8')
             assert processes.identity(reader['pid']) == reader
@@ -1200,6 +1268,15 @@ raise SystemExit(main(sys.argv[6:]))
                     os.waitpid(original['pid'], 0)
 
         finished_records, finished_ledger = check_records(), ledger.read_bytes()
+        stop_path = ready / 'stop.json'
+        stop_path.write_text('{"status":"cancelled"}\n', encoding='utf-8')
+        try:
+            stopped = await inspect('stop', ready)
+            assert stopped['recovery']['stop']['state'] == 'recorded'
+            assert stopped['recovery']['terminal_status'] is None and stopped['stop_and_cleanup'] == 'unknown'
+            assert stopped['verification_reads'] == active_inspection['verification_reads']
+        finally:
+            stop_path.unlink()
         completion_path = ready / 'verification-complete.json'
         completion_path.write_bytes(b'{"schema_version":')
         try:
@@ -1260,6 +1337,51 @@ raise SystemExit(main(sys.argv[6:]))
         assert reviewer['input']['digest'] == leaf['input_digest']
         assert json.loads(calls.read_bytes()) == inputs['task'] and len(agent_runs.runs(state, 'demo')) == len(before_runs) + 1
         assert check_records() == finished_records and ledger.read_bytes() == finished_ledger
+        finished = await inspect('validated', ready)
+        assert finished['recovery']['terminal_status'] == 'succeeded'
+        fixed = finished['recovery']['fixed_check']
+        assert fixed['state'] == 'recorded_complete' and fixed['progress_status'] == 'validated'
+        assert fixed['completion_sha256'] == native_sources.sha(completion)
+        assert fixed['validated_monotonic_ns'] == completion['validated_monotonic_ns']
+        observed_reader, = finished['verification_reads']
+        assert observed_reader['status'] == 'validated' and observed_reader['recorded_evidence']['state'] == 'recorded'
+        assert observed_reader['original_receipt']['state'] == 'not_queried'
+        observed_leaf, = finished['agent_attempts']
+        assert observed_leaf['run_id'] == leaf['run_id']
+        assert observed_leaf['original_run']['result']['sha256'] == leaf['result_sha256']
+
+        # The unlocked inspector can retain its first snapshot while the coordinator advances.
+        assert (ready / 'input-1').is_dir() and (ready / 'reservation-1.json').is_file()
+        advanced = await inspect('across-progress', ready, earlier_receipt=True)
+        assert advanced['graph_receipt'] == active_inspection['graph_receipt']
+        assert advanced['verification_reads'] == active_inspection['verification_reads']
+        assert advanced['agent_attempts'] == []
+        observed_completion = advanced['recovery']['fixed_check']
+        assert observed_completion['state'] == 'recorded_complete'
+        assert observed_completion['progress_status'] == 'attempted'
+        assert observed_completion['completion_sha256'] == fixed['completion_sha256']
+
+        recovery_path = ready / 'recovery.json'
+        complete_bytes = completion_path.read_bytes()
+        changes = (
+            ('corrupt-completion', completion_path, b'{"schema_version":', complete_bytes, 'fixed_check', 'invalid'),
+            ('misbound-authorization', recovery_path,
+             native_sources.encode({**json.loads(recovery_bytes), 'state_home': str(root / 'other-home')}),
+             recovery_bytes, 'authorization', 'mismatch'),
+        )
+        for name, path, altered, original, component, expected in changes:
+            try:
+                path.write_bytes(altered)
+                limited = await inspect(name, ready)
+                assert limited['recovery'][component]['state'] == expected
+                if component == 'authorization':
+                    assert limited['recovery']['clock']['state'] == 'not_checked'
+                    assert limited['recovery']['fixed_check']['state'] == 'not_checked'
+                assert limited['graph_receipt'] == finished['graph_receipt']
+                assert limited['verification_reads'] == finished['verification_reads']
+                assert limited['agent_attempts'] == finished['agent_attempts']
+            finally:
+                path.write_bytes(original)
         return {'original_job_id': observed['job']['job_id'], 'original_reader': reader, 'reader_exit_code': 0,
                 'read_deadline': deadline, 'native_reads': 2, 'refused': refused, 'reviewer_calls': 1,
                 'reviewer_run_id': leaf['run_id'], 'native_records_unchanged': True, 'foreign_row_preserved': True}
@@ -1317,6 +1439,13 @@ raise SystemExit(main(sys.argv[6:]))
         assert evidence[key] == value
     original_deadline, = reads(ready)
     assert original_deadline['deadline'] == attempt['deadline_monotonic_ns'] / 1_000_000_000
+    pending_completion = await inspect('completion-before-progress', ready)
+    fixed = pending_completion['recovery']['fixed_check']
+    assert fixed['state'] == 'recorded_complete' and fixed['progress_status'] == 'attempted'
+    assert fixed['mode'] == attempt['mode'] and fixed['completion_sha256'] == native_sources.sha(completion)
+    assert fixed['original_receipt'] == {'state': 'not_queried'}
+    pending_read, = pending_completion['verification_reads']
+    assert pending_read['status'] == 'attempted' and pending_read['recorded_evidence']['state'] == 'not_recorded'
     if waiting:
         captured = {key: evidence[key] for key in ('receipt_sha256', 'fixed_results_sha256')}
         assert captured == {'receipt_sha256': native_sources.sha(executed),
@@ -1397,6 +1526,12 @@ raise SystemExit(main(sys.argv[6:]))
     await asyncio.sleep(max(0, read_deadline - time.monotonic()) + .02)
     assert time.monotonic() < graph_deadline
     await blocked('expired-read', expired, 'original fixed-check read deadline expired')
+    if waiting:
+        expired_inspection = await inspect('expired-read', expired)
+        expired_recovery = expired_inspection['recovery']
+        assert expired_recovery['clock']['state'] == 'within_deadline'
+        assert expired_recovery['fixed_check']['read_cutoff']['state'] == 'expired'
+        assert expired_recovery['fixed_check']['state'] == 'recorded_complete'
     assert len(agent_runs.runs(state, 'demo')) == len(before_runs) + 1
     assert check_records() == before and ledger.read_bytes() == ledger_before
     return {'reused_proof': True, 'native_records_unchanged': True, 'reviewer_calls': 1, 'refused': refused,

@@ -37,6 +37,10 @@ The reader verifies the frozen manifest and reports its root, the saved `run.jso
 
 In `route_decisions`, a `corroborated` choice matches the frozen branch list and the original analyzer's verified result. For `verify-evidence`, the report shows the graph-recorded locator and evidence status with the original native receipt marked `not_queried`. Per-leaf `original_run.process_start` shows the original Agent run's historical direct-child observation. The graph-level `process_start` and `stop_and_cleanup` report `unknown`. Inspection is for observation only. Repeat the read with the same identifiers when more evidence becomes available.
 
+For a recoverable run, `recovery.authorization.state: corroborated` means that the saved authority matches the selected graph, original directory, control home and lock file identity. The `recovery` section also reports the original and current project revisions, clock and stop observations, and any saved terminal status. `recovery.clock.state` reports `invalid` for invalid saved clock data and `unknown` when the current boot comparison is unavailable. Valid saved evidence remains readable when that comparison is unavailable, after expiry or after completion.
+
+`recovery.fixed_check` checks local attempt and completion witness identities and reports the saved `read_cutoff`. Its `recorded_complete` state can accompany captured `attempted` progress if the coordinator advances between the reader's unlocked observations. The original native receipt is `not_queried`, and `recovery.owner_activity` stays `unknown`. `resume-graph` checks admission under the original lock. [Resume an interrupted graph](#resume-an-interrupted-graph)
+
 ### Resume an interrupted graph
 
 On Linux/WSL2, select `--recoverable` at the first launch. This mode supports read-only, text-only Agent leaves, nested Workflows, all-joins, typed `choose-agent` routing and the [fixed-check review graph](#resume-a-fixed-check-gated-review). Use the manifest's backend bindings and omit `--codex-config`. The first launch saves the original graph inputs, manifest and same-boot budget, and holds a coordinator lock.
