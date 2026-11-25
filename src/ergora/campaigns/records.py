@@ -1,5 +1,6 @@
 """Immutable local dispatch evidence and validation for a record-only campaign."""
 
+from graphlib import CycleError, TopologicalSorter
 import hashlib
 import json
 import os
@@ -11,6 +12,7 @@ from uuid import UUID
 
 from ergora.definitions.bundles import parse_json
 from ergora.development.envelopes import identity
+from ergora.development.verification import validate_fixed_check_source
 
 
 WORKFLOW_TYPE = 'ErgoraCampaign'
@@ -18,6 +20,12 @@ OPENING_MEMO = 'ergora.campaign.opening_sha256'
 ATTEMPT_MEMO = 'ergora.campaign.attempt_sha256'
 MAX_PLAN_BYTES = 65_536
 MAX_RECORD_BYTES = 2 * MAX_PLAN_BYTES
+MAX_FIXED_TASKS = 8
+FIXED_TASK_UPDATE_PREFIX = 'ergora-campaign-check:'
+FIXED_CHECK_LOCATOR = ('operation_id', 'request_file_sha256', 'job_sha256', 'candidate_sha',
+                       'receipt_sha256', 'fixed_results_sha256')
+FIXED_TASK_SOURCE = (*FIXED_CHECK_LOCATOR, 'project_revision', 'job_id', 'authorization_sha256',
+                     'verification_sha256')
 # Last whole UTC second supported by both Python datetime and protobuf Timestamp.
 MAX_EXPIRY = 253_402_300_799
 
@@ -47,8 +55,8 @@ def worker_queue(project, campaign, scheduler, creation_id):
 
 
 def validate_plan(plan):
-    if (not isinstance(plan, dict)
-            or set(plan) != {'schema_version', 'goal', 'acceptance', 'baseline_commit', 'evidence_format', 'limits'}
+    required = {'schema_version', 'goal', 'acceptance', 'baseline_commit', 'evidence_format', 'limits'}
+    if (not isinstance(plan, dict) or set(plan) - {'tasks'} != required
             or type(plan['schema_version']) is not int or plan['schema_version'] != 1):
         raise ValueError('Campaign plan requires schema_version 1 and the complete record-only fields')
     for name in ('goal', 'acceptance', 'evidence_format'):
@@ -61,8 +69,51 @@ def validate_plan(plan):
     if (not isinstance(limits, dict) or set(limits) != {'expires_at'} or type(limits['expires_at']) is not int
             or not 1 <= limits['expires_at'] <= MAX_EXPIRY):
         raise ValueError('Campaign expiry requires a representable absolute UTC Unix second')
+    if 'tasks' in plan:
+        validate_fixed_tasks(plan['tasks'])
     # Also rejects unpaired Unicode surrogates before an intent can be saved.
     identity(plan)
+
+
+def validate_fixed_tasks(tasks):
+    if not isinstance(tasks, list) or not 1 <= len(tasks) <= MAX_FIXED_TASKS:
+        raise ValueError(f'Campaign plan requires 1–{MAX_FIXED_TASKS} original fixed-check tasks when configured')
+    dependencies = {}
+    for task in tasks:
+        if not isinstance(task, dict) or task.keys() != {'task_id', 'depends_on', 'source'}:
+            raise ValueError('Campaign task requires task_id, depends_on and an exact fixed-check source')
+        task_id, parents, source = task['task_id'], task['depends_on'], task['source']
+        if not safe_id(task_id) or task_id in dependencies:
+            raise ValueError('Campaign task requires a unique safe ID')
+        if not isinstance(parents, list) or not all(safe_id(item) for item in parents) or len(set(parents)) != len(parents):
+            raise ValueError('Campaign task dependencies require distinct safe IDs')
+        if (not isinstance(source, dict) or source.keys() != set(FIXED_TASK_SOURCE)
+                or type(source['project_revision']) is not int or source['project_revision'] < 1
+                or not isinstance(source['job_id'], str) or re.fullmatch(r'check-[0-9a-f]{40}-[0-9a-f]{24}', source['job_id']) is None
+                or not all(sha256(source[key]) for key in ('authorization_sha256', 'verification_sha256'))):
+            raise ValueError('Campaign task source requires the exact original fixed-check Job identity')
+        validate_fixed_check_source({key: source[key] for key in FIXED_CHECK_LOCATOR})
+        dependencies[task_id] = parents
+    if any(parent not in dependencies for parents in dependencies.values() for parent in parents):
+        raise ValueError('Campaign task dependency is absent from the frozen plan')
+    try:
+        TopologicalSorter(dependencies).prepare()
+    except CycleError as error:
+        raise ValueError('Campaign task dependencies contain a cycle') from error
+
+
+def fixed_tasks(opening):
+    return {task['task_id']: task for task in opening['plan'].get('tasks', ())}
+
+
+def original_check_evidence(opening, task, observation):
+    if (not isinstance(observation, dict) or observation.get('project') != opening['project']
+            or observation.get('status') != 'succeeded'
+            or observation.get('cleanup_confirmed') is not True or observation.get('stop_requested') is not False
+            or any(observation.get(key) != value for key, value in task['source'].items())
+            or type(observation.get('project_revision')) is not int):
+        raise ValueError('Task requires the exact successful original fixed check with confirmed cleanup')
+    return identity(observation)
 
 
 def operator():
@@ -143,7 +194,7 @@ class CampaignFiles:
             raise ValueError(f'Campaign {name} is not a JSON object')
         return value
 
-    def write(self, name, value):
+    def write(self, name, value, *, before_publish=None):
         raw = json.dumps(value, sort_keys=True, ensure_ascii=False, separators=(',', ':'), allow_nan=False).encode('utf-8')
         if len(raw) > MAX_RECORD_BYTES:
             raise ValueError('Campaign dispatch record exceeds its byte limit')
@@ -153,6 +204,8 @@ class CampaignFiles:
                 stream.write(raw)
                 stream.flush()
                 os.fsync(stream.fileno())
+            if before_publish is not None:
+                before_publish()
             os.link(temporary, self.directory / f'{name}.json')
         finally:
             Path(temporary).unlink(missing_ok=True)
@@ -207,6 +260,14 @@ class CampaignFiles:
             require_stop_receipt(intent, attempt, result['receipt'])
         return intent, attempt, result
 
+    def load_check(self, opening, start_attempt, run_id, task):
+        command = self._read('check-' + task['task_id'])
+        if command is not None:
+            validate_check_command(opening, identity(start_attempt), run_id, command)
+            if command['intent']['task_id'] != task['task_id']:
+                raise ValueError('Saved original check attempt names another campaign task')
+        return command
+
     def _validate_opening(self, opening):
         fields = {'schema_version', 'mode', 'control_home', 'project', 'project_revision', 'registration',
                   'configuration_sha256', 'campaign', 'actor', 'scheduler', 'creation_id', 'plan', 'plan_sha256',
@@ -248,12 +309,16 @@ def result_document(opening, attempt, run_id):
             'opening_sha256': identity(opening), 'attempt_sha256': identity(attempt)}
 
 
-def stop_intent(opening, start_attempt_sha256, run_id):
-    return {'schema_version': 1, 'operation': 'stop', 'workflow_id': opening['workflow_id'], 'run_id': run_id,
+def _update_intent(opening, start_attempt_sha256, run_id, operation):
+    return {'schema_version': 1, 'operation': operation, 'workflow_id': opening['workflow_id'], 'run_id': run_id,
             'opening_sha256': identity(opening), 'start_attempt_sha256': start_attempt_sha256}
 
 
-def stop_attempt(intent, update_id):
+def stop_intent(opening, start_attempt_sha256, run_id):
+    return _update_intent(opening, start_attempt_sha256, run_id, 'stop')
+
+
+def update_attempt(intent, update_id):
     return {'schema_version': 1, 'intent_sha256': identity(intent), 'update_id': update_id}
 
 
@@ -261,17 +326,67 @@ def validate_stop_attempt(intent, attempt):
     update_id = attempt.get('update_id')
     prefix = 'ergora-campaign-stop:'
     if (not isinstance(update_id, str) or not update_id.startswith(prefix) or not uuid_text(update_id[len(prefix):])
-            or identity(attempt) != identity(stop_attempt(intent, update_id))):
+            or identity(attempt) != identity(update_attempt(intent, update_id))):
         raise ValueError('Campaign stop attempt differs from the original intent or Update ID')
 
 
-def stop_receipt(intent, attempt, decision):
+def update_receipt(intent, attempt, decision):
     return {'schema_version': 1, 'decision': decision, 'intent_sha256': identity(intent),
             'attempt_sha256': identity(attempt), 'update_id': attempt['update_id'], 'run_id': intent['run_id']}
 
 
 def require_stop_receipt(intent, attempt, receipt):
     if (not isinstance(receipt, dict) or receipt.get('decision') not in ('accepted', 'expired')
-            or identity(receipt) != identity(stop_receipt(intent, attempt, receipt['decision']))):
+            or identity(receipt) != identity(update_receipt(intent, attempt, receipt['decision']))):
         raise ValueError('Campaign stop receipt differs from its exact original Update')
     return receipt
+
+
+def check_intent(opening, start_attempt_sha256, run_id, task_id, evidence_sha256):
+    return {**_update_intent(opening, start_attempt_sha256, run_id, 'observe_check'),
+            'task_id': task_id, 'observation_sha256': evidence_sha256}
+
+
+def validate_check_command(opening, start_attempt_sha256, run_id, command):
+    if not isinstance(command, dict) or command.keys() != {'intent', 'attempt'}:
+        raise ValueError('Campaign check command requires its complete intent and attempt')
+    intent, attempt = command['intent'], command['attempt']
+    if not isinstance(intent, dict) or not isinstance(attempt, dict):
+        raise ValueError('Campaign check requires its structured intent and attempt')
+    task_id, evidence = intent.get('task_id'), intent.get('observation_sha256')
+    if (not safe_id(task_id) or task_id not in fixed_tasks(opening) or not sha256(evidence)
+            or identity(intent) != identity(check_intent(opening, start_attempt_sha256, run_id, task_id, evidence))):
+        raise ValueError('Campaign check intent does not bind the original opening, task and first Run')
+    update_id = attempt.get('update_id')
+    if (not isinstance(update_id, str) or not update_id.startswith(FIXED_TASK_UPDATE_PREFIX)
+            or not uuid_text(update_id[len(FIXED_TASK_UPDATE_PREFIX):])
+            or identity(attempt) != identity(update_attempt(intent, update_id))):
+        raise ValueError('Campaign check attempt differs from its original intent or Update ID')
+
+
+def check_receipt(command):
+    intent, attempt = command['intent'], command['attempt']
+    receipt = update_receipt(intent, attempt, 'observed')
+    return {**receipt, 'task_id': intent['task_id'], 'observation_sha256': intent['observation_sha256']}
+
+
+def require_check_receipt(intent, attempt, receipt):
+    if identity(receipt) != identity(check_receipt({'intent': intent, 'attempt': attempt})):
+        raise ValueError('Campaign check receipt differs from its exact original Update')
+    return receipt
+
+
+def fixed_task_state(opening, start_attempt_sha256, run_id, observations):
+    tasks = fixed_tasks(opening)
+    if not isinstance(observations, dict) or set(observations) - set(tasks):
+        raise ValueError('Campaign task state differs from the original plan task set')
+    for task_id, receipt in observations.items():
+        if not isinstance(receipt, dict) or not set(tasks[task_id]['depends_on']) <= observations.keys():
+            raise ValueError('Campaign task receipt is missing its original dependencies')
+        intent = check_intent(opening, start_attempt_sha256, run_id, task_id, receipt.get('observation_sha256'))
+        attempt = update_attempt(intent, receipt.get('update_id'))
+        validate_check_command(opening, start_attempt_sha256, run_id, {'intent': intent, 'attempt': attempt})
+        require_check_receipt(intent, attempt, receipt)
+    return {task_id: {**task, 'status': 'observed' if task_id in observations else
+                     'ready' if set(task['depends_on']) <= observations.keys() else 'waiting_dependencies',
+                     'receipt': observations.get(task_id)} for task_id, task in tasks.items()}

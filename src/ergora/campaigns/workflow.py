@@ -23,7 +23,8 @@ from temporalio.worker import Worker
 
 with workflow.unsafe.imports_passed_through():
     from ergora.campaigns.records import (
-        ATTEMPT_MEMO, OPENING_MEMO, WORKFLOW_TYPE, identity, require_stop_receipt, sha256, stop_intent, stop_receipt,
+        ATTEMPT_MEMO, OPENING_MEMO, WORKFLOW_TYPE, check_receipt, fixed_task_state, fixed_tasks, identity,
+        require_check_receipt, require_stop_receipt, sha256, stop_intent, update_receipt, validate_check_command,
         validate_stop_attempt,
     )
 
@@ -31,6 +32,7 @@ with workflow.unsafe.imports_passed_through():
 RPC_SECONDS = 10
 RPC_TIMEOUT = timedelta(seconds=RPC_SECONDS)
 STOP_UPDATE = 'ergora_campaign_stop'
+CHECK_UPDATE = 'ergora_campaign_observe_check'
 UPDATE_COMPLETED = UpdateWorkflowExecutionLifecycleStage.UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_COMPLETED
 
 
@@ -46,6 +48,7 @@ class Campaign:
         self.opening = opening
         self.stop_decision = None
         self.expiry_timer = None
+        self.check_receipts = {}
         info = workflow.info()
         if (info.workflow_id != opening['workflow_id'] or info.run_id != info.first_execution_run_id
                 or info.namespace != opening['scheduler']['namespace']
@@ -65,9 +68,39 @@ class Campaign:
                     raise
         if self.stop_decision is not None:
             await workflow.wait_condition(workflow.all_handlers_finished)
-            return {**record_state(opening, workflow.info().run_id, 'stopped'),
-                    'stop_receipt_sha256': identity(self.stop_decision)}
-        return record_state(opening, workflow.info().run_id, 'expired')
+            return {**self._state('stopped'), 'stop_receipt_sha256': identity(self.stop_decision)}
+        return self._state('expired')
+
+    def _state(self, phase):
+        result = record_state(self.opening, workflow.info().run_id, phase)
+        if 'tasks' in self.opening['plan']:
+            result['check_receipts'] = self.check_receipts.copy()
+        return result
+
+    @workflow.update(name=CHECK_UPDATE)
+    def observe_check(self, command: dict) -> dict:
+        receipt = check_receipt(command)
+        previous = self.check_receipts.get(receipt['task_id'])
+        if previous is not None:
+            if previous != receipt:
+                raise ApplicationError('Campaign task already has different original evidence', non_retryable=True)
+            return previous
+        task = fixed_tasks(self.opening)[receipt['task_id']]
+        if self.stop_decision is not None or workflow.time() >= self.opening['plan']['limits']['expires_at']:
+            raise ApplicationError('Campaign no longer admits new task observations', non_retryable=True)
+        if not set(task['depends_on']) <= self.check_receipts.keys():
+            raise ApplicationError('Campaign task dependencies lack an original observation', non_retryable=True)
+        self.check_receipts[receipt['task_id']] = receipt
+        return receipt
+
+    @observe_check.validator
+    def validate_observe_check(self, command: dict):
+        try:
+            validate_check_command(self.opening, workflow.memo_value(ATTEMPT_MEMO), workflow.info().run_id, command)
+            if workflow.current_update_info().id != command['attempt']['update_id']:
+                raise ValueError('Campaign check does not bind its original Update ID')
+        except ValueError as error:
+            raise ApplicationError(str(error), non_retryable=True) from error
 
     @workflow.update(name=STOP_UPDATE)
     def stop(self, command: dict) -> dict:
@@ -77,8 +110,8 @@ class Campaign:
                 raise ApplicationError('Campaign already has a different stop decision', non_retryable=True)
             return self.stop_decision
         if workflow.time() >= self.opening['plan']['limits']['expires_at']:
-            return stop_receipt(intent, attempt, 'expired')
-        self.stop_decision = stop_receipt(intent, attempt, 'accepted')
+            return update_receipt(intent, attempt, 'expired')
+        self.stop_decision = update_receipt(intent, attempt, 'accepted')
         if self.expiry_timer is not None:
             self.expiry_timer.cancel()
         return self.stop_decision
@@ -101,7 +134,10 @@ class Campaign:
 
     @workflow.query
     def state(self) -> dict:
-        return record_state(self.opening, workflow.info().run_id, 'waiting_for_expiry')
+        result = self._state('waiting_for_expiry')
+        if 'tasks' in self.opening['plan']:
+            result['check_admission_open'] = self.stop_decision is None
+        return result
 
     @workflow.query(name='ergora_campaign_stop_capability')
     def stop_capability(self) -> dict:
@@ -155,6 +191,14 @@ async def stop_supported(handle, opening):
 
 
 async def send_stop(client, command):
+    return await _send_update(client, command, STOP_UPDATE, require_stop_receipt)
+
+
+async def send_check(client, command, *, expires_at):
+    return await _send_update(client, command, CHECK_UPDATE, require_check_receipt, expires_at=expires_at)
+
+
+async def _send_update(client, command, update_name, require_receipt, *, expires_at=None):
     intent, attempt = command['intent'], command['attempt']
     run = WorkflowExecution(workflow_id=intent['workflow_id'], run_id=intent['run_id'])
     converter = client.data_converter.with_context(WorkflowSerializationContext(client.namespace, run.workflow_id))
@@ -162,35 +206,51 @@ async def send_stop(client, command):
         namespace=client.namespace, workflow_execution=run, first_execution_run_id=run.run_id,
         wait_policy=WaitPolicy(lifecycle_stage=UPDATE_COMPLETED),
         request=Request(meta=Meta(update_id=attempt['update_id'], identity=client.identity),
-                        input=Input(name=STOP_UPDATE)),
+                        input=Input(name=update_name)),
     )
     request.request.input.args.payloads.extend(await converter.encode([command]))
-    response = await client.workflow_service.update_workflow_execution(request, retry=False, timeout=RPC_TIMEOUT)
+    timeout = RPC_TIMEOUT
+    if expires_at is not None:
+        remaining = expires_at - time.time()
+        if remaining <= 0:
+            return None
+        timeout = timedelta(seconds=min(RPC_SECONDS, remaining))
+        if not timeout:
+            return None
+    response = await client.workflow_service.update_workflow_execution(request, retry=False, timeout=timeout)
     if (response.stage != UPDATE_COMPLETED or response.update_ref.workflow_execution != run
             or response.update_ref.update_id != attempt['update_id'] or not response.outcome.HasField('success')):
         return None
     try:
-        return await _stop_outcome(converter, command, response.outcome)
+        return await _update_outcome(converter, command, response.outcome, require_receipt)
     except (ValueError, RuntimeError):
         # A mismatched acknowledgement cannot witness a decision. Read the
         # original History with the same attempt ID instead.
         return None
 
 
-async def _stop_outcome(converter, command, outcome):
+async def _update_outcome(converter, command, outcome, require_receipt):
     if not outcome.HasField('success'):
         return None
     value = await converter.decode(outcome.success.payloads)
     if len(value) != 1:
-        raise ValueError('Original campaign stop has an invalid Update result')
-    return require_stop_receipt(command['intent'], command['attempt'], value[0])
+        raise ValueError('Original campaign Update has an invalid result')
+    return require_receipt(command['intent'], command['attempt'], value[0])
 
 
 async def read_stop(client, handle, command):
+    return await _read_update(client, handle, command, STOP_UPDATE, require_stop_receipt)
+
+
+async def read_check(client, handle, command):
+    return await _read_update(client, handle, command, CHECK_UPDATE, require_check_receipt)
+
+
+async def _read_update(client, handle, command, update_name, require_receipt):
     """Read the exact accepted and completed Update pair in the pinned original History."""
     intent, attempt = command['intent'], command['attempt']
     if handle.id != intent['workflow_id'] or handle.run_id != intent['run_id']:
-        raise ValueError('Campaign stop readback cannot follow another run')
+        raise ValueError('Campaign Update readback cannot follow another run')
     converter = client.data_converter.with_context(WorkflowSerializationContext(client.namespace, handle.id))
     accepted_event = None
     async for event in handle.fetch_history_events(rpc_timeout=RPC_TIMEOUT):
@@ -200,15 +260,15 @@ async def read_stop(client, handle, command):
                 request = selected.accepted_request
                 values = await converter.decode(request.input.args.payloads)
                 if (accepted_event is not None or request.meta.update_id != attempt['update_id']
-                        or request.input.name != STOP_UPDATE or identity(values) != identity([command])):
-                    raise ValueError('Campaign original stop History has a changed or duplicate Update')
+                        or request.input.name != update_name or identity(values) != identity([command])):
+                    raise ValueError('Campaign original History has a changed or duplicate Update')
                 accepted_event = event.event_id
         if event.HasField('workflow_execution_update_completed_event_attributes'):
             completed = event.workflow_execution_update_completed_event_attributes
             if completed.meta.update_id == attempt['update_id']:
                 if accepted_event is None or completed.accepted_event_id != accepted_event:
-                    raise ValueError('Campaign stop completion does not bind its original accepted Update')
-                return await _stop_outcome(converter, command, completed.outcome)
+                    raise ValueError('Campaign completion does not bind its original accepted Update')
+                return await _update_outcome(converter, command, completed.outcome, require_receipt)
     return None
 
 
@@ -252,7 +312,7 @@ def require_state(observed, opening, run_id, phase):
     return observed
 
 
-async def runtime_status(handle, description, opening, stop=None):
+async def runtime_status(handle, description, opening, stop=None, *, start_attempt_sha256=None):
     temporal_status = description.status
     if temporal_status == WorkflowExecutionStatus.RUNNING:
         try:
@@ -260,24 +320,46 @@ async def runtime_status(handle, description, opening, stop=None):
                 observed = await handle.query(Campaign.state, rpc_timeout=timedelta(seconds=2))
         except (RPCError, TimeoutError, WorkflowQueryFailedError, WorkflowQueryRejectedError):
             return {'temporal_status': temporal_status.name, 'workflow_state_status': 'unavailable'}
-        return {'temporal_status': temporal_status.name, 'workflow_state_status': 'observed',
-                'workflow_state': require_state(observed, opening, description.run_id, 'waiting_for_expiry')}
+        if 'tasks' in opening['plan'] and (not isinstance(observed, dict) or 'check_receipts' not in observed):
+            return {'temporal_status': temporal_status.name, 'workflow_state_status': 'unavailable'}
+        expected = record_state(opening, description.run_id, 'waiting_for_expiry')
+        return _observed_state(observed, expected, opening, start_attempt_sha256, temporal_status, stop=stop)
     if temporal_status == WorkflowExecutionStatus.COMPLETED:
         observed = await handle.result(follow_runs=False, rpc_timeout=RPC_TIMEOUT)
         if isinstance(observed, dict) and observed.get('phase') == 'stopped':
             if stop is None or stop['decision'] != 'accepted':
                 return {'temporal_status': temporal_status.name, 'workflow_state_status': 'unavailable'}
             expected = {**record_state(opening, description.run_id, 'stopped'), 'stop_receipt_sha256': identity(stop)}
-            if identity(observed) != identity(expected):
-                raise ValueError('Campaign completion differs from its exact original stop decision')
         else:
             if stop is not None and stop['decision'] == 'accepted':
                 raise ValueError('Campaign completion does not reflect its original stop decision')
             if description.close_time is None or description.close_time.timestamp() < opening['plan']['limits']['expires_at']:
                 raise ValueError('Campaign Workflow completion preceded its original expiry')
-            require_state(observed, opening, description.run_id, 'expired')
-        return {'temporal_status': temporal_status.name, 'workflow_state_status': 'observed', 'workflow_state': observed}
+            expected = record_state(opening, description.run_id, 'expired')
+        return _observed_state(observed, expected, opening, start_attempt_sha256, temporal_status)
     return {'temporal_status': temporal_status.name, 'workflow_state_status': 'unavailable'}
+
+
+def _observed_state(observed, expected, opening, start_attempt_sha256, temporal_status, *, stop=None):
+    extra = {}
+    if 'tasks' in opening['plan'] and isinstance(observed, dict) and 'check_receipts' in observed:
+        tasks = fixed_task_state(opening, start_attempt_sha256, expected['run_id'], observed['check_receipts'])
+        observed = dict(observed)
+        observed.pop('check_receipts')
+        active = False
+        if temporal_status == WorkflowExecutionStatus.RUNNING:
+            admitting = observed.pop('check_admission_open', None)
+            if type(admitting) is not bool:
+                return {'temporal_status': temporal_status.name, 'workflow_state_status': 'unavailable'}
+            active = (admitting and time.time() < expected['expires_at']
+                      and (stop is None or stop['decision'] != 'accepted'))
+        extra['tasks'] = {task_id: {**task, 'eligible': active and task['status'] == 'ready'}
+                          for task_id, task in tasks.items()}
+    elif 'tasks' in opening['plan']:
+        return {'temporal_status': temporal_status.name, 'workflow_state_status': 'unavailable'}
+    if identity(observed) != identity(expected):
+        raise ValueError('Campaign Workflow state differs from the original plan or run')
+    return {'temporal_status': temporal_status.name, 'workflow_state_status': 'observed', 'workflow_state': observed, **extra}
 
 
 async def run_worker(client, handle, opening):

@@ -4,7 +4,7 @@ English · [Documentation](../README.md)
 
 The local Unix operator can record the goal, acceptance criteria, baseline commit, evidence format and absolute expiry of a campaign. The original Temporal workflow records the passage of that deadline. This entry point grants no execution permissions. Expert actions and experiment jobs use their own execution and authorization paths.
 
-Use an existing published project and explicitly bind its scheduler to the selected trusted Temporal service. Install the existing `ergora[temporal]` extra for `create`, `worker`, `stop` and online `status`. The operation uses the protected control home's owner and the CLI process's effective UID. This is local-process assurance. The current scheduler uses the configured address and namespace and relies on the selected service's access controls. [Project registration](../projects/registration.md) · [Configure Temporal](research-and-schedules.md)
+Use an existing published project and explicitly bind its scheduler to the selected trusted Temporal service. Install the existing `ergora[temporal]` extra for `create`, `worker`, `stop`, `observe-check` and online `status`. The operation uses the protected control home's owner and the CLI process's effective UID. This is local-process assurance. The current scheduler uses the configured address and namespace and relies on the selected service's access controls. [Project registration](../projects/registration.md) · [Configure Temporal](research-and-schedules.md)
 
 Save a UTF-8 JSON file with these fields. Set `baseline_commit` to the full Git object ID you intend to use and replace `expires_at` with a future integer UTC Unix second.
 
@@ -55,3 +55,50 @@ An unavailable Worker check returns exit 1 with `stop.remote_status: worker_unav
 After a lost reply, read online status and repeat the same stop command to reconcile the saved attempt and save its verified decision. Once an attempt exists, `stop.retryable` is `false` and the command observes the original `stop.update_id`. An unavailable service or missing decision leaves that attempt uncertain. An already closed Run at preflight returns its original terminal status.
 
 Read `stop.status` for progress and `stop.receipt.decision` for the verified Update outcome. `accepted` records the original Workflow's decision to stop, and `expired` records that the original deadline took effect. The command can return exit 0 for an accepted receipt before closure is verified. Use online `temporal_status` and `workflow_state.phase` to check the original terminal outcome. This stop applies to the campaign plan. Agent, Job and resource lifecycle remain with their execution owners.
+
+## Record an original fixed check for a task
+
+Before creation, a plan can include one to eight tasks in `tasks`. Each task declares a unique `task_id`, a list of distinct task IDs in `depends_on` and an exact fixed-check `source`. Dependencies stay within the frozen plan and form an acyclic graph.
+
+For this example, start with a `campaign.json` that has a future expiry. Save the `task candidate-check-status` JSON for two original Jobs under the same project and protected control home as `baseline-check.json` and `candidate-check.json`. Use already authorized, successful checks with confirmed cleanup and `stop_requested: false`. The source retains the original Job's `project_revision`, which can differ from the campaign's project revision. [Original fixed-check status](../development/run-and-recover.md#run-registered-fixed-checks-on-an-exported-candidate)
+
+```bash
+python3 - <<'PY'
+import json
+from pathlib import Path
+
+fields = (
+    "operation_id", "request_file_sha256", "job_sha256", "candidate_sha",
+    "receipt_sha256", "fixed_results_sha256", "project_revision", "job_id",
+    "authorization_sha256", "verification_sha256",
+)
+
+def source(path):
+    status = json.loads(Path(path).read_text(encoding="utf-8"))
+    return {field: status[field] for field in fields}
+
+plan = json.loads(Path("campaign.json").read_text(encoding="utf-8"))
+plan["tasks"] = [
+    {"task_id": "verify-baseline", "depends_on": [], "source": source("baseline-check.json")},
+    {"task_id": "verify-candidate", "depends_on": ["verify-baseline"], "source": source("candidate-check.json")},
+]
+with Path("campaign-with-checks.json").open("x", encoding="utf-8") as output:
+    json.dump(plan, output, indent=2)
+    output.write("\n")
+PY
+```
+
+Use the create command above with the new campaign ID `fixed-check-plan`, the current project revision and the SHA-256 of the exact `campaign-with-checks.json` bytes. Run the current worker on that campaign's original queue.
+
+```bash
+ergora campaign observe-check my-project fixed-check-plan verify-baseline --confirm
+ergora campaign status my-project fixed-check-plan --online
+```
+
+Online status reports `tasks` by ID. Confirm `verify-baseline` is `observed` and `verify-candidate` has `status: ready` and `eligible: true` before submitting the dependent observation.
+
+```bash
+ergora campaign observe-check my-project fixed-check-plan verify-candidate --confirm
+```
+
+`observe-check` verifies the original passing Job, cleanup and source identities before recording the observation. Its result reports `campaign_project_revision` and `job_project_revision` separately. After an uncertain reply, read online status and repeat the same command to reconcile the saved `update_id`. When task state is available, a saved unresolved attempt shows `attempt_status: unknown` and `eligible: false`. STOP and expiry close admission for new observations. The original receipts remain readable, including by reconciliation of a saved attempt. The fixed-check executor retains Job ownership and authority.

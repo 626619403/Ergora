@@ -1011,6 +1011,7 @@ def parser() -> argparse.ArgumentParser:
     for name, help_text in (
         ("create", "Confirm an exact plan and start it once, or recover its original start"),
         ("status", "Read the original local record, optionally checking Temporal"),
+        ("observe-check", "Record an exact original successful fixed check for a frozen task"),
         ("stop", "Confirm one stop request against the original campaign run"),
         ("worker", "Run a foreground Worker on the original campaign queue"),
     ):
@@ -1021,7 +1022,9 @@ def parser() -> argparse.ArgumentParser:
             operation.add_argument("plan", type=Path)
             operation.add_argument("--revision", type=int, required=True)
             operation.add_argument("--plan-sha256", required=True)
-        if name in ("create", "stop"):
+        if name == "observe-check":
+            operation.add_argument("task_id")
+        if name in ("create", "stop", "observe-check"):
             operation.add_argument("--confirm", action="store_true")
         if name == "status":
             operation.add_argument("--online", action="store_true")
@@ -1102,6 +1105,8 @@ def main(argv: list[str] | None = None) -> int:
                 operation = campaigns.status(state, args.project, args.id, online=args.online)
             elif args.operation == "stop":
                 operation = campaigns.stop(state, args.project, args.id, confirm=args.confirm)
+            elif args.operation == "observe-check":
+                operation = campaigns.observe_check(state, args.project, args.id, args.task_id, confirm=args.confirm)
             else:
                 operation = campaigns.worker(state, args.project, args.id)
             try:
@@ -1905,6 +1910,8 @@ def main(argv: list[str] | None = None) -> int:
             return native_compiler.workflow(args.arguments)
         print(json.dumps(output, ensure_ascii=False, indent=2))
         if args.command == "campaign":
+            if args.operation == "observe-check":
+                return 0 if output["status"] == "observed" else 1
             if output["remote_status"] in ("unavailable", "original_not_found"):
                 return 1
             if args.operation == "stop":
