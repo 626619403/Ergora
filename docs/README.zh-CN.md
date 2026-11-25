@@ -58,11 +58,13 @@
 
 ## 改进后续任务
 
+[记录有限的优化 campaign（English）](improvement/campaigns.md)并读取原始 Temporal Run。按[停止原计划的操作步骤（English）](improvement/campaigns.md#stop-the-original-campaign-plan)，通过当前 Worker 提交停止请求，再核对原 Run 的终态。
+
 [改进工作流（English）](improvement/workflow.md)连接[来源绑定的复盘候选](zh-CN/improvement/retrospectives.md)、[项目记忆与可选 ReMe](zh-CN/improvement/memory.md)、[可信 Skill 评价/采用（English）](improvement/skills-and-evaluation.md)及[有界调研/调度（English）](improvement/research-and-schedules.md)。生成、评价、采用和新任务冻结上下文是独立操作。
 
 ## 理解和修改实现
 
-先看[框架结构图与运行路径（English）](architecture/framework-tour.md)，了解静态定义与快照、独立工作流图、原生会话回执、正式六阶段交付、训练与评估。再阅读[架构概览（English）](architecture/current.md)、[源码所有权地图（English）](architecture/module-map.md)、[组件变更协议（English）](architecture/component-change-protocols.md)和[领域词汇表（English）](../CONTEXT.md)。
+先看[框架结构图与运行路径（English）](architecture/framework-tour.md)，了解静态定义与快照、独立工作流图、原生会话回执、正式六阶段交付、训练、campaign 操作者记录和评估。再阅读[架构概览（English）](architecture/current.md)、[源码所有权地图（English）](architecture/module-map.md)、[组件变更协议（English）](architecture/component-change-protocols.md)和[领域词汇表（English）](../CONTEXT.md)。
 
 |参考|用途|
 |---|---|

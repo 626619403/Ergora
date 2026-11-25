@@ -38,6 +38,7 @@ ergora serve
 |定义专家或嵌套工作流|[Agent 定义](docs/zh-CN/definitions/agents.md)和[工作流组合](docs/zh-CN/definitions/workflows/compose.md)|
 |采集和审查精确 PR/MR 材料|[审查材料（English）](docs/review/materials.md)，然后[明确调用审查者并汇总（English）](docs/review/invoke-and-aggregate.md)|
 |准备和执行训练实验|[训练概览（English）](docs/training/overview.md)|
+|记录或停止有限的本地 campaign 计划|[Campaign 操作指南（English）](docs/improvement/campaigns.md)|
 |根据原始证据撰写报告|[证据报告](docs/zh-CN/review/evidence-reports.md)|
 |将复盘用于后续任务|[改进工作流（English）](docs/improvement/workflow.md)|
 |迁移或恢复本地任务栈|[联合备份与恢复](docs/zh-CN/operations/backup-recovery.md)|

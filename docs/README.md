@@ -58,7 +58,7 @@ Start with the [training overview and CPU contract demo](training/overview.md). 
 
 ## Improve the next task
 
-[Record a finite optimization campaign](improvement/campaigns.md) to save an exact local operator plan and read back its original Temporal run.
+[Record a finite optimization campaign](improvement/campaigns.md) to save an exact local operator plan and read back its original Temporal run. [Stop the original campaign plan](improvement/campaigns.md#stop-the-original-campaign-plan) through the current worker and verify the original terminal outcome.
 
 The [improvement workflow](improvement/workflow.md) connects [source-bound retrospective candidates](improvement/retrospectives.md), [project memory and optional ReMe](improvement/memory.md), [trusted Skill evaluation/adoption](improvement/skills-and-evaluation.md), and [bounded research/scheduling](improvement/research-and-schedules.md). Generation, evaluation, adoption and a new task's frozen context are separate operations.
 

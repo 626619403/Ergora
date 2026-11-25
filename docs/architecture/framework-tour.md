@@ -4,7 +4,7 @@ English · [Documentation](../README.md) · [Architecture contract](current.md)
 
 Ergora is a control plane for project-bound specialist Agents, workflow composition, formal software delivery, training experiments and reusable improvements. Definitions describe reusable behavior. Each operation freezes its own inputs, checks its execution authority and produces evidence under its original identity.
 
-This tour uses candidate runtime revision `1c85dfb78c0c81e60ed3aa9635c313ad1c86dd6b` and its `src` tree `f6a63c948b336bf33c3c8a59069f3dd64d5b8923` as the exact source reference. Packages, installed applications and local definition libraries have separate identities. The [current plan](../PLAN.md) and its delivery records track review, CI and installation status.
+This tour uses runtime revision `526483be1cd4c912cce7c443b4cfe132d4ca4381` and its `src` tree `07f321e7bfd9f8be982370623c6176b312130a4d` as the exact source reference. Packages, installed applications and local definition libraries have separate identities. The [current plan](../PLAN.md) and its delivery records track review, CI and installation status.
 
 ## The whole system
 
@@ -23,7 +23,7 @@ flowchart TB
   Select --> Session["Prepared leaf or native project session<br/>agents.runs"]
   Select --> Dev["Formal task<br/>Explicit native root or nested invocation"]
   Select --> Train["Training experiments and finite controllers<br/>training.application"]
-  Select --> Campaign["Campaign operator CLI<br/>Record a finite plan"]
+  Select --> Campaign["Campaign operator CLI<br/>Record or stop a plan"]
   Select --> Improve["Retrospectives and Skill evaluation<br/>improvement"]
 
   Check --> CheckJob["Registered executor<br/>Original fixed-check Job"]
@@ -36,7 +36,7 @@ flowchart TB
   Session --> Turn["Original leaf result or Codex turn receipts"]
   Dev --> Six["Original Temporal six stages<br/>Exact approval and candidate evidence"]
   Train --> Runner["Original training executor<br/>Runner and experiment archive"]
-  Campaign --> CampaignRun["Frozen Temporal campaign<br/>Original Start and expiry"]
+  Campaign --> CampaignRun["Original Temporal campaign<br/>Start, stop decision and terminal phase"]
   Improve --> Eval["Trusted evaluation<br/>Explicit adoption"]
 
   GraphProof -.-> Recover["Read original IDs, receipts and outcomes"]
@@ -83,6 +83,8 @@ On Linux/WSL2, `task candidate-check` authorizes one fixed-check Job for an alre
 ### Campaign operator record
 
 On Unix, `campaign create` binds an exact confirmed plan to the original published project revision, selected Temporal scheduler and absolute expiry. This record-only entry uses local Unix process assurance. `campaign status` reads saved evidence offline or verifies the first Start event in the original Temporal History online. After a saved Start attempt, recovery checks its original identity and reports uncertainty unless it finds matching History. The foreground `campaign worker` serves its dedicated queue and the Workflow records expiry under the original deadline. Model calls, GPU work and experiment Jobs require their own authorization. [Campaign operator guide](../improvement/campaigns.md)
+
+`campaign stop` binds the local operator's confirmed request to the original first Run and scheduler. Before saving the stop attempt, the CLI checks that the current worker on the original queue can handle the Update. Readback follows the saved Update identity and verifies the stop decision independently of the original terminal phase. [Stop the campaign plan](../improvement/campaigns.md#stop-the-original-campaign-plan)
 
 ### One leaf or a native project session
 
@@ -132,7 +134,7 @@ PR/MR review also works without creating a formal development task. `development
 |Development and review|[application](../../src/ergora/development/application.py), [native](../../src/ergora/development/native.py), [runtime](../../src/ergora/development/runtime), [review](../../src/ergora/development/review), [verification](../../src/ergora/development/verification.py). Exact task/candidate decisions and trusted evidence.|
 |External sources|[issue backends](../../src/ergora/issues/backends.py), [snapshots](../../src/ergora/issues/snapshots.py), [writebacks](../../src/ergora/issues/writebacks.py). Platform identity, frozen context and attempted external effects.|
 |Training|[application](../../src/ergora/training/application.py), [execution protocol](../../src/ergora/training/execution_protocol.py), [runtime](../../src/ergora/training/runtime), [cycles](../../src/ergora/training/cycles.py), [rounds](../../src/ergora/training/rounds.py). Original experiments, finite controllers and observation links.|
-|Campaign operator records|[application](../../src/ergora/campaigns/application.py), [records](../../src/ergora/campaigns/records.py), [workflow](../../src/ergora/campaigns/workflow.py). Local operator plan, original Start evidence and frozen expiry.|
+|Campaign operator records|[application](../../src/ergora/campaigns/application.py), [records](../../src/ergora/campaigns/records.py), [workflow](../../src/ergora/campaigns/workflow.py). Local operator plan, original Start and stop evidence, and terminal closure.|
 |Improvement|[retrospectives](../../src/ergora/improvement/retrospectives.py), [memory](../../src/ergora/improvement/memory.py), [evaluation](../../src/ergora/improvement/evaluation.py), [optimization](../../src/ergora/improvement/optimization.py), [adoption](../../src/ergora/improvement/skill_adoption.py). Generation, evaluation and explicit reuse.|
 |Persistence and live resources|[State](../../src/ergora/storage/state.py), [assets](../../src/ergora/storage/assets.py), [Git material](../../src/ergora/storage/git.py), [processes](../../src/ergora/runtime/processes.py), [budget clock](../../src/ergora/runtime/budget_clock.py), [GPU pool](../../src/ergora/runtime/gpu_pool.py). Durable control records, complete material and owned lifetimes.|
 |Native integration and operations|[resources](../../src/ergora/native/resources.py), [compiler](../../src/ergora/native/compiler.py), [registration](../../src/ergora/native/registration.py), [operations](../../src/ergora/operations). Source identity, isolated integration, diagnostics, services and coordinated backups.|

@@ -38,6 +38,7 @@ The default `control` profile installs the web control plane. `development` adds
 |Define specialists or a nested workflow|[Agent definitions](docs/definitions/agents.md) and [workflow composition](docs/definitions/workflows/compose.md)|
 |Collect and review exact PR/MR material|[Review material](docs/review/materials.md), then [explicit reviewers and aggregation](docs/review/invoke-and-aggregate.md)|
 |Prepare and execute training experiments|[Training overview](docs/training/overview.md)|
+|Record or stop a finite local campaign plan|[Campaign operator guide](docs/improvement/campaigns.md)|
 |Write a report from original evidence|[Evidence reports](docs/review/evidence-reports.md)|
 |Use a retrospective in a later task|[Improvement workflow](docs/improvement/workflow.md)|
 |Move or recover the local task stack|[Joint backup and recovery](docs/operations/backup-recovery.md)|
