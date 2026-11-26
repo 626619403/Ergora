@@ -655,7 +655,9 @@ def test_invalid_registration_has_no_control_project_or_published_files(registra
 def test_existing_project_keeps_bindings_and_rejects_stale_or_different_root(registration):
     state, definition = registration
     project = projects.create(state, "demo", Path(definition["repo"]))
-    projects.bind(state, "demo", "reviewer", {"tool": "claude-code"}, 1)
+    bound = projects.bind(state, "demo", "reviewer", {"tool": "claude-code"}, 1)
+    assert projects.native_authority_revision(bound, "implementer") == 1
+    assert projects.native_authority_revision(bound, "reviewer") == 2
     with pytest.raises(ValueError, match="revision changed"):
         registrations.register(state, definition, 1)
     with pytest.raises(ValueError, match="nonnegative integer"):
@@ -663,6 +665,8 @@ def test_existing_project_keeps_bindings_and_rejects_stale_or_different_root(reg
     registered = registrations.register(state, definition, 2)
     assert registered["created"] == project["created"] and registered["revision"] == 3
     assert registered["bindings"]["reviewer"]["tool"] == "claude-code"
+    assert projects.native_authority_revision(registered, "implementer") == 3
+    assert projects.native_authority_revision(registered, "reviewer") == 3
     other = Path(definition["repo"]) / "nested"
     other.mkdir()
     definition["repo"] = str(other)

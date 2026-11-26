@@ -286,6 +286,7 @@ def _prepare(state: State, definition: dict, before: dict | None) -> dict:
             # An adopted execution allowlist may have a different, equivalent order.
             files = deepcopy(previous["files"])
     project["revision"] = before["revision"] + 1 if before else 1
+    project.pop("native_authority_revisions", None)
     project["registration"] = {"schema_version": definition['schema_version'], "definition": selected, "sha256": digest,
                                "status": "pending", "operation_id": uuid.uuid4().hex, "files": files}
     return project

@@ -992,9 +992,11 @@ def _validate_session_authority(state, context):
     project = state.project(context['project'])
     repo = Path(project['repo'])
     details = repo.stat(follow_symlinks=False)
-    if (project['revision'] != context['project_revision'] or project['repo'] != context['repo']
+    current_revision = projects.native_authority_revision(project, context['role'])
+    expected_revision = context.get('authority_revision', context['project_revision'])
+    if (current_revision != expected_revision or project['repo'] != context['repo']
             or is_link(repo) or [details.st_dev, details.st_ino] != context['repo_identity']):
-        raise ValueError('Project revision or repository identity changed; start a new session')
+        raise ValueError('Project authority revision or repository identity changed; start a new session')
     requested = projects.effective_configuration(project)['layers'][context['role']]['binding']
     if requested != context['requested_binding']:
         raise ValueError('Current role binding differs from the frozen session')
@@ -1005,6 +1007,7 @@ def _validate_session_authority(state, context):
     details = home.stat(follow_symlinks=False)
     if is_link(home) or [details.st_dev, details.st_ino] != context['native_home_identity']:
         raise ValueError('Native session home identity changed')
+    return project
 
 
 def _session_turns(state, project, ident):
@@ -1119,7 +1122,7 @@ def _start_session(state, project_id, role, prompt, timeout, skill_names, recall
             context.update(binding=inference['binding'], requested_binding=requested, inference=inference,
                            repo=project['repo'], repo_identity=native_sources.directory_identity(Path(project['repo'])),
                            native_home=str(home), native_home_identity=native_sources.directory_identity(home), grant=None,
-                           sandbox=inference['sandbox'])
+                           sandbox=inference['sandbox'], authority_revision=projects.native_authority_revision(project, role))
             policy = _correction_policy(project, inference['binding'], template)
             if policy is not None:
                 context['correction_suggestions'] = policy
@@ -1178,9 +1181,8 @@ def prepare_campaign_recipient(state: State, project_id: str, revision: int, dec
             or latest.get('status') in ('unknown', 'reserved', 'running')):
         raise ValueError('Campaign recipient must select the original latest stopped native turn')
     context = _read_session_context(state, turns[0])
-    if context['project_revision'] != revision or context['binding']['tool'] != 'codex':
+    if context['binding']['tool'] != 'codex' or _validate_session_authority(state, context)['revision'] != revision:
         raise ValueError('Campaign requires a persistent Codex recipient from the approved project revision')
-    _validate_session_authority(state, context)
     if (continuation_receipt(state, project_id, session, parent, declaration['intent_id'])['dispatch'] != 'unrecorded'):
         raise ValueError('Campaign recipient intent already has original native dispatch evidence')
     inference = context['inference']
@@ -1358,8 +1360,6 @@ def continue_session(state: State, project_id: str, session_id: str, parent_run_
         parent = native_sources.find_run(state, project_id, parent_run_id)
         if parent is None or parent.get('session', {}).get('id') != session_id:
             raise ValueError('Wait requires a recorded parent from the selected session')
-        if expected_revision != parent['project_revision']:
-            raise ValueError('Turn revision differs from its original session')
 
     lock_path = state.root / 'runs' / (session_id + '.session.lock')
     with ExitStack() as resources:
@@ -1388,8 +1388,6 @@ def continue_session(state: State, project_id: str, session_id: str, parent_run_
             raise ValueError(f'This session reached its {_MAX_SESSION_TURNS}-turn limit; no new turn was reserved')
         latest = turns[-1]
         context = _read_session_context(state, turns[0])
-        if expected_revision != context['project_revision']:
-            raise ValueError('Turn revision differs from its original session')
         _validate_session_authority(state, context)
         try:
             native_sources.turn_folder(state, ident).lstat()
@@ -1413,7 +1411,9 @@ def continue_session(state: State, project_id: str, session_id: str, parent_run_
 
 def _reserve_session_turn(state, project, root, parent, ident, ordinal, prompt, timeout, clock, context, digest,
                           submitted, lock, *, check_admission_deadline=False, gate=None):
-    _validate_session_authority(state, context)
+    selected = _validate_session_authority(state, context)
+    if type(submitted['expected_revision']) is not int or submitted['expected_revision'] != selected['revision']:
+        raise ValueError('Turn requires the current project revision; reload the project and session')
     full_prompt = prompt + context['suffix']
     if len(full_prompt.encode('utf-8')) > 10_000_000:
         raise ValueError('Complete session prompt exceeds 10 MB; it was not truncated')
@@ -1438,7 +1438,7 @@ def _reserve_session_turn(state, project, root, parent, ident, ordinal, prompt, 
         if policy['available']:
             try:
                 task = document_corrections.prepare_native(state, project, ident, session, submitted,
-                    context['project_revision'], clock, path=policy['target'],
+                    selected['revision'], clock, path=policy['target'],
                     before_publish=admit if check_admission_deadline else None)
                 proposed_prompt = full_prompt + '\n\n' + document_corrections.native_prompt(task)
                 if len(proposed_prompt.encode('utf-8')) > 10_000_000:
@@ -1472,7 +1472,7 @@ def _reserve_session_turn(state, project, root, parent, ident, ordinal, prompt, 
         admit()
         _publish_session_packet(folder, {'request.json': encoded_request})
         document = {'id': ident, 'project': project, 'kind': 'native-agent-run', 'role': context['role'],
-                    'binding': context['binding'], 'project_revision': context['project_revision'],
+                    'binding': context['binding'], 'project_revision': selected['revision'],
                     'template': context['template'], 'session': session, 'submitted': submitted,
                     'context_digest': digest, 'request_sha256': hashlib.sha256(encoded_request).hexdigest(),
                     'prompt_sha256': hashlib.sha256(full_prompt.encode()).hexdigest(),

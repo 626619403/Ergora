@@ -639,6 +639,58 @@ def test_session_rejects_stale_parent_cross_project_and_changed_authority(native
     assert runs.inspect_session(state, 'demo', first['id'])['can_continue'] is False
 
 
+@pytest.mark.parametrize('records_authority', [False, True])
+def test_unrelated_binding_keeps_original_native_session_authorized(native_session_case, monkeypatch, records_authority):
+    state, repo, config, runs = native_session_case
+    if not records_authority:
+        encode = runs.native_sources.encode
+
+        def encode_original_context(value):
+            if isinstance(value, dict) and 'authority_revision' in value:
+                value = dict(value)
+                del value['authority_revision']
+            return encode(value)
+
+        monkeypatch.setattr(runs.native_sources, 'encode', encode_original_context)
+    revision = state.project('demo')['revision']
+    first = runs.run_agent(state, 'demo', 'implementer', 'begin fixture', timeout=10,
+                           session_intent='scope-check', expected_revision=revision, codex_config=config)
+    assert first['status'] == 'succeeded'
+    current = projects.bind(state, 'demo', 'reviewer',
+                            {'tool': 'codex', 'model': 'gpt-6.1-sol', 'reasoning_effort': 'high'}, revision)
+    assert runs.inspect_session(state, 'demo', first['id'])['can_continue']
+    with pytest.raises(ValueError, match='current project revision'):
+        runs.continue_session(state, 'demo', first['id'], first['id'], 'stale selector',
+                              expected_revision=revision, intent_id='stale-selection', timeout=10)
+    second = runs.continue_session(state, 'demo', first['id'], first['id'], 'same original authority',
+                                   expected_revision=current['revision'], intent_id='original-continuation', timeout=10)
+    assert second['status'] == 'succeeded' and second['project_revision'] == current['revision']
+    assert second['native_session']['id'] == first['native_session']['id']
+
+    projects.bind(state, 'demo', 'reviewer', {'tool': 'codex', 'model': 'other-reviewer'}, current['revision'])
+    observed = runs.continue_session(state, 'demo', first['id'], first['id'], 'same original authority',
+                                    expected_revision=current['revision'], intent_id='original-continuation', timeout=10)
+    assert observed['id'] == second['id']
+    assert len((repo / 'native-calls.jsonl').read_text().splitlines()) == 2
+
+
+def test_related_binding_rebind_and_restore_does_not_restore_native_authority(native_session_case):
+    state, repo, config, runs = native_session_case
+    original = state.project('demo')
+    first = runs.run_agent(state, 'demo', 'implementer', 'begin fixture', timeout=10,
+                           session_intent='role-revocation', expected_revision=original['revision'], codex_config=config)
+    assert first['status'] == 'succeeded'
+    changed = projects.bind(state, 'demo', 'implementer',
+                            {'tool': 'codex', 'model': 'gpt-6.1-sol', 'reasoning_effort': 'high'}, original['revision'])
+    current = projects.bind(state, 'demo', 'implementer', original['bindings']['implementer'], changed['revision'])
+    summary = runs.inspect_session(state, 'demo', first['id'])
+    assert not summary['can_continue'] and 'authority revision' in summary['reason']
+    with pytest.raises(ValueError, match='authority revision'):
+        runs.continue_session(state, 'demo', first['id'], first['id'], 'stale authority',
+                              expected_revision=current['revision'], intent_id='stale-authority', timeout=10)
+    assert len((repo / 'native-calls.jsonl').read_text().splitlines()) == 1
+
+
 def test_session_concurrent_parent_has_one_real_effect(native_session_case):
     from concurrent.futures import ThreadPoolExecutor
     state, repo, config, runs = native_session_case
@@ -1228,7 +1280,7 @@ def test_session_turn_capacity_keeps_every_admitted_chain_readable_and_existing_
     monkeypatch.setattr(runs, 'file_lock', lambda *args, **kwargs: nullcontext(None))
     monkeypatch.setattr(runs.budget_clock, 'authorize', lambda timeout: {'unused_by_effect_stub': True})
     admitted = []
-    def reserve(_state, _project, _root, _parent, _ident, ordinal, *args, check_admission_deadline=False):
+    def reserve(_state, _project, _root, _parent, _ident, ordinal, *args, check_admission_deadline=False, gate=None):
         admitted.append(ordinal)
     monkeypatch.setattr(runs, '_reserve_session_turn', reserve)
     assert runs.inspect_session(state, 'demo', root)['can_continue'] is True
@@ -1547,10 +1599,11 @@ def test_slot_wait_expires_before_first_durable_admission(native_correction_case
 
     def late_authority(context_state, context):
         nonlocal checks, expired
-        validate(context_state, context)
+        result = validate(context_state, context)
         checks += 1
         if expire_during == 'authority' and checks == 2:
             expired = True
+        return result
 
     def late_snapshot(*args, **kwargs):
         nonlocal expired
@@ -1639,9 +1692,10 @@ def test_native_correction_original_source_preview_continuation_and_exact_apply(
         completed = documents.complete_native(state, 'demo', suggestion['proposal_id'], first['id'], remaining=lambda: 0)
         assert completed['preview'] is None and completed['candidate_digest'] == preview['candidate_digest']
     assert native_document_history(state) == frozen
+    current = projects.bind(state, 'demo', 'reviewer', {'tool': 'codex', 'model': 'gpt-6.2-sol'}, revision)
     second_raw = 'Next correction: scope the rule to this project.\r\nDo not infer approval.\r\n'
     second = runs.continue_session(state, 'demo', first['id'], first['id'], second_raw,
-                                  expected_revision=revision, intent_id='correction-next', timeout=10)
+                                  expected_revision=current['revision'], intent_id='correction-next', timeout=10)
     assert second['status'] == 'succeeded' and second['submitted']['prompt'] == second_raw, second
     second_suggestion = second['correction_suggestion']
     assert second_suggestion['can_apply'] is True and second_suggestion['proposal_id'] != suggestion['proposal_id']
@@ -1652,10 +1706,11 @@ def test_native_correction_original_source_preview_continuation_and_exact_apply(
     assert second_task['correction']['native']['parent_run_id'] == first['id']
     assert second_task['correction']['native']['run_id'] == second['id']
     assert second_task['correction']['native']['ordinal'] == 1
+    assert second_task['correction']['native']['project_revision'] == second['project_revision'] == current['revision']
     assert runs.run_agent(state, 'demo', 'implementer', raw, timeout=10,
                           session_intent='correction-original', expected_revision=revision, codex_config=config)['id'] == first['id']
     assert runs.continue_session(state, 'demo', first['id'], first['id'], second_raw,
-                                 expected_revision=revision, intent_id='correction-next', timeout=10)['id'] == second['id']
+                                 expected_revision=current['revision'], intent_id='correction-next', timeout=10)['id'] == second['id']
     assert len((repo / 'native-calls.jsonl').read_text().splitlines()) == 2
     assert len(list((state.root / 'retrospectives/documents/demo').glob('*/record.json'))) == 2
     second_preview = documents.get_preview(state, 'demo', second_suggestion['proposal_id'])

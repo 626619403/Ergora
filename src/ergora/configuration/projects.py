@@ -67,6 +67,16 @@ def effective_configuration(project: dict) -> dict:
     return {**document, "sha256": hashlib.sha256(content.encode("utf-8")).hexdigest()}
 
 
+def native_authority_revision(project: dict, role: str) -> int:
+    revisions = project.get("native_authority_revisions", {})
+    if not isinstance(revisions, dict):
+        raise ValueError("Invalid recorded native session authority revisions")
+    revision = revisions.get(role, project["revision"])
+    if type(revision) is not int or not 1 <= revision <= project["revision"]:
+        raise ValueError("Invalid recorded native session authority revision")
+    return revision
+
+
 def bind(state: State, project_id: str, layer: str, binding: dict, expected_revision: int) -> dict:
     validate_binding(layer, binding)
     with state.connect() as db:
@@ -79,8 +89,15 @@ def bind(state: State, project_id: str, layer: str, binding: dict, expected_revi
             raise ValueError("Project revision changed; reload before saving")
         if document.get("registration", {}).get("status") == "pending":
             raise ValueError("Project registration is pending; resume it before changing bindings")
+        roles = components.ROLE_CAPABILITIES
+        before = {role: components.resolve_binding(document, role)["binding"] for role in roles}
+        revisions = {role: native_authority_revision(document, role) for role in roles}
         document["bindings"][layer] = binding
         document["revision"] += 1
+        document["native_authority_revisions"] = {
+            role: document["revision"] if before[role] != components.resolve_binding(document, role)["binding"]
+            else revisions[role] for role in roles
+        }
         db.execute("UPDATE projects SET document=? WHERE id=?", (json.dumps(document), project_id))
     return document
 
@@ -99,6 +116,11 @@ def set_correction_suggestions(state: State, project_id: str, enabled: bool, exp
             raise ValueError('Project revision changed; reload before saving')
         if document.get('registration', {}).get('status') == 'pending':
             raise ValueError('Project registration is pending; resume it before changing settings')
+        if document.get('correction_suggestions_enabled', True) != enabled:
+            document.pop('native_authority_revisions', None)
+        else:
+            document['native_authority_revisions'] = {
+                role: native_authority_revision(document, role) for role in components.ROLE_CAPABILITIES}
         document['correction_suggestions_enabled'] = enabled
         document['revision'] += 1
         db.execute('UPDATE projects SET document=? WHERE id=?', (json.dumps(document), project_id))
