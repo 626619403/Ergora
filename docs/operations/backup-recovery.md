@@ -39,6 +39,7 @@ After confirming services and external jobs have stopped, run these commands in 
 umask 077
 mkdir -p "$(dirname "$BACKUP")"
 mkdir "$BACKUP"
+ergora --home "$CONTROL" state recovery-scope PROJECT --task ORIGINAL_TASK > "$BACKUP/scope.json"
 ergora --home "$CONTROL" state backup "$BACKUP/control" --offline
 ergora --home "$CONTROL" state verify-backup "$BACKUP/control"
 
@@ -49,11 +50,15 @@ tar --compare --file "$BACKUP/execution.tar" --directory /
 (cd "$BACKUP" && sha256sum execution.tar > execution.tar.sha256)
 ```
 
+For the registered local Supervisor stack, `recovery-scope` lists the original roots, canonical Git metadata directories and the SQLite file selected by the local Temporal service. Inspect the report before creating the tar archive. Include any external Git metadata directories and the `payload_path` of the database and each reported sidecar if outside the archived directories. Preserve each symlink as well as its target, including links that resolve to the Git directories. The optional `--task` records one task's verified local creation and submission identities, including a saved run ID when available. Retain the discovery output privately as trusted evidence of the offline window.
+
+The command reads the control catalog and any retained write-ahead log (WAL) in private temporary storage. If the original control database has a retained rollback journal, recover that offline state before capturing the report.
+
 Stop on any failure. Do not move original directories or claim a usable backup afterward. `tar --compare` compares the archive with the current original directories; do not restart writers before it. Keep the control command's manifest SHA, and retain the archive SHA plus directory/version inventory in a trusted location. Digests verify transfer integrity; they do not authenticate the backup's origin. Treat backups containing credentials as private files.
 
 ## Restore on the same platform at the original paths
 
-Verify the originals and archive, then move each existing `CONTROL`, `CONFIG`, `STATE`, `INSTALLATION` and `REPO` to a newly created retention location. Preserve all original directories; restoration targets must not exist. A new machine still requires the original absolute paths and matching runtime dependencies: JSON paths are not rewritten. Check symbolic-link interpreter/tool targets and versions first. Do not use `project register` to recreate original tasks or replace missing ownership records with a new ledger.
+Verify the originals and archive, then move each existing `CONTROL`, `CONFIG`, `STATE`, `INSTALLATION`, `REPO` and any separately archived dependency to a newly created retention location. Preserve all original directories; restoration targets must not exist. A new machine still requires the original absolute paths and matching runtime dependencies: JSON paths are not rewritten. Check symbolic-link interpreter/tool targets and versions first. Do not use `project register` to recreate original tasks or replace missing ownership records with a new ledger.
 
 ```bash
 ergora --home "$CONTROL" state verify-backup "$BACKUP/control"
@@ -67,11 +72,12 @@ ergora --home "$CONTROL" state restore "$BACKUP/control" --offline
 tar --extract --preserve-permissions --keep-old-files \
   --file "$BACKUP/execution.tar" --directory /
 tar --compare --file "$BACKUP/execution.tar" --directory /
+ergora --home "$CONTROL" state recovery-scope PROJECT --task ORIGINAL_TASK --expected "$BACKUP/scope.json"
 ```
 
 Extract only a trusted archive you just verified, into paths writable by your current user. `--keep-old-files` fails on an existing file; a failed extraction may leave partial files. Keep services stopped, preserve that state and identify missing items before proceeding. The control-home interface stages, rechecks and publishes without overwriting; it does not make the external tar extraction transactional.
 
-Before startup, inspect project registrations and complete task envelopes, original creation/submission/cancellation/reconciliation records, request/receipt/artifact digests, original owner approvals and leases. Check original candidate SHAs, refs and uncommitted state in every business repository, mirror and worktree; use the original database tools to check SQLite integrity. Logical data and task identities should remain intact; physical database pages or logs after startup may differ.
+Run the comparison while writers are still stopped, with the task selector used before backup. It refuses a missing or changed SQLite target even when tar preserved the symlink. Continue with the original task envelopes, creation/submission/cancellation/reconciliation records, request/receipt/artifact digests, original owner approvals and leases. Check original candidate SHAs, refs and uncommitted state in every business repository, mirror and worktree. Use the original database tools to check SQLite integrity. Logical data and task identities should remain intact; physical database pages or logs after startup may differ.
 
 Start Temporal first with `ergora --home "$CONTROL" services start PROJECT temporal --revision N`, then explicitly start the required workers/other services using the same home. Query every original task/run. Repeating the original `ergora --home "$CONTROL" task start ...` with the same project, task, revision and creation SHA should return the same original run through its submission record rather than create another task. Reconcile unconfirmed external state before further effects. Recovery does not rewrite original outcomes, candidates, approvals or claims. Reopen writers only after checks; never run the retained old stack and restored stack together.
 

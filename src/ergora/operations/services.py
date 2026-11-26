@@ -99,6 +99,13 @@ def status(state: State, project_id: str) -> dict:
             "task_readiness": "not_checked", **_snapshot(folder)}
 
 
+def local_temporal_recovery(state: State, project_id: str) -> tuple[dict, Path]:
+    """Select the original SQLite input of the supported local Supervisor service."""
+    project, execution, _ = _context(state, project_id)
+    # The verified native agent_platform.service passes this path to --db-filename.
+    return project, Path(execution["state_directory"]) / "temporal.sqlite3"
+
+
 def _write(path: Path, content: str) -> None:
     descriptor, temporary = tempfile.mkstemp(dir=path.parent, prefix=".pending-")
     try:

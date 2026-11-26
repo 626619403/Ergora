@@ -70,7 +70,7 @@ def project_selection(state, project, revision):
         raise ValueError('Campaign creation requires an explicitly bound Temporal scheduler')
     if not scheduler['validation']['valid']:
         raise ValueError(scheduler['validation']['error'])
-    return {'registration': registrations.publication_identity(state, project),
+    return {'registration': registrations.publication_identity(state.root, project),
             'configuration_sha256': config['sha256'], 'scheduler': scheduler['binding']}
 
 

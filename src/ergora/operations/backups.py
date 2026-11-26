@@ -3,6 +3,7 @@
 from contextlib import closing, contextmanager
 import hashlib
 import json
+import os
 from pathlib import Path, PurePosixPath, PureWindowsPath
 import shutil
 import sqlite3
@@ -11,13 +12,14 @@ import sys
 import tempfile
 
 import ergora.definitions.agents as agent_definitions
+from ergora.definitions.bundles import parse_json
 import ergora.issues.application as issues
 import ergora.issues.writebacks as issue_writebacks
 import ergora.definitions.skills as skill_assets
 import ergora.definitions.workflows as workflow_definitions
 from ergora.configuration import validation as contracts
 from ergora.storage.assets import is_link as _is_link
-from ergora.storage.state import SCHEMA_VERSION, file_lock, now
+from ergora.storage.state import SCHEMA_VERSION, State, file_lock, now, resolve_home
 
 
 _SOURCE_EXCLUSIONS = {".schema.lock", "ergora.sqlite3", "ergora.sqlite3-wal", "ergora.sqlite3-shm", "ergora.sqlite3-journal"}
@@ -77,6 +79,156 @@ def info(root: Path) -> dict:
         version = db.execute("PRAGMA user_version").fetchone()[0]
     return {"home": str(root), "database_schema_version": version, "current_schema_version": SCHEMA_VERSION,
             "supported": 0 <= version <= SCHEMA_VERSION, "upgrade_required": 0 <= version < SCHEMA_VERSION}
+
+
+@contextmanager
+def _recovery_file(path: Path):
+    descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    with os.fdopen(descriptor, "rb") as stream:
+        if not stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
+            raise ValueError(f"Recovery scope requires an ordinary file: {path}")
+        yield stream
+
+
+def _file_identity(details: os.stat_result) -> tuple:
+    return (details.st_dev, details.st_ino, details.st_mode, details.st_size,
+            details.st_mtime_ns, details.st_ctime_ns)
+
+
+def _control_catalog_inputs(root: Path) -> dict[str, tuple]:
+    if os.path.lexists(root / "ergora.sqlite3-journal"):
+        raise ValueError("Original control database has a rollback journal; recover that offline state before checking the scope")
+    snapshot = {}
+    for name in ("ergora.sqlite3", "ergora.sqlite3-wal"):
+        try:
+            details = (root / name).lstat()
+        except FileNotFoundError:
+            if name == "ergora.sqlite3":
+                raise ValueError("No existing Ergora state database in the selected home") from None
+            continue
+        if not stat.S_ISREG(details.st_mode):
+            raise ValueError(f"Control database and sidecars must be ordinary files: {root / name}")
+        snapshot[name] = _file_identity(details)
+    return snapshot
+
+
+@contextmanager
+def _offline_control_catalog(root: Path):
+    # SQLite can write WAL or SHM even with mode=ro. Read retained WAL frames
+    # and rebuild SHM in private staging without connecting to the original.
+    temporary_base = Path("/tmp").resolve()
+    if temporary_base.is_relative_to(root):
+        raise ValueError("Control catalog staging requires a temporary directory outside the original control home")
+    inputs = _control_catalog_inputs(root)
+    with tempfile.TemporaryDirectory(prefix="ergora-recovery-scope-", dir=temporary_base) as temporary:
+        staged = Path(temporary)
+        changed = "Control database changed while staging recovery scope; stop writers before retrying"
+        for name, identity in inputs.items():
+            try:
+                with _recovery_file(root / name) as reader, (staged / name).open("xb") as writer:
+                    if _file_identity(os.fstat(reader.fileno())) != identity:
+                        raise ValueError(changed)
+                    shutil.copyfileobj(reader, writer)
+            except FileNotFoundError as error:
+                raise ValueError(changed) from error
+        if _control_catalog_inputs(root) != inputs:
+            raise ValueError(changed)
+        with _database(staged / "ergora.sqlite3") as db:
+            if [row[0] for row in db.execute("PRAGMA quick_check")] != ["ok"]:
+                raise ValueError("Staged control database integrity check failed")
+        yield State(staged, read_only=True)
+
+
+def _recovery_directory(path: Path, name: str) -> Path:
+    if not path.is_absolute() or not path.is_dir() or path.resolve() != path:
+        raise ValueError(f"Missing or redirected original {name} directory: {path}")
+    return path
+
+
+def _temporal_file(entry: Path, *, database: bool = False) -> dict:
+    target = entry
+    try:
+        link = os.readlink(entry) if entry.is_symlink() else None
+        if link is not None:
+            # Keep a direct symlink's exact text and every location tar must cover.
+            # A multi-hop link or noncanonical intermediate directory needs manual inventory.
+            target = Path(os.path.abspath(entry.parent / link))
+            if link != os.path.normpath(link) or entry.resolve(strict=True) != target:
+                raise ValueError(f"Recovery scope requires a direct Temporal SQLite link: {entry}")
+        with _recovery_file(target) as stream:
+            if database:
+                if stream.read(16) != b"SQLite format 3\0":
+                    raise ValueError(f"Original local Temporal database is not SQLite: {target}")
+                stream.seek(0)
+            size = os.fstat(stream.fileno()).st_size
+            digest = hashlib.file_digest(stream, "sha256").hexdigest()
+        return {"path": str(entry), "link": link, "payload_path": str(target),
+                "size": size, "sha256": digest}
+    except FileNotFoundError as error:
+        raise ValueError(f"Missing original local Temporal SQLite dependency: {target} (from {entry})") from error
+
+
+def recovery_scope(root: Path, project_id: str, *, task_id: str | None = None,
+                   expected: Path | None = None) -> dict:
+    """Observe one registered local stack while its execution writers are stopped."""
+    from ergora.configuration import registrations
+    from ergora.development import native
+    from ergora.operations import services
+    from ergora.storage.git import GitMaterials
+
+    if sys.platform != "linux":
+        raise ValueError("Registered local recovery scope requires Linux; use WSL2")
+    control_home = resolve_home(root)
+    with _offline_control_catalog(control_home) as catalog:
+        project, database = services.local_temporal_recovery(catalog, project_id)
+        observed = registrations.status(catalog, project_id)
+    publication = registrations.publication_identity(control_home, project)
+    if (not observed["consistent"] or observed["sha256"] != publication["sha256"]
+            or observed["revision"] != project["revision"]):
+        raise ValueError("Original project registration differs from its local publication")
+    execution = project["registration"]["definition"]["execution"]
+    directories = {"control_home": control_home, "repository": Path(project["repo"]),
+                   **{name: Path(value) for name, value in execution.items()}}
+    roots = {name: str(_recovery_directory(path, name)) for name, path in directories.items()}
+    temporal_database = _temporal_file(database, database=True)
+    locations = dict.fromkeys((database, Path(temporal_database["payload_path"])))
+    sidecars = [str(location) + suffix for location in locations for suffix in ("-journal", "-wal", "-shm")]
+    temporal = {"storage": "local-supervisor-sqlite", "database": temporal_database,
+                "sidecars": [_temporal_file(Path(path)) for path in sidecars if os.path.lexists(path)]}
+
+    repository = directories["repository"]
+    git = GitMaterials(repository)
+    if Path(os.fsdecode(git.read("rev-parse", "--show-toplevel", limit=4096).removesuffix(b"\n"))) != repository:
+        raise ValueError("Original registered path is not the restored Git worktree")
+    git_paths = {}
+    for name, argument in (("directory", "--absolute-git-dir"), ("common_directory", "--git-common-dir")):
+        value = git.read("rev-parse", "--path-format=absolute", argument, limit=4096).removesuffix(b"\n")
+        git_paths[name] = str(_recovery_directory(Path(os.fsdecode(value)).resolve(), f"Git {name}"))
+    git_paths["head"] = git.read("rev-parse", "--verify", "HEAD^{commit}", limit=128).decode("ascii").strip()
+
+    submission = None
+    if task_id is not None:
+        original = native.task_submission(project, control_home, "status", {"task_id": task_id}, timeout=20)
+        submission = {key: original[key] for key in ("task_id", "workflow_id", "run_id", "status",
+                      "creation_sha256", "intent_sha256", "attempt_sha256", "result_sha256", "rejection_sha256")}
+    inventory = {"schema_version": 1, "scope": "registered-project-local-recovery",
+                 "project": {"id": project_id, "revision": project["revision"], **publication},
+                 "roots": roots, "temporal": temporal, "git": git_paths, "submission": submission}
+    if expected is None:
+        return {"status": "observed", "inventory": inventory}
+    with _recovery_file(expected) as stream:
+        encoded = stream.read(65_537)
+    if len(encoded) > 65_536:
+        raise ValueError("Expected recovery scope exceeds 64 KiB")
+    record = parse_json(encoded.decode("utf-8"), "expected recovery scope", finite=True, bounded=True)
+    if (not isinstance(record, dict) or record.keys() != {"status", "inventory"}
+            or record["status"] != "observed" or not isinstance(record["inventory"], dict)
+            or record["inventory"].keys() != inventory.keys()):
+        raise ValueError("Expected recovery scope must be the original discovery output")
+    for section, actual in inventory.items():
+        if json.dumps(record["inventory"][section], sort_keys=True) != json.dumps(actual, sort_keys=True):
+            raise ValueError(f"Restored {section} differs from the recorded recovery scope")
+    return {"status": "verified", "inventory": inventory}
 
 
 def _check_assets(db: sqlite3.Connection, data: Path, original_home: Path) -> dict:

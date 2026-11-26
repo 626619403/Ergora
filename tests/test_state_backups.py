@@ -316,3 +316,93 @@ def test_cli_maintenance_does_not_create_or_migrate_state_implicitly(archive_sta
     result = cli(state.root, "restore", str(tmp_path / "backup"), "--offline")
     assert result.returncode == 0, result.stderr
     assert json.loads(result.stdout)["status"] == "restored"
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Local Supervisor recovery is supported on Linux")
+def test_recovery_scope_rejects_omitted_or_replaced_temporal_target(registration, tmp_path):
+    state, definition = registration
+    project = registrations.register(state, definition, 0)
+    runtime = Path(definition["execution"]["state_directory"])
+    runtime.mkdir(exist_ok=True)
+    database = runtime / "temporal.sqlite3"
+    payload = tmp_path / "original-temporal.sqlite3"
+    with sqlite3.connect(payload) as db:
+        db.execute("CREATE TABLE original (identity TEXT)")
+        db.execute("INSERT INTO original VALUES ('first')")
+    database.symlink_to("../original-temporal.sqlite3")
+    expected = tmp_path / "scope.json"
+
+    def inspect(*arguments):
+        return subprocess.run([sys.executable, "-m", "ergora", "--home", str(state.root), "state",
+                               "recovery-scope", project["id"], *arguments], capture_output=True,
+                              text=True, encoding="utf-8", timeout=20)
+
+    observed = inspect()
+    assert observed.returncode == 0, observed.stderr
+    expected.write_text(observed.stdout, encoding="utf-8")
+    inventory = json.loads(observed.stdout)["inventory"]
+    assert inventory["project"]["sha256"] == project["registration"]["sha256"]
+    assert inventory["roots"]["repository"] == project["repo"]
+    assert inventory["temporal"]["database"]["link"] == "../original-temporal.sqlite3"
+    assert inventory["temporal"]["database"]["payload_path"] == str(payload)
+    verified = inspect("--expected", str(expected))
+    assert verified.returncode == 0, verified.stderr
+    assert json.loads(verified.stdout) == {"status": "verified", "inventory": inventory}
+
+    retained = tmp_path / "retained.sqlite3"
+    payload.rename(retained)
+    assert database.is_symlink() and not database.exists()
+    missing = inspect("--expected", str(expected))
+    assert missing.returncode == 2 and "Missing original local Temporal SQLite dependency" in missing.stderr
+    assert str(payload) in missing.stderr and not payload.exists()
+
+    with sqlite3.connect(payload) as db:
+        db.execute("CREATE TABLE replacement (identity TEXT)")
+    replaced = inspect("--expected", str(expected))
+    assert replaced.returncode == 2 and "Restored temporal differs" in replaced.stderr
+    payload.unlink()
+    retained.rename(payload)
+    assert inspect("--expected", str(expected)).returncode == 0
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Local Supervisor recovery is supported on Linux")
+@pytest.mark.parametrize("sidecars", [(), ("-wal",), ("-wal", "-shm")],
+                         ids=["checkpointed", "committed-wal", "committed-wal-and-shm"])
+def test_recovery_scope_reads_control_wal_without_writing_original(registration, sidecars):
+    state, definition = registration
+    database = state.root / "ergora.sqlite3"
+    wal = database.with_name(database.name + "-wal")
+    with closing(sqlite3.connect(database)) as writer:
+        assert writer.execute("PRAGMA journal_mode=WAL").fetchone()[0] == "wal"
+        writer.execute("PRAGMA wal_autocheckpoint=0")
+        writer.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        project = registrations.register(state, definition, 0)
+        if sidecars:
+            paths = [database.with_name(database.name + suffix) for suffix in ("", *sidecars)]
+            saved = {path: path.read_bytes() for path in paths}
+            assert saved[wal]
+    assert not wal.exists()
+    if sidecars:
+        # Keep the original committed database inputs with no live keeper.
+        for path, content in saved.items():
+            path.write_bytes(content)
+    assert database.read_bytes()[18:20] == b"\x02\x02"
+    with closing(sqlite3.connect(database.as_uri() + "?immutable=1", uri=True)) as main_only:
+        assert main_only.execute("SELECT COUNT(*) FROM projects").fetchone()[0] == (0 if sidecars else 1)
+
+    runtime = Path(definition["execution"]["state_directory"])
+    runtime.mkdir(exist_ok=True)
+    with closing(sqlite3.connect(runtime / "temporal.sqlite3")) as db:
+        db.execute("CREATE TABLE original (identity TEXT)")
+
+    def original_inputs():
+        return {path.name: (path.read_bytes(), path.stat().st_mtime_ns) for path in state.root.glob("ergora.sqlite3*")}
+
+    inputs = original_inputs()
+    assert set(inputs) == {database.name + suffix for suffix in ("", *sidecars)}
+    result = subprocess.run([sys.executable, "-m", "ergora", "--home", str(state.root), "state",
+                             "recovery-scope", project["id"]], capture_output=True, text=True,
+                            encoding="utf-8", timeout=20)
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout)["inventory"]["project"]["sha256"] == project["registration"]["sha256"]
+    assert original_inputs() == inputs

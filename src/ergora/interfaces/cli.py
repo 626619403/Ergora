@@ -234,6 +234,11 @@ def parser() -> argparse.ArgumentParser:
     maintenance = commands.add_parser("state", help="Inspect, back up, verify or restore offline local state")
     operations = maintenance.add_subparsers(dest="operation", required=True)
     operations.add_parser("info")
+    recovery_scope = operations.add_parser("recovery-scope", help="Inspect one stopped registered local task stack")
+    recovery_scope.add_argument("project")
+    recovery_scope.add_argument("--task", metavar="TASK", help="Read one original formal task's local submission")
+    recovery_scope.add_argument("--expected", type=Path, metavar="FILE",
+                                help="Compare restored paths with a trusted original recovery scope observation")
     for name in ("backup", "verify-backup", "restore"):
         operation = operations.add_parser(name)
         operation.add_argument("directory", type=Path)
@@ -1314,6 +1319,8 @@ def main(argv: list[str] | None = None) -> int:
             root = resolve_home(args.home)
             if args.operation == "info":
                 output = backups.info(root)
+            elif args.operation == "recovery-scope":
+                output = backups.recovery_scope(root, args.project, task_id=args.task, expected=args.expected)
             elif args.operation == "backup":
                 output = backups.create(root, args.directory, offline=args.offline)
             elif args.operation == "verify-backup":
