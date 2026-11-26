@@ -69,6 +69,12 @@ For the governance composition's structure reviewer, publication order is Agent 
 
 Resource revision does not automatically adopt definitions for projects, elevate permissions or execute anything. Training templates retain their proposal/material-review entry points; real training and adoption must pass their own experiment gates.
 
+### Regenerate bundled optimization proposals
+
+In a source checkout, edit the shared graph or the direction's declared expert, role, instruction digest and version in the [proposal generator](../../../scripts/generate-optimization-proposals.py). The 18 common graphs and the low-precision graph use the same builder. Low precision adds its kernel assessment before measurement. Each proposal retains its own `instructions.md`.
+
+Run `python scripts/generate-optimization-proposals.py` to check the catalog, instruction digests and exact `workflow.json` bytes. For an intentional revision, set a higher version for each affected proposal and use `python scripts/generate-optimization-proposals.py --write`. Inspect the generated diff and use the [original dependency-chain procedure](#publish-resource-revisions-through-the-complete-dependency-chain) for publication and downstream pins.
+
 ### Jointly revise parent and child permissions
 
 Permission declarations belong to Workflows and their Agent nodes. The governance composition's structure-review leaf requires checking four levels: `root` → `root/review` → `root/review/structure` → `root/review/structure/review`. Large changes use the same review chain, while training proposals' measurement chain has one fewer level. Raising only the innermost Agent-node request is still refused by its owning Workflow; merely publishing a child workflow and replacing the parent reference still leaves the parent refusing an out-of-bounds child.

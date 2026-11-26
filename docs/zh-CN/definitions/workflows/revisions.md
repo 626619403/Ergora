@@ -41,6 +41,12 @@ ergora composition file kernel-delivery 1.0.0 instructions.md --base-digest BASE
 
 资源修订没有自动项目采用、权限提升或执行动作。训练模板继续使用提案和材料审查入口；真实训练与采用须走各自的实验门禁。
 
+## 重新生成内置优化提案
+
+在源码目录中，通过[提案生成脚本](../../../../scripts/generate-optimization-proposals.py)编辑共享图，或调整某个方向声明的专家、角色、指令摘要和版本。18 个同形提案与低精度提案使用同一个构建函数。低精度提案在测量前增加 kernel 评估。每个提案保留各自的 `instructions.md`。
+
+运行 `python scripts/generate-optimization-proposals.py`，核对目录条目、指令摘要和 `workflow.json` 的精确字节。对于计划发布的修订，先提高每个受影响提案的版本，再运行 `python scripts/generate-optimization-proposals.py --write`。检查生成差异，按[现有依赖链流程](#沿完整依赖链发布资源修订)发布并更新下游引用。
+
 ## 联合修订父子权限
 
 权限声明属于 Workflow 和其 Agent 节点。以治理组合的结构审查叶子为例，需要检查四层：`root` → `root/review` → `root/review/structure` → `root/review/structure/review`。大型修改使用同样的审查链，训练提案的测量链少一层。只提高最内层 Agent 节点请求时，其所属 Workflow 仍会拒绝；只发布新子工作流再替换父引用时，父工作流仍会拒绝越界的新子级。

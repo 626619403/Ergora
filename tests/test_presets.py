@@ -24,6 +24,70 @@ from ergora.storage.state import State
 from test_registrations import installation, registration
 
 
+def test_optimization_proposal_authoring_matches_checked_in_bundles():
+    project = Path(__file__).resolve().parents[1]
+    generator = project / 'scripts/generate-optimization-proposals.py'
+    result = subprocess.run([sys.executable, str(generator)], capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+
+
+@pytest.fixture
+def optimization_proposal_authoring_copy(tmp_path):
+    project = Path(__file__).resolve().parents[1]
+    script = Path('scripts/generate-optimization-proposals.py')
+    generator = tmp_path / script
+    generator.parent.mkdir()
+    shutil.copyfile(project / script, generator)
+    schema = Path('src/ergora/data/schemas/workflow-definition-v2.json')
+    (tmp_path / schema.parent).mkdir(parents=True)
+    shutil.copyfile(project / schema, tmp_path / schema)
+    presets = 'src/ergora/data/presets'
+    source = project / presets
+    draft = tmp_path / presets
+    (draft / 'workflows').mkdir(parents=True)
+    shutil.copyfile(source / 'presets.json', draft / 'presets.json')
+    for bundle in (source / 'workflows').glob('ergora-opt-*-proposal'):
+        shutil.copytree(bundle, draft / 'workflows' / bundle.name)
+    return generator, draft / 'workflows'
+
+
+def test_optimization_proposal_authoring_refuses_changed_bytes_at_the_same_version(optimization_proposal_authoring_copy):
+    generator, drafts = optimization_proposal_authoring_copy
+    document = drafts / 'ergora-opt-low-precision-proposal/workflow.json'
+    altered = document.read_bytes() + b'\n'
+    document.write_bytes(altered)
+
+    command = [sys.executable, str(generator)]
+    check = subprocess.run(command, capture_output=True, text=True)
+    assert check.returncode == 1
+    assert 'Generated proposal differs: ergora-opt-low-precision-proposal' in check.stderr
+    write = subprocess.run([*command, '--write'], capture_output=True, text=True)
+    assert write.returncode == 1
+    assert 'Use a higher version' in write.stderr
+    assert document.read_bytes() == altered
+
+
+@pytest.mark.parametrize('version', ['1.2.03', '1.2.' + '3' * 61], ids=['leading-zero', 'too-long'])
+def test_optimization_proposal_authoring_rejects_invalid_versions(optimization_proposal_authoring_copy, version):
+    generator, drafts = optimization_proposal_authoring_copy
+    original = {path: path.read_bytes() for path in drafts.glob('*/workflow.json')}
+    authored = generator.read_text(encoding='utf-8')
+    for direction, preview_version in [('activation-recompute', '999.0.0'), ('cluster-resiliency', version)]:
+        document = drafts / f'ergora-opt-{direction}-proposal/workflow.json'
+        current_version = json.loads(original[document])['version']
+        row = f'"{direction}": Proposal(\n        "{current_version}",'
+        assert authored.count(row) == 1
+        authored = authored.replace(row, row.replace(f'"{current_version}"', f'"{preview_version}"'))
+    generator.write_text(authored, encoding='utf-8')
+
+    command = [sys.executable, str(generator)]
+    for args in (command, [*command, '--write']):
+        result = subprocess.run(args, capture_output=True, text=True)
+        assert result.returncode == 1
+        assert f'ergora-opt-cluster-resiliency-proposal: invalid Workflow version {version!r}' in result.stderr
+        assert {path: path.read_bytes() for path in original} == original
+
+
 def _selected_engineering_review(state):
     example = Path(__file__).resolve().parents[1] / 'examples/composition/pr-review-selected'
     installed = workflows.install_preset(state, 'engineering-review')
