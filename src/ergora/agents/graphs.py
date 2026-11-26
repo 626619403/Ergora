@@ -3,6 +3,7 @@
 from collections import Counter, deque
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from contextlib import ExitStack
+from dataclasses import dataclass
 import hashlib
 import json
 import os
@@ -21,7 +22,7 @@ from ergora.configuration import validation as contracts
 from ergora.definitions import agents, bundles, workflows
 from ergora.development import dags, native as development_native
 from ergora.development.route_errors import RouteBlocked
-from ergora.runtime import budget_clock
+from ergora.runtime import action_observations, budget_clock
 from ergora.storage.assets import is_link, publish_directory
 from ergora.storage.state import State, file_lock, resolve_home
 
@@ -33,10 +34,30 @@ _VERIFICATION_NODES = ('verify-evidence', 'verify-fixed-check')
 _RECOVERY_FIELDS = ('project', 'project_revision', 'root', 'manifest_digest', 'inputs', 'timeout', 'max_prompt_bytes')
 _AWAITING_ROUTE = 'awaiting_route_decision'
 _ROUTE_DECISION = 'route-operator-decision.json'
+_FOLLOW_UP_MANIFEST = 'follow-up-manifest'
+_FOLLOW_UP_INVOCATION = 'follow-up-invocation.json'
 _ROUTE_ACTIONS = ('follow-up', 'finish')
 _FIXED_READ_ATTEMPT = 'verification-attempt.json'
 _FIXED_READ_COMPLETE = 'verification-complete.json'
 _FIXED_OUTPUT_DIGESTS = ('receipt_sha256', 'fixed_results_sha256')
+
+
+@dataclass(frozen=True)
+class PinnedFixedReview:
+    branch: str
+    manifest: Path
+    manifest_digest: str
+    inputs: dict
+
+
+class _UnknownFollowUp(ValueError):
+    pass
+
+
+class _TerminalFollowUp(ValueError):
+    def __init__(self, observation):
+        self.status = observation['terminal_status']
+        super().__init__(f'Original follow-up {observation["id"]} reported {self.status}')
 
 
 def _verify_sources(composition, inputs):
@@ -95,6 +116,9 @@ def _graph_authority_sha(receipt):
     authority = [receipt[name] for name in _RECOVERY_FIELDS]
     if 'pause_before_route' in receipt:
         authority.append(receipt['pause_before_route'])
+    for name in ('fixed_follow_up', 'follow_up_parent'):
+        if name in receipt:
+            authority.append([name, receipt[name]])
     return hashlib.sha256(_bounded_json(authority, _RECEIPT_LIMIT)).hexdigest()
 
 
@@ -141,6 +165,98 @@ def _check_route_pause(composition, selector, recoverable):
         raise ValueError('A route checkpoint requires an original recoverable graph')
     if not any(node['kind'] == 'choose-agent' and node['path'] == selector for node in composition['instances']):
         raise ValueError('Select an exact choose-agent instance from the frozen graph')
+
+
+def _fixed_follow_up_binding(composition, selector, selection, max_prompt_bytes, *, preflight=False):
+    nodes = {node['path']: node for node in composition['instances']}
+    route = nodes.get(selector, {})
+    if (route.get('kind') != 'choose-agent' or route['parent'] != 'root'
+            or selection.branch not in route['branches']):
+        raise ValueError('Fixed review follow-up must bind one original root route branch')
+    selected = set(route['branches']) | set(route['depends_on']) | {selector, 'root'}
+    if any(node['path'] not in selected and node['kind'] != 'join' for node in nodes.values()):
+        raise ValueError('Fixed review follow-up requires one original analyzer and route')
+    manifest = workflows.inspect_manifest(selection.manifest, material=True)
+    if manifest['digest'] != selection.manifest_digest:
+        raise ValueError('Fixed review follow-up manifest differs from its exact selection')
+    child = manifest['composition']
+    gate = dags.fixed_check_review(child)
+    if gate is None:
+        raise ValueError('Fixed review follow-up requires the exact fixed-check review workflow')
+    _, leaf = gate
+    branch = nodes[selection.branch]
+    if any(leaf[name] != branch[name] for name in ('ref', 'role', 'backend_request')):
+        raise ValueError('Fixed review follow-up reviewer differs from the original branch')
+    workflows._within(leaf['permissions'], branch['permissions'], selection.branch)
+    workflows._within(child['grant']['permissions'], composition['grant']['permissions'], selection.branch)
+    if any(value > composition['grant']['limits'][name]
+           for name, value in child['grant']['limits'].items()):
+        raise ValueError('Fixed review follow-up exceeds an original graph grant limit')
+    encoded = _graph_inputs(child, selection.inputs, max_prompt_bytes, recoverable=True)
+    inputs = json.loads(encoded)
+    _verify_sources(child, inputs)
+    _fixed_review_context(child, inputs, selection.manifest_digest)
+    if preflight:
+        _preflight_leaves(child, inputs, max_prompt_bytes, None)
+    if 'wait_seconds' in inputs['check']:
+        raise ValueError('Fixed review follow-up requires a completed original check')
+    root = child['instances'][0]
+    projection = {'port': 'result', 'binding': root['outputs']['result'], 'producer': leaf['path']}
+    return {'branch': selection.branch, 'manifest_digest': selection.manifest_digest, 'root': child['root'],
+            'grant_sha256': native_sources.sha(child['grant']), 'inputs': inputs, 'output_projection': projection}
+
+
+def _follow_up_invocation(receipt, checkpoint, decision, result_limit):
+    binding = receipt['fixed_follow_up']
+    return {'parent_recovery_sha256': receipt['recovery_sha256'], 'route_checkpoint_sha256': checkpoint,
+            'decision_sha256': decision, 'binding_sha256': native_sources.sha(binding),
+            'output_projection': binding['output_projection'], 'result_limit': result_limit}
+
+
+def _reservation_witness(receipt, sequence, attempt):
+    return {'schema_version': 1, 'sequence': sequence, 'recovery_sha256': receipt['recovery_sha256'],
+            **{key: attempt.get(key) for key in ('instance', 'run_id', 'input_digest')}}
+
+
+def _check_reservation(directory, receipt, sequence, attempt):
+    raw = native_sources.encode(_reservation_witness(receipt, sequence, attempt)) + b'\n'
+    detail = f'Saved graph reservation witness differs from its original attempt: {attempt["instance"]}'
+    try:
+        observed = native_sources.artifact(directory, f'reservation-{sequence}.json', len(raw))
+    except (OSError, ValueError) as error:
+        raise native_sources.ArtifactIdentityError(detail) from error
+    if observed != raw:
+        raise native_sources.ArtifactIdentityError(detail)
+
+
+def _reconstruct_graph_input(composition, source, path, task, limit):
+    prepared = workflows.inspect_input(source)
+    expected, _ = workflows.compile_input(composition, path, _bounded_json(task, limit), limit,
+                                          input_origin='workflow-port')
+    if native_sources.encode(prepared['request']) != native_sources.encode(expected):
+        raise native_sources.ArtifactIdentityError(
+            f'Saved graph input differs from its reconstructed task or manifest: {path}')
+    return prepared
+
+
+def _recover_agent_result(state, project, revision, node, attempt, prepared, result_limit):
+    path, run_id = node['path'], attempt['run_id']
+    observed = runs.inspect_run(state, project, run_id, max_result_bytes=result_limit)
+    original, result = observed['run'], observed['result']
+    if original['status'] != 'succeeded':
+        raise ValueError(f'Graph recovery requires a proven successful original Agent outcome: {path}')
+    if (type(original.get('project_revision')) is not int
+            or original['project_revision'] != revision
+            or original.get('formal_execution_authorized') is not False
+            or original.get('role') != node['role'] or original.get('binding') != node['backend_request']
+            or original.get('policy', {}).get('mode') != 'text-only'
+            or not observed['input']['available'] or observed['input']['digest'] != prepared['digest']
+            or not observed['prompt']['available'] or not result['available']
+            or (('result_sha256' in attempt or attempt['status'] == 'succeeded')
+                and attempt.get('result_sha256') != result['sha256'])):
+        raise native_sources.ArtifactIdentityError(
+            f'Graph recovery requires matching original Agent input, prompt and result evidence: {path}')
+    return result
 
 
 def _route_checkpoint_record(receipt, recommendation):
@@ -381,6 +497,7 @@ class _GraphRun:
         self.pause_before_route = receipt.get('pause_before_route')
         self.checkpoint_sha = None
         self.operator_decision = None
+        self.follow_up_output = None
 
     def save(self):
         self.check_owner()
@@ -406,6 +523,11 @@ class _GraphRun:
     def should_stop(self):
         return self.stop_signalled() or self.recovery_clock_expired()
 
+    def operation_stop(self):
+        if 'follow_up_parent' in self.receipt:
+            return self.stop_signalled()
+        return self.should_stop()
+
     def check_active(self):
         self.check_owner()
         if self.stop_signalled():
@@ -429,8 +551,7 @@ class _GraphRun:
         return native_sources.sha([self.receipt['recovery_sha256'], path])[:32]
 
     def reservation_witness(self, sequence, attempt):
-        return {'schema_version': 1, 'sequence': sequence, 'recovery_sha256': self.receipt['recovery_sha256'],
-                **{key: attempt.get(key) for key in ('instance', 'run_id', 'input_digest')}}
+        return _reservation_witness(self.receipt, sequence, attempt)
 
     def check_reservations(self, names, leaves):
         witnesses = {name for name in names if name.startswith('reservation-')}
@@ -439,14 +560,7 @@ class _GraphRun:
             raise ValueError('Saved graph reservation witnesses differ from graph progress')
         for sequence, attempt in enumerate(leaves, 1):
             self.check_active()
-            raw = native_sources.encode(self.reservation_witness(sequence, attempt)) + b'\n'
-            detail = f'Saved graph reservation witness differs from its original attempt: {attempt["instance"]}'
-            try:
-                observed = native_sources.artifact(self.directory, f'reservation-{sequence}.json', len(raw))
-            except (OSError, ValueError) as error:
-                raise ValueError(detail) from error
-            if observed != raw:
-                raise ValueError(detail)
+            _check_reservation(self.directory, self.receipt, sequence, attempt)
 
     def check_leaf_admission(self):
         self.check_active()
@@ -498,7 +612,7 @@ class _GraphRun:
             raise
         future = executor.submit(runs.run_input, self.state, self.project['id'], source, self.receipt['timeout'], mode='text-only',
             codex_config=self.codex_config, deadline=self.deadline, input_digest=prepared['digest'], run_id=attempt['run_id'],
-            expected_revision=self.project['revision'], stop_requested=self.should_stop, **options)
+            expected_revision=self.project['revision'], stop_requested=self.operation_stop, **options)
         self.running[future] = attempt
         self.active_slots.update(scope['path'] for scope in node['concurrency_scopes'])
         if settled:
@@ -586,7 +700,7 @@ class _GraphRun:
         from ergora.development.application import read_candidate_verification, read_fixed_check_proof
 
         options = {'expected_revision': self.project['revision'], 'deadline': self.deadline,
-                   'stop_requested': self.should_stop}
+                   'stop_requested': self.operation_stop}
         if attempt is not None:
             self.check_fixed_read_cutoff(attempt)
             options.update(deadline=attempt['deadline_monotonic_ns'] / 1_000_000_000, lock_fd=self.lock_fd)
@@ -694,7 +808,7 @@ class _GraphRun:
         self.check_fixed_read_cutoff(attempt)
         proof = read_fixed_check_proof(self.state, self.project['id'], locator, self.fixed_review,
             expected_revision=self.project['revision'], deadline=attempt['deadline_monotonic_ns'] / 1_000_000_000,
-            stop_requested=self.should_stop, lock_fd=self.lock_fd, **options)
+            stop_requested=self.operation_stop, lock_fd=self.lock_fd, **options)
         self.check_fixed_read_cutoff(attempt)
         if (not isinstance(proof, dict) or proof.keys() != saved.keys() - {'wait_seconds'}
                 or _bounded_json({**source, **proof}, self.result_limit) != _bounded_json(saved, self.result_limit)):
@@ -724,6 +838,8 @@ class _GraphRun:
                 self.receipt['route_checkpoint'] = _route_checkpoint_record(self.receipt, record)
                 return None
             record = _decided_route(node, record, self.operator_decision)
+            if self.selects_follow_up(record):
+                self.follow_up_output = self.fixed_follow_up(record, launch=True)
         self.receipt.setdefault('route_decisions', []).append(record)
         self.save()
         self.check_active()
@@ -736,9 +852,12 @@ class _GraphRun:
                                      self.receipt['timeout'], now_ns=time.monotonic_ns())
 
     def publish_route_decision(self, decision):
-        raw = native_sources.encode(decision) + b'\n'
-        destination = self.directory / _ROUTE_DECISION
-        staged = self.directory / f'.{_ROUTE_DECISION}.pending'
+        self.publish_route_record(_ROUTE_DECISION, decision)
+
+    def publish_route_record(self, name, record):
+        raw = native_sources.encode(record) + b'\n'
+        destination = self.directory / name
+        staged = self.directory / f'.{name}.pending'
         # The original coordinator lock gives each retry exclusive use of this staging path.
         staged.unlink(missing_ok=True)
         descriptor = os.open(staged, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
@@ -751,9 +870,9 @@ class _GraphRun:
             os.link(staged, destination)
         finally:
             staged.unlink(missing_ok=True)
-        saved = native_sources.artifact(self.directory, _ROUTE_DECISION, len(raw), confirm_durable=True)
+        saved = native_sources.artifact(self.directory, name, len(raw), confirm_durable=True)
         if saved != raw:
-            raise native_sources.ArtifactIdentityError('Published operator decision differs from its complete packet')
+            raise native_sources.ArtifactIdentityError('Published route record differs from its complete packet')
 
     def accept_route_action(self, checkpoint_sha, action):
         if checkpoint_sha != self.checkpoint_sha:
@@ -772,8 +891,74 @@ class _GraphRun:
         self.operator_decision = decision
         self.check_active()
 
+    def selects_follow_up(self, record):
+        return ('fixed_follow_up' in self.receipt and record['instance'] == self.pause_before_route
+                and record['selected'] == self.receipt['fixed_follow_up']['branch'])
+
+    def fixed_follow_up(self, route, *, launch=False):
+        binding = self.receipt['fixed_follow_up']
+        manifest = self.directory / _FOLLOW_UP_MANIFEST
+        selected = PinnedFixedReview(binding['branch'], manifest, binding['manifest_digest'], binding['inputs'])
+        checked = _fixed_follow_up_binding(self.composition, self.pause_before_route, selected,
+                                           self.receipt['max_prompt_bytes'])
+        if native_sources.encode(checked) != native_sources.encode(binding):
+            raise ValueError('Fixed review follow-up differs from the original binding')
+        self.check_route_checkpoint(self.receipt['route_checkpoint']['recommendation'])
+        decision = native_sources.sha(self.operator_decision)
+        if self.operator_decision['action'] != 'follow-up' or route['operator_decision_sha256'] != decision:
+            raise ValueError('Fixed review follow-up requires its original operator decision')
+        invocation_record = _follow_up_invocation(
+            self.receipt, self.checkpoint_sha, decision, self.result_limit - self.result_bytes)
+        child_id = native_sources.sha(invocation_record)
+        child = self.directory / ('follow-up-' + child_id)
+        marker = self.directory / _FOLLOW_UP_INVOCATION
+        if os.path.lexists(marker):
+            observed = native_sources.packet(self.directory, _FOLLOW_UP_INVOCATION, confirm_durable=True)
+            if observed != invocation_record:
+                raise ValueError('Saved follow-up invocation differs from the original selected route')
+        elif launch and not os.path.lexists(child):
+            self.check_active()
+            self.publish_route_record(_FOLLOW_UP_INVOCATION, invocation_record)
+            self.check_active()
+            check = binding['inputs']['check']
+            action = action_observations.FixedCheckStatus(check['operation_id'], check['job_sha256'])
+            status = action_observations.observe(action, self.project, self.state.root, deadline=self.deadline,
+                                                 stop_requested=self.stop_signalled)
+            if (status['status'] != 'succeeded' or status['cleanup_confirmed'] is not True
+                    or status['stop_requested'] is not False
+                    or any(status.get(key) != value for key, value in check.items())):
+                raise ValueError('Original follow-up fixed check does not support the bound review')
+            self.check_active()
+            _run_graph(self.state, self.project['id'], manifest, binding['manifest_digest'], binding['inputs'], child,
+                       self.receipt['max_prompt_bytes'], self.receipt['timeout'], recoverable=True,
+                       follow_up_parent=(self, child_id, invocation_record['result_limit']))
+        else:
+            raise ValueError('Original follow-up child has no saved invocation')
+        return self.read_fixed_follow_up(child, child_id, invocation_record)
+
+    def read_fixed_follow_up(self, child, child_id, invocation_record):
+        self.check_active()
+        observed, result = _read_fixed_follow_up(self.state, self.project['id'], self.receipt, self.recovery,
+                                                  child, child_id, invocation_record)
+        self.check_active()
+        if result is None:
+            if observed['terminal_status'] is not None:
+                raise _TerminalFollowUp(observed)
+            raise _UnknownFollowUp('Original follow-up attempt has no proven successful outcome')
+        return result['document'], result['bytes']
+
     def complete_route(self, record, pending):
         self.completed[record['instance']] = {'result': {'choice': record['choice']}}
+        if self.selects_follow_up(record):
+            if self.follow_up_output is None:
+                self.follow_up_output = self.fixed_follow_up(record)
+            selected = record['selected']
+            output, size = self.follow_up_output
+            if size > self.result_limit - self.result_bytes:
+                raise ValueError('Original follow-up exceeds the remaining graph result size')
+            self.result_bytes += size
+            del pending[selected]
+            self.completed[selected] = {'result': output}
         for branch in record['skipped']:
             del pending[branch]
             self.completed[branch] = {'status': 'skipped'}
@@ -854,13 +1039,7 @@ class _GraphRun:
             opened[path] = self.ports(parent, opened[parent], node['inputs'])
 
     def recovery_input(self, source, path, task):
-        prepared = workflows.inspect_input(source)
-        limit = self.receipt['max_prompt_bytes']
-        expected, _ = workflows.compile_input(self.composition, path, _bounded_json(task, limit), limit,
-                                              input_origin='workflow-port')
-        if native_sources.encode(prepared['request']) != native_sources.encode(expected):
-            raise ValueError(f'Saved graph input differs from its reconstructed task or manifest: {path}')
-        return prepared
+        return _reconstruct_graph_input(self.composition, source, path, task, self.receipt['max_prompt_bytes'])
 
     def recover_leaf(self, node, attempt, prepared):
         path, run_id = node['path'], attempt.get('run_id')
@@ -872,19 +1051,8 @@ class _GraphRun:
         remaining = self.result_limit - self.result_bytes
         if remaining <= 0:
             raise ValueError('Original leaves exceed the graph result capacity')
-        observed = runs.inspect_run(self.state, self.project['id'], run_id, max_result_bytes=remaining)
-        original, result = observed['run'], observed['result']
-        if original['status'] != 'succeeded':
-            raise ValueError(f'Graph recovery requires a proven successful original Agent outcome: {path}')
-        if (type(original.get('project_revision')) is not int
-                or original['project_revision'] != self.project['revision']
-                or original.get('formal_execution_authorized') is not False
-                or original.get('role') != node['role'] or original.get('binding') != node['backend_request']
-                or original.get('policy', {}).get('mode') != 'text-only'
-                or not observed['input']['available'] or observed['input']['digest'] != prepared['digest']
-                or not observed['prompt']['available'] or not result['available']
-                or (('result_sha256' in attempt or status == 'succeeded') and attempt.get('result_sha256') != result['sha256'])):
-            raise ValueError(f'Graph recovery requires matching original Agent input, prompt and result evidence: {path}')
+        result = _recover_agent_result(self.state, self.project['id'], self.project['revision'], node, attempt,
+                                       prepared, remaining)
         flow_map_producer = path in self.flow_map_producer_paths
         invocation.validate_result(result['document'], _leaf_result_schema(node, flow_map_producer=flow_map_producer),
                                    allow_omitted_response=flow_map_producer)
@@ -1189,6 +1357,12 @@ def _execute_graph(run, inputs, composition):
     except KeyboardInterrupt:
         run.fence_stop()
         receipt.update(status='cancelled', error='Workflow interrupted')
+    except _UnknownFollowUp:
+        raise
+    except _TerminalFollowUp as error:
+        if error.status == 'cancelled':
+            run.fence_stop()
+        receipt.update(status=error.status, error=str(error))
     except (OSError, ValueError, RecursionError, StateError) as error:
         receipt.update(status='failed', error=str(error))
     run.save()
@@ -1235,17 +1409,35 @@ def _check_recovery_result_limit(recovery):
 
 def run_graph(state: State, project_id: str, manifest: Path, manifest_digest: str, inputs: dict, directory: Path,
               max_prompt_bytes: int, timeout: int, *, codex_config: Path | None = None, stop_requested=None,
-              recoverable=False, pause_before_route: str | None = None) -> dict:
+              recoverable=False, pause_before_route: str | None = None, fixed_follow_up: PinnedFixedReview | None = None) -> dict:
     """Run a bounded, dependency-ready read-only graph with no resubmission through this entry."""
+    return _run_graph(state, project_id, manifest, manifest_digest, inputs, directory, max_prompt_bytes, timeout,
+                      codex_config=codex_config, stop_requested=stop_requested, recoverable=recoverable,
+                      pause_before_route=pause_before_route, fixed_follow_up=fixed_follow_up)
+
+
+def _run_graph(state, project_id, manifest, manifest_digest, inputs, directory, max_prompt_bytes, timeout, *,
+               codex_config=None, stop_requested=None, recoverable=False, pause_before_route=None,
+               fixed_follow_up=None, follow_up_parent=None):
     graph_options(max_prompt_bytes, timeout, recoverable=recoverable, codex_config=codex_config)
     deadline = time.monotonic() + timeout
     recovery = None
     if recoverable:
-        deadline_ns = time.monotonic_ns() + timeout * 1_000_000_000
-        recovery = {'schema_version': 2, 'clock': budget_clock.authorize(timeout), 'deadline_monotonic_ns': deadline_ns,
-                    'result_limit': _RESULT_LIMIT}
+        if follow_up_parent is None:
+            deadline_ns = time.monotonic_ns() + timeout * 1_000_000_000
+            recovery = {'schema_version': 2, 'clock': budget_clock.authorize(timeout), 'deadline_monotonic_ns': deadline_ns,
+                        'result_limit': _RESULT_LIMIT}
+        else:
+            parent, _, child_limit = follow_up_parent
+            parent.check_active()
+            recovery = {'schema_version': 2, 'clock': parent.recovery['clock'],
+                        'deadline_monotonic_ns': parent.recovery['deadline_monotonic_ns'], 'result_limit': child_limit}
+            _check_recovery_result_limit(recovery)
+            stop_requested = lambda: os.path.lexists(parent.directory / 'stop.json') or parent.stop_signalled()
         deadline = _graph_deadline(recovery, timeout)
     project = state.project(project_id)
+    if follow_up_parent is not None and project['revision'] != parent.project['revision']:
+        raise ValueError('Project changed before original follow-up admission')
     checked = workflows.inspect_manifest(manifest, material=True)
     if checked['digest'] != manifest_digest:
         raise ValueError('Workflow manifest differs from the explicitly selected digest')
@@ -1267,6 +1459,13 @@ def run_graph(state: State, project_id: str, manifest: Path, manifest_digest: st
                'max_prompt_bytes': max_prompt_bytes, 'leaves': [], 'formal_execution_authorized': False}
     if pause_before_route is not None:
         receipt['pause_before_route'] = pause_before_route
+    if fixed_follow_up is not None:
+        if pause_before_route is None:
+            raise ValueError('A fixed review follow-up requires its original supervisor checkpoint')
+        receipt['fixed_follow_up'] = _fixed_follow_up_binding(
+            composition, pause_before_route, fixed_follow_up, max_prompt_bytes, preflight=True)
+    if follow_up_parent is not None:
+        receipt['follow_up_parent'] = follow_up_parent[1]
     if recoverable:
         directory = directory.resolve()
         receipt['inputs'] = inputs = json.loads(encoded_inputs)
@@ -1287,6 +1486,11 @@ def run_graph(state: State, project_id: str, manifest: Path, manifest_digest: st
             shutil.copytree(manifest, staged/'manifest', symlinks=True)
             if workflows.inspect_manifest(staged/'manifest')['digest'] != manifest_digest:
                 raise ValueError('Workflow manifest changed while freezing the run')
+            if fixed_follow_up is not None:
+                target = staged / _FOLLOW_UP_MANIFEST
+                shutil.copytree(fixed_follow_up.manifest, target, symlinks=True)
+                if workflows.inspect_manifest(target)['digest'] != fixed_follow_up.manifest_digest:
+                    raise ValueError('Fixed review follow-up manifest changed while freezing the run')
             run = _GraphRun(state, project, composition, staged, receipt, deadline, codex_config, stop_requested,
                             fixed_review, recovery=recovery, lock_fd=lock_fd)
             run.check_active()
@@ -1313,6 +1517,8 @@ def resume_graph(home: Path | None, project_id: str, directory: Path, manifest_d
     with ExitStack() as owner:
         original_lock = _enter_owner(owner, lock)
         _, receipt = _read_graph_receipt(project_id, directory, manifest_digest)
+        if 'follow_up_parent' in receipt:
+            raise ValueError('Resume a bound child through its original parent graph')
         if receipt.get('status') not in ('incomplete', _AWAITING_ROUTE) or os.path.lexists(directory / 'stop.json'):
             raise ValueError('A terminal or explicitly stopped graph cannot resume')
         if 'outputs' in receipt or 'error' in receipt:
@@ -1506,7 +1712,8 @@ def _observe_route_recommendation(record, selector, attempts, choices):
     return observation, _route_record(selector, choice, source)
 
 
-def _observe_route(sequence, record, selector, attempts, choices, graph_status, *, supervised=False, operator_route=None):
+def _observe_route(sequence, record, selector, attempts, choices, graph_status, *, supervised=False,
+                   operator_route=None, follow_up=None):
     observation, expected = _observe_route_recommendation(record, selector, attempts, choices)
     observation = {'sequence': sequence, **observation}
     if expected is None:
@@ -1517,8 +1724,18 @@ def _observe_route(sequence, record, selector, attempts, choices, graph_status, 
         expected = operator_route
         observation['operator_decision_sha256'] = expected['operator_decision_sha256']
     selected, skipped = expected['selected'], expected['skipped']
-    if (record != expected or any(branch in attempts for branch in skipped)
-            or (graph_status == 'succeeded' and selected is not None and selected not in attempts)):
+    if record != expected or any(branch in attempts for branch in skipped):
+        return {**observation, 'state': 'mismatch', 'proof': 'route_decision'}
+    if follow_up is not None:
+        linked = {**observation, 'follow_up': follow_up}
+        if selected in attempts:
+            return {**linked, 'state': 'mismatch', 'proof': 'follow_up'}
+        if follow_up['state'] != 'corroborated':
+            return {**linked, 'state': follow_up['state'], 'proof': 'follow_up'}
+        if graph_status == 'succeeded' and follow_up['terminal_status'] != 'succeeded':
+            return {**linked, 'state': 'mismatch', 'proof': 'follow_up'}
+        observation = linked
+    elif graph_status == 'succeeded' and selected is not None and selected not in attempts:
         return {**observation, 'state': 'mismatch', 'proof': 'route_decision'}
     return {**observation, 'state': 'corroborated', 'choice': expected['choice'], 'selected': selected, 'skipped': skipped}
 
@@ -1685,6 +1902,109 @@ def _observe_graph_recovery(directory, state_home, receipt, selected_project, re
     return observation
 
 
+def _read_fixed_follow_up(state, project, parent_receipt, parent_recovery, child, child_id, invocation_record):
+    binding = parent_receipt['fixed_follow_up']
+    projection = invocation_record['output_projection']
+    observation = {'id': child_id, 'directory': str(child), 'manifest_digest': binding['manifest_digest'],
+                   'projection': projection, 'terminal_status': None, 'state': 'unknown'}
+    if not os.path.lexists(child):
+        return observation, None
+    if is_link(child) or not child.is_dir():
+        raise native_sources.ArtifactIdentityError('Original follow-up directory was replaced')
+    raw, receipt = _read_graph_receipt(project, child, binding['manifest_digest'])
+    recovery = native_sources.packet(child, 'recovery.json')
+    checked = workflows.inspect_manifest(child / 'manifest', material=True)
+    composition = checked['composition']
+    if (checked['digest'] != binding['manifest_digest'] or receipt.get('root') != binding['root']
+            or receipt.get('follow_up_parent') != child_id or 'fixed_follow_up' in receipt
+            or receipt.get('project_revision') != parent_receipt['project_revision']
+            or native_sources.encode(receipt.get('inputs')) != native_sources.encode(binding['inputs'])
+            or receipt.get('timeout') != parent_receipt['timeout']
+            or receipt.get('max_prompt_bytes') != parent_receipt['max_prompt_bytes']
+            or recovery['clock'] != parent_recovery['clock']
+            or recovery['deadline_monotonic_ns'] != parent_recovery['deadline_monotonic_ns']
+            or recovery['result_limit'] != invocation_record['result_limit']):
+        raise native_sources.ArtifactIdentityError('Saved child receipt differs from the original follow-up authority')
+    gate, leaf = dags.fixed_check_review(composition)
+    review = _fixed_review_context(composition, binding['inputs'], binding['manifest_digest'])
+    reads = _observed_attempts(receipt, 'verification_reads', {gate['path']})
+    authority = _observe_graph_recovery(child, state.root, receipt, {'revision': parent_receipt['project_revision']},
+                                         review, gate['path'], reads)
+    if authority['authorization']['state'] != 'corroborated':
+        raise native_sources.ArtifactIdentityError('Original follow-up graph authority is not corroborated')
+    status, outputs = receipt.get('status'), receipt.get('outputs')
+    if (status not in ('incomplete', *_TERMINAL_STATUSES)
+            or (status == 'succeeded' and (not isinstance(outputs, dict)
+                or outputs.keys() != composition['instances'][0]['outputs'].keys()))
+            or (status != 'succeeded' and 'outputs' in receipt)):
+        raise native_sources.ArtifactIdentityError('Original follow-up status or output ports are inconsistent')
+    terminal = status if status in _TERMINAL_STATUSES else None
+    if (authority['stop']['state'] not in ('not_recorded', 'recorded')
+            or (terminal is not None and (terminal == 'cancelled') != (authority['stop']['state'] == 'recorded'))):
+        raise native_sources.ArtifactIdentityError('Original follow-up STOP contradicts its saved outcome')
+    observation.update(terminal_status=terminal, receipt_sha256=hashlib.sha256(raw).hexdigest(),
+                       stop=authority['stop'], state='corroborated' if terminal is not None else 'unknown')
+    leaves = _observed_attempts(receipt, 'leaves', {projection['producer']}, required=True)
+    if leaves:
+        attempt, = leaves
+        if attempt['run_id'] != native_sources.sha([receipt['recovery_sha256'], leaf['path']])[:32]:
+            raise native_sources.ArtifactIdentityError('Original follow-up output producer differs from its reservation')
+        _check_reservation(child, receipt, 1, attempt)
+        prepared = _reconstruct_graph_input(composition, child / 'input-1', leaf['path'],
+                                            binding['inputs']['task'], receipt['max_prompt_bytes'])
+        if prepared['digest'] != attempt['input_digest']:
+            raise native_sources.ArtifactIdentityError('Original follow-up input differs from its reservation')
+        observation['source'] = {key: attempt.get(key)
+                                 for key in ('instance', 'run_id', 'input_digest', 'result_sha256', 'status')}
+    if status != 'succeeded':
+        return observation, None
+    if (not leaves or attempt['status'] != 'succeeded' or authority['fixed_check']['state'] != 'recorded_complete'
+            or len(reads) != 1 or native_sources.encode(outputs['proof']) != native_sources.encode(reads[0].get('evidence'))):
+        raise native_sources.ArtifactIdentityError('Original follow-up Agent and fixed-check receipts are not corroborated')
+    result = _recover_agent_result(state, project, receipt['project_revision'], leaf, attempt, prepared,
+                                  invocation_record['result_limit'])
+    invocation.validate_result(result['document'], _leaf_result_schema(leaf))
+    projected = {projection['producer']: {'result': result['document']}}
+    if native_sources.encode(projected) != native_sources.encode(outputs[projection['port']]):
+        raise native_sources.ArtifactIdentityError('Original follow-up output differs from its Agent result')
+    return observation, result
+
+
+def _observe_fixed_follow_up(state, project, directory, composition, receipt, recovery, checkpoint, route, attempts):
+    binding = receipt.get('fixed_follow_up')
+    if binding is None:
+        return None
+    if not isinstance(binding, dict):
+        return {'state': 'invalid', 'proof': 'follow_up'}
+    marker = directory / _FOLLOW_UP_INVOCATION
+    if route is None or route['selected'] != binding.get('branch'):
+        return {'state': 'mismatch', 'proof': 'operator_decision'} if os.path.lexists(marker) else None
+    observation = {'branch': route['selected'], 'proof': 'follow_up'}
+    try:
+        selected = PinnedFixedReview(binding['branch'], directory / _FOLLOW_UP_MANIFEST,
+                                     binding['manifest_digest'], binding['inputs'])
+        original = _fixed_follow_up_binding(composition, route['instance'], selected, receipt['max_prompt_bytes'])
+        if original != binding:
+            raise native_sources.ArtifactIdentityError('Fixed review follow-up differs from the original binding')
+        if not os.path.lexists(marker):
+            return {**observation, 'state': 'missing'}
+        parent = native_sources.packet(directory, 'recovery.json')
+        if native_sources.sha(parent) != recovery['authorization'].get('sha256'):
+            raise native_sources.ArtifactIdentityError('Original parent authority changed during follow-up readback')
+        analyzer = attempts[route['source']['instance']]['original_run']['result']
+        expected = _follow_up_invocation(receipt, checkpoint['sha256'], route['operator_decision_sha256'],
+                                        parent['result_limit'] - analyzer['bytes'])
+        if native_sources.packet(directory, _FOLLOW_UP_INVOCATION) != expected:
+            raise native_sources.ArtifactIdentityError('Saved follow-up invocation differs from the original selected route')
+        child_id = native_sources.sha(expected)
+        child = directory / ('follow-up-' + child_id)
+        observation.update(id=child_id, directory=str(child), projection=expected['output_projection'])
+        readback, _ = _read_fixed_follow_up(state, project, receipt, parent, child, child_id, expected)
+        return {**observation, **readback}
+    except (OSError, ValueError, TypeError, KeyError, RecursionError, StateError) as error:
+        return {**observation, 'state': _local_evidence_state(error), 'error': str(error)}
+
+
 def inspect_graph(state: State, project: str, directory: Path, manifest_digest: str) -> dict:
     """Reconstruct graph receipt and Agent observations offline without acquiring execution authority."""
     directory = directory.expanduser().absolute()
@@ -1759,11 +2079,14 @@ def inspect_graph(state: State, project: str, directory: Path, manifest_digest: 
     gate = next((node['path'] for node in nodes if node['kind'] == 'verify-fixed-check'), None)
     recovery = _observe_graph_recovery(directory, state.root, receipt, selected_project, review, gate, verification_reads)
     checkpoint, operator_route = _observe_route_checkpoint(directory, receipt, selectors, attempts, choices, recovery)
+    follow_up = _observe_fixed_follow_up(state, project, directory, composition, receipt, recovery,
+                                        checkpoint, operator_route, attempts)
     decisions = []
     for sequence, record in enumerate(route_records, 1):
         supervised = record['instance'] == receipt.get('pause_before_route')
         decisions.append(_observe_route(sequence, record, selectors[record['instance']], attempts, choices, status,
-                          supervised=supervised, operator_route=operator_route if supervised else None))
+                          supervised=supervised, operator_route=operator_route if supervised else None,
+                          follow_up=follow_up if supervised else None))
     if checkpoint is not None:
         recovery['route_checkpoint'] = checkpoint
     observed_blocks = []
@@ -1796,6 +2119,8 @@ def inspect_graph(state: State, project: str, directory: Path, manifest_digest: 
                 reason_state = 'corroborated'
         observed_blocks.append({**block, 'reason_state': reason_state})
     recorded_paths = {'root', *attempts, *flow_blocks, *(item['instance'] for item in reads + decisions)}
+    if follow_up is not None and follow_up.get('state') == 'corroborated':
+        recorded_paths.add(follow_up['branch'])
     return {'schema_version': 1, 'kind': 'standalone-workflow-observation', 'project': project,
             'project_revision': receipt['project_revision'], 'root': receipt['root'], 'manifest_digest': manifest_digest,
             'graph_receipt': {'directory': str(directory), 'sha256': hashlib.sha256(raw).hexdigest(), 'bytes': len(raw),
@@ -1807,6 +2132,7 @@ def inspect_graph(state: State, project: str, directory: Path, manifest_digest: 
                        'graph_record': 'recorded' if node['path'] in recorded_paths else 'not_recorded'}
                       for node in nodes],
             'agent_attempts': list(attempts.values()), 'verification_reads': reads, 'route_decisions': decisions,
+            **({'follow_up': follow_up} if follow_up is not None else {}),
             **({'flow_map_blocks': observed_blocks} if observed_blocks else {}),
             'recovery': recovery,
             'process_start': 'unknown',

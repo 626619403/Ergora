@@ -104,6 +104,8 @@ Choose `follow-up` to use the recommendation or `finish` to skip the conditional
 
 After a lost reply, inspect the original directory. An `awaiting` checkpoint accepts the same action and digest while the original graph remains eligible. A `decided` checkpoint carries the saved action and its digest. If the original graph is still resumable, ordinary `resume-graph` recovers that action. A terminal graph remains available through `inspect-graph`.
 
+For a bounded Python follow-up, pass `fixed_follow_up=PinnedFixedReview(branch, manifest, manifest_digest, inputs)` to `ergora.agents.graphs.run_graph` at original admission, with `recoverable=True` and the original `pause_before_route` instance. Select one predeclared branch and an exact fixed-check review manifest with its matching `task` and `check` inputs. The check must already have a passing original receipt. The same supervisor decision selects this child under the original grant, deadline and stop authority. Resume the original parent to recover a corroborated terminal child and its named output. Use `inspect-graph` to read the child receipt, compiled output projection and original Agent attempt. A verified terminal failure retains its status, and an incomplete child remains unresolved.
+
 ### Read original fixed verification evidence
 
 For a Workflow v2 graph with a `verify-evidence` node, run the same command with the registered project. Supply the original fixed-verify locator through the declared root input. Use the original verify job's activity scheduling event ID, candidate SHA and receipt SHA256. This input example assumes the graph declares `source`. [Read original job receipts](../../development/run-and-recover.md#read-original-job-receipts-and-text-evidence)

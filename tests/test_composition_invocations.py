@@ -1408,6 +1408,219 @@ output.write_text(json.dumps({'summary': 'Review', 'decision': 'approve', 'artif
     assert len(agent_runs.runs(state, 'demo')) == (2 if action == 'follow-up' else 1)
 
 
+@pytest.mark.skipif(sys.platform != 'linux', reason='Recoverable standalone graphs require Linux/WSL2')
+@pytest.mark.parametrize('cut', ['completed', 'unknown', 'missing-prompt', 'missing-reservation',
+                                  'changed-output', 'invalid-output', 'changed-proof', 'contradictory-stop',
+                                  'failed', 'agent-expiry', 'status-expiry', 'proof-expiry', 'child-stop'])
+def test_pinned_fixed_review_recovers_only_the_original_child(prepared, tmp_path, monkeypatch, cut):
+    import time
+
+    from ergora.agents import graphs
+    from ergora.development import application, dags
+    from ergora.runtime import action_observations
+
+    state, _, _ = prepared()
+    workflows.install_preset(state, 'engineering-review')
+    selected = workflows.get(state, dags.FIXED_CHECK_REVIEW['id'], dags.FIXED_CHECK_REVIEW['version'])['definition']
+    review = {key: selected['nodes'][0][key] for key in ('ref', 'role', 'permissions', 'review_requirement')}
+    policy = {key: selected[key] for key in ('permissions', 'limits')}
+
+    def freeze(definition):
+        source = tmp_path / definition['id']
+        source.mkdir()
+        (source / 'workflow.json').write_text(json.dumps(definition), encoding='utf-8')
+        workflows.import_bundle(state, source)
+        return workflows.prepare_manifest(state.root, definition['id'], '1.0.0',
+            {'schema_version': 1, **policy}, tmp_path / (definition['id'] + '-manifest'))
+
+    child = freeze({'schema_version': 2, 'id': 'pinned-child', 'version': '1.0.0',
+        'description': 'Read one original fixed check before review.', 'resources': [], **policy,
+        'inputs': ['task', 'check'],
+        'nodes': [{'id': 'proof', 'operation': 'verify-fixed-check', 'depends_on': [],
+                   'inputs': {'source': {'input': 'check'}}},
+                  {'id': 'review', 'ref': dags.FIXED_CHECK_REVIEW, 'depends_on': ['proof'],
+                   'inputs': {'task': {'input': 'task'}}}],
+        'outputs': {'proof': {'node': 'proof', 'output': 'result'}, 'result': {'node': 'review', 'output': 'result'}}})
+    parent = freeze(_conditional_draft({'version': '1.0.0', 'description': 'Choose one review.', 'resources': [],
+        **policy, 'inputs': ['task'], 'nodes': [{**review, 'inputs': {'task': {'input': 'task'}}, 'depends_on': []}]}))
+    directory, calls = tmp_path / 'graph', tmp_path / 'calls.jsonl'
+    locator = {'operation_id': 'original-check', 'job_sha256': 'a' * 64, 'request_file_sha256': 'b' * 64,
+               'candidate_sha': 'c' * 40, 'receipt_sha256': 'd' * 64, 'fixed_results_sha256': 'e' * 64}
+    inputs = {'task': {'source_sha256': 'f' * 64}, 'check': locator}
+    revision = state.project('demo')['revision']
+    reads = []
+
+    def expire(deadline, stop_requested):
+        time.sleep(max(0, deadline - time.monotonic()) + .02)
+        assert not stop_requested(), 'Expiry must not act as an explicit STOP'
+        raise TimeoutError('Original read deadline elapsed')
+
+    def status(action, project, home, *, deadline, stop_requested):
+        assert action == action_observations.FixedCheckStatus(locator['operation_id'], locator['job_sha256'])
+        reads.append(deadline)
+        if cut == 'status-expiry':
+            expire(deadline, stop_requested)
+        return {**locator, 'status': 'succeeded', 'cleanup_confirmed': True, 'stop_requested': False}
+
+    def proof(state, project, source, review, *, expected_revision, **options):
+        assert source == locator and expected_revision == revision
+        if cut == 'proof-expiry':
+            expire(options['deadline'], options['stop_requested'])
+        if cut == 'child-stop':
+            raise KeyboardInterrupt
+        return {**source, **review, 'project': project, 'project_revision': revision,
+                'status': 'validated', 'job_id': 'original-job', 'fixed_check_ids': ['fixture'],
+                'authorization_sha256': '1' * 64, 'verification_sha256': '2' * 64}
+
+    model = r'''
+import json, sys
+from pathlib import Path
+output, calls = map(Path, sys.argv[1:])
+task = json.loads(sys.stdin.read().rsplit('Workflow task port (JSON value):\n', 1)[1])
+artifacts = {'response': 'Original review'}
+if 'route' in task:
+    artifacts['route'] = task['route']
+with calls.open('a', encoding='utf-8') as stream:
+    stream.write(json.dumps(task) + '\n')
+if 'route' not in task and 'CONTROL' == 'failed':
+    sys.exit(7)
+if 'route' not in task and 'CONTROL' == 'agent-expiry':
+    import time
+    time.sleep(30)
+output.write_text(json.dumps({'summary': 'Review', 'decision': 'approve', 'artifacts': artifacts}))
+'''
+    model = model.replace('CONTROL', cut)
+    command = agent_backends.CodexBackend.command
+
+    def controlled(backend, request):
+        argv, prompt = command(backend, request)
+        return [sys.executable, '-c', model, argv[argv.index('--output-last-message') + 1], str(calls)], prompt
+
+    monkeypatch.setattr(agent_backends.CodexBackend, 'command', controlled)
+    monkeypatch.setattr(agent_backends.CodexBackend, 'check_invocation', lambda self: None)
+    monkeypatch.setattr(action_observations, 'observe', status)
+    monkeypatch.setattr(application, 'read_fixed_check_proof', proof)
+    bound = graphs.PinnedFixedReview('root/dependency', Path(child['path']), child['digest'], inputs)
+    paused = graphs.run_graph(state, 'demo', Path(parent['path']), parent['digest'],
+        {'task': {'route': 'dependency'}}, directory, 50000, 8 if cut.endswith('expiry') else 45, recoverable=True,
+        pause_before_route='root/choose', fixed_follow_up=bound)
+    assert paused['status'] == 'awaiting_route_decision' and not reads
+    assert not (directory / 'follow-up-invocation.json').exists()
+
+    def resume():
+        return graphs.resume_graph(state.root, 'demo', directory, parent['digest'],
+            route_checkpoint=native_sources.sha(paused['route_checkpoint']), route_action='follow-up')
+
+    def inspect():
+        with monkeypatch.context() as patch:
+            def forbidden(*args, **kwargs):
+                pytest.fail('Original graph inspection cannot invoke an owner or preflight a backend')
+            patch.setattr(action_observations, 'observe', forbidden)
+            patch.setattr(application, 'read_fixed_check_proof', forbidden)
+            patch.setattr(agent_backends.CodexBackend, 'check_invocation', forbidden)
+            result = graphs.inspect_graph(State(state.root, read_only=True), 'demo', directory, parent['digest'])
+        cli = subprocess.run([sys.executable, '-P', '-m', 'ergora', '--home', str(state.root), 'composition',
+                              'inspect-graph', 'demo', str(directory), '--manifest-digest', parent['digest']],
+                             env={**os.environ, 'PYTHONPATH': str(IMPORT_ROOT)}, capture_output=True, text=True, timeout=15)
+        assert cli.returncode == 0, cli.stderr
+        assert json.loads(cli.stdout) == result
+        return result
+
+    marker = directory / 'follow-up-invocation.json'
+
+    def child_directory():
+        invocation_record = json.loads(marker.read_bytes())
+        return directory / ('follow-up-' + native_sources.sha(invocation_record))
+
+    if cut in ('failed', 'agent-expiry', 'status-expiry', 'proof-expiry', 'child-stop'):
+        outcome = resume()
+        expected = {'failed': 'failed', 'child-stop': 'cancelled'}.get(cut, 'timed_out')
+        assert outcome['status'] == expected
+        stopped = cut == 'child-stop'
+        assert (directory / 'stop.json').exists() == stopped
+        observed = inspect()['follow_up']
+        child_run = child_directory()
+        if cut == 'status-expiry':
+            assert observed['state'] == 'unknown' and not child_run.exists()
+        else:
+            assert observed['terminal_status'] == expected
+            assert observed['stop']['state'] == ('recorded' if stopped else 'not_recorded')
+            assert (child_run / 'stop.json').exists() == stopped
+        starts = agent_runs.runs(state, 'demo')
+        with pytest.raises((ValueError, TimeoutError), match='terminal or explicitly stopped|deadline'):
+            resume()
+        assert agent_runs.runs(state, 'demo') == starts
+        return
+
+    class CoordinatorLost(BaseException):
+        pass
+
+    with monkeypatch.context() as patch:
+        if cut != 'unknown':
+            original = graphs._GraphRun.read_fixed_follow_up
+
+            def after_result(run, *args):
+                original(run, *args)
+                raise CoordinatorLost
+            patch.setattr(graphs._GraphRun, 'read_fixed_follow_up', after_result)
+        else:
+            original = graphs._GraphRun.check_leaf_admission
+
+            def before_submit(run):
+                result = original(run)
+                if run.receipt.get('follow_up_parent') and run.receipt['leaves']:
+                    raise CoordinatorLost
+                return result
+            patch.setattr(graphs._GraphRun, 'check_leaf_admission', before_submit)
+        with pytest.raises(CoordinatorLost):
+            resume()
+
+    invocation_record = json.loads(marker.read_bytes())
+    child_run = child_directory()
+    child_receipt = child_run / 'run.json'
+    original = json.loads(child_receipt.read_bytes())
+    producer = invocation_record['output_projection']['producer']
+    if cut == 'missing-prompt':
+        (state.root / 'runs' / (original['leaves'][0]['run_id'] + '.protocol') / 'prompt.txt').unlink()
+    elif cut == 'missing-reservation':
+        (child_run / 'reservation-1.json').unlink()
+    elif cut == 'changed-output':
+        original['outputs']['result'][producer]['result']['summary'] = 'Different output'
+        child_receipt.write_text(json.dumps(original), encoding='utf-8')
+    elif cut in ('invalid-output', 'changed-proof'):
+        original['outputs'] = [] if cut == 'invalid-output' else {**original['outputs'], 'proof': {}}
+        child_receipt.write_text(json.dumps(original), encoding='utf-8')
+    elif cut == 'contradictory-stop':
+        (child_run / 'stop.json').write_text('{"status":"cancelled"}', encoding='utf-8')
+    retained = [marker, child_receipt, child_run / 'recovery.json', directory / 'recovery.json', calls]
+    before = [path.read_bytes() for path in retained]
+    starts = agent_runs.runs(state, 'demo')
+    if cut == 'completed':
+        outcome = resume()
+        assert outcome['status'] == 'succeeded'
+        assert outcome['outputs']['followups']['root/dependency']['result'] == original['outputs']['result'][producer]['result']
+        assert len(starts) == 2 and len(outcome['leaves']) == 1
+        observed = inspect()
+        selected, = observed['route_decisions']
+        assert selected['state'] == 'corroborated' and selected['follow_up'] == observed['follow_up']
+        follow_up = selected['follow_up']
+        assert follow_up['projection'] == invocation_record['output_projection']
+        assert follow_up['source'] == original['leaves'][0]
+    elif cut == 'unknown':
+        with pytest.raises(ValueError, match='no proven successful outcome'):
+            resume()
+        assert original['leaves'][0]['status'] == 'attempted' and len(starts) == 1
+        assert inspect()['follow_up']['state'] == 'unknown'
+    else:
+        observed = inspect()['follow_up']
+        assert observed['state'] == 'mismatch'
+        outcome = resume()
+        assert outcome['status'] == 'failed' and 'outputs' not in outcome
+        assert len(starts) == 2
+    assert len(reads) == 1
+    assert agent_runs.runs(state, 'demo') == starts and [path.read_bytes() for path in retained] == before
+
+
 @pytest.mark.parametrize('case', ['structure', 'dependency', 'none', 'missing', 'unknown', 'changed-result', 'stopped'])
 def test_standalone_graph_routes_only_the_typed_choice(conditional_definition, tmp_path, monkeypatch, capsys, case):
     from ergora.agents import graphs
