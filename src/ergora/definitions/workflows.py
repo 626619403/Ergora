@@ -352,6 +352,8 @@ class _Compilation:
                 raise ValueError(f"Workflow input ports differ at {node['id']}: expected {expected}")
             for value in node["inputs"].values():
                 binding(value, node["depends_on"])
+            if "required_flow_map" in node and node["required_flow_map"] not in definition["inputs"]:
+                raise ValueError(f"Unknown required FlowMap input port at {self.path}: {node['required_flow_map']}")
         self.path = path
         for value in definition["outputs"].values():
             binding(value, nodes)
@@ -439,6 +441,8 @@ class _Compilation:
                                               if "invocation_minimum" in child["definition"] else {}),
                                            **({"review_requirement": node["review_requirement"]}
                                               if "review_requirement" in node else {}),
+                                           **({"required_flow_map": node["required_flow_map"]}
+                                              if "required_flow_map" in node else {}),
                                            **({"route_choices": route_choices[name]} if name in route_choices else {}),
                                            "depends_on": dependencies, "inputs": node["inputs"], "outputs": ["result"],
                                            "permissions": node["permissions"], "resources": selected, "prompt": prompt,
@@ -654,6 +658,10 @@ def verify_store(root: Path) -> int:
     return len(documents)
 
 
+class PromptCapacityError(ValueError):
+    """A complete composition task or prompt exceeds the original size limit."""
+
+
 def compile_input(composition: dict, instance: str, task: bytes, max_prompt_bytes: int, *,
                   input_origin: str = "operator-supplied") -> tuple[dict, bytes]:
     """Compile complete leaf prompt bytes without writing or authorizing a call."""
@@ -662,7 +670,7 @@ def compile_input(composition: dict, instance: str, task: bytes, max_prompt_byte
     if input_origin == "operator-supplied" and dags.fixed_check_review(composition) is not None:
         raise ValueError("A fixed-check review leaf must receive its task from the original gated graph")
     if len(task) > contracts.COMPOSITION_INPUT["properties"]["max_prompt_bytes"]["maximum"]:
-        raise ValueError("Composition task exceeds the supported input byte limit")
+        raise PromptCapacityError("Composition task exceeds the supported input byte limit")
     text = task.decode("utf-8-sig")
     if not text.strip() or "\0" in text:
         raise ValueError("Composition task must be nonempty UTF-8 text without NUL")
@@ -673,7 +681,7 @@ def compile_input(composition: dict, instance: str, task: bytes, max_prompt_byte
              "workflow-port": "Workflow task port (JSON value):"}[input_origin]
     prompt = (selected["prompt"] + "\n\n" + label + "\n" + text).encode("utf-8")
     if len(prompt) > max_prompt_bytes:
-        raise ValueError(f"Complete composition prompt exceeds the input byte limit: {len(prompt)} > {max_prompt_bytes}")
+        raise PromptCapacityError(f"Complete composition prompt exceeds the input byte limit: {len(prompt)} > {max_prompt_bytes}")
     document = {"schema_version": 1, "kind": "composition-input", "execution_authorized": False,
                 "root": composition["root"], "instance": instance, "grant": composition["grant"],
                 "input_origin": input_origin, "task_sha256": hashlib.sha256(task).hexdigest(),

@@ -224,7 +224,8 @@ def run_input(state: State, project_id: str, source: Path, timeout: int = 300, *
               codex_bin: str = "codex", supervised: bool = False,
               input_digest: str | None = None, stop_requested=None, remaining=None,
               record_lifecycle: bool = False, deadline: float | None = None, run_id: str | None = None,
-              expected_revision: int | None = None, _fixed_check_proof: dict | None = None) -> dict:
+              expected_revision: int | None = None, _fixed_check_proof: dict | None = None,
+              _allow_omitted_response: bool = False) -> dict:
     """Run a restricted leaf through explicit admission and retain its original authority."""
     contracts.validate(timeout, {"type": "integer", "minimum": 1, "maximum": 3600}, "Agent timeout")
     prepared, document = _admit_input(state, project_id, source, backend=backend, model=model, reason=reason, mode=mode,
@@ -240,7 +241,8 @@ def run_input(state: State, project_id: str, source: Path, timeout: int = 300, *
     return _run_prepared(state, prepared, document, timeout, mode=mode, codex_config=codex_config,
         result_schema=result_schema, env=env, codex_bin=codex_bin, supervised=supervised,
         stop_requested=stop_requested, remaining=remaining, record_lifecycle=record_lifecycle, deadline=deadline,
-        observe_direct_child_start=observe_direct_child_start)
+        observe_direct_child_start=observe_direct_child_start,
+        **({'allow_omitted_response': True} if _allow_omitted_response else {}))
 
 
 def run_workspace(state: State, project_id: str, source: Path, cwd: Path, authority: dict, timeout: int, *,
@@ -274,7 +276,8 @@ def run_workspace(state: State, project_id: str, source: Path, cwd: Path, author
 
 def _run_prepared(state, prepared, document, timeout, *, mode, codex_config, result_schema, env,
                   codex_bin, supervised, workspace=None, stop_requested=None, remaining=None,
-                  record_lifecycle=False, deadline=None, observe_direct_child_start=False):
+                  record_lifecycle=False, deadline=None, observe_direct_child_start=False,
+                  allow_omitted_response=False):
     """One immutable snapshot, MCP lifecycle and native invocation evidence owner."""
     run_id = document.get("id") or uuid.uuid4().hex
     output = state.root / "runs" / run_id
@@ -338,7 +341,8 @@ def _run_prepared(state, prepared, document, timeout, *, mode, codex_config, res
             supervised=supervised, **({'stop_requested': stop_requested} if stop_requested is not None else {}),
             **({'deadline': deadline} if deadline is not None else {}),
             **({'record_lifecycle': True} if record_lifecycle else {}),
-            **({'observe_direct_child_start': True} if observe_direct_child_start else {}))
+            **({'observe_direct_child_start': True} if observe_direct_child_start else {}),
+            **({'allow_omitted_response': True} if allow_omitted_response else {}))
         start = invoked.pop('direct_child_start', None)
         document.update(invoked)
         if start is not None:

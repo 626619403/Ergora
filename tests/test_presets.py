@@ -491,13 +491,17 @@ def test_bottleneck_path_retains_kernel_assessment_and_original_task_in_frozen_l
         'flow': [], 'analysis': ['flow'], 'kernel': ['analysis'], 'measurement': ['kernel']}
     assert set(nodes['gather']['depends_on']) == {'flow', 'analysis', 'kernel', 'measurement'}
     assert all(nodes[name]['inputs'] == {'task': {'input': 'task'}}
-               for name in ('flow', 'analysis', 'kernel', 'measurement'))
+               for name in ('flow', 'kernel', 'measurement'))
+    assert nodes['analysis']['inputs'] == {'task': {'input': 'task'},
+                                          'flow': {'node': 'flow', 'output': 'result'}}
     grant = {'schema_version': 1, 'permissions': definition['permissions'], 'limits': definition['limits']}
     manifest = workflows.prepare_manifest(state.root, definition['id'], definition['version'], grant, tmp_path / 'manifest')
     graph = workflows.inspect_manifest(Path(manifest['path']), material=True)['composition']
     leaves = {item['path']: item for item in graph['instances'] if item['kind'] == 'agent'}
     assert set(leaves) == {'root/flow/map', 'root/analysis/design', 'root/analysis/profile',
                            'root/kernel/assess', 'root/measurement/review'}
+    assert leaves['root/analysis/profile']['required_flow_map'] == 'flow'
+    assert 'required_flow_map' not in leaves['root/analysis/design']
     parent_materials = workflows.get(state, definition['id'], definition['version'], material=True)['resources']
     shutil.rmtree(state.root / 'agent-definitions')
     shutil.rmtree(state.root / 'workflow-definitions')

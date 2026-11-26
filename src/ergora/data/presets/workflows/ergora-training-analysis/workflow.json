@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "id": "ergora-training-analysis",
-  "version": "2.2.2",
+  "version": "2.2.3",
   "description": "Develop independent experiment-design and evidence-based performance hypotheses from the same fixed workload.",
   "resources": [
     {
@@ -27,7 +27,8 @@
     "material_bytes": 262144
   },
   "inputs": [
-    "task"
+    "task",
+    "flow"
   ],
   "outputs": {
     "result": {
@@ -84,7 +85,8 @@
         "write": [],
         "shell": false,
         "network": []
-      }
+      },
+      "required_flow_map": "flow"
     },
     {
       "id": "gather",

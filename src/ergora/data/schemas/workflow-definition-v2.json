@@ -343,6 +343,9 @@
                 "required",
                 "advisory"
               ]
+            },
+            "required_flow_map": {
+              "$ref": "#/$defs/id"
             }
           },
           "allOf": [

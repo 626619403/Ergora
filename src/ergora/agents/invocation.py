@@ -40,8 +40,14 @@ def result_schema(names: list[str], review: bool = False) -> dict:
     return {"type": "object", "properties": properties, "required": list(properties), "additionalProperties": False}
 
 
-def validate_result(result: dict, schema: dict) -> dict:
-    contracts.validate(result, schema, "Agent result")
+def validate_result(result: dict, schema: dict, *, allow_omitted_response: bool = False) -> dict:
+    candidate = result
+    if allow_omitted_response:
+        artifacts = result.get("artifacts") if isinstance(result, dict) else None
+        if isinstance(artifacts, dict) and "response" not in artifacts:
+            # Validate missing evidence through the declared nullable field, preserving the original result.
+            candidate = {**result, "artifacts": {**artifacts, "response": None}}
+    contracts.validate(candidate, schema, "Agent result")
     return result
 
 
@@ -52,7 +58,8 @@ def invoke(binding: dict, role: str, prompt: str, cwd: Path, output: Path, timeo
            lock_fd: int | None = None,
            session: dict | None = None, stop_requested=None, record_lifecycle: bool = False,
            deadline: float | None = None, on_start=None, observe_direct_child_start: bool = False,
-           launch_prefix: list[str] | None = None, payload_executable: tuple[int, int] | None = None) -> dict:
+           launch_prefix: list[str] | None = None, payload_executable: tuple[int, int] | None = None,
+           allow_omitted_response: bool = False) -> dict:
     """A successful process is not evidence acceptance; structured consumers validate separately."""
     validate_binding(role, binding, formal=bool(schema))
     backend = agent_backends.for_binding(binding, {"codex": {
@@ -91,7 +98,7 @@ def invoke(binding: dict, role: str, prompt: str, cwd: Path, output: Path, timeo
             if stop_requested is not None and stop_requested():
                 raise ValueError('Parent stopped before structured result synchronization')
             result = backend.read_result(output, request)
-            validate_result(result, schema)
+            validate_result(result, schema, allow_omitted_response=allow_omitted_response)
             content = json.dumps(result, ensure_ascii=False, sort_keys=True).encode()
             (output / "result.json").write_bytes(content)
             if stop_requested is not None and stop_requested():

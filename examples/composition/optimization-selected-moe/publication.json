@@ -2,8 +2,8 @@
   "policy_source": {
     "kind": "workflow",
     "id": "ergora-training-proposal",
-    "version": "4.2.11",
-    "digest": "fa427d687eb24507b95250460b8d01fecf2299f0ff17d290b274496fea01ebb3"
+    "version": "4.2.12",
+    "digest": "75a1656ed7aa6c768ecbc5a5a212927a16d1184b1999bb69255580470cf40eb2"
   },
   "policy_files": {
     "skills/ergora-bottleneck-optimization/SKILL.md": {

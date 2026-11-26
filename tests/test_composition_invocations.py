@@ -2709,3 +2709,251 @@ def test_unsuccessful_calls_are_visible_in_cli_and_durable_record(prepared, monk
     assert run == agent_runs.runs(State(state.root), "demo")[0] and run["finished"]
     if failure == "deep-json":
         assert "Invalid structured agent result" in run["error"] and "recursion" in run["error"].lower()
+
+
+@pytest.mark.parametrize('case', ['success', 'missing', 'omitted', 'null-response', 'baseline', 'source',
+                                  'lone-surrogate', 'identity-newline', 'source-newline',
+                                  'oversize', 'oversize-prompt', 'resume-success', 'resume-blocked'])
+def test_training_proposal_binds_its_original_flow_map_or_keeps_independent_design(
+        prepared, tmp_path, monkeypatch, case):
+    from ergora.agents import graphs
+
+    state, _, _ = prepared()
+    selected = workflows.install_preset(state, 'training-optimization')['root']
+    definition = workflows.get(state, selected['id'], selected['version'])['definition']
+    grant = {'schema_version': 1, 'permissions': definition['permissions'], 'limits': definition['limits']}
+    manifest = tmp_path / 'proposal-manifest'
+    frozen = workflows.prepare_manifest(state.root, selected['id'], selected['version'], grant, manifest)
+    compiled = workflows.inspect_manifest(manifest, material=True)['composition']
+    profile = next(node for node in compiled['instances'] if node['path'] == 'root/analysis/profile')
+    prompt_bytes = len(profile['prompt'].encode('utf-8'))
+    assert 4000 < prompt_bytes < 500000
+    prompt_only_map_bytes = 500000 - prompt_bytes // 2
+    destination = tmp_path / 'proposal-run'
+    task = {'request': 'Map the exact trainer source and give a read-only proposal.',
+            'baseline': {'raw_sha256': hashlib.sha256(b'fixed baseline').hexdigest()},
+            'source': {'source_sha256': hashlib.sha256(b'fixed source').hexdigest()}}
+    if case == 'identity-newline':
+        task['baseline']['raw_sha256'] += '\n'
+    if case == 'source-newline':
+        task['source']['source_sha256'] += '\n'
+    backend = tmp_path / 'proposal_backend.py'
+    log = tmp_path / 'calls.jsonl'
+    started = tmp_path / 'design-started'
+    resume_design = tmp_path / 'resume-design'
+    backend.write_text('''
+from pathlib import Path
+import json, sys, time
+
+output, log, stage, case, started, resume, prompt_only_map_bytes = sys.argv[1:]
+task = json.loads(sys.stdin.read().split('Workflow task port (JSON value):\\n')[-1])
+with Path(log).open('a') as file:
+    file.write(json.dumps({'stage': stage, 'task': task}) + '\\n')
+value = {'summary': stage, 'artifacts': {'response': 'original '+stage+' result'}}
+if stage == 'flow' and case in ('omitted', 'resume-blocked'):
+    value['artifacts'] = {}
+elif stage == 'flow' and case == 'null-response':
+    value['artifacts']['response'] = None
+elif stage == 'flow' and case != 'missing':
+    flow_map = {'schema_version':1, 'kind':'training-flow-map', 'map':'train.py:1 loss -> backward',
+                'baseline_sha256':task['baseline']['raw_sha256'],
+                'source_sha256':task['source']['source_sha256']}
+    if case in ('baseline', 'source'):
+        flow_map[case+'_sha256'] = 'f' * 64
+    if case == 'oversize':
+        flow_map['map'] = 'x' * 510000
+    if case == 'oversize-prompt':
+        flow_map['map'] = 'x' * int(prompt_only_map_bytes)
+    if case == 'lone-surrogate':
+        flow_map['map'] = chr(0xd800)
+    if case == 'success':
+        flow_map['map'] = 'train.py:1 损失 → 梯度 🧪'
+    value['artifacts']['response'] = json.dumps(flow_map)
+elif stage == 'design':
+    Path(started).touch()
+    deadline = time.monotonic() + 6
+    while not Path(resume).exists() and time.monotonic() < deadline:
+        time.sleep(.02)
+    if not Path(resume).exists():
+        raise SystemExit(9)
+elif stage == 'measurement':
+    value['decision'] = 'request-changes'
+Path(output).write_text(json.dumps(value))
+''', encoding='utf-8')
+    original_command = agent_backends.CodexBackend.command
+
+    def command(adapter, request):
+        argv, prompt = original_command(adapter, request)
+        assert argv[argv.index('--sandbox') + 1] == 'read-only'
+        stage = {'experiment-planner': 'design', 'kernel-tuner': 'kernel', 'reviewer': 'measurement'}.get(request.role)
+        if stage is None:
+            stage = 'flow' if 'Map the exact supplied training source before' in prompt else 'profile'
+        return [sys.executable, str(backend), argv[argv.index('--output-last-message') + 1],
+                str(log), stage, case, str(started), str(resume_design), str(prompt_only_map_bytes)], prompt
+
+    monkeypatch.setattr(agent_backends.CodexBackend, 'command', command)
+    monkeypatch.setattr(agent_backends.CodexBackend, 'check_invocation', lambda self: None)
+    direct = not case.startswith('resume')
+    reasons = {**dict.fromkeys(('missing', 'omitted', 'null-response', 'resume-blocked'), 'missing-flow-map'),
+               'baseline': 'baseline-mismatch', 'source': 'source-mismatch',
+               **dict.fromkeys(('lone-surrogate', 'identity-newline', 'source-newline'), 'invalid-flow-map'),
+               **dict.fromkeys(('oversize', 'oversize-prompt'), 'oversize-flow-map')}
+    reason = reasons.get(case)
+    agent_task = graphs._GraphRun.agent_task
+    record_block = graphs._GraphRun.record_flow_map_block
+    blocked_while_design_running = []
+
+    def task_after_original_design_starts(run, node, opened):
+        if node['path'] == 'root/analysis/profile' and reason and not started.exists():
+            import time
+
+            until = time.monotonic() + 6
+            while not started.exists() and time.monotonic() < until:
+                time.sleep(.01)
+            assert started.exists(), 'Independent design subprocess must have started before its sibling is blocked'
+        return agent_task(run, node, opened)
+
+    def unblock_independent_design(run, path, error, *, original=None):
+        record_block(run, path, error, original=original)
+        blocked_while_design_running.append(any(not future.done() and row['instance']=='root/analysis/design'
+                                                for future, row in run.running.items()))
+        resume_design.touch()
+
+    if reason:
+        monkeypatch.setattr(graphs._GraphRun, 'agent_task', task_after_original_design_starts)
+        monkeypatch.setattr(graphs._GraphRun, 'record_flow_map_block', unblock_independent_design)
+    else:
+        resume_design.touch()
+
+    if case == 'resume-success':
+        structural = graphs._GraphRun.open_structure
+
+        def stop_before_analysis(run, node, opened):
+            if node['path'] == 'root/analysis':
+                raise RuntimeError('Controlled coordinator loss before analysis')
+            return structural(run, node, opened)
+
+        with monkeypatch.context() as fault:
+            fault.setattr(graphs._GraphRun, 'open_structure', stop_before_analysis)
+            with pytest.raises(RuntimeError, match='coordinator loss'):
+                graphs.run_graph(state, 'demo', manifest, frozen['digest'], {'task':task}, destination, 500000, 45,
+                                 recoverable=True)
+    if case == 'resume-blocked':
+        save = graphs._GraphRun.save
+
+        def stop_after_local_block(run):
+            if run.receipt.get('flow_map_blocks'):
+                while run.running:
+                    run.wait_for_leaf()
+                    run.collect_finished()
+                save(run)
+                raise RuntimeError('Controlled coordinator loss after the dependent block')
+            save(run)
+
+        with monkeypatch.context() as fault:
+            fault.setattr(graphs._GraphRun, 'save', stop_after_local_block)
+            with pytest.raises(RuntimeError, match='coordinator loss'):
+                graphs.run_graph(state, 'demo', manifest, frozen['digest'], {'task':task}, destination, 500000, 45,
+                                 recoverable=True)
+
+    if direct:
+        receipt = graphs.run_graph(state, 'demo', manifest, frozen['digest'], {'task':task}, destination, 500000, 45)
+    else:
+        original = json.loads((destination/'run.json').read_bytes())
+        receipt = graphs.resume_graph(state.root, 'demo', destination, frozen['digest'])
+        assert receipt['recovery_sha256'] == original['recovery_sha256']
+        assert receipt['leaves'][:len(original['leaves'])] == original['leaves']
+
+    observed = graphs.inspect_graph(state,'demo',destination,frozen['digest'])
+    calls = [json.loads(line) for line in log.read_text().splitlines()]
+    assert [row['task'] for row in calls if row['stage'] == 'design'] == [task]
+    assert sum(row['stage']=='flow' for row in calls)==1
+    leaves = {row['instance']:row for row in receipt['leaves']}
+    original_flow = {name: leaves['root/flow/map'][name]
+                     for name in ('instance','run_id','input_digest','result_sha256')}
+    assert leaves['root/analysis/design']['status']=='succeeded'
+    protocol = state.root/'runs'/(original_flow['run_id']+'.protocol')
+    native_schema = json.loads((protocol/'schema.json').read_bytes())
+    artifact_schema = native_schema['properties']['artifacts']
+    assert artifact_schema['required'] == ['response']
+    assert artifact_schema['properties']['response']['type'] == ['string', 'null']
+    if reason is None:
+        assert receipt['status']=='succeeded'
+        profile, = [row['task'] for row in calls if row['stage']=='profile']
+        expected_map = 'train.py:1 损失 → 梯度 🧪' if case == 'success' else 'train.py:1 loss -> backward'
+        assert profile['task']==task and profile['flow_map']['map']==expected_map
+        assert profile['flow_map_producer']==original_flow
+    else:
+        assert receipt['status']=='failed' and 'outputs' not in receipt
+        assert receipt['error']=='Required training FlowMap evidence blocked a dependent Agent'
+        assert blocked_while_design_running[0]
+        assert list(leaves)==['root/flow/map','root/analysis/design']
+        expected = {'instance':'root/analysis/profile','reason':reason,'producer':original_flow}
+        assert receipt['flow_map_blocks']==[expected]
+        assert observed['flow_map_blocks']==[{**expected, 'reason_state':'corroborated'}]
+        if case in ('lone-surrogate', 'identity-newline', 'source-newline'):
+            raw = (state.root/'runs'/original_flow['run_id']/'result.json').read_bytes()
+            assert hashlib.sha256(raw).hexdigest() == original_flow['result_sha256']
+            original_map = json.loads(json.loads(raw)['artifacts']['response'])
+            assert original_map['map'] == (chr(0xd800) if case == 'lone-surrogate' else 'train.py:1 loss -> backward')
+            assert original_map['baseline_sha256'] == task['baseline']['raw_sha256']
+            assert original_map['source_sha256'] == task['source']['source_sha256']
+        if case == 'oversize-prompt':
+            flow = agent_runs.inspect_run(state, 'demo', original_flow['run_id'])['result']['document']
+            combined = {'task':task, 'flow_map':json.loads(flow['artifacts']['response']),
+                        'flow_map_producer':original_flow}
+            data = json.dumps(combined, ensure_ascii=False, separators=(',', ':')).encode()
+            assert len(data) < 500000 < len(data) + prompt_bytes
+
+    if case == 'missing':
+        path = destination/'run.json'
+        raw = path.read_bytes()
+        changed = json.loads(raw)
+        changed['flow_map_blocks'][0]['reason'] = 'source-mismatch'
+        try:
+            path.write_text(json.dumps(changed))
+            with pytest.raises(ValueError, match='original producer evidence'):
+                graphs.inspect_graph(state, 'demo', destination, frozen['digest'])
+        finally:
+            path.write_bytes(raw)
+        artifact = state.root/'runs'/original_flow['run_id']/'result.json'
+        hidden = artifact.with_suffix('.hidden')
+        artifact.rename(hidden)
+        try:
+            limited = graphs.inspect_graph(state, 'demo', destination, frozen['digest'])
+            assert limited['flow_map_blocks']==[{**expected, 'reason_state':'receipt-reported'}]
+        finally:
+            hidden.rename(artifact)
+
+    if case in ('omitted', 'null-response'):
+        producer = agent_runs.inspect_run(state, 'demo', original_flow['run_id'])
+        actual_artifacts = {} if case == 'omitted' else {'response': None}
+        assert producer['result']['document']['artifacts'] == actual_artifacts
+        # The separately selected FlowMap root keeps its ordinary Agent result schema.
+        independent = workflows.install_preset(state, 'training-flow-map')['root']
+        separate = tmp_path/'standalone-map-manifest'
+        pinned = workflows.prepare_manifest(state.root, independent['id'], independent['version'], grant, separate)
+        failed = graphs.run_graph(state, 'demo', separate, pinned['digest'], {'task':task},
+                                  tmp_path/'standalone-map-graph', 500000, 45)
+        assert failed['status']=='failed'
+        assert [row['status'] for row in failed['leaves']] == ['failed']
+        assert 'flow_map_blocks' not in failed
+        separate_run, = failed['leaves']
+        separate_protocol = state.root/'runs'/(separate_run['run_id']+'.protocol')
+        separate_schema = json.loads((separate_protocol/'schema.json').read_bytes())
+        assert separate_schema['properties']['artifacts']['required'] == ['response']
+        assert separate_schema['properties']['artifacts']['properties']['response']['type'] == 'string'
+
+
+def test_freeze_rejects_unknown_required_flow_map_port(prepared):
+    from copy import deepcopy
+
+    state, _, _ = prepared()
+    workflows.install_preset(state, 'training-optimization')
+    original = workflows.get(state, 'ergora-training-analysis', '2.2.3')
+    draft = deepcopy(original['definition'])
+    draft['version'] = '2.2.4'
+    next(node for node in draft['nodes'] if node['id'] == 'profile')['required_flow_map'] = 'misspelled'
+    with pytest.raises(ValueError, match='Unknown required FlowMap input port'):
+        workflows.revise(state, draft['id'], original['definition']['version'], original['digest'], draft,
+                         publish=True)

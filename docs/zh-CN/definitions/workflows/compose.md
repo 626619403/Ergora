@@ -76,7 +76,7 @@ ergora agent definition show ergora-server-implementer 2.0.2 --material
 |---|---|---|
 |repository-governance|`ergora-governance-template@1.1.8`|知识地图、架构回归两个专家并行，再经可信integrate/verify接三审查；包含独立盘点／规划与原工作／审查阶段|
 |large-change|`ergora-large-change-template@1.1.10`|接口合同 → 服务端与客户端并行 → 集成/兼容验证 → 三审查；包含独立盘点／规划与原工作／审查阶段|
-|training-optimization|`ergora-training-proposal@4.2.11`|源码流程 → 并行规划／诊断 → kernel实施方案评估 → 测量审查；全部五叶继承库／环境选择规则，只读建议与手工完整交接|
+|training-optimization|`ergora-training-proposal@4.2.12`|只读提案；独立设计与诊断并行，诊断在派发前检查原 FlowMap。支持独立图和显式单叶调用。 [提案输入与原证据](../../../training/proposals.md#organize-complete-proposals-around-bottlenecks)|
 |refactoring|`ergora-refactoring-template@1.3.8`|普通父 → 原生六阶段：准备 → rewrite／compatibility串行工作 → 三类独立审查；正式task type沿用large-change，显式schema8／input12|
 |optimization-performance-diagnosis|`ergora-opt-performance-diagnosis-proposal@1.2.2`|同症状复现与兼容报告 reader；只读 design／profile→measurement 提案叶，原 runner 保留实验执行|
 |training-flow-map|`ergora-training-flow-map@1.1.1`|只读 `root/map` 分别产出算法／执行依赖图、状态生命周期和可证伪冗余假设；不自动运行后续专家或训练|
@@ -93,7 +93,7 @@ ergora agent definition show ergora-server-implementer 2.0.2 --material
 
 训练组合的`root/analysis/design`、`root/analysis/profile`、`root/kernel/assess`和`root/measurement/review`可按[单叶调用](leaf-calls.md#调用一个准备好的叶子)使用；操作者需要在任务文件中提供完整workload、baseline和相应前驱输出。独立`run-input`不执行图前驱。生成的提案/代码文本及模型review不是实验结果或采用批准，真实CPU/GPU、Forge候选和测量仍按[训练手册](../../../training/overview.md)使用原可信runner/gate。目录中的`runtime`只描述本发行支持的使用范围，不表示后端、服务或硬件已经就绪。
 
-当前训练根同时包含源码图谱、跨域规划／诊断、kernel实施方案评估、独立测量审查和库／环境选择。叶子默认只读、shell=false、network=[]；Skill附件调用使用受支持的task-MCP。操作者完整提供原任务和前驱材料，缺失直接报告；生成提案不证明异构验证、环境兼容或实际收益。
+当前训练根包含源码图谱、跨域规划与诊断、kernel 实施方案评估、独立测量审查和库／环境选择。叶子保持只读、shell=false、network=[]。Skill 附件调用使用受支持的 task-MCP。[独立提案图](../../../training/proposals.md#organize-complete-proposals-around-bottlenecks)在派发诊断前检查原 FlowMap，保留独立设计的结果。Kernel 和测量审查沿用操作者提供的证据。异构验证、环境兼容和实际收益仍由各自的原证据确定。
 
 ## 运行示例
 

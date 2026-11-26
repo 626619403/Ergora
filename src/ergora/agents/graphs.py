@@ -87,7 +87,7 @@ def _bounded_json(value, limit: int) -> bytes:
     for part in json.JSONEncoder(ensure_ascii=False, allow_nan=False, separators=(',', ':')).iterencode(value):
         encoded.extend(part.encode('utf-8'))
         if len(encoded) > limit:
-            raise ValueError(f'Complete workflow data exceeds {limit} bytes')
+            raise workflows.PromptCapacityError(f'Complete workflow data exceeds {limit} bytes')
     return bytes(encoded)
 
 
@@ -118,11 +118,14 @@ def _owner_identity(stat_result):
     return [stat_result.st_dev, stat_result.st_ino]
 
 
-def _leaf_result_schema(node):
+def _leaf_result_schema(node, *, flow_map_producer=False):
     routed = 'route_choices' in node
     schema = invocation.result_schema(['response', 'route'] if routed else ['response'], review=node['role'] == 'reviewer')
+    artifacts = schema['properties']['artifacts']
     if routed:
-        schema['properties']['artifacts']['properties']['route'] = {'type': 'string', 'enum': node['route_choices']}
+        artifacts['properties']['route'] = {'type': 'string', 'enum': node['route_choices']}
+    if flow_map_producer:
+        artifacts['properties']['response']['type'] = ['string', 'null']
     return schema
 
 
@@ -235,6 +238,108 @@ def _fixed_completed_progress(receipt, recovery, review, attempt, expected, comp
     return {**expected, 'status': 'validated', 'evidence': evidence, 'completion_sha256': native_sources.sha(completion)}
 
 
+_FLOW_MAP_SCHEMA = {
+    'type': 'object',
+    'additionalProperties': False,
+    'required': ['schema_version', 'kind', 'baseline_sha256', 'source_sha256', 'map'],
+    'properties': {
+        'schema_version': {'type': 'integer', 'const': 1},
+        'kind': {'const': 'training-flow-map'},
+        'baseline_sha256': {'type': 'string', 'minLength': 64, 'maxLength': 64, 'pattern': '^[a-f0-9]{64}$'},
+        'source_sha256': {'type': 'string', 'minLength': 64, 'maxLength': 64, 'pattern': '^[a-f0-9]{64}$'},
+        'map': {'type': 'string', 'pattern': r'\S'},
+    },
+}
+_FLOW_MAP_BLOCKS = {
+    'unverified-producer', 'original-task-mismatch', 'missing-flow-map', 'invalid-flow-map',
+    'missing-original-identities', 'baseline-mismatch', 'source-mismatch', 'oversize-flow-map',
+}
+
+
+class _FlowMapBlocked(ValueError):
+    def __init__(self, reason, producer=None):
+        super().__init__(reason)
+        self.producer = producer
+
+
+def _flow_map_producers(nodes):
+    """Resolve the original Agent behind each required named FlowMap port."""
+    producers = {}
+    for path, leaf in nodes.items():
+        if 'required_flow_map' not in leaf:
+            continue
+        scope = nodes[leaf['parent']]
+        binding, parent = scope['inputs'][leaf['required_flow_map']], scope['parent']
+        while 'input' in binding and parent is not None:
+            scope = nodes[parent]
+            binding, parent = scope['inputs'][binding['input']], scope['parent']
+        if 'node' not in binding or parent is None:
+            continue
+        flow = nodes[f"{parent}/{binding['node']}"]
+        if flow['kind'] != 'workflow' or flow['ref']['id'] != 'ergora-training-flow-map':
+            continue
+        result = flow['outputs'][binding['output']]
+        if 'node' not in result or result['output'] != 'result':
+            continue
+        join = nodes[f"{flow['path']}/{result['node']}"]
+        if join['kind'] != 'join' or len(join['depends_on']) != 1:
+            continue
+        producer, = join['depends_on']
+        actor = nodes[producer]
+        if actor['kind'] == 'agent' and actor['ref']['id'] == 'ergora-training-flow-analyst':
+            producers[path] = producer
+    return producers
+
+
+def _checked_flow_map_task(composition, path, original, result, task_sha256, producer, limit):
+    original_task = _bounded_json(original, limit)
+    if task_sha256 != hashlib.sha256(original_task).hexdigest():
+        raise _FlowMapBlocked('original-task-mismatch', producer)
+    try:
+        flow = bundles.parse_json(result['artifacts']['response'], 'Training FlowMap', finite=True, bounded=True)
+    except (KeyError, TypeError, ValueError, RecursionError) as error:
+        raise _FlowMapBlocked('missing-flow-map', producer) from error
+    try:
+        contracts.validate(flow, _FLOW_MAP_SCHEMA, 'Training FlowMap')
+    except (ValueError, RecursionError) as error:
+        raise _FlowMapBlocked('invalid-flow-map', producer) from error
+    baseline = original.get('baseline') if isinstance(original, dict) else None
+    source = original.get('source') if isinstance(original, dict) else None
+    if not isinstance(baseline, dict) or not isinstance(source, dict):
+        raise _FlowMapBlocked('missing-original-identities', producer)
+    if baseline.get('raw_sha256') != flow['baseline_sha256']:
+        raise _FlowMapBlocked('baseline-mismatch', producer)
+    if source.get('source_sha256') != flow['source_sha256']:
+        raise _FlowMapBlocked('source-mismatch', producer)
+    task = {'task': original, 'flow_map': flow, 'flow_map_producer': producer}
+    try:
+        bundles.check_document_tree(task, 'FlowMap profile input')
+    except ValueError as error:
+        raise _FlowMapBlocked('oversize-flow-map', producer) from error
+    try:
+        workflows.compile_input(composition, path, _bounded_json(task, limit), limit, input_origin='workflow-port')
+    except workflows.PromptCapacityError as error:
+        raise _FlowMapBlocked('oversize-flow-map', producer) from error
+    except UnicodeEncodeError as error:
+        raise _FlowMapBlocked('invalid-flow-map', producer) from error
+    return task
+
+
+def _flow_map_blocks(receipt, nodes):
+    paths = {path for path, node in nodes.items() if 'required_flow_map' in node}
+    values = _observed_attempts(receipt, 'flow_map_blocks', paths)
+    for value in values:
+        if (value.keys() != {'instance', 'reason', 'producer'} or not isinstance(value['reason'], str)
+                or value['reason'] not in _FLOW_MAP_BLOCKS):
+            raise ValueError('Invalid required FlowMap block record')
+        producer = value['producer']
+        if producer is not None and (not isinstance(producer, dict)
+                or producer.keys() != {'instance', 'run_id', 'input_digest', 'result_sha256'}
+                or any(not isinstance(item, str) for item in producer.values())):
+            raise ValueError('Invalid required FlowMap producer record')
+    return {value['instance']: value for value in values}
+
+
 class _GraphRun:
     def __init__(self, state, project, composition, directory, receipt, deadline, codex_config, stop_requested, fixed_review,
                  *, recovery=None, lock_fd=None):
@@ -249,6 +354,11 @@ class _GraphRun:
         self.running = {}
         self.active_slots = Counter()
         self.completed = {}
+        self.blocked = set()
+        self.leaf_task_hashes = {}
+        self.flow_map_producers = _flow_map_producers(self.nodes)
+        self.flow_map_producer_paths = set(self.flow_map_producers.values())
+        self.has_flow_map_gate = any('required_flow_map' in node for node in self.nodes.values())
         self.fixed_review = fixed_review
         self.recovery = recovery
         self.lock_fd = lock_fd
@@ -352,8 +462,11 @@ class _GraphRun:
         if self.fixed_review is not None:
             gate, = self.nodes[node['parent']]['depends_on']
             options['_fixed_check_proof'] = self.completed[gate]['result']
-        if 'route_choices' in node:
-            options['result_schema'] = _leaf_result_schema(node)
+        flow_map_producer = path in self.flow_map_producer_paths
+        if 'route_choices' in node or flow_map_producer:
+            options['result_schema'] = _leaf_result_schema(node, flow_map_producer=flow_map_producer)
+        if flow_map_producer:
+            options['_allow_omitted_response'] = True
         self.check_leaf_admission()
         run_id = uuid.uuid4().hex if self.recovery is None else self.recovery_run_id(path)
         attempt = {'instance': path, 'run_id': run_id, 'input_digest': prepared['digest'], 'status': 'attempted'}
@@ -423,6 +536,8 @@ class _GraphRun:
                 or observed['input']['digest'] != attempt['input_digest'] or result['sha256'] != attempt['result_sha256']):
             raise ValueError(f'Original workflow leaf evidence is unavailable: {path}')
         self.result_bytes += result['bytes']
+        if path in self.flow_map_producer_paths:
+            self.leaf_task_hashes[path] = observed['input']['request']['task_sha256']
         return {'result': result['document']}
 
     def check_fixed_read_cutoff(self, attempt):
@@ -638,6 +753,50 @@ class _GraphRun:
         return (node['parent'] in opened and all(path in self.completed for path in node['depends_on'])
                 and all(self.active_slots[scope['path']] < scope['limit'] for scope in node.get('concurrency_scopes', ())))
 
+    def block_node(self, path):
+        self.blocked.add(path)
+        self.completed[path] = {'status': 'blocked'}
+
+    def propagate_blocks(self, pending, opened):
+        if not self.blocked:
+            return False
+        settled = False
+        for path, node in tuple(pending.items()):
+            if node['parent'] in opened and any(dependency in self.blocked for dependency in node['depends_on']):
+                del pending[path]
+                self.block_node(path)
+                settled = True
+        return settled
+
+    def flow_map_task(self, node, original, result):
+        path = self.flow_map_producers.get(node['path'])
+        if path is None or not isinstance(result, dict) or result.keys() != {path}:
+            raise _FlowMapBlocked('unverified-producer')
+        produced = result[path]
+        if not isinstance(produced, dict) or produced != self.completed.get(path):
+            raise _FlowMapBlocked('unverified-producer')
+        attempt = next((row for row in self.receipt['leaves'] if row['instance'] == path), None)
+        if attempt is None or attempt['status'] != 'succeeded' or attempt.get('result_sha256') is None:
+            raise _FlowMapBlocked('unverified-producer')
+        producer = {key: attempt[key] for key in ('instance', 'run_id', 'input_digest', 'result_sha256')}
+        return _checked_flow_map_task(self.composition, node['path'], original, produced['result'],
+                                      self.leaf_task_hashes.get(path), producer, self.receipt['max_prompt_bytes'])
+
+    def agent_task(self, node, opened):
+        parent = node['parent']
+        task = self.ports(parent, opened[parent], node['inputs'])['task']
+        if 'required_flow_map' in node:
+            return self.flow_map_task(node, task, opened[parent][node['required_flow_map']])
+        return task
+
+    def record_flow_map_block(self, path, error, *, original=None):
+        record = {'instance': path, 'reason': str(error), 'producer': error.producer}
+        if original is None:
+            self.receipt.setdefault('flow_map_blocks', []).append(record)
+        elif original != record:
+            raise ValueError(f'Saved FlowMap block differs from its original artifact: {path}')
+        self.block_node(path)
+
     def workflow_state(self, inputs):
         pending = {path: node for path, node in self.nodes.items() if path != 'root' and path not in self.completed}
         opened = {'root': inputs}
@@ -648,7 +807,11 @@ class _GraphRun:
     def finalize_workflows(self, opened, children):
         for path in reversed(tuple(opened)):
             if all(child in self.completed for child in children[path]):
-                self.completed[path] = self.ports(path, opened.pop(path), self.nodes[path]['outputs'])
+                inputs = opened.pop(path)
+                if any(child in self.blocked for child in children[path]):
+                    self.block_node(path)
+                else:
+                    self.completed[path] = self.ports(path, inputs, self.nodes[path]['outputs'])
 
     def open_structure(self, node, opened):
         path, parent = node['path'], node['parent']
@@ -689,9 +852,13 @@ class _GraphRun:
                 or not observed['prompt']['available'] or not result['available']
                 or (('result_sha256' in attempt or status == 'succeeded') and attempt.get('result_sha256') != result['sha256'])):
             raise ValueError(f'Graph recovery requires matching original Agent input, prompt and result evidence: {path}')
-        invocation.validate_result(result['document'], _leaf_result_schema(node))
+        flow_map_producer = path in self.flow_map_producer_paths
+        invocation.validate_result(result['document'], _leaf_result_schema(node, flow_map_producer=flow_map_producer),
+                                   allow_omitted_response=flow_map_producer)
         self.result_bytes += result['bytes']
         attempt.update(status='succeeded', result_sha256=result['sha256'])
+        if path in self.flow_map_producer_paths:
+            self.leaf_task_hashes[path] = observed['input']['request']['task_sha256']
         self.completed[path] = {'result': result['document']}
 
     def recover(self, inputs):
@@ -718,11 +885,14 @@ class _GraphRun:
         if slots not in (expected_slots, expected_slots | {next_slot}):
             raise ValueError('Saved graph input slots differ from the original reservations')
         pending, opened, children = self.workflow_state(inputs)
+        original_blocks = _flow_map_blocks(self.receipt, self.nodes)
 
         def advance_progress():
             while True:
                 self.check_active()
                 self.finalize_workflows(opened, children)
+                if self.propagate_blocks(pending, opened):
+                    continue
                 if decisions:
                     record = decisions[0]
                     selector = selectors[record['instance']]
@@ -745,18 +915,33 @@ class _GraphRun:
                         continue
                 structural = next((node for node in pending.values()
                                    if node['kind'] in ('workflow', 'join') and self.ready(node, opened)), None)
-                if structural is None:
+                if structural is not None:
+                    del pending[structural['path']]
+                    self.open_structure(structural, opened)
+                    continue
+                if not self.has_flow_map_gate:
                     return
-                del pending[structural['path']]
-                self.open_structure(structural, opened)
+                for gated in tuple(pending.values()):
+                    if 'required_flow_map' not in gated or not self.ready(gated, opened):
+                        continue
+                    path = gated['path']
+                    try:
+                        self.agent_task(gated, opened)
+                    except _FlowMapBlocked as error:
+                        self.record_flow_map_block(path, error, original=original_blocks.pop(path, None))
+                        del pending[path]
+                        break
+                    if path in original_blocks:
+                        raise ValueError(f'Saved FlowMap block has no matching original artifact failure: {path}')
+                else:
+                    return
 
         def task_at(path):
             advance_progress()
             node = pending.get(path)
             if node is None or node['kind'] != 'agent' or not self.ready(node, opened):
                 raise ValueError(f'Saved graph input is unreachable through its original dependencies: {path}')
-            parent = node['parent']
-            return self.ports(parent, opened[parent], node['inputs'])['task']
+            return self.agent_task(node, opened)
 
         for sequence, attempt in enumerate(leaves, 1):
             path = attempt['instance']
@@ -764,6 +949,8 @@ class _GraphRun:
             self.recover_leaf(agent_nodes[path], attempt, prepared)
             del pending[path]
         advance_progress()
+        if original_blocks:
+            raise ValueError('Saved FlowMap block is unreachable from its original producer')
         if decisions:
             raise ValueError(f'Saved route decision is unreachable through its original dependencies: {decisions[0]["instance"]}')
         if checkpoint_saved and self.checkpoint_sha is None:
@@ -796,6 +983,8 @@ class _GraphRun:
                     self.save()
                 # Finalize children before their parents using frozen workflow membership.
                 self.finalize_workflows(opened, children)
+                if self.propagate_blocks(pending, opened):
+                    continue
                 if 'root' in self.completed:
                     break
                 node = next((node for node in pending.values() if self.ready(node, opened)
@@ -811,6 +1000,15 @@ class _GraphRun:
                 if node['kind'] in ('workflow', 'join'):
                     self.open_structure(node, opened)
                     continue
+                if node['kind'] == 'agent':
+                    try:
+                        task = self.agent_task(node, opened)
+                    except _FlowMapBlocked as error:
+                        self.record_flow_map_block(path, error)
+                        self.save()
+                    else:
+                        self.dispatch_leaf(executor, node, task)
+                    continue
                 parent = node['parent']
                 ports = self.ports(parent, opened[parent], node['inputs'])
                 if node['kind'] in _VERIFICATION_NODES:
@@ -820,8 +1018,6 @@ class _GraphRun:
                     if route is None:
                         return None
                     self.complete_route(route, pending)
-                elif node['kind'] == 'agent':
-                    self.dispatch_leaf(executor, node, ports['task'])
                 else:
                     raise ValueError(f'Unsupported standalone workflow node: {path}')
         except BaseException as error:
@@ -919,6 +1115,8 @@ def _execute_graph(run, inputs, composition):
         run.check_active()
         if outputs is None:
             receipt['status'] = _AWAITING_ROUTE
+        elif run.blocked:
+            receipt.update(status='failed', error='Required training FlowMap evidence blocked a dependent Agent')
         else:
             receipt.update(status='succeeded', outputs=outputs)
     except TimeoutError as error:
@@ -1136,7 +1334,8 @@ def _observe_reserved_input(directory, attempt, manifest, max_prompt_bytes):
     return {'state': 'available', 'digest': checked['digest'], 'task_sha256': checked['request']['task_sha256']}
 
 
-def _observe_leaf_run(state, project, receipt, manifest, attempt, remaining_result_bytes, route_choices):
+def _observe_leaf_run(state, project, receipt, manifest, attempt, remaining_result_bytes, route_choices,
+                      *, flow_evidence=None):
     try:
         observed = runs.inspect_run(state, project, attempt['run_id'], max_result_bytes=max(1, remaining_result_bytes))
     except native_sources.RunNotFound as error:
@@ -1176,6 +1375,11 @@ def _observe_leaf_run(state, project, receipt, manifest, attempt, remaining_resu
         route = artifacts.get('route') if isinstance(artifacts, dict) else None
         if isinstance(route, str) and route in route_choices:
             choice = route
+    if (flow_evidence is not None and source['status'] == 'succeeded'
+            and source['graph_outcome_agreement'] == 'matching'
+            and all(observed[name]['available'] for name in ('input', 'prompt', 'result'))):
+        flow_evidence[attempt['instance']] = (observed['input']['request']['task_sha256'],
+                                               observed['result']['document'])
     return source, source['result'].get('bytes', 0), choice
 
 
@@ -1455,7 +1659,14 @@ def inspect_graph(state: State, project: str, directory: Path, manifest_digest: 
     leaves = _observed_attempts(receipt, 'leaves', agent_nodes, required=True)
     verification_reads = _observed_attempts(receipt, 'verification_reads', sources)
     route_records = _observed_attempts(receipt, 'route_decisions', selectors)
+    flow_blocks = _flow_map_blocks(receipt, agent_nodes)
+    if status == 'succeeded' and flow_blocks:
+        raise ValueError('Successful graph receipt contains a required FlowMap block')
     attempts, choices, run_ids, remaining = {}, {}, set(), _RESULT_LIMIT
+    nodes_by_path = {node['path']: node for node in nodes}
+    flow_producers = _flow_map_producers(nodes_by_path) if flow_blocks else {}
+    flow_producer_paths = set(flow_producers.values())
+    flow_evidence = {}
     digest_contract = contracts.COMPOSITION_MANIFEST['$defs']['digest']
     for sequence, leaf in enumerate(leaves, 1):
         run_id, input_digest, leaf_status = (leaf.get(name) for name in ('run_id', 'input_digest', 'status'))
@@ -1472,7 +1683,8 @@ def inspect_graph(state: State, project: str, directory: Path, manifest_digest: 
         attempt['reserved_input'] = _observe_reserved_input(directory, attempt, manifest, receipt['max_prompt_bytes'])
         route_choices = agent_nodes[leaf['instance']].get('route_choices', ())
         attempt['original_run'], result_bytes, choice = _observe_leaf_run(
-            state, project, receipt, manifest, attempt, remaining, route_choices)
+            state, project, receipt, manifest, attempt, remaining, route_choices,
+            flow_evidence=flow_evidence if leaf['instance'] in flow_producer_paths else None)
         remaining -= result_bytes
         attempts[leaf['instance']] = attempt
         if choice is not None:
@@ -1489,7 +1701,36 @@ def inspect_graph(state: State, project: str, directory: Path, manifest_digest: 
                           supervised=supervised, operator_route=operator_route if supervised else None))
     if checkpoint is not None:
         recovery['route_checkpoint'] = checkpoint
-    recorded_paths = {'root', *attempts, *(item['instance'] for item in reads + decisions)}
+    observed_blocks = []
+    for path, block in flow_blocks.items():
+        if path in attempts:
+            raise ValueError('Blocked FlowMap consumer has an original Agent attempt')
+        producer = block['producer']
+        reason_state = 'receipt-reported'
+        if producer is not None:
+            original_path = flow_producers.get(path)
+            observed = attempts.get(original_path)
+            if observed is None or producer != {name: observed[name]
+                    for name in ('instance', 'run_id', 'input_digest', 'result_sha256')}:
+                raise ValueError('Saved FlowMap block differs from the original producer attempt')
+            port = _root_task_port(agent_nodes[path], nodes_by_path)
+            if port is not None and original_path in flow_evidence:
+                task_sha256, original_result = flow_evidence[original_path]
+                original_task = _bounded_json(inputs[port], receipt['max_prompt_bytes'])
+                if task_sha256 != hashlib.sha256(original_task).hexdigest():
+                    observed_blocks.append({**block, 'reason_state': reason_state})
+                    continue
+                try:
+                    _checked_flow_map_task(composition, path, inputs[port], original_result, task_sha256,
+                                           producer, receipt['max_prompt_bytes'])
+                except _FlowMapBlocked as error:
+                    if str(error) != block['reason']:
+                        raise ValueError('Saved FlowMap block differs from the original producer evidence') from error
+                else:
+                    raise ValueError('Original producer evidence does not establish the saved FlowMap block')
+                reason_state = 'corroborated'
+        observed_blocks.append({**block, 'reason_state': reason_state})
+    recorded_paths = {'root', *attempts, *flow_blocks, *(item['instance'] for item in reads + decisions)}
     return {'schema_version': 1, 'kind': 'standalone-workflow-observation', 'project': project,
             'project_revision': receipt['project_revision'], 'root': receipt['root'], 'manifest_digest': manifest_digest,
             'graph_receipt': {'directory': str(directory), 'sha256': hashlib.sha256(raw).hexdigest(), 'bytes': len(raw),
@@ -1501,6 +1742,7 @@ def inspect_graph(state: State, project: str, directory: Path, manifest_digest: 
                        'graph_record': 'recorded' if node['path'] in recorded_paths else 'not_recorded'}
                       for node in nodes],
             'agent_attempts': list(attempts.values()), 'verification_reads': reads, 'route_decisions': decisions,
+            **({'flow_map_blocks': observed_blocks} if observed_blocks else {}),
             'recovery': recovery,
             'process_start': 'unknown',
             'stop_and_cleanup': 'unknown', 'formal_execution_authorized': False}
