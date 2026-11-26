@@ -327,10 +327,13 @@ def parser() -> argparse.ArgumentParser:
     graph.add_argument("--timeout", type=int, default=300, help="Overall graph deadline in seconds")
     graph.add_argument("--codex-config", type=Path)
     graph.add_argument("--recoverable", action="store_true", help="Keep original interruption recovery authority on Linux")
+    graph.add_argument("--pause-before-route", metavar="INSTANCE", help="Pause a recoverable graph before one chosen follow-up")
     resume = operations.add_parser("resume-graph", help="Resume an interrupted original recoverable graph on Linux")
     resume.add_argument("project")
     resume.add_argument("directory", type=Path)
     resume.add_argument("--manifest-digest", required=True)
+    resume.add_argument("--route-checkpoint", metavar="SHA256", help="Exact original route checkpoint from inspect-graph")
+    resume.add_argument("--route-action", choices=("follow-up", "finish"), help="Apply the original recommendation or finish without a follow-up")
     graph_inspection = operations.add_parser("inspect-graph", help="Observe a standalone graph and original Agent runs offline")
     graph_inspection.add_argument("project")
     graph_inspection.add_argument("directory", type=Path)
@@ -1629,10 +1632,11 @@ def main(argv: list[str] | None = None) -> int:
                         output = graphs.run_graph(State(args.home), args.project, args.manifest, args.manifest_digest,
                             definition_bundles.parse_json(raw.decode('utf-8-sig'), 'Workflow inputs', finite=True, bounded=True),
                             args.directory, args.max_prompt_bytes, args.timeout, codex_config=args.codex_config,
-                            stop_requested=lambda: stopped, recoverable=args.recoverable)
+                            stop_requested=lambda: stopped, recoverable=args.recoverable, pause_before_route=args.pause_before_route)
                     else:
                         output = graphs.resume_graph(args.home, args.project, args.directory, args.manifest_digest,
-                                                     stop_requested=lambda: stopped)
+                                                     stop_requested=lambda: stopped, route_checkpoint=args.route_checkpoint,
+                                                     route_action=args.route_action)
                 except KeyboardInterrupt:
                     print('Workflow interrupted', file=sys.stderr)
                     return 1
@@ -1973,8 +1977,10 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         if args.command == "services" and output.get("outcome") in ("unconfirmed", "failed"):
             return 1
-        if args.command == "composition" and args.operation in ("run-input", "run-graph", "resume-graph") and output["status"] != "succeeded":
-            return 1
+        if args.command == "composition" and args.operation in ("run-input", "run-graph", "resume-graph"):
+            completed = ("succeeded",) if args.operation == "run-input" else ("succeeded", "awaiting_route_decision")
+            if output["status"] not in completed:
+                return 1
         return 0
     except (ValueError, OSError, RuntimeError) as error:
         print(f"ERROR: {error}", file=sys.stderr)

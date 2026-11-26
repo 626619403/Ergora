@@ -35,7 +35,7 @@ ergora --home ROOT composition inspect-graph PROJECT DIRECTORY --manifest-digest
 
 The reader verifies the frozen manifest and reports its root, the saved `run.json` status and digest, the recorded output port names and Agent attempts in reservation order. Each attempt includes the reserved input identity and separate observations of the original Agent run, input, prompt and result. For example, a saved `attempted` entry can have an observed `succeeded` Agent run while the graph receipt still reads `incomplete`. Use the original Agent run ID for complete result content. [Read an original leaf by ID](leaf-calls.md#read-an-original-composition-run-by-exact-id)
 
-In `route_decisions`, a `corroborated` choice matches the frozen branch list and the original analyzer's verified result. For `verify-evidence`, the report shows the graph-recorded locator and evidence status with the original native receipt marked `not_queried`. Per-leaf `original_run.process_start` shows the original Agent run's historical direct-child observation. The graph-level `process_start` and `stop_and_cleanup` report `unknown`. Inspection is for observation only. Repeat the read with the same identifiers when more evidence becomes available.
+In `route_decisions`, a `corroborated` automatic choice matches the frozen branch list and the original analyzer's verified result. A corroborated supervised choice also checks the original operator action against that recommendation and checkpoint. For `verify-evidence`, the report shows the graph-recorded locator and evidence status with the original native receipt marked `not_queried`. Per-leaf `original_run.process_start` shows the original Agent run's historical direct-child observation. The graph-level `process_start` and `stop_and_cleanup` report `unknown`. Inspection is for observation only. Repeat the read with the same identifiers when more evidence becomes available.
 
 For a recoverable run, `recovery.authorization.state: corroborated` means that the saved authority matches the selected graph, original directory, control home and lock file identity. The `recovery` section also reports the original and current project revisions, clock and stop observations, and any saved terminal status. `recovery.clock.state` reports `invalid` for invalid saved clock data and `unknown` when the current boot comparison is unavailable. Valid saved evidence remains readable when that comparison is unavailable, after expiry or after completion.
 
@@ -59,9 +59,24 @@ ergora composition resume-graph PROJECT ./original-graph-run --manifest-digest M
 
 Resumption acquires the original coordinator lock and verifies the control home before opening State for writes. It checks the saved project revision, manifest, inputs, remaining budget and original leaf evidence, and corroborates each reservation with its durable pre-send record. It reconstructs the declared outputs of verified successful leaves from their original attempts and Agent run IDs. Only previously unreserved leaves can start. The original deadline and result limits still apply.
 
-For `choose-agent`, recovery derives the selected branch or `none` from the analyzer's verified original result. It checks any saved decision against that result and the frozen branches. A mismatch blocks resumption. If the coordinator was interrupted after the analyzer succeeded and before saving the decision, recovery records that same decision before preparing or dispatching the selected branch. A missing decision blocks recovery when dependent work was already prepared or reserved. A conditional branch can start only if selected and previously unreserved. All-joins retain the skipped states of unselected branches. [Conditional routing contract](contracts.md#conditional-agent-routing)
+For an automatic `choose-agent` route, recovery derives the selected branch or `none` from the analyzer's verified original result. A [supervised route](#decide-on-a-recommended-follow-up) additionally verifies the original checkpoint and applies its saved operator action. A mismatch blocks resumption. Recovery saves the effective decision before preparing or dispatching the selected branch. A missing decision blocks recovery when dependent work was already prepared or reserved. A conditional branch can start only if selected and previously unreserved. All-joins retain the skipped states of unselected branches. [Conditional routing contract](contracts.md#conditional-agent-routing)
 
 The command refuses an active coordinator, a terminal or explicitly stopped graph, an expired or invalid original clock, or any reserved leaf with unresolved or inconsistent evidence. Keep the original directory and IDs for readback.
+
+### Decide on a recommended follow-up
+
+On Linux/WSL2, add `--pause-before-route root/choose` to the original `run-graph --recoverable` command. Use the exact instance path of one frozen `choose-agent` node. When its analyzer recommends a specialist, the graph joins any work already running and returns `awaiting_route_decision` with exit status zero. The analyzer's `none` recommendation completes the selector automatically.
+
+Use `inspect-graph` to get `recovery.route_checkpoint.sha256` and the original recommendation. Read the analyzer by its original run ID, then record the decision in the original graph:
+
+```bash
+ergora composition resume-graph PROJECT ./original-graph-run --manifest-digest MANIFEST_SHA256 \
+  --route-checkpoint CHECKPOINT_SHA256 --route-action follow-up
+```
+
+Choose `follow-up` to use the recommendation or `finish` to skip the conditional specialists. The decision uses the same project, manifest, inputs, permissions and deadline. The original clock keeps running while waiting for the decision.
+
+After a lost reply, inspect the original directory. An `awaiting` checkpoint accepts the same action and digest while the original graph remains eligible. A `decided` checkpoint carries the saved action and its digest. If the original graph is still resumable, ordinary `resume-graph` recovers that action. A terminal graph remains available through `inspect-graph`.
 
 ### Read original fixed verification evidence
 

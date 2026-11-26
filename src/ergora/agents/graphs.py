@@ -30,6 +30,9 @@ _RECEIPT_LIMIT = 10_000_000
 _TERMINAL_STATUSES = ('succeeded', 'failed', 'cancelled', 'timed_out')
 _VERIFICATION_NODES = ('verify-evidence', 'verify-fixed-check')
 _RECOVERY_FIELDS = ('project', 'project_revision', 'root', 'manifest_digest', 'inputs', 'timeout', 'max_prompt_bytes')
+_AWAITING_ROUTE = 'awaiting_route_decision'
+_ROUTE_DECISION = 'route-operator-decision.json'
+_ROUTE_ACTIONS = ('follow-up', 'finish')
 _FIXED_READ_ATTEMPT = 'verification-attempt.json'
 _FIXED_READ_COMPLETE = 'verification-complete.json'
 _FIXED_OUTPUT_DIGESTS = ('receipt_sha256', 'fixed_results_sha256')
@@ -82,7 +85,10 @@ def _bounded_json(value, limit: int) -> bytes:
 
 
 def _graph_authority_sha(receipt):
-    return hashlib.sha256(_bounded_json([receipt[name] for name in _RECOVERY_FIELDS], _RECEIPT_LIMIT)).hexdigest()
+    authority = [receipt[name] for name in _RECOVERY_FIELDS]
+    if 'pause_before_route' in receipt:
+        authority.append(receipt['pause_before_route'])
+    return hashlib.sha256(_bounded_json(authority, _RECEIPT_LIMIT)).hexdigest()
 
 
 def _write_recovery_record(directory, name, record, *, preserve_order=False):
@@ -118,6 +124,42 @@ def _route_record(node, choice, source):
     return {'instance': node['path'], 'choice': choice, 'eligible': node['branches'], 'selected': selected,
             'skipped': [path for path in node['branches'] if path != selected],
             'source': {key: source[key] for key in ('instance', 'run_id', 'input_digest', 'result_sha256')}}
+
+
+def _check_route_pause(composition, selector, recoverable):
+    if not recoverable:
+        raise ValueError('A route checkpoint requires an original recoverable graph')
+    if not any(node['kind'] == 'choose-agent' and node['path'] == selector for node in composition['instances']):
+        raise ValueError('Select an exact choose-agent instance from the frozen graph')
+
+
+def _route_checkpoint_record(receipt, recommendation):
+    return {'schema_version': 1, 'recovery_sha256': receipt['recovery_sha256'], 'recommendation': recommendation}
+
+
+def _checked_checkpoint_sha(receipt, recommendation):
+    checkpoint = receipt.get('route_checkpoint')
+    if (recommendation['selected'] is None or native_sources.encode(checkpoint)
+            != native_sources.encode(_route_checkpoint_record(receipt, recommendation))):
+        raise native_sources.ArtifactIdentityError('Saved route checkpoint differs from its original analyzer evidence')
+    return native_sources.sha(checkpoint)
+
+
+def _check_operator_decision(decision, checkpoint_sha, deadline_ns, timeout, *, now_ns=None):
+    if (not isinstance(decision, dict) or decision.keys() != {
+            'schema_version', 'checkpoint_sha256', 'action', 'accepted_monotonic_ns'}
+            or type(decision['schema_version']) is not int or decision['schema_version'] != 1
+            or decision['checkpoint_sha256'] != checkpoint_sha or decision['action'] not in _ROUTE_ACTIONS):
+        raise native_sources.ArtifactIdentityError('Saved operator decision differs from the original route checkpoint')
+    accepted = decision['accepted_monotonic_ns']
+    if (type(accepted) is not int or not deadline_ns - timeout * 1_000_000_000 <= accepted < deadline_ns
+            or (now_ns is not None and accepted > now_ns)):
+        raise ValueError('Saved operator decision is outside the original graph clock')
+
+
+def _decided_route(node, recommendation, decision):
+    choice = recommendation['choice'] if decision['action'] == 'follow-up' else 'none'
+    return {**_route_record(node, choice, recommendation['source']), 'operator_decision_sha256': native_sources.sha(decision)}
 
 
 def _fixed_read_attempt(receipt, recovery, review, path, source, started):
@@ -206,6 +248,9 @@ class _GraphRun:
         self.result_limit = recovery['result_limit'] if recovery is not None else _RESULT_LIMIT
         self.unreserved = None
         self.resumed_wait = None
+        self.pause_before_route = receipt.get('pause_before_route')
+        self.checkpoint_sha = None
+        self.operator_decision = None
 
     def save(self):
         self.check_owner()
@@ -513,10 +558,64 @@ class _GraphRun:
     def choose_agent(self, node, source):
         self.check_active()
         record = self.route_decision(node, source)
+        if node['path'] == self.pause_before_route and record['selected'] is not None:
+            if self.operator_decision is None:
+                while self.running:
+                    self.check_active()
+                    self.wait_for_leaf()
+                    if self.collect_finished():
+                        self.save()
+                self.check_active()
+                self.receipt['route_checkpoint'] = _route_checkpoint_record(self.receipt, record)
+                return None
+            record = _decided_route(node, record, self.operator_decision)
         self.receipt.setdefault('route_decisions', []).append(record)
         self.save()
         self.check_active()
         return record
+
+    def check_route_checkpoint(self, recommendation):
+        self.checkpoint_sha = _checked_checkpoint_sha(self.receipt, recommendation)
+        if self.operator_decision is not None:
+            _check_operator_decision(self.operator_decision, self.checkpoint_sha, self.recovery['deadline_monotonic_ns'],
+                                     self.receipt['timeout'], now_ns=time.monotonic_ns())
+
+    def publish_route_decision(self, decision):
+        raw = native_sources.encode(decision) + b'\n'
+        destination = self.directory / _ROUTE_DECISION
+        staged = self.directory / f'.{_ROUTE_DECISION}.pending'
+        # The original coordinator lock gives each retry exclusive use of this staging path.
+        staged.unlink(missing_ok=True)
+        descriptor = os.open(staged, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+        try:
+            with os.fdopen(descriptor, 'wb') as stream:
+                stream.write(raw)
+                stream.flush()
+                native_sources.sync_descriptor(stream.fileno())
+            self.check_active()
+            os.link(staged, destination)
+        finally:
+            staged.unlink(missing_ok=True)
+        saved = native_sources.artifact(self.directory, _ROUTE_DECISION, len(raw), confirm_durable=True)
+        if saved != raw:
+            raise native_sources.ArtifactIdentityError('Published operator decision differs from its complete packet')
+
+    def accept_route_action(self, checkpoint_sha, action):
+        if checkpoint_sha != self.checkpoint_sha:
+            raise ValueError('Select the exact original route checkpoint SHA256')
+        if self.operator_decision is not None:
+            if self.operator_decision['action'] != action:
+                raise ValueError('The original route checkpoint already has a different decision')
+            return
+        if self.receipt['status'] != _AWAITING_ROUTE:
+            raise ValueError('The original graph is not awaiting a route decision')
+        self.check_active()
+        decision = {'schema_version': 1, 'checkpoint_sha256': checkpoint_sha, 'action': action,
+                    'accepted_monotonic_ns': time.monotonic_ns()}
+        _check_operator_decision(decision, checkpoint_sha, self.recovery['deadline_monotonic_ns'], self.receipt['timeout'])
+        self.publish_route_decision(decision)
+        self.operator_decision = decision
+        self.check_active()
 
     def complete_route(self, record, pending):
         self.completed[record['instance']] = {'result': {'choice': record['choice']}}
@@ -595,6 +694,16 @@ class _GraphRun:
         leaves = _observed_attempts(self.receipt, 'leaves', agent_nodes, required=True)
         reserved = {item['instance'] for item in leaves}
         names = {entry.name for entry in self.directory.iterdir()}
+        checkpoint_saved = 'route_checkpoint' in self.receipt
+        if ((self.receipt['status'] == _AWAITING_ROUTE or _ROUTE_DECISION in names) and not checkpoint_saved
+                or (checkpoint_saved and self.pause_before_route is None)):
+            raise ValueError('Saved graph progress is missing original route checkpoint authority')
+        if checkpoint_saved and self.receipt['status'] == 'incomplete' and _ROUTE_DECISION not in names:
+            raise ValueError('Saved graph progress is missing the original operator decision')
+        if _ROUTE_DECISION in names:
+            self.operator_decision = native_sources.packet(self.directory, _ROUTE_DECISION, confirm_durable=True)
+            if not isinstance(self.operator_decision, dict):
+                raise ValueError('Saved operator decision is invalid')
         self.check_reservations(names, leaves)
         expected_slots = {f'input-{index}' for index in range(1, len(leaves) + 1)}
         next_slot = f'input-{len(leaves) + 1}'
@@ -614,8 +723,15 @@ class _GraphRun:
                         parent = selector['parent']
                         source = self.ports(parent, opened[parent], selector['inputs'])['source']
                         expected = self.route_decision(selector, source)
+                        authority = 'analyzer result'
+                        if selector['path'] == self.pause_before_route and expected['selected'] is not None:
+                            self.check_route_checkpoint(expected)
+                            if self.operator_decision is None:
+                                raise ValueError('Saved route depends on a missing original operator decision')
+                            expected = _decided_route(selector, expected, self.operator_decision)
+                            authority = 'operator decision'
                         if native_sources.encode(record) != native_sources.encode(expected):
-                            raise ValueError(f'Saved route decision differs from its original analyzer result: {selector["path"]}')
+                            raise ValueError(f'Saved route decision differs from its original {authority}: {selector["path"]}')
                         decisions.popleft()
                         del pending[selector['path']]
                         self.complete_route(expected, pending)
@@ -643,6 +759,12 @@ class _GraphRun:
         advance_progress()
         if decisions:
             raise ValueError(f'Saved route decision is unreachable through its original dependencies: {decisions[0]["instance"]}')
+        if checkpoint_saved and self.checkpoint_sha is None:
+            selector = pending.get(self.pause_before_route)
+            if selector is None or not self.ready(selector, opened):
+                raise ValueError('Saved route checkpoint is unreachable through its original dependencies')
+            source = self.ports(selector['parent'], opened[selector['parent']], selector['inputs'])['source']
+            self.check_route_checkpoint(self.route_decision(selector, source))
         for path in agent_nodes.keys() - reserved:
             self.check_active()
             if native_sources.run_id_exists(self.state, self.recovery_run_id(path)):
@@ -652,6 +774,9 @@ class _GraphRun:
             path = workflows.inspect_input(source)['request']['instance']
             prepared = self.recovery_input(source, path, task_at(path))
             self.unreserved = (path, prepared['digest'])
+
+    def wait_for_leaf(self):
+        wait(self.running, timeout=min(.05, max(0, self.deadline - time.monotonic())), return_when=FIRST_COMPLETED)
 
     def workflow(self, inputs, project_limit):
         pending, opened, children = self.workflow_state(inputs)
@@ -672,8 +797,7 @@ class _GraphRun:
                 if node is None:
                     if not self.running:
                         raise ValueError('No runnable workflow node remains')
-                    wait(self.running, timeout=min(.05, max(0, self.deadline - time.monotonic())),
-                         return_when=FIRST_COMPLETED)
+                    self.wait_for_leaf()
                     continue
                 path = node['path']
                 del pending[path]
@@ -685,7 +809,10 @@ class _GraphRun:
                 if node['kind'] in _VERIFICATION_NODES:
                     self.completed[path] = self.verify_evidence(path, ports['source'])
                 elif node['kind'] == 'choose-agent':
-                    self.complete_route(self.choose_agent(node, ports['source']), pending)
+                    route = self.choose_agent(node, ports['source'])
+                    if route is None:
+                        return None
+                    self.complete_route(route, pending)
                 elif node['kind'] == 'agent':
                     self.dispatch_leaf(executor, node, ports['task'])
                 else:
@@ -732,9 +859,13 @@ def _execute_graph(run, inputs, composition):
     receipt = run.receipt
     try:
         outputs = run.workflow(inputs, composition['grant']['limits']['concurrency'])
-        _bounded_json(outputs, run.result_limit)
+        if outputs is not None:
+            _bounded_json(outputs, run.result_limit)
         run.check_active()
-        receipt.update(status='succeeded', outputs=outputs)
+        if outputs is None:
+            receipt['status'] = _AWAITING_ROUTE
+        else:
+            receipt.update(status='succeeded', outputs=outputs)
     except TimeoutError as error:
         receipt.update(status='timed_out', error=str(error))
     except KeyboardInterrupt:
@@ -786,7 +917,7 @@ def _check_recovery_result_limit(recovery):
 
 def run_graph(state: State, project_id: str, manifest: Path, manifest_digest: str, inputs: dict, directory: Path,
               max_prompt_bytes: int, timeout: int, *, codex_config: Path | None = None, stop_requested=None,
-              recoverable=False) -> dict:
+              recoverable=False, pause_before_route: str | None = None) -> dict:
     """Run a bounded, dependency-ready read-only graph with no resubmission through this entry."""
     contracts.validate(timeout, {'type': 'integer', 'minimum': 1, 'maximum': 3600}, 'Workflow timeout')
     contracts.validate(max_prompt_bytes, contracts.COMPOSITION_INPUT['properties']['max_prompt_bytes'], 'Input byte limit')
@@ -804,6 +935,8 @@ def run_graph(state: State, project_id: str, manifest: Path, manifest_digest: st
     if checked['digest'] != manifest_digest:
         raise ValueError('Workflow manifest differs from the explicitly selected digest')
     composition = checked['composition']
+    if pause_before_route is not None:
+        _check_route_pause(composition, pause_before_route, recoverable)
     encoded_inputs = _graph_inputs(composition, inputs, max_prompt_bytes, recoverable=recoverable)
     fixed_review = None
     if any(item['kind'] in _VERIFICATION_NODES for item in composition['instances']):
@@ -822,6 +955,8 @@ def run_graph(state: State, project_id: str, manifest: Path, manifest_digest: st
                'project': project_id, 'project_revision': project['revision'], 'root': composition['root'],
                'manifest_digest': manifest_digest, 'inputs': inputs, 'timeout': timeout,
                'max_prompt_bytes': max_prompt_bytes, 'leaves': [], 'formal_execution_authorized': False}
+    if pause_before_route is not None:
+        receipt['pause_before_route'] = pause_before_route
     if recoverable:
         directory = directory.resolve()
         receipt['inputs'] = inputs = json.loads(encoded_inputs)
@@ -853,8 +988,13 @@ def run_graph(state: State, project_id: str, manifest: Path, manifest_digest: st
         return _execute_graph(run, inputs, composition)
 
 
-def resume_graph(home: Path | None, project_id: str, directory: Path, manifest_digest: str, *, stop_requested=None) -> dict:
+def resume_graph(home: Path | None, project_id: str, directory: Path, manifest_digest: str, *, stop_requested=None,
+                 route_checkpoint: str | None = None, route_action: str | None = None) -> dict:
     """Continue only the original, unexpired graph after verifying all its saved attempts."""
+    if route_checkpoint is not None or route_action is not None:
+        contracts.validate(route_checkpoint, contracts.COMPOSITION_MANIFEST['$defs']['digest'], 'Route checkpoint SHA256')
+        if route_action not in _ROUTE_ACTIONS:
+            raise ValueError('Select follow-up or finish for the original route checkpoint')
     directory = directory.expanduser().resolve()
     state_home = resolve_home(home)
     lock = directory / '.owner.lock'
@@ -863,7 +1003,7 @@ def resume_graph(home: Path | None, project_id: str, directory: Path, manifest_d
     with ExitStack() as owner:
         original_lock = _enter_owner(owner, lock)
         _, receipt = _read_graph_receipt(project_id, directory, manifest_digest)
-        if receipt.get('status') != 'incomplete' or os.path.lexists(directory / 'stop.json'):
+        if receipt.get('status') not in ('incomplete', _AWAITING_ROUTE) or os.path.lexists(directory / 'stop.json'):
             raise ValueError('A terminal or explicitly stopped graph cannot resume')
         if 'outputs' in receipt or 'error' in receipt:
             raise ValueError('Saved graph progress differs from the supported incomplete recovery state')
@@ -884,6 +1024,8 @@ def resume_graph(home: Path | None, project_id: str, directory: Path, manifest_d
         if checked['digest'] != manifest_digest or receipt['root'] != checked['manifest']['root']:
             raise ValueError('Saved graph manifest differs from the receipt or explicitly selected digest')
         composition, inputs = checked['composition'], receipt['inputs']
+        if 'pause_before_route' in receipt:
+            _check_route_pause(composition, receipt['pause_before_route'], True)
         _graph_inputs(composition, inputs, receipt['max_prompt_bytes'], recoverable=True)
         fixed_review = _fixed_review_context(composition, inputs, manifest_digest)
         run = _GraphRun(state, project, composition, directory, receipt, deadline, None, stop_requested, fixed_review,
@@ -895,10 +1037,15 @@ def resume_graph(home: Path | None, project_id: str, directory: Path, manifest_d
             if state.project(project_id)['revision'] != project['revision']:
                 raise ValueError('Project revision changed during graph recovery')
             run.check_active()
+            if route_checkpoint is not None:
+                run.accept_route_action(route_checkpoint, route_action)
         except KeyboardInterrupt:
             run.fence_stop()
             raise
+        if receipt['status'] == _AWAITING_ROUTE and run.operator_decision is None:
+            return receipt
         run.state = State(state_home)
+        receipt['status'] = 'incomplete'
         run.save()
         return _execute_graph(run, inputs, composition)
 
@@ -1017,35 +1164,88 @@ def _observe_verification(project, sequence, read, original_source, *, fixed_rev
     return {**observation, 'recorded_evidence': {'state': 'recorded', **digests}}
 
 
-def _observe_route(sequence, record, selector, attempts, choices, graph_status):
+def _observe_route_recommendation(record, selector, attempts, choices):
     analyzer, = selector['depends_on']
     branches = selector['branches']
-    observation = {'sequence': sequence, 'instance': selector['path'], 'eligible': branches,
-                   'source_instance': analyzer}
+    observation = {'instance': selector['path'], 'eligible': branches, 'source_instance': analyzer}
     attempt = attempts.get(analyzer)
     if attempt is None:
-        return {**observation, 'state': 'missing', 'proof': 'analyzer_attempt'}
+        return {**observation, 'state': 'missing', 'proof': 'analyzer_attempt'}, None
     source = {key: attempt[key] for key in ('instance', 'run_id', 'input_digest', 'result_sha256')}
     if record.get('source') != source or source['result_sha256'] is None or attempt['status'] != 'succeeded':
-        return {**observation, 'state': 'mismatch', 'proof': 'analyzer_attempt'}
+        return {**observation, 'state': 'mismatch', 'proof': 'analyzer_attempt'}, None
     observation['source'] = source
     original = attempt['original_run']
     if original['state'] != 'available':
-        return {**observation, 'state': original['state'], 'proof': 'original_run'}
+        return {**observation, 'state': original['state'], 'proof': 'original_run'}, None
     if original['graph_outcome_agreement'] != 'matching':
-        return {**observation, 'state': 'mismatch', 'proof': 'original_run'}
+        return {**observation, 'state': 'mismatch', 'proof': 'original_run'}, None
     for field in ('input', 'prompt', 'result'):
         if original[field]['state'] != 'available':
-            return {**observation, 'state': original[field]['state'], 'proof': field}
+            return {**observation, 'state': original[field]['state'], 'proof': field}, None
     choice = choices.get(analyzer)
     if choice is None:
-        return {**observation, 'state': 'invalid', 'proof': 'result'}
-    expected = _route_record(selector, choice, source)
+        return {**observation, 'state': 'invalid', 'proof': 'result'}, None
+    return observation, _route_record(selector, choice, source)
+
+
+def _observe_route(sequence, record, selector, attempts, choices, graph_status, *, supervised=False, operator_route=None):
+    observation, expected = _observe_route_recommendation(record, selector, attempts, choices)
+    observation = {'sequence': sequence, **observation}
+    if expected is None:
+        return observation
+    if supervised and expected['selected'] is not None:
+        if operator_route is None:
+            return {**observation, 'state': 'mismatch', 'proof': 'operator_decision'}
+        expected = operator_route
+        observation['operator_decision_sha256'] = expected['operator_decision_sha256']
     selected, skipped = expected['selected'], expected['skipped']
     if (record != expected or any(branch in attempts for branch in skipped)
             or (graph_status == 'succeeded' and selected is not None and selected not in attempts)):
         return {**observation, 'state': 'mismatch', 'proof': 'route_decision'}
-    return {**observation, 'state': 'corroborated', 'choice': choice, 'selected': selected, 'skipped': skipped}
+    return {**observation, 'state': 'corroborated', 'choice': expected['choice'], 'selected': selected, 'skipped': skipped}
+
+
+def _observe_route_checkpoint(directory, receipt, selectors, attempts, choices, recovery):
+    target = receipt.get('pause_before_route')
+    decision_exists = os.path.lexists(directory / _ROUTE_DECISION)
+    checkpoint = receipt.get('route_checkpoint')
+    if 'pause_before_route' not in receipt and not decision_exists and 'route_checkpoint' not in receipt:
+        return None, None
+    if not isinstance(target, str) or target not in selectors or recovery['authorization']['state'] != 'corroborated':
+        return {'state': 'mismatch', 'proof': 'recovery_authority'}, None
+    if checkpoint is None:
+        if decision_exists or receipt['status'] == _AWAITING_ROUTE:
+            return {'state': 'missing', 'proof': 'route_checkpoint'}, None
+        return {'state': 'not_recorded', 'instance': target}, None
+    if not isinstance(checkpoint, dict) or not isinstance(checkpoint.get('recommendation'), dict):
+        return {'state': 'invalid', 'proof': 'route_checkpoint'}, None
+    selector = selectors[target]
+    observation, recommendation = _observe_route_recommendation(checkpoint['recommendation'], selector, attempts, choices)
+    if recommendation is None:
+        return observation, None
+    try:
+        checkpoint_sha = _checked_checkpoint_sha(receipt, recommendation)
+        observation = {**observation, 'sha256': checkpoint_sha, 'recommendation': recommendation}
+        if decision_exists:
+            clock = recovery['clock']
+            deadline_ns = clock.get('deadline_monotonic_ns')
+            if type(deadline_ns) is not int or clock['state'] == 'invalid':
+                return {**observation, 'state': 'invalid', 'proof': 'clock'}, None
+            decision = native_sources.packet(directory, _ROUTE_DECISION)
+            now = time.monotonic_ns() if clock['state'] in ('within_deadline', 'expired') else None
+            _check_operator_decision(decision, checkpoint_sha, deadline_ns, receipt['timeout'], now_ns=now)
+            route = _decided_route(selector, recommendation, decision)
+            return {**observation, 'state': 'decided', 'decision': decision,
+                    'decision_sha256': route['operator_decision_sha256']}, route
+    except (OSError, ValueError, RecursionError) as error:
+        return {**observation, 'state': _local_evidence_state(error)}, None
+    if receipt['status'] in ('incomplete', 'succeeded') or any(
+            record['instance'] == target for record in receipt.get('route_decisions', ())):
+        return {**observation, 'state': 'missing', 'proof': 'operator_decision'}, None
+    available = (receipt['status'] == _AWAITING_ROUTE and recovery['clock']['state'] == 'within_deadline'
+                 and recovery['stop']['state'] == 'not_recorded' and recovery['project_revision']['state'] == 'matching')
+    return {**observation, 'state': 'awaiting' if available else 'closed'}, None
 
 
 def _read_graph_receipt(project, directory, manifest_digest):
@@ -1184,7 +1384,7 @@ def inspect_graph(state: State, project: str, directory: Path, manifest_digest: 
     root = nodes[0]
     inputs, outputs, status = (receipt.get(name) for name in ('inputs', 'outputs', 'status'))
     if (not isinstance(inputs, dict) or inputs.keys() != root['inputs'].keys()
-            or status not in ('incomplete', *_TERMINAL_STATUSES)
+            or status not in ('incomplete', _AWAITING_ROUTE, *_TERMINAL_STATUSES)
             or (status == 'succeeded' and (not isinstance(outputs, dict) or outputs.keys() != root['outputs'].keys()))
             or (status != 'succeeded' and 'outputs' in receipt)):
         raise ValueError('Graph receipt status or ports differ from the frozen graph')
@@ -1231,11 +1431,17 @@ def inspect_graph(state: State, project: str, directory: Path, manifest_digest: 
             choices[leaf['instance']] = choice
     reads = [_observe_verification(project, sequence, read, sources[read['instance']], fixed_review=fixed_review)
              for sequence, read in enumerate(verification_reads, 1)]
-    decisions = [_observe_route(sequence, record, selectors[record['instance']], attempts, choices, status)
-                 for sequence, record in enumerate(route_records, 1)]
-    recorded_paths = {'root', *attempts, *(item['instance'] for item in reads + decisions)}
     gate = next((node['path'] for node in nodes if node['kind'] == 'verify-fixed-check'), None)
     recovery = _observe_graph_recovery(directory, state.root, receipt, selected_project, review, gate, verification_reads)
+    checkpoint, operator_route = _observe_route_checkpoint(directory, receipt, selectors, attempts, choices, recovery)
+    decisions = []
+    for sequence, record in enumerate(route_records, 1):
+        supervised = record['instance'] == receipt.get('pause_before_route')
+        decisions.append(_observe_route(sequence, record, selectors[record['instance']], attempts, choices, status,
+                          supervised=supervised, operator_route=operator_route if supervised else None))
+    if checkpoint is not None:
+        recovery['route_checkpoint'] = checkpoint
+    recorded_paths = {'root', *attempts, *(item['instance'] for item in reads + decisions)}
     return {'schema_version': 1, 'kind': 'standalone-workflow-observation', 'project': project,
             'project_revision': receipt['project_revision'], 'root': receipt['root'], 'manifest_digest': manifest_digest,
             'graph_receipt': {'directory': str(directory), 'sha256': hashlib.sha256(raw).hexdigest(), 'bytes': len(raw),

@@ -19,9 +19,26 @@ ergora composition run-graph my-project ./complete-manifest --manifest-digest MA
   --inputs ./graph-inputs.json --directory ./original-graph-run --max-prompt-bytes 150000 --timeout 300
 ```
 
-命令按依赖串行运行，沿具名端口传递完整叶子结果。子工作流可以嵌套，all-join 按完整实例路径汇集声明的前序输出。每个叶子使用支持纯文本的后端和只读权限，启动与等待共享一个总体截止时间。正式代码交付使用现有审批和验证流程。
+命令按依赖与冻结的并发上限调度就绪叶子，沿具名端口传递完整结果。子工作流可以嵌套，all-join 按完整实例路径汇集声明的前序输出。每个叶子使用支持纯文本的后端和只读权限，启动与等待共享一个总体截止时间。正式代码交付使用现有审批和验证流程。
 
-运行目录的 `run.json` 记录原 manifest、输入、已尝试叶子的 ID 和具名输出。可用 `composition inspect-run` 查询各叶子。整图保留的完整叶子结果累计上限是 8 MiB，最终输出也遵守 8 MiB 上限。超限时保留原叶子记录并返回失败。Ctrl+C 通过原进程所有者请求取消，Linux/WSL2 上的 SIGTERM 也走同一条路径。中断后沿原记录核对，执行命令要求一个尚未使用的目录。图未完整成功时返回非零退出码。
+运行目录的 `run.json` 记录原 manifest、输入、已尝试叶子的 ID 和具名输出。可用 `composition inspect-run` 查询各叶子。整图保留的完整叶子结果累计上限是 8 MiB，最终输出也遵守 8 MiB 上限。超限时保留原叶子记录并返回失败。Ctrl+C 通过原进程所有者请求取消，Linux/WSL2 上的 SIGTERM 也走同一条路径。中断后沿原记录核对，执行命令要求一个尚未使用的目录。
+
+### 确认是否启动建议的专家
+
+在 Linux/WSL2 上，为原始 `run-graph --recoverable` 命令加 `--pause-before-route root/choose`，使用冻结图中一个 `choose-agent` 的精确实例路径。分析专家建议启动后续专家时，图等待已启动的工作收尾，返回 `awaiting_route_decision`，退出码为零。分析专家给出 `none` 时，按图的声明完成该节点。
+
+从 `inspect-graph` 取得 `recovery.route_checkpoint.sha256`、推荐分支和原分析运行 ID。读回原分析后，在原图上提交决定：
+
+```bash
+ergora composition resume-graph PROJECT ./original-graph-run --manifest-digest MANIFEST_SHA256 \
+  --route-checkpoint CHECKPOINT_SHA256 --route-action follow-up
+```
+
+`follow-up` 采用原建议，`finish` 跳过条件专家。等待期间原截止时间继续计算，决定沿用原项目、manifest、输入和权限。
+
+自动分流的读回与恢复使用原分析结果和冻结分支。监督者选择跟进或结束时，还会核对原检查点和原决定，再恢复有效分支或跳过状态。
+
+若回复丢失，先对原运行目录执行 `inspect-graph`。检查点仍为 `awaiting` 且原图可恢复时，提交相同的摘要和决定。`decided` 状态会给出已保存的原决定及其摘要，原图仍可恢复时可用普通 `resume-graph` 继续。终态继续通过 `inspect-graph` 读取。
 
 ## 使用内置领域组合
 

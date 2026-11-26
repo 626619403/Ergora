@@ -1116,6 +1116,183 @@ def conditional_definition(prepared, tmp_path):
     return state, base, draft, publish
 
 
+@pytest.mark.skipif(sys.platform != 'linux', reason='Recoverable standalone graphs require Linux/WSL2')
+@pytest.mark.parametrize('case', ['follow-up', 'finish', 'lost-before-publish', 'conflicting-publication',
+                                  'lost-decision', 'lost-progress', 'expired', 'stopped', 'none'])
+def test_supervised_route_keeps_the_original_graph(conditional_definition, tmp_path, monkeypatch, capsys, case):
+    import time
+
+    from ergora.agents import graphs
+
+    state, _, draft, publish = conditional_definition
+    publish(draft)
+    grant = {'schema_version': 1, 'permissions': draft['permissions'], 'limits': draft['limits']}
+    manifest, directory = tmp_path / 'manifest', tmp_path / 'graph'
+    selected = workflows.prepare_manifest(state.root, draft['id'], draft['version'], grant, manifest)
+    inputs, calls = tmp_path / 'inputs.json', tmp_path / 'calls.jsonl'
+    recommendation = 'none' if case == 'none' else 'dependency'
+    inputs.write_text(json.dumps({'task': {'recommendation': recommendation}}), encoding='utf-8')
+    model = r'''
+import json
+from pathlib import Path
+import sys
+
+output, calls = map(Path, sys.argv[1:])
+task = json.loads(sys.stdin.read().rsplit('Workflow task port (JSON value):\n', 1)[1])
+artifacts = {'response': 'Original packaging evidence'}
+if 'recommendation' in task:
+    artifacts['route'] = task['recommendation']
+with calls.open('a', encoding='utf-8') as stream:
+    stream.write(json.dumps(task) + '\n')
+output.write_text(json.dumps({'summary': 'Review', 'decision': 'approve', 'artifacts': artifacts}), encoding='utf-8')
+'''
+    command = agent_backends.CodexBackend.command
+
+    def controlled(backend, request):
+        argv, prompt = command(backend, request)
+        return [sys.executable, '-c', model, argv[argv.index('--output-last-message') + 1], str(calls)], prompt
+
+    monkeypatch.setattr(agent_backends.CodexBackend, 'command', controlled)
+    monkeypatch.setattr(agent_backends.CodexBackend, 'check_invocation', lambda self: None)
+    cli = ['--home', str(state.root), 'composition']
+    common = ['demo', str(directory), '--manifest-digest', selected['digest']]
+
+    def invoke(arguments, code=0, diagnostic=None):
+        assert main(cli + arguments) == code
+        captured = capsys.readouterr()
+        if diagnostic is not None:
+            assert diagnostic in captured.err
+        return json.loads(captured.out) if captured.out else None
+
+    timeout = 7 if case == 'expired' else 45
+    launch = ['run-graph', 'demo', str(manifest), '--manifest-digest', selected['digest'], '--inputs', str(inputs),
+              '--directory', str(directory), '--max-prompt-bytes', '50000', '--timeout', str(timeout),
+              '--pause-before-route', 'root/choose']
+    if case == 'follow-up':
+        invoke(launch, 2, 'requires an original recoverable graph')
+        assert not directory.exists() and not calls.exists()
+    paused = invoke(launch + ['--recoverable'])
+    analyzer, = paused['leaves']
+    assert analyzer['instance'] == 'root/analyze' and analyzer['status'] == 'succeeded'
+    assert not (directory / 'input-2').exists()
+    assert len(calls.read_text(encoding='utf-8').splitlines()) == 1
+    inspect = ['inspect-graph', *common]
+    resume = ['resume-graph', *common]
+    observed = invoke(inspect)
+    checkpoint = observed['recovery']['route_checkpoint']
+    if case == 'none':
+        assert paused['status'] == 'succeeded' and paused['outputs']['selection'] == {'choice': 'none'}
+        assert checkpoint['state'] == 'not_recorded'
+        assert observed['route_decisions'][0]['state'] == 'corroborated'
+        return
+    assert paused['status'] == 'awaiting_route_decision'
+    assert observed['route_decisions'] == [] and checkpoint['state'] == 'awaiting'
+    assert checkpoint['recommendation']['selected'] == 'root/dependency'
+    assert checkpoint['recommendation']['source']['result_sha256'] == analyzer['result_sha256']
+    checkpoint_sha = checkpoint['sha256']
+    recovery = directory / 'recovery.json'
+    decision = directory / 'route-operator-decision.json'
+    clock_bytes = recovery.read_bytes()
+    original_receipt = (directory / 'run.json').read_bytes()
+
+    def decide(action, digest=checkpoint_sha):
+        return [*resume, '--route-checkpoint', digest, '--route-action', action]
+
+    assert invoke(resume) == paused
+    assert (directory / 'run.json').read_bytes() == original_receipt
+    invoke(decide('follow-up', 'a' * 64), 2, 'Select the exact original route checkpoint')
+    assert not decision.exists()
+    if case == 'expired':
+        time.sleep(max(0, json.loads(clock_bytes)['deadline_monotonic_ns'] / 1_000_000_000 - time.monotonic()) + .05)
+        invoke(decide('follow-up'), 2, 'original workflow deadline expired')
+        assert invoke(inspect)['recovery']['route_checkpoint']['state'] == 'closed'
+    elif case == 'stopped':
+        with pytest.raises(KeyboardInterrupt):
+            graphs.resume_graph(state.root, 'demo', directory, selected['digest'], route_checkpoint=checkpoint_sha,
+                                route_action='follow-up', stop_requested=lambda: True)
+        invoke(decide('follow-up'), 2, 'explicitly stopped graph cannot resume')
+        assert invoke(inspect)['recovery']['route_checkpoint']['state'] == 'closed'
+    if case in ('expired', 'stopped'):
+        assert not decision.exists() and not (directory / 'input-2').exists()
+        assert recovery.read_bytes() == clock_bytes and (directory / 'run.json').read_bytes() == original_receipt
+        assert len(agent_runs.runs(state, 'demo')) == 1
+        return
+
+    action = 'finish' if case == 'finish' else 'follow-up'
+    if case in ('lost-before-publish', 'conflicting-publication'):
+        link = os.link
+
+        def interrupt_publication(source, destination, **options):
+            if destination == decision:
+                assert not decision.exists()
+                staged = json.loads(source.read_bytes())
+                assert staged['checkpoint_sha256'] == checkpoint_sha and staged['action'] == action
+                if case == 'lost-before-publish':
+                    raise OSError('Fixture interrupted the decision before publication')
+                decision.write_bytes(b'Existing decision evidence')
+            link(source, destination, **options)
+
+        with monkeypatch.context() as patch:
+            patch.setattr(os, 'link', interrupt_publication)
+            invoke(decide(action), 2, 'before publication' if case == 'lost-before-publish' else 'File exists')
+        assert (directory / 'run.json').read_bytes() == original_receipt
+        assert recovery.read_bytes() == clock_bytes and not (directory / 'input-2').exists()
+        assert len(agent_runs.runs(state, 'demo')) == 1
+        if case == 'conflicting-publication':
+            assert decision.read_bytes() == b'Existing decision evidence'
+            return
+        assert not decision.exists()
+        assert invoke(inspect)['recovery']['route_checkpoint']['state'] == 'awaiting'
+    if case == 'lost-decision':
+        publish = graphs._GraphRun.publish_route_decision
+
+        def lose_ack(graph, record):
+            publish(graph, record)
+            raise OSError('Fixture lost the decision reply after publication')
+
+        with monkeypatch.context() as patch:
+            patch.setattr(graphs._GraphRun, 'publish_route_decision', lose_ack)
+            invoke(decide(action), 2, 'lost the decision reply')
+        assert (directory / 'run.json').read_bytes() == original_receipt
+        published = decision.read_bytes()
+        decided = invoke(inspect)['recovery']['route_checkpoint']
+        assert decided['state'] == 'decided' and decided['decision']['action'] == action
+        invoke(decide('finish'), 2, 'already has a different decision')
+        assert decision.read_bytes() == published and not (directory / 'input-2').exists()
+    if case == 'lost-progress':
+        save = graphs._GraphRun.save
+
+        def lose_progress(graph):
+            save(graph)
+            if graph.receipt['status'] == 'incomplete' and 'route_checkpoint' in graph.receipt:
+                raise OSError('Fixture lost the coordinator after saving resume progress')
+
+        with monkeypatch.context() as patch:
+            patch.setattr(graphs._GraphRun, 'save', lose_progress)
+            invoke(decide(action), 2, 'lost the coordinator')
+        published = decision.read_bytes()
+        decision.unlink()
+        invoke(resume, 2, 'missing the original operator decision')
+        assert invoke(inspect)['recovery']['route_checkpoint']['state'] == 'missing'
+        assert not (directory / 'input-2').exists()
+        decision.write_bytes(published)
+
+    completed = invoke(decide(action))
+    assert completed['status'] == 'succeeded'
+    assert completed['leaves'][0] == analyzer and recovery.read_bytes() == clock_bytes
+    observed = invoke(inspect)
+    route, = observed['route_decisions']
+    assert route['state'] == 'corroborated'
+    assert route['operator_decision_sha256'] == observed['recovery']['route_checkpoint']['decision_sha256']
+    assert route['selected'] == ('root/dependency' if action == 'follow-up' else None)
+    assert observed['recovery']['route_checkpoint']['recommendation']['selected'] == 'root/dependency'
+    published = decision.read_bytes()
+    invoke(decide(action), 2, 'terminal or explicitly stopped graph cannot resume')
+    assert decision.read_bytes() == published
+    assert len(calls.read_text(encoding='utf-8').splitlines()) == (2 if action == 'follow-up' else 1)
+    assert len(agent_runs.runs(state, 'demo')) == (2 if action == 'follow-up' else 1)
+
+
 @pytest.mark.parametrize('case', ['structure', 'dependency', 'none', 'missing', 'unknown', 'changed-result', 'stopped'])
 def test_standalone_graph_routes_only_the_typed_choice(conditional_definition, tmp_path, monkeypatch, capsys, case):
     from ergora.agents import graphs
