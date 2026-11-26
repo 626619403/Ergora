@@ -30,6 +30,10 @@ FIXED_TASK_SOURCE = (*FIXED_TASK_LOCATOR, *FIXED_CHECK_TERMINAL)
 PENDING_JOB_STATES = ('queued', 'attempted')
 READBACK_CLEANUP_SECONDS = 0.8
 READBACK_ACTIVITY = 'ergora_campaign_fixed_check_readback'
+TRAINING_READBACK_ACTIVITY = 'ergora_campaign_training_full_result_readback'
+TRAINING_RESULT_SOURCE = 'training_full_result'
+TRAINING_RESULT_DIGESTS = ('native_result_sha256', 'reap_record_sha256', 'terminal_output_sha256',
+                           'gate_report_sha256', 'evidence_sha256', 'tracking_attempt_sha256')
 READBACK_ALREADY_ADMITTED = 'readback_already_admitted'
 RECIPIENT_ACTIVITY = 'ergora_campaign_codex_recipient'
 # Last whole UTC second supported by both Python datetime and protobuf Timestamp.
@@ -60,12 +64,15 @@ def worker_queue(project, campaign, scheduler, creation_id):
     return f'ergora-campaign-{project}-{campaign}-{suffix}'
 
 
-def project_selection(state, project, revision):
+def project_selection(state, project, revision, *, plan=None):
     """Read the scheduler and published registration for the approved project revision."""
     from ergora.configuration import projects, registrations
 
     if project['revision'] != revision:
         raise ValueError('Project revision changed; use the original approved revision before dispatch')
+    if (plan is not None and training_result_task(readback_task({'plan': plan}))
+            and 'training-optimization' not in project.get('registration', {}).get('definition', {}).get('templates', ())):
+        raise ValueError('Campaign training result requires the selected registered training project')
     config = projects.effective_configuration(project)
     scheduler = config['layers']['scheduler']
     if scheduler['source']['kind'] != 'project' or scheduler['binding']['tool'] != 'temporal':
@@ -91,7 +98,7 @@ def verify_registration(state, opening):
 def require_check_project(state, opening):
     """Return the same project snapshot that matches the original fixed-check authority."""
     project = state.project(opening['project'])
-    selected = project_selection(state, project, opening['project_revision'])
+    selected = project_selection(state, project, opening['project_revision'], plan=opening['plan'])
     if any(opening[key] != value for key, value in selected.items()):
         raise ValueError('Original project registration or scheduler changed before task observation')
     return project
@@ -113,7 +120,7 @@ def validate_plan(plan):
             or not 1 <= limits['expires_at'] <= MAX_EXPIRY):
         raise ValueError('Campaign expiry requires a representable absolute UTC Unix second')
     if 'tasks' in plan:
-        validate_fixed_tasks(plan['tasks'])
+        validate_tasks(plan['tasks'])
         task = readback_task({'plan': plan})
         if task is not None and task['readback']['deadline_at'] > limits['expires_at']:
             raise ValueError('Campaign readback window exceeds the original expiry')
@@ -123,31 +130,43 @@ def validate_plan(plan):
     identity(plan)
 
 
-def validate_fixed_tasks(tasks):
+def validate_tasks(tasks):
     if not isinstance(tasks, list) or not 1 <= len(tasks) <= MAX_FIXED_TASKS:
-        raise ValueError(f'Campaign plan requires 1–{MAX_FIXED_TASKS} original fixed-check tasks when configured')
+        raise ValueError(f'Campaign plan requires 1–{MAX_FIXED_TASKS} original tasks when configured')
     dependencies = {}
     scheduled = False
     for task in tasks:
         if not isinstance(task, dict) or task.keys() - {'readback', 'recipient', 'wake_on_observe'} != {'task_id', 'depends_on', 'source'}:
-            raise ValueError('Campaign task requires task_id, depends_on and an exact fixed-check source')
+            raise ValueError('Campaign task requires task_id, depends_on and an exact source')
         task_id, parents, source = task['task_id'], task['depends_on'], task['source']
         if not safe_id(task_id) or task_id in dependencies:
             raise ValueError('Campaign task requires a unique safe ID')
         if not isinstance(parents, list) or not all(safe_id(item) for item in parents) or len(set(parents)) != len(parents):
             raise ValueError('Campaign task dependencies require distinct safe IDs')
-        pending = isinstance(source, dict) and source.get('pending') is True
-        required = {*FIXED_TASK_LOCATOR, 'pending'} if pending else set(FIXED_TASK_SOURCE)
-        if (not isinstance(source, dict) or source.keys() != required
-                or type(source['project_revision']) is not int or source['project_revision'] < 1
-                or not isinstance(source['job_id'], str) or re.fullmatch(r'check-[0-9a-f]{40}-[0-9a-f]{24}', source['job_id']) is None
-                or not all(sha256(source[key]) for key in ('authorization_sha256', 'verification_sha256'))):
-            raise ValueError('Campaign task source requires the exact original fixed-check Job identity')
-        locator = {key: source[key] for key in FIXED_CHECK_LOCATOR}
-        if pending:
-            validate_fixed_check_locator(locator)
+        if training_result_task(task):
+            if (parents or 'readback' not in task or 'recipient' in task or 'wake_on_observe' in task
+                    or source.keys() != {'kind', 'locator'} or not isinstance(source['locator'], dict)):
+                raise ValueError('Campaign training result requires one root task with a guarded readback and exact locator')
+            from ergora.runtime.action_observations import TrainingFullResult
+
+            try:
+                TrainingFullResult(**source['locator'])
+            except TypeError as error:
+                raise ValueError('Campaign training result requires the complete original locator') from error
+            pending = True
         else:
-            validate_fixed_check_source({**locator, **{key: source[key] for key in FIXED_CHECK_TERMINAL}})
+            pending = isinstance(source, dict) and source.get('pending') is True
+            required = {*FIXED_TASK_LOCATOR, 'pending'} if pending else set(FIXED_TASK_SOURCE)
+            if (not isinstance(source, dict) or source.keys() != required
+                    or type(source['project_revision']) is not int or source['project_revision'] < 1
+                    or not isinstance(source['job_id'], str) or re.fullmatch(r'check-[0-9a-f]{40}-[0-9a-f]{24}', source['job_id']) is None
+                    or not all(sha256(source[key]) for key in ('authorization_sha256', 'verification_sha256'))):
+                raise ValueError('Campaign task source requires the exact original fixed-check Job identity')
+            locator = {key: source[key] for key in FIXED_CHECK_LOCATOR}
+            if pending:
+                validate_fixed_check_locator(locator)
+            else:
+                validate_fixed_check_source({**locator, **{key: source[key] for key in FIXED_CHECK_TERMINAL}})
         if 'readback' in task:
             window = task['readback']
             if (scheduled or not pending or not isinstance(window, dict) or window.keys() != {'due_at', 'deadline_at'}
@@ -170,12 +189,16 @@ def validate_fixed_tasks(tasks):
         raise ValueError('Campaign task dependencies contain a cycle') from error
 
 
-def fixed_tasks(opening):
+def tasks_by_id(opening):
     return {task['task_id']: task for task in opening['plan'].get('tasks', ())}
 
 
+def training_result_task(task):
+    return task is not None and isinstance(task['source'], dict) and task['source'].get('kind') == TRAINING_RESULT_SOURCE
+
+
 def has_pending_checks(opening):
-    return any(task['source'].get('pending') is True for task in fixed_tasks(opening).values())
+    return any(task['source'].get('pending') is True for task in tasks_by_id(opening).values())
 
 
 def rollover_task(opening):
@@ -190,6 +213,14 @@ def rollover_task(opening):
 
 def readback_task(opening):
     return next((task for task in opening['plan'].get('tasks', ()) if 'readback' in task), None)
+
+
+def readback_activity(task):
+    return TRAINING_READBACK_ACTIVITY if training_result_task(task) else READBACK_ACTIVITY
+
+
+def local_readback_stop(opening):
+    return recipient_task(opening) is not None or training_result_task(readback_task(opening))
 
 
 def validate_recipient(recipient):
@@ -237,7 +268,8 @@ def manual_wake_source(task, waiting, receipt):
 
 
 def readback_ready_tasks(task, readback):
-    if task is not None and task.get('wake_on_observe') is True and readback.get('status') == 'available':
+    if (task is not None and (task.get('wake_on_observe') is True or training_result_task(task))
+            and readback.get('status') == 'available'):
         return {task['task_id']}
     return set()
 
@@ -247,18 +279,62 @@ def same_check_observation(first, second):
 
 
 def readback_grant(opening, run_id, task, waiting):
-    return {'opening_sha256': identity(opening), 'run_id': run_id, 'task_id': task['task_id'],
-            'waiting_receipt_sha256': identity(waiting), **task['readback']}
+    common = {'opening_sha256': identity(opening), 'run_id': run_id, 'task_id': task['task_id']}
+    if training_result_task(task):
+        return {**common, 'source_sha256': identity(task['source']), **task['readback']}
+    return {**common, 'waiting_receipt_sha256': identity(waiting), **task['readback']}
 
 
 def readback_id(grant):
-    return 'fixed-check-readback:' + identity(grant)
+    prefix = 'training-full-result-readback:' if 'source_sha256' in grant else 'fixed-check-readback:'
+    return prefix + identity(grant)
+
+
+def readback_reference(grant):
+    field = 'source_sha256' if 'source_sha256' in grant else 'waiting_receipt_sha256'
+    return {field: grant[field]}
+
+
+def _training_lease_matches(observation, attempt_sha256):
+    # The training reader rechecks the original owner. The Campaign only
+    # preserves that observation with its own original result and attempt.
+    lease = observation['local_gpu_lease']
+    if lease is None:
+        return True
+    if (not isinstance(lease, dict) or lease.get('read_only') is not True or not safe_id(lease.get('status'))
+            or lease.get('attempt_sha256', attempt_sha256) != attempt_sha256):
+        return False
+    if lease['status'] == 'released':
+        return (lease.get('attempt_sha256') == attempt_sha256 and isinstance(lease.get('release_ref'), dict)
+                and safe_id(lease.get('session_id'))
+                and all(sha256(lease.get(key)) for key in ('lease_id', 'request_id', 'request_sha256')))
+    return True
 
 
 def readback_result(opening, task, activity_id, result):
     if result['activity_id'] != activity_id or not sha256(result['reader_cleanup_sha256']):
-        raise ValueError('Original fixed-check readback result identity differs')
-    return original_check_evidence(opening, task, result['observation'])
+        raise ValueError('Original training readback result identity differs' if training_result_task(task) else
+                         'Original fixed-check readback result identity differs')
+    observation = result['observation']
+    if not training_result_task(task):
+        return original_check_evidence(opening, task, observation)
+    locator = task['source']['locator']
+    if (not isinstance(observation, dict) or observation.get('status') != 'verified'
+            or observation.get('project') != opening['project']
+            or type(observation.get('project_revision')) is not int
+            or observation['project_revision'] != opening['project_revision']
+            or observation.get('registration_sha256') != opening['registration']['sha256']
+            or observation.get('locator') != locator or observation.get('native_result_state') != 'SUCCEEDED'
+            or not all(sha256(observation.get(key)) for key in TRAINING_RESULT_DIGESTS)
+            or not _training_lease_matches(observation, locator['attempt_sha256'])):
+        raise ValueError('Campaign readback requires the exact successful original full training result')
+    proof = {key: observation[key] for key in (*TRAINING_RESULT_DIGESTS, 'local_gpu_lease')}
+    return identity(observation), {'status': 'succeeded', **proof}
+
+
+def readback_proof(evidence, job, result):
+    return {'observation_sha256': evidence, 'reader_cleanup_sha256': result['reader_cleanup_sha256'],
+            **{key: value for key, value in job.items() if key != 'status'}}
 
 
 def checked_readback(opening, run_id, waits, observation):
@@ -268,14 +344,21 @@ def checked_readback(opening, run_id, waits, observation):
     status = observation.get('status')
     if observation == {'status': 'not_armed'}:
         return observation
-    waiting = waits.get(task['task_id'])
-    fields = {'status', 'activity_id', 'waiting_receipt_sha256'}
-    if (waiting is None or observation.get('waiting_receipt_sha256') != identity(waiting)
-            or observation.get('activity_id') != readback_id(readback_grant(opening, run_id, task, waiting))):
-        raise ValueError('Campaign readback differs from its original wait and window')
+    waiting = None if waits is None else waits.get(task['task_id'])
+    training = training_result_task(task)
+    grant = readback_grant(opening, run_id, task, waiting)
+    reference = readback_reference(grant)
+    fields = {'status', 'activity_id', *reference}
+    if ((waiting is None and not training) or any(observation.get(key) != value for key, value in reference.items())
+            or observation.get('activity_id') != readback_id(grant)):
+        raise ValueError('Campaign readback differs from its original training grant and window' if training else
+                         'Campaign readback differs from its original wait and window')
     if status == 'available':
-        proof = {*FIXED_CHECK_TERMINAL, 'observation_sha256', 'reader_cleanup_sha256'}
-        if observation.keys() == fields | proof and all(sha256(observation[k]) for k in proof):
+        digests = {*TRAINING_RESULT_DIGESTS, 'observation_sha256', 'reader_cleanup_sha256'} if training else {
+            *FIXED_CHECK_TERMINAL, 'observation_sha256', 'reader_cleanup_sha256'}
+        proof = digests | {'local_gpu_lease'} if training else digests
+        if (observation.keys() == fields | proof and all(sha256(observation[key]) for key in digests)
+                and (not training or _training_lease_matches(observation, task['source']['locator']['attempt_sha256']))):
             return observation
     elif status == 'unknown':
         if observation.keys() == fields | {'reason'} and observation['reason'] in (
@@ -467,7 +550,7 @@ class CampaignFiles:
         """Read saved attempts locally. The online owner verifies any successor authority."""
         commands = []
         update_ids = set()
-        for task in fixed_tasks(opening).values():
+        for task in tasks_by_id(opening).values():
             stages = (False, True) if task['source'].get('pending') is True else (False,)
             for waiting in stages:
                 selected_run = run_id if waiting or rollover_task(opening) is None else None
@@ -653,9 +736,12 @@ def validate_check_command(opening, start_attempt_sha256, run_id, command):
     if not isinstance(intent, dict) or not isinstance(attempt, dict):
         raise ValueError('Campaign check requires its structured intent and attempt')
     task_id, evidence, job = intent.get('task_id'), intent.get('observation_sha256'), intent.get('job')
-    if not safe_id(task_id) or task_id not in fixed_tasks(opening) or not sha256(evidence):
+    if not safe_id(task_id) or task_id not in tasks_by_id(opening) or not sha256(evidence):
         raise ValueError('Campaign check intent does not bind the original opening, task and first Run')
-    _validate_check_job(fixed_tasks(opening)[task_id], job)
+    task = tasks_by_id(opening)[task_id]
+    if training_result_task(task):
+        raise ValueError('Campaign training result admits only its guarded readback')
+    _validate_check_job(task, job)
     if identity(intent) != identity(check_intent(opening, start_attempt_sha256, run_id, task_id, evidence, job=job)):
         raise ValueError('Campaign check intent does not bind the original opening, task and first Run')
     update_id = attempt.get('update_id')
@@ -681,7 +767,7 @@ def require_check_receipt(intent, attempt, receipt):
 
 def fixed_task_state(opening, start_attempt_sha256, run_id, observations, waits=None, *, waiting_run=None,
                      readback=None):
-    tasks = fixed_tasks(opening)
+    tasks = tasks_by_id(opening)
     waits = {} if waits is None else waits
     if not isinstance(observations, dict) or set(observations) - set(tasks):
         raise ValueError('Campaign task state differs from the original plan task set')
@@ -689,7 +775,8 @@ def fixed_task_state(opening, start_attempt_sha256, run_id, observations, waits=
     automatic = readback_ready_tasks(selected, readback or {})
     ready = observations.keys() | automatic
     for task_id in automatic:
-        if not set(tasks[task_id]['depends_on']) <= ready or task_id not in waits:
+        if (not set(tasks[task_id]['depends_on']) <= ready
+                or (task_id not in waits and not training_result_task(tasks[task_id]))):
             raise ValueError('Campaign guarded result lacks its original wait or ready dependencies')
     for expected, receipts in (('observed', observations), ('waiting_job', waits)):
         if not isinstance(receipts, dict) or set(receipts) - set(tasks):
@@ -715,7 +802,8 @@ def fixed_task_state(opening, start_attempt_sha256, run_id, observations, waits=
             require_check_receipt(intent, attempt, receipt)
     views = {}
     for task_id, task in tasks.items():
-        status = ('observed' if task_id in ready else 'waiting_job' if task_id in waits else
+        status = ('observed' if task_id in ready else 'waiting_job'
+                  if task_id in waits or training_result_task(task) else
                   'ready' if set(task['depends_on']) <= ready else 'waiting_dependencies')
         view = {**task, 'status': status, 'receipt': observations.get(task_id)}
         if task['source'].get('pending') is True:

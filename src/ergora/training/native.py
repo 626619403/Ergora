@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 import json
+import math
 import os
 from pathlib import Path
 import subprocess
@@ -329,6 +330,58 @@ def training_execution(project: dict, home: Path, operation: str, payload: dict,
     except (OSError, ValueError) as error:
         sources = {'status': 'unavailable_or_changed', 'reason': str(error)}
     return {**observed, 'current_sources': sources}
+
+
+def training_full_result(project: dict, home: Path, locator: dict, *, deadline: float,
+                         stop_requested, supervised_cleanup) -> dict:
+    """Read one full result from a dedicated single-reader supervisor."""
+    from .materials import read_raw
+
+    if sys.platform != 'linux':
+        raise ValueError('Supervised training full-result observation requires Linux')
+    if (type(deadline) not in (int, float) or not math.isfinite(deadline)
+            or not callable(stop_requested) or not callable(supervised_cleanup)):
+        raise ValueError('Training full-result observation requires its original reader deadline, STOP and cleanup owner')
+    if project.get('_original_registration') is not None:
+        raise ValueError('Training full-result observation requires the selected current registration')
+    deadline = min(deadline, time.monotonic() + 20)
+
+    def stopped():
+        return time.monotonic() >= deadline or stop_requested()
+
+    def check_window():
+        if time.monotonic() >= deadline:
+            raise TimeoutError('Original training full-result read reached its deadline')
+        if stop_requested():
+            raise ValueError('Original training full-result read was stopped')
+
+    check_window()
+    execution = project['registration']['definition']['execution']
+    environment, raw = _training_reader_request(execution['state_directory'], execution['config_directory'],
+        {'operation': 'managed-full-result', 'project': project, 'control_home': str(home), 'locator': locator})
+    command = [sys.executable, '-P', '-S', '-c', 'from ergora.training.runtime.evidence import main;main()']
+    owner = processes.identity(os.getpid())
+    with TemporaryDirectory(prefix='ergora-training-result-') as temporary:
+        output = Path(temporary) / 'reader'
+        check_window()
+        result = processes.run(command, Path.cwd(), output, max(0, deadline - time.monotonic()), raw.decode('utf-8'),
+                               environment, supervised=True, record_lifecycle=True, stop_requested=stopped)
+        cleanup = _training_reader_response(read_raw(output / 'process-cleanup.json', 1_048_576), b'', 0)
+        if cleanup.get('model_waited') is False and result['status'] == 'cancelled':
+            check_window()
+        if (cleanup.get('kind') != 'supervised-process-cleanup' or cleanup.get('schema_version') != 1
+                or cleanup.get('owner') != owner or cleanup.get('model_waited') is not True
+                or not isinstance(cleanup.get('model'), dict) or cleanup.get('remaining_children') != []
+                or cleanup.get('returncode') != result['returncode']):
+            raise ValueError('Original training full-result reader cleanup is unconfirmed')
+        supervised_cleanup(cleanup)
+        check_window()
+        if result['status'] == 'cancelled':
+            raise ValueError('Original training full-result read was stopped')
+        observed = _training_reader_response(read_raw(output / 'stdout.txt', 8_388_608),
+                                             read_raw(output / 'stderr.txt', 65_536), result['returncode'])
+    check_window()
+    return observed
 
 
 def training_runtime_status(project: dict, spec: dict, *, run_id: str | None, timeout: int) -> dict:

@@ -83,7 +83,50 @@ def _accepted_archive(project, ident, binding, baseline_id, gate, read, *, max_a
             'comparator_sha256': comparator_sha, 'artifact_content_status': 'not_read'}, artifacts
 
 
-def _retained_archive(project, experiment, files):
+def _managed_archive(project, experiment, chain, inventory):
+    """Verify the native gate, checkpoint and archived artifact bytes for this attempt."""
+    ident, files = experiment['experiment_id'], experiment['files']
+    root = project.root
+    job = f'training/jobs/{ident}/'
+    gate_name, result_name = job + 'gate-report.json', job + 'result.json'
+
+    def read(relative, expected=None, *, optional=False):
+        return inventory.read(root, relative, 'archive', expected, evidence=False, optional=optional)
+
+    if chain.records['request']['native_request_sha256'] != files['state/' + job + 'request.json']:
+        raise ValueError('Original native request differs from the managed attempt')
+    project.registration(inventory)
+    for path, raw in chain.originals.items():
+        inventory.read(root, path.relative_to(root).as_posix(), 'execution',
+                       hashlib.sha256(raw).hexdigest(), 16 * 1_048_576, evidence=False)
+    for relative in (job + 'started.json', f'training/manifests/{ident}.json', f'training/specs/{ident}.json',
+                     f'training/projects/{project.project["id"]}/perf/experiments/{ident}/manifest.json'):
+        read(relative, files['state/' + relative])
+    saved_result = read(result_name, files.get('state/' + result_name), optional=True)
+    if (saved_result is None) != (experiment['recorded_result_state'] is None):
+        raise ValueError('Original native result changed during retained archive observation')
+    gate_raw = read(gate_name, files.get('state/' + gate_name))
+    gate = decode_record(gate_raw)
+    binding = experiment['binding']
+    if (gate['passed'] is not True or gate['binding'] != binding
+            or gate['manifest_sha256'] != binding['manifest_sha']):
+        raise ValueError('No passing local gate matches the original native job')
+    archive_output = read(job + 'archive-output/execution.log')
+    # The native executor consumes the leading JSON and leaves the trailing log intact.
+    archive_report, _ = json.JSONDecoder().raw_decode(archive_output.decode('utf-8').lstrip())
+    if project.sha(archive_report) != project.sha(gate['archive_report']):
+        raise ValueError('Original native archive output differs from the retained gate report')
+    archive, artifacts = _accepted_archive(project, ident, binding, experiment['baseline_id'], gate, read, max_artifacts=256)
+    for name, artifact in artifacts.items():
+        inventory.read(archive['path'], name, 'archive', artifact['sha256'], 16 * 1_048_576, evidence=False)
+    gate_sha = hashlib.sha256(gate_raw).hexdigest()
+    output_sha = hashlib.sha256(archive_output).hexdigest()
+    tracking = _retained_tracking(chain, read, archive['evidence_sha256'], gate_sha, output_sha)
+    return {'gate_report_sha256': gate_sha, 'archive_output_sha256': output_sha, 'tracking': tracking,
+            'archive': {**archive, 'artifact_content_status': 'verified'}}, saved_result
+
+
+def _retained_archive(project, experiment):
     """Verify the locked executor's saved local gate after an unsuccessful managed job."""
     ident, state = experiment['experiment_id'], experiment['recorded_result_state']
     unavailable = {'status': 'unavailable', 'native_result_state': state}
@@ -93,13 +136,6 @@ def _retained_archive(project, experiment, files):
         return {**unavailable, 'reason': 'Original native job request or start is missing'}
 
     inventory = _Inventory()
-    root = project.root
-    job = f'training/jobs/{ident}/'
-    gate_name, result_name = job + 'gate-report.json', job + 'result.json'
-
-    def read(relative, expected=None, *, optional=False):
-        return inventory.read(root, relative, 'archive', expected, evidence=False, optional=optional)
-
     try:
         chain = protocol.ExecutionRecords(project.project, ident, project.payload['control_home']).load()
         stopped = chain.records['stopped']
@@ -108,45 +144,73 @@ def _retained_archive(project, experiment, files):
         process = stopped['process']
         if state is None and process['status'] == 'succeeded':
             return {**unavailable, 'reason': 'Missing native result has no unsuccessful original executor observation'}
-        request = chain.records['request']
-        if request['native_request_sha256'] != files['state/' + job + 'request.json']:
-            raise ValueError('Original native request differs from the managed attempt')
-        project.registration(inventory)
-        for path, raw in chain.originals.items():
-            inventory.read(root, path.relative_to(root).as_posix(), 'execution',
-                           hashlib.sha256(raw).hexdigest(), 16 * 1_048_576, evidence=False)
-        for relative in (job + 'started.json', f'training/manifests/{ident}.json', f'training/specs/{ident}.json',
-                         f'training/projects/{project.project["id"]}/perf/experiments/{ident}/manifest.json'):
-            read(relative, files['state/' + relative])
-        saved_result = read(result_name, files.get('state/' + result_name), optional=True)
-        if (saved_result is None) != (state is None):
-            raise ValueError('Original native result changed during retained archive observation')
-        gate_raw = read(gate_name, files.get('state/' + gate_name))
-        gate = decode_record(gate_raw)
-        binding = experiment['binding']
-        if (gate['passed'] is not True or gate['binding'] != binding
-                or gate['manifest_sha256'] != binding['manifest_sha']):
-            raise ValueError('No passing local gate matches the original native job')
-        archive_output = read(job + 'archive-output/execution.log')
-        # The native executor consumes the leading JSON and leaves the trailing log intact.
-        archive_report, _ = json.JSONDecoder().raw_decode(archive_output.decode('utf-8').lstrip())
-        if project.sha(archive_report) != project.sha(gate['archive_report']):
-            raise ValueError('Original native archive output differs from the retained gate report')
-        archive, artifacts = _accepted_archive(project, ident, binding, experiment['baseline_id'], gate, read, max_artifacts=256)
-        for name, artifact in artifacts.items():
-            inventory.read(archive['path'], name, 'archive', artifact['sha256'], 16 * 1_048_576, evidence=False)
-        gate_sha = hashlib.sha256(gate_raw).hexdigest()
-        output_sha = hashlib.sha256(archive_output).hexdigest()
-        tracking = _retained_tracking(chain, read, archive['evidence_sha256'], gate_sha, output_sha)
+        archive, _ = _managed_archive(project, experiment, chain, inventory)
         inventory.confirm()
     except (OSError, KeyError, TypeError, ValueError, project.core.Blocked) as error:
         return {**unavailable, 'reason': str(error)}
+    request = chain.records['request']
     return {'status': 'verified', 'native_result_state': state, 'job_id': request['job_id'],
             'run_id': request['run_id'], 'attempt_sha256': chain.sha(chain.records['attempt']),
             'reap_record_sha256': chain.sha(stopped),
             'executor_process': {key: process[key] for key in ('status', 'returncode')},
-            'gate_report_sha256': gate_sha, 'archive_output_sha256': output_sha, 'tracking': tracking,
-            'archive': {**archive, 'artifact_content_status': 'verified'}}
+            **archive}
+
+
+def _managed_full_result(payload):
+    """Return a bounded original local full result and independently observed resource disposition."""
+    from ergora.training.materials import confirm_file
+    from ergora.training.runtime.context import _TrainingProject
+
+    project = _TrainingProject(payload)
+    locator = payload['locator']
+    ident = project.core.slug(locator['experiment_id'])
+    chain = protocol.ExecutionRecords(project.project, ident, payload['control_home']).load()
+    request, attempt, stopped = (chain.records[key] for key in ('request', 'attempt', 'stopped'))
+    if request is None or attempt is None:
+        raise ValueError('Original full training request or attempt has not been recorded')
+    actual = {key: request[key] for key in ('experiment_id', 'workflow_id', 'run_id', 'job_id', 'native_request_sha256')}
+    actual['attempt_sha256'] = hashlib.sha256(chain.originals[chain.folder / 'attempt.json']).hexdigest()
+    protocol._match(actual, locator, 'Selected full training result')
+    if request['project_revision'] != project.project_revision:
+        raise ValueError('Original full training result differs from the selected registration revision')
+    if not chain.requires_tracking_checkpoint() or protocol.managed_operation(chain.intent) != 'full-verify':
+        raise ValueError('Original full verification requires its current managed tracking checkpoint')
+    if stopped is None:
+        raise ValueError('Original full training result has no saved terminal executor')
+    process = stopped['process']
+    if process['status'] != 'succeeded' or process['returncode'] != 0:
+        raise ValueError('Original full training executor did not succeed')
+
+    experiment = _training_records({'project': project.project['id'], 'repo': project.project['repo'],
+                                    'experiment_id': ident})['experiment']
+    native = experiment['result']
+    if (experiment['execution']['operation'] != 'full-verify' or experiment['started'] is None
+            or native is None or native['state'] != 'SUCCEEDED' or experiment['gate_report'] is None):
+        raise ValueError('Original full training job has no successful native result and gate')
+    inventory = _Inventory()
+    archive, result_raw = _managed_archive(project, experiment, chain, inventory)
+    terminal = Path(process['output']) / 'stdout.txt'
+    terminal_raw = inventory.read(project.root, terminal.relative_to(project.root).as_posix(),
+                                  'execution', evidence=False)
+    protocol._match(decode_record(terminal_raw), decode_record(result_raw), 'Original full training executor result')
+    tracking = archive['tracking']
+    if (tracking['status'] not in ('returned', 'unknown')
+            or tracking['status'] == 'returned' and tracking['run_id'] != native['gate']['mlflow_run_id']):
+        raise ValueError('Original tracking outcome contradicts the native full result')
+
+    confirm_file(chain.folder.parent / 'result.json', result_raw, project.root)
+    confirm_file(terminal, terminal_raw, project.root)
+    if chain.observe(durable=True)['executor_stop_confirmed'] is not True:
+        raise ValueError('Original full training executor cleanup is unconfirmed')
+    lease = chain.observe_gpu_lease()
+    inventory.confirm()
+    return {'status': 'verified', 'project': project.project['id'], 'project_revision': project.project_revision,
+            'registration_sha256': request['registration_sha256'], 'locator': actual,
+            'native_result_state': native['state'], 'native_result_sha256': hashlib.sha256(result_raw).hexdigest(),
+            'reap_record_sha256': hashlib.sha256(chain.originals[chain.folder / 'stopped.json']).hexdigest(),
+            'terminal_output_sha256': hashlib.sha256(terminal_raw).hexdigest(),
+            'gate_report_sha256': archive['gate_report_sha256'], 'evidence_sha256': archive['archive']['evidence_sha256'],
+            'tracking_attempt_sha256': tracking['tracking_attempt_sha256'], 'local_gpu_lease': lease}
 
 
 def _retained_tracking(chain, read, evidence_sha, gate_sha, output_sha):
@@ -219,7 +283,7 @@ def inspect(payload: dict) -> dict:
               'artifact_limit_bytes': 16_777_216, 'response_limit_bytes': 8_388_608,
               'scope': 'Saved native records only; no live phase, statistical re-evaluation, artifact-wide verification, authorization or integration completion claim'}
     if payload.get('retained_archive'):
-        result['retained_archive'] = _retained_archive(project, experiment, files)
+        result['retained_archive'] = _retained_archive(project, experiment)
         result['scope'] = ('Saved native records and bounded retained archive verification; '
                            'no live runtime query, statistical re-evaluation, authorization or integration completion claim')
     if experiment.get('screen_ref') is not None:
@@ -1891,10 +1955,13 @@ def main() -> None:
         if len(raw) > 16 * 1_048_576:
             raise ValueError('capacity_exceeded: complete training reader request')
         payload = decode_record(raw)
-        if payload['operation'] not in ('inspect', 'baseline-reference', 'native-poll', 'collect-screen'):
+        if payload['operation'] not in ('inspect', 'baseline-reference', 'native-poll', 'collect-screen',
+                                        'managed-full-result'):
             raise ValueError('Unsupported training evidence operation')
         if payload['operation'] in ('native-poll', 'collect-screen'):
             result = _native_screen_read(payload)
+        elif payload['operation'] == 'managed-full-result':
+            result = _managed_full_result(payload)
         else:
             result = inspect(payload) if payload['operation'] == 'inspect' else baseline_reference(payload)
         sys.stdout.write(_native_bytes(result, 'Training evidence response', 8_388_608).decode('utf-8'))

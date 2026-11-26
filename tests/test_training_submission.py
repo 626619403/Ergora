@@ -1,6 +1,6 @@
 """An accepted native start is never repeated after a lost acknowledgement."""
 
-from contextlib import redirect_stdout
+from contextlib import contextmanager, redirect_stdout
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 import io
@@ -1257,6 +1257,149 @@ def test_configuration_driver_runs_actual_cpu_work_and_original_managed_archive(
             item['submission']['run_id'], item['native_sha256'], confirm=True)
     assert all(path.read_bytes() == raw for path, raw in before.items())
     assert len((item['markers'] / 'first-work.jsonl').read_text().splitlines()) == 1
+    assert json.loads(item['service'][1].read_bytes())['starts'] == 1
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Full result uses the original Linux supervised reader')
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+def test_observe_exact_managed_full_result(configuration_execution, tmp_path):
+    item = configuration_execution
+    execution = run_configuration_execution(item)
+    job = item['job']
+    managed = job / 'managed-execution'
+    request = execution['records']['request']
+    locator = {key: request[key] for key in ('experiment_id', 'workflow_id', 'run_id', 'job_id',
+                                             'native_request_sha256')}
+    locator['attempt_sha256'] = hashlib.sha256((managed / 'attempt.json').read_bytes()).hexdigest()
+    stopped = execution['records']['stopped']
+    terminal = Path(stopped['process']['output']) / 'stdout.txt'
+    result = job / 'result.json'
+    gate = job / 'gate-report.json'
+    checkpoint = managed / 'tracking-attempt.json'
+    archive = Path(json.loads(gate.read_bytes())['archive_report']['archive_path'])
+    original = (result, gate, terminal, *managed.glob('*.json'), *(p for p in archive.rglob('*') if p.is_file()))
+    before = {path: (path.stat().st_ino, path.read_bytes()) for path in original}
+    program = '''import json, os, sys, time
+from pathlib import Path
+from ergora.runtime import action_observations as actions
+from ergora.runtime import processes
+data = json.load(sys.stdin)
+fault = data['fault']
+marker = Path(data['marker'])
+calls, cleanup = [], []
+run = processes.run
+
+def controlled_run(argv, cwd, output, *args, **kwargs):
+    calls.append(True)
+    if fault in ('stop-active', 'expire-active'):
+        argv = argv[:-1] + [
+            "from pathlib import Path;import os,time;"
+            + f"Path({str(marker)!r}).write_text(str(os.getpid()));time.sleep(6);"
+            + argv[-1]]
+    result = run(argv, cwd, output, *args, **kwargs)
+    if fault == 'unproven-cleanup':
+        proof = output / 'process-cleanup.json'
+        record = json.loads(proof.read_bytes())
+        proof.write_text(json.dumps({**record, 'remaining_children': ['unconfirmed']}))
+    return result
+
+def stopped():
+    return (fault == 'stop-before' or fault == 'stop-active' and marker.exists()
+            or fault == 'stop-after-reap' and bool(cleanup))
+
+processes.run = controlled_run
+seconds = {'expire-before': -1, 'expire-active': 2.5}.get(fault, 8)
+arguments = dict(deadline=time.monotonic() + seconds, stop_requested=stopped,
+                 supervised_cleanup=cleanup.append)
+if fault == 'missing-cleanup-owner':
+    arguments.pop('supervised_cleanup')
+try:
+    action = actions.TrainingFullResult(**data['locator'])
+    receipt = actions.observe(action, data['project'], Path(data['home']), **arguments)
+    answer = {'receipt': receipt}
+except (OSError, ValueError) as error:
+    answer = {'error': type(error).__name__, 'reason': str(error)}
+print(json.dumps({**answer, 'cleanup': cleanup, 'calls': len(calls),
+                  'started': int(marker.read_text()) if marker.exists() else None}))
+'''
+
+    def observed(*, fault=None, selected=None):
+        marker = tmp_path / 'controlled-reader-start'
+        marker.unlink(missing_ok=True)
+        payload = {'locator': locator if selected is None else selected, 'project': item['state'].project('demo'),
+                   'home': str(item['state'].root), 'fault': fault, 'marker': str(marker)}
+        result = subprocess.run([sys.executable, '-P', '-c', program], input=json.dumps(payload),
+                                env={**os.environ, 'PYTHONPATH': str(IMPORT_ROOT)},
+                                capture_output=True, text=True, timeout=15)
+        assert result.returncode == 0, result.stderr
+        observed = json.loads(result.stdout)
+        for cleanup in observed['cleanup']:
+            assert cleanup['model_waited'] is True and cleanup['remaining_children'] == []
+            assert not recorded_process_is_active(cleanup['model'])
+            if observed['started'] is not None:
+                assert cleanup['model']['pid'] == observed['started']
+        return observed
+
+    @contextmanager
+    def changed(path, replacement=None):
+        saved = path.with_suffix('.controlled-original')
+        path.rename(saved)
+        try:
+            if replacement is not None:
+                path.write_bytes(replacement)
+            yield
+        finally:
+            saved.replace(path)
+
+    def rejected(reason, **options):
+        checked = observed(**options)
+        assert 'receipt' not in checked and reason in checked['reason'], checked
+        return checked
+
+    accepted = observed()
+    receipt = accepted['receipt']
+    assert accepted['calls'] == 1 and len(accepted['cleanup']) == 1
+    assert receipt['status'] == 'verified' and receipt['locator'] == locator
+    assert receipt['native_result_state'] == 'SUCCEEDED' and receipt['local_gpu_lease'] is None
+    assert receipt['native_result_sha256'] == hashlib.sha256(result.read_bytes()).hexdigest()
+    assert receipt['terminal_output_sha256'] == hashlib.sha256(terminal.read_bytes()).hexdigest()
+    assert receipt['gate_report_sha256'] == hashlib.sha256(gate.read_bytes()).hexdigest()
+    assert receipt['tracking_attempt_sha256'] == hashlib.sha256(checkpoint.read_bytes()).hexdigest()
+    assert receipt['evidence_sha256'] == json.loads(gate.read_bytes())['evidence_sha256']
+    assert training.execution(item['state'], 'demo', 'alpha')['execution_success'] is None
+
+    for key, value in (('run_id', 'different-native-run'), ('native_request_sha256', '7' * 64),
+                       ('attempt_sha256', '8' * 64)):
+        rejected('Selected full training result differs', selected={**locator, key: value})
+    for path, reason in ((managed / 'stopped.json', 'no saved terminal executor'),
+                         (result, 'no successful native result'),
+                         (checkpoint, 'Required original full tracking checkpoint is missing')):
+        with changed(path):
+            rejected(reason)
+    donor = json.loads(result.read_bytes())
+    with changed(result, json.dumps({**donor, 'detail': 'different result under the same Job'}).encode()):
+        rejected('Original full training executor result differs')
+    with changed(result, b'{"state":"FAILED",' + result.read_bytes().lstrip()[1:]):
+        rejected('Duplicate execution record key: state')
+    donor = json.loads(checkpoint.read_bytes())
+    with changed(checkpoint, json.dumps({**donor, 'attempt_sha256': '9' * 64}).encode()):
+        rejected('Original tracking checkpoint differs')
+    with changed(archive / 'comparison-report.json', b'foreign comparison report'):
+        rejected('original baseline reference digest differs')
+
+    for fault, reason in (('missing-cleanup-owner', 'original reader deadline, STOP and cleanup owner'),
+                          ('stop-before', 'read was stopped'), ('expire-before', 'reached its deadline')):
+        blocked = rejected(reason, fault=fault)
+        assert blocked['calls'] == 0 and blocked['cleanup'] == []
+    for fault, reason in (('stop-active', 'read was stopped'), ('expire-active', 'reached its deadline'),
+                          ('stop-after-reap', 'read was stopped')):
+        blocked = rejected(reason, fault=fault)
+        assert blocked['calls'] == 1 and len(blocked['cleanup']) == 1
+        if fault != 'stop-after-reap':
+            assert blocked['started'] is not None and blocked['cleanup'][0]['returncode'] != 0
+    blocked = rejected('reader cleanup is unconfirmed', fault='unproven-cleanup')
+    assert blocked['calls'] == 1 and blocked['cleanup'] == []
+    assert {path: (path.stat().st_ino, path.read_bytes()) for path in original} == before
     assert json.loads(item['service'][1].read_bytes())['starts'] == 1
 
 

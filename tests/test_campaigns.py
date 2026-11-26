@@ -711,29 +711,29 @@ def test_campaign_check_native_send_is_bounded_by_the_original_cutoff(monkeypatc
 
 
 def test_campaign_fixed_task_plan_checks_exact_dag_and_source():
-    from ergora.campaigns.records import FIXED_TASK_SOURCE, validate_fixed_tasks
+    from ergora.campaigns.records import FIXED_TASK_SOURCE, validate_tasks
 
     source = dict.fromkeys(FIXED_TASK_SOURCE, 'a' * 64)
     source.update(project_revision=7, candidate_sha='a' * 40, operation_id='check',
                   job_id='check-' + 'a' * 40 + '-' + 'b' * 24)
     first = {'task_id': 'first', 'depends_on': [], 'source': source}
     second = {'task_id': 'second', 'depends_on': ['first'], 'source': source}
-    validate_fixed_tasks([second, first])
+    validate_tasks([second, first])
     with pytest.raises(ValueError, match='cycle'):
-        validate_fixed_tasks([{**first, 'depends_on': ['second']}, second])
+        validate_tasks([{**first, 'depends_on': ['second']}, second])
     with pytest.raises(ValueError, match='absent'):
-        validate_fixed_tasks([second])
+        validate_tasks([second])
     with pytest.raises(ValueError, match='unique'):
-        validate_fixed_tasks([first, first])
+        validate_tasks([first, first])
     with pytest.raises(ValueError, match='exact original'):
-        validate_fixed_tasks([{**first, 'source': {**source, 'project_revision': True}}])
+        validate_tasks([{**first, 'source': {**source, 'project_revision': True}}])
 
     pending = {key: value for key, value in source.items() if key not in ('receipt_sha256', 'fixed_results_sha256')}
-    validate_fixed_tasks([{**first, 'source': {**pending, 'pending': True}}])
+    validate_tasks([{**first, 'source': {**pending, 'pending': True}}])
     with pytest.raises(ValueError, match='exact original'):
-        validate_fixed_tasks([{**first, 'source': {**source, 'pending': True}}])
+        validate_tasks([{**first, 'source': {**source, 'pending': True}}])
     with pytest.raises(ValueError, match='exact original'):
-        validate_fixed_tasks([{**first, 'source': {**pending, 'pending': 1}}])
+        validate_tasks([{**first, 'source': {**pending, 'pending': 1}}])
 
 
 def test_readback_guard_dispatch_uses_the_validated_registration_snapshot(registration, tmp_path, monkeypatch):
@@ -812,7 +812,7 @@ def test_campaign_readback_reaps_guard_after_repeated_cancellation(tmp_path, mon
     import errno
     from temporalio.testing import ActivityEnvironment
     from ergora.campaigns import records
-    from ergora.campaigns.readback import FixedCheckReadback
+    from ergora.campaigns.readback import CampaignReadback
     from ergora.campaigns.records import (CampaignFiles, attempt_document, check_intent, check_receipt, identity,
                                          readback_grant, readback_id, update_attempt)
     from ergora.runtime import processes
@@ -894,7 +894,7 @@ def test_campaign_readback_reaps_guard_after_repeated_cancellation(tmp_path, mon
         async def read():
             nonlocal running
             running = asyncio.current_task()
-            return await FixedCheckReadback(owner, opening, start, run).read(grant)
+            return await CampaignReadback(owner, opening, start, run).read(grant)
 
         monkeypatch.setattr(asyncio, 'create_subprocess_exec', start_guard)
         env = ActivityEnvironment()
@@ -1144,9 +1144,9 @@ def test_status_recovers_original_task_history_without_worker(registration, tmp_
     from temporalio.converter import DataConverter
     from temporalio.service import RPCError, RPCStatusCode
     from ergora.campaigns import workflow as runtime
-    from ergora.campaigns.records import (CampaignFiles, FIXED_TASK_LOCATOR, attempt_document, check_intent,
-                                         check_receipt, identity, project_selection, read_plan, readback_grant,
-                                         readback_id, result_document, update_attempt)
+    from ergora.campaigns.records import (READBACK_ACTIVITY, CampaignFiles, FIXED_TASK_LOCATOR, attempt_document,
+                                         check_intent, check_receipt, identity, project_selection, read_plan,
+                                         readback_grant, readback_id, result_document, update_attempt)
 
     state, definition = registration
     registrations.register(state, definition, 0)
@@ -1246,7 +1246,7 @@ def test_status_recovers_original_task_history_without_worker(registration, tmp_
             scheduled_grant = {**grant, 'deadline_at': now + 61} if outcome == 'changed-grant' else grant
             events.extend([
                 HistoryEvent(event_id=4, activity_task_scheduled_event_attributes={
-                    'activity_id': activity_id, 'activity_type': {'name': runtime.READBACK_ACTIVITY},
+                    'activity_id': activity_id, 'activity_type': {'name': READBACK_ACTIVITY},
                     'task_queue': {'name': opening['task_queue']}, 'retry_policy': {'maximum_attempts': 1},
                     'input': {'payloads': await converter.encode([scheduled_grant])}}),
                 HistoryEvent(event_id=5, activity_task_started_event_attributes={'scheduled_event_id': 4, 'attempt': 1}),
@@ -2108,3 +2108,145 @@ def test_opted_fixed_check_shares_manual_and_guarded_readiness(tmp_path):
                                        for name in ('manual-first', 'timer-first', 'manual-held', 'conflict')))
 
     asyncio.run(exercise())
+
+
+def test_training_result_source_only_accepts_its_guarded_full_result():
+    from ergora.campaigns.records import (
+        FIXED_TASK_UPDATE_PREFIX, TRAINING_RESULT_DIGESTS, check_intent, checked_readback, fixed_task_state,
+        readback_grant, readback_id, readback_proof, readback_reference, readback_result, update_attempt,
+        validate_check_command, validate_tasks,
+    )
+
+    locator = {'experiment_id': 'alpha', 'workflow_id': 'perf-experiment/alpha',
+               'run_id': 'original-native-run', 'job_id': 'local-perf-alpha',
+               'native_request_sha256': 'a'*64, 'attempt_sha256': 'b'*64}
+    task = {'task_id': 'full', 'depends_on': [], 'source': {'kind': 'training_full_result', 'locator': locator},
+            'readback': {'due_at': 20, 'deadline_at': 30}}
+    validate_tasks([task])
+    for extra in ({'depends_on': ['full']}, {'recipient': {}}, {'wake_on_observe': True}):
+        with pytest.raises(ValueError, match='requires one root task'):
+            validate_tasks([{**task, **extra}])
+    with pytest.raises(ValueError, match='complete original locator'):
+        validate_tasks([{**task, 'source': {**task['source'], 'locator': {'experiment_id': 'alpha'}}}])
+    with pytest.raises(ValueError, match='one original readback window'):
+        validate_tasks([task, {**task, 'task_id': 'second'}])
+
+    dependent = {'task_id': 'fixed', 'depends_on': ['full'], 'source': {}}
+    opening = {'project': 'demo', 'project_revision': 3, 'workflow_id': 'campaign',
+               'registration': {'sha256': 'c'*64}, 'plan': {'tasks': [task, dependent]}}
+    run, start = 'original-campaign-run', 'd'*64
+    grant = readback_grant(opening, run, task, None)
+    activity_id = readback_id(grant)
+    assert activity_id.startswith('training-full-result-readback:')
+    assert 'waiting_receipt_sha256' not in grant
+    assert fixed_task_state(opening, start, run, {})['fixed']['status'] == 'waiting_dependencies'
+    intent = check_intent(opening, start, run, 'full', 'e'*64)
+    command = {'intent': intent, 'attempt': update_attempt(intent, FIXED_TASK_UPDATE_PREFIX +
+                                                          'ffadc8b3-dd3a-4527-badb-b800466a27bd')}
+    with pytest.raises(ValueError, match='admits only its guarded readback'):
+        validate_check_command(opening, start, run, command)
+
+    evidence = {'status': 'verified', 'project': 'demo', 'project_revision': 3, 'registration_sha256': 'c'*64,
+                'locator': locator, 'native_result_state': 'SUCCEEDED',
+                'local_gpu_lease': {'status': 'unknown', 'read_only': True, 'attempt_sha256': 'b'*64},
+                **{key: 'e'*64 for key in TRAINING_RESULT_DIGESTS}}
+    raw = {'activity_id': activity_id, 'observation': evidence, 'reader_cleanup_sha256': 'f'*64}
+    for invalid in ({'native_result_state': 'RUNNING'}, {'project_revision': 2},
+                    {'locator': {**locator, 'attempt_sha256': 'f'*64}}, {'native_result_sha256': None},
+                    {'local_gpu_lease': {**evidence['local_gpu_lease'], 'attempt_sha256': 'c'*64}}):
+        with pytest.raises(ValueError, match='original full training result'):
+            readback_result(opening, task, activity_id, {**raw, 'observation': {**evidence, **invalid}})
+
+    digest, accepted = readback_result(opening, task, activity_id, raw)
+    selected = {'status': 'available', 'activity_id': activity_id,
+                **readback_reference(grant), **readback_proof(digest, accepted, raw)}
+    assert checked_readback(opening, run, None, selected) == selected
+    assert selected['local_gpu_lease']['status'] == 'unknown'
+    tasks = fixed_task_state(opening, start, run, {}, readback=selected)
+    assert tasks['full']['status'] == 'observed' and tasks['full']['receipt'] is None
+    assert tasks['fixed']['status'] == 'ready'
+
+
+@pytest.mark.parametrize('phase', ('release', 'cutoff', 'stop_waiting', 'stop_acquired', 'stop_before_link', 'write_error'))
+def test_training_publication_waits_only_for_its_original_lock_and_window(monkeypatch, phase):
+    from contextlib import contextmanager
+
+    pytest.importorskip('temporalio')
+    from ergora.campaigns import readback
+
+    clock = [0.]
+    accesses, published = [], []
+    acquired = prepared = False
+
+    def sleep(seconds):
+        assert 0 < seconds <= .025
+        clock[0] += seconds
+
+    @contextmanager
+    def lock(path, *, blocking):
+        nonlocal acquired
+        assert path == 'original-lock' and blocking is False
+        accesses.append(clock[0])
+        if len(accesses) == 1 or phase == 'cutoff':
+            raise BlockingIOError()
+        acquired = True
+        yield
+
+    def stopped():
+        return ((phase == 'stop_waiting' and bool(accesses))
+                or (phase == 'stop_acquired' and acquired)
+                or (phase == 'stop_before_link' and prepared))
+
+    def write(name, record, *, before_publish):
+        nonlocal prepared
+        prepared = True
+        if phase == 'write_error':
+            raise BlockingIOError('original write failure')
+        before_publish()
+        published.append((name, record))
+
+    monkeypatch.setattr(readback, 'time', SimpleNamespace(monotonic=lambda: clock[0], sleep=sleep))
+    monkeypatch.setattr(readback, 'file_lock', lock)
+    files = SimpleNamespace(lock='original-lock', write=write)
+    result = {'activity_id': 'original'}
+    if phase == 'release':
+        readback._publish_training_result(files, result, .05, stopped)
+        assert published == [('readback-result', result)]
+    elif phase == 'cutoff':
+        with pytest.raises(TimeoutError, match='publication cutoff'):
+            readback._publish_training_result(files, result, .05, stopped)
+        assert clock[0] == .05 and not prepared
+    elif phase == 'write_error':
+        with pytest.raises(BlockingIOError, match='original write failure'):
+            readback._publish_training_result(files, result, .05, stopped)
+    else:
+        with pytest.raises(ValueError, match='no longer admits'):
+            readback._publish_training_result(files, result, .05, stopped)
+        assert prepared is (phase == 'stop_before_link')
+    assert len(accesses) == (1 if phase == 'stop_waiting' else 2)
+    if phase != 'release':
+        assert not published
+
+
+@pytest.mark.parametrize('training', [True, False])
+def test_only_training_readback_projects_its_pending_local_stop_to_the_child(training):
+    async def stop_receipt(*args):
+        return None
+
+    root = {'task_id': 'root', 'source': {'kind': 'training_full_result'} if training else {},
+            'readback': {'due_at': 15, 'deadline_at': 20}}
+    opening = {'plan': {'tasks': [root]}}
+    tasks = {'fixed': {'status': 'ready', 'eligible': True}, 'root': {'status': 'observed', 'eligible': False}}
+
+    async def status(*args, **kwargs):
+        return {'tasks': tasks, 'workflow_state_status': 'observed'}
+
+    runtime = SimpleNamespace(RPC_SECONDS=1, read_stop=stop_receipt, runtime_status=status, RPCError=RuntimeError)
+    handle = SimpleNamespace(run_id='original')
+    description = SimpleNamespace(run_id='original', status=SimpleNamespace(name='RUNNING'))
+    stop = ({'run_id': 'original'}, {'update_id': 'original-stop'}, None)
+    output = {'attempt_sha256': 'digest', 'stop': application._stop_snapshot(stop, local_fence=True)}
+    result = asyncio.run(application._observe(runtime, output, None, handle, description, opening, stop, True))
+    assert result['stop']['local_fence_saved'] is True and result['stop']['remote_status'] == 'not_found'
+    assert result['tasks']['root']['status'] == 'observed'
+    assert result['tasks']['fixed'] == {'status': 'ready', 'eligible': not training}

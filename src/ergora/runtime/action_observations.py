@@ -1,6 +1,6 @@
 """Observe original actions through their registered native owners."""
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
 import re
 
@@ -26,6 +26,29 @@ class FixedCheckStatus:
 @dataclass(frozen=True)
 class TrainingExecutionStatus:
     experiment_id: str
+
+
+@dataclass(frozen=True)
+class TrainingFullResult:
+    """Select one current managed full verification by its original native Run and raw attempt."""
+
+    experiment_id: str
+    workflow_id: str
+    run_id: str
+    job_id: str
+    native_request_sha256: str
+    attempt_sha256: str
+
+    def __post_init__(self):
+        if (not isinstance(self.experiment_id, str)
+                or re.fullmatch('[A-Za-z0-9][A-Za-z0-9_-]{0,79}', self.experiment_id) is None
+                or self.workflow_id != 'perf-experiment/' + self.experiment_id
+                or self.job_id != 'local-perf-' + self.experiment_id
+                or not isinstance(self.run_id, str) or not 1 <= len(self.run_id) <= 128):
+            raise ValueError('Training full-result observation requires the original experiment, workflow, Run and Job')
+        for digest in (self.native_request_sha256, self.attempt_sha256):
+            if not isinstance(digest, str) or re.fullmatch('[a-f0-9]{64}', digest) is None:
+                raise ValueError('Training full-result observation requires the original raw request and attempt SHA256')
 
 
 def _require_identity(receipt, expected, description):
@@ -71,10 +94,23 @@ def _training_execution(action, project, home, *, deadline, stop_requested, supe
     return receipt
 
 
-_OBSERVERS = {FixedCheckStatus: _fixed_check, TrainingExecutionStatus: _training_execution}
+def _training_full_result(action, project, home, *, deadline, stop_requested, supervised_cleanup):
+    from ergora.training.native import training_full_result
+
+    locator = asdict(action)
+    receipt = training_full_result(project, home, locator, deadline=deadline, stop_requested=stop_requested,
+                                   supervised_cleanup=supervised_cleanup)
+    _require_identity(receipt, {'project': project['id'], 'project_revision': project['revision'],
+                                'registration_sha256': project['registration']['sha256'], 'locator': locator},
+                      'Training full-result receipt')
+    return receipt
 
 
-def observe(action: FixedCheckStatus | TrainingExecutionStatus, project: dict, home: Path, *,
+_OBSERVERS = {FixedCheckStatus: _fixed_check, TrainingExecutionStatus: _training_execution,
+              TrainingFullResult: _training_full_result}
+
+
+def observe(action: FixedCheckStatus | TrainingExecutionStatus | TrainingFullResult, project: dict, home: Path, *,
             deadline: float | None = None, stop_requested=None, supervised_cleanup=None) -> dict:
     """Read the original owner receipt under an already selected project registration.
 

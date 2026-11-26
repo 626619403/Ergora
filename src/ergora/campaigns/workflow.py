@@ -23,10 +23,11 @@ from temporalio.worker import Worker
 
 with workflow.unsafe.imports_passed_through():
     from ergora.campaigns.records import (
-        ATTEMPT_MEMO, OPENING_MEMO, READBACK_ACTIVITY, READBACK_ALREADY_ADMITTED, READBACK_CLEANUP_SECONDS,
+        ATTEMPT_MEMO, OPENING_MEMO, READBACK_ALREADY_ADMITTED, READBACK_CLEANUP_SECONDS,
         RECIPIENT_ACTIVITY, WORKFLOW_TYPE,
-        check_receipt, checked_readback, fixed_task_state, fixed_tasks, has_pending_checks, identity, manual_wake_source,
-        readback_grant, readback_id, readback_ready_tasks, readback_result, readback_task, recipient_task,
+        check_receipt, checked_readback, fixed_task_state, has_pending_checks, identity, manual_wake_source,
+        readback_activity, readback_grant, readback_id, readback_proof, readback_ready_tasks, readback_reference,
+        readback_result, readback_task, recipient_task, tasks_by_id, training_result_task,
         require_check_receipt, require_rollover_receipt, require_stop_receipt, restore_rollover, rollover_checkpoint,
         rollover_task, same_check_observation,
         sha256, stop_intent, update_receipt, validate_check_command, validate_rollover_command,
@@ -109,18 +110,20 @@ class Campaign:
 
     def _readback_unknown(self, reason):
         self.readback = {'status': 'unknown', 'reason': reason, 'activity_id': self.readback['activity_id'],
-                         'waiting_receipt_sha256': self.readback['waiting_receipt_sha256']}
+                         **readback_reference(self.readback)}
 
     async def _one_readback(self, task):
         task_id = task['task_id']
-        await workflow.wait_condition(lambda: task_id in self.check_waits or task_id in self.check_receipts)
+        training = training_result_task(task)
+        if not training:
+            await workflow.wait_condition(lambda: task_id in self.check_waits or task_id in self.check_receipts)
         shared = task.get('wake_on_observe') is True
-        if self.stop_decision is not None or task_id not in self.check_waits or (task_id in self.check_receipts and not shared):
+        if (self.stop_decision is not None or (not training and task_id not in self.check_waits)
+                or (task_id in self.check_receipts and not shared)):
             return
-        grant = readback_grant(self.opening, workflow.info().run_id, task, self.check_waits[task_id])
+        grant = readback_grant(self.opening, workflow.info().run_id, task, self.check_waits.get(task_id))
         activity_id = readback_id(grant)
-        self.readback = {'status': 'armed', 'activity_id': activity_id,
-                         'waiting_receipt_sha256': grant['waiting_receipt_sha256']}
+        self.readback = {'status': 'armed', 'activity_id': activity_id, **readback_reference(grant)}
         delay = grant['due_at'] - workflow.time()
         if delay > 0:
             await workflow.sleep(delay)
@@ -170,7 +173,7 @@ class Campaign:
     async def _observe_readback(self, task, grant, activity_id, remaining):
         self.readback['status'] = 'scheduled'
         try:
-            result = await workflow.execute_activity(READBACK_ACTIVITY, grant, activity_id=activity_id,
+            result = await workflow.execute_activity(readback_activity(task), grant, activity_id=activity_id,
                 schedule_to_close_timeout=timedelta(seconds=remaining), start_to_close_timeout=timedelta(seconds=remaining),
                 heartbeat_timeout=timedelta(seconds=min(2, remaining)), retry_policy=RetryPolicy(maximum_attempts=1),
                 cancellation_type=workflow.ActivityCancellationType.TRY_CANCEL, result_type=dict)
@@ -194,9 +197,7 @@ class Campaign:
         if job['status'] != 'succeeded':
             self._readback_unknown('original_still_pending')
             return
-        self.readback = {**self.readback, 'status': 'available', 'observation_sha256': evidence,
-                         'receipt_sha256': job['receipt_sha256'], 'fixed_results_sha256': job['fixed_results_sha256'],
-                         'reader_cleanup_sha256': result['reader_cleanup_sha256']}
+        self.readback = {**self.readback, 'status': 'available', **readback_proof(evidence, job, result)}
         if task.get('wake_on_observe') is True:
             if self.ready_source is None:
                 self.ready_source = self.readback
@@ -237,7 +238,7 @@ class Campaign:
             if previous != receipt:
                 raise ApplicationError('Campaign task already has different original evidence', non_retryable=True)
             return previous
-        task = fixed_tasks(self.opening)[receipt['task_id']]
+        task = tasks_by_id(self.opening)[receipt['task_id']]
         if (self.stop_decision is not None or self.rollover_command is not None
                 or workflow.time() >= self.opening['plan']['limits']['expires_at']):
             raise ApplicationError('Campaign no longer admits new task observations', non_retryable=True)
@@ -472,7 +473,11 @@ async def read_task_history(client, handle, opening, commands):
     timer_wait = next((command for command in commands if task is not None
                        and command['intent']['task_id'] == task['task_id']
                        and command['intent']['operation'] == 'wait_check'), None)
-    grant = readback_grant(opening, handle.run_id, task, check_receipt(timer_wait)) if timer_wait is not None else None
+    training = training_result_task(task)
+    grant = None
+    if training or timer_wait is not None:
+        waiting = check_receipt(timer_wait) if timer_wait is not None else None
+        grant = readback_grant(opening, handle.run_id, task, waiting)
     activity_id = readback_id(grant) if grant is not None else None
     activity_events = []
     schedule_ids = set()
@@ -513,7 +518,7 @@ async def read_task_history(client, handle, opening, commands):
                                   'receipt': entry['receipt'],
                                   'status': 'failed' if entry.get('failed') else 'verified'}
     completion = None
-    if timer_wait is not None and entries[timer_wait['attempt']['update_id']].get('receipt') is not None:
+    if training or (timer_wait is not None and entries[timer_wait['attempt']['update_id']].get('receipt') is not None):
         completion = await _readback_completion(converter, activity_events, opening, task, grant, activity_id)
     for update_id, entry in entries.items():
         event = entry.get('completed_event')
@@ -629,7 +634,7 @@ async def _readback_completion(converter, events, opening, task, grant, activity
         if event.HasField('activity_task_scheduled_event_attributes'):
             scheduled = event.activity_task_scheduled_event_attributes
             values = await converter.decode(scheduled.input.payloads)
-            if (scheduled_id is not None or scheduled.activity_type.name != READBACK_ACTIVITY
+            if (scheduled_id is not None or scheduled.activity_type.name != readback_activity(task)
                     or scheduled.task_queue.name != opening['task_queue'] or scheduled.retry_policy.maximum_attempts != 1
                     or identity(values) != identity([grant])):
                 raise ValueError('Campaign readback Activity differs from its original grant')
@@ -658,11 +663,9 @@ async def _readback_completion(converter, events, opening, task, grant, activity
         raise ValueError('Campaign original readback Activity has an invalid result') from error
     if job['status'] != 'succeeded':
         return None
-    return {'task_id': task['task_id'], 'activity_id': activity_id,
-            'waiting_receipt_sha256': grant['waiting_receipt_sha256'],
+    return {'task_id': task['task_id'], 'activity_id': activity_id, **readback_reference(grant),
             'scheduled_event_id': scheduled_id, 'completed_event_id': completed.event_id,
-            'receipt_sha256': job['receipt_sha256'], 'fixed_results_sha256': job['fixed_results_sha256'],
-            'observation_sha256': evidence, 'reader_cleanup_sha256': result['reader_cleanup_sha256']}
+            **readback_proof(evidence, job, result)}
 
 
 def _update_entry(handle, command):
@@ -877,7 +880,7 @@ def _observed_state(observed, expected, opening, start_attempt_sha256, temporal_
                       and (stop is None or stop['decision'] != 'accepted'))
         if selected is not None:
             tasks[selected['task_id']]['readback_observation'] = readback
-        extra['tasks'] = {task_id: {**task, 'eligible': active and task['status'] in ('ready', 'waiting_job')}
+        extra['tasks'] = {task_id: {**task, 'eligible': active and not training_result_task(task) and task['status'] in ('ready', 'waiting_job')}
                           for task_id, task in tasks.items()}
     elif 'tasks' in opening['plan']:
         return {'temporal_status': temporal_status.name, 'workflow_state_status': 'unavailable'}
@@ -910,10 +913,12 @@ async def run_worker(client, handle, opening, files, attempt, *, poller_identity
 
     try:
         activities = []
-        if readback_task(opening) is not None:
-            from ergora.campaigns.readback import FixedCheckReadback
+        task = readback_task(opening)
+        if task is not None:
+            from ergora.campaigns.readback import CampaignReadback
 
-            activities = [FixedCheckReadback(files, opening, attempt, handle.run_id).read]
+            reader = CampaignReadback(files, opening, attempt, handle.run_id)
+            activities.append(reader.read_training_result if training_result_task(task) else reader.read)
         if recipient_task(opening) is not None:
             from ergora.campaigns.recipient import CodexRecipient
 

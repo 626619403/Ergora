@@ -95,7 +95,7 @@ Read `stop.status` for progress and `stop.receipt.decision` for the verified Upd
 
 ## Record an original fixed check for a task
 
-Before creation, a plan can include one to eight tasks in `tasks`. Each task declares a unique `task_id`, a list of distinct task IDs in `depends_on` and an exact fixed-check `source`. Dependencies stay within the frozen plan and form an acyclic graph.
+Before creation, a plan can include one to eight tasks in `tasks`. A fixed-check task declares a unique `task_id`, a list of distinct task IDs in `depends_on` and an exact fixed-check `source`. Dependencies stay within the frozen plan and form an acyclic graph.
 
 For this example, start with a `campaign.json` that has a future expiry. Save the `task candidate-check-status` JSON for two original Jobs under the same project and protected control home as `baseline-check.json` and `candidate-check.json`. Use already authorized, successful checks with confirmed cleanup and `stop_requested: false`. The source retains the original Job's `project_revision`, which can differ from the campaign's project revision. [Original fixed-check status](../development/run-and-recover.md#run-registered-fixed-checks-on-an-exported-candidate)
 
@@ -205,3 +205,11 @@ ergora campaign status my-project fixed-check-plan --online --task-id verify-bas
 ```
 
 Read a verified guarded result in `readback_completion`. If an identical manual Update lost the race, its terminal entry in `task_observation_history` retains the original Run and Update IDs, the accepted and completed event IDs, `status: failed`, `reason: readback_already_admitted` and `receipt: null`. The Activity still supplies the original result. Neither a status read nor a repeated observation delivers a second continuation.
+
+### Read one managed training full result
+
+A record-only plan can include one root task whose source is `{"kind":"training_full_result","locator":{...}}` and whose readback specifies `due_at` and `deadline_at`. The locator requires `experiment_id`, `workflow_id`, `run_id`, `job_id`, `native_request_sha256` and `attempt_sha256` from the same project's original managed full verification. Bind Temporal before authorizing that training attempt so its registration and project revision match the Campaign.
+
+The original Run arms the one guarded read from the confirmed plan. The exact successful native result and archive evidence make the root task observed. The readback records the result digest and the original resource owner's independent lease observation. A fixed-check task can depend on that result and still requires its own original authorization and confirmed observation.
+
+Use `campaign status PROJECT CAMPAIGN --online --task-id TASK` for the original verified result and Activity evidence, including after the Worker exits. The Campaign STOP and read cutoff bound this reader. The original training executor and resource owner keep control of their operations.

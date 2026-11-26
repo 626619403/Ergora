@@ -9,10 +9,10 @@ from uuid import uuid4
 from ergora.campaigns.records import (
     FIXED_CHECK_TERMINAL, FIXED_TASK_LOCATOR, FIXED_TASK_UPDATE_PREFIX, PENDING_JOB_STATES, READBACK_ALREADY_ADMITTED,
     ROLLOVER_UPDATE_PREFIX, WORKFLOW_TYPE,
-    CampaignFiles, attempt_document, check_intent, check_record_name, fixed_tasks, identity,
-    original_check_evidence, project_selection, read_plan,
+    CampaignFiles, attempt_document, check_intent, check_record_name, identity, local_readback_stop,
+    original_check_evidence, project_selection, read_plan, readback_task,
     recipient_task, require_check_project, result_document, rollover_intent, rollover_task, sha256, stop_intent,
-    update_attempt, uuid_text, verify_registration,
+    tasks_by_id, training_result_task, update_attempt, uuid_text, verify_registration,
     worker_queue, workflow_id,
 )
 from ergora.storage.state import State, file_lock
@@ -74,12 +74,12 @@ def _snapshot(files, opening, attempt, result):
             'workflow_id': opening['workflow_id'], 'run_id': result['run_id'] if result else None}
 
 
-def _stop_snapshot(records, *, recipient=False):
+def _stop_snapshot(records, *, local_fence=False):
     intent, attempt, result = records
     phase = 'recorded' if result else 'unknown' if attempt else 'prepared' if intent else 'not_recorded'
     snapshot = {'status': phase, 'result_saved': result is not None, 'remote_status': 'not_requested', 'retryable': False,
                 'update_id': attempt['update_id'] if attempt else None, 'receipt': result['receipt'] if result else None}
-    if recipient:
+    if local_fence:
         snapshot['local_fence_saved'] = intent is not None
     return snapshot
 
@@ -118,8 +118,9 @@ async def _observe(runtime, output, client, handle, description, opening, stop_r
                 observed.update(await runtime.runtime_status(handle, description, opening, stop_receipt,
                                                            start_attempt_sha256=output['attempt_sha256'], **scope))
                 saved_stop = observed.get('stop', {}).get('receipt')
-                local_stop_fence = (rollover_task(opening) is not None and stop_records is not None
-                                    and stop_records[0] is not None)
+                local_stop_fence = (stop_records is not None and stop_records[0] is not None
+                                    and (rollover_task(opening) is not None
+                                         or training_result_task(readback_task(opening))))
                 if local_stop_fence or (saved_stop is not None and saved_stop['decision'] == 'accepted'):
                     for task in observed.get('tasks', {}).values():
                         task['eligible'] = False
@@ -168,8 +169,9 @@ async def _read_original(runtime, output, opening, attempt, run_id, *, client=No
             observed['rollover'] = {'status': 'unresolved', 'update_id': command['attempt']['update_id']}
             for task in observed.get('tasks', {}).values():
                 task['eligible'] = False
-    if check_commands and (include_task_history or observed['workflow_state_status'] == 'unavailable'
-                           or recipient_task(opening) is not None):
+    training = training_result_task(readback_task(opening))
+    if training or (check_commands and (include_task_history or observed['workflow_state_status'] == 'unavailable'
+                                        or recipient_task(opening) is not None)):
         try:
             async with asyncio.timeout(runtime.RPC_SECONDS):
                 if successor is None:
@@ -190,7 +192,8 @@ async def _read_original(runtime, output, opening, attempt, run_id, *, client=No
                 raise
             return {**observed, 'task_observation_history_status': 'contradictory',
                     'task_observation_history_error': str(error)}
-        observed['task_observation_history'] = _task_observation_history(check_commands, updates)
+        if check_commands:
+            observed['task_observation_history'] = _task_observation_history(check_commands, updates)
         if completion is not None:
             observed['readback_completion'] = completion
         if wake is not None and (completion is None or 'recipient' not in completion):
@@ -268,14 +271,14 @@ async def status(state: State, project: str, campaign: str, *, online: bool = Fa
     registration = verify_registration(state, opening) if opening is not None else None
     task = None
     if task_id is not None:
-        task = fixed_tasks(opening).get(task_id) if opening is not None else None
+        task = tasks_by_id(opening).get(task_id) if opening is not None else None
         if task is None:
             raise ValueError('Campaign task is absent from the original frozen plan')
     if attempt is not None:
         # A concurrent writer may start and stop after a prepared-only snapshot.
         stop_records = files.load_stop(opening, attempt, result)
-    recipient = opening is not None and recipient_task(opening) is not None
-    output = {**_snapshot(files, opening, attempt, result), 'stop': _stop_snapshot(stop_records, recipient=recipient)}
+    local_fence = opening is not None and local_readback_stop(opening)
+    output = {**_snapshot(files, opening, attempt, result), 'stop': _stop_snapshot(stop_records, local_fence=local_fence)}
     if attempt is not None:
         run_id = output['run_id']
         if run_id is None and stop_records[0] is not None:
@@ -294,7 +297,7 @@ async def status(state: State, project: str, campaign: str, *, online: bool = Fa
                     and 'task_observation_history' not in output):
                 output['task_observation_history'] = _task_observation_history(check_commands)
             for view in output.get('tasks', {}).values():
-                if view['receipt'] is None:
+                if view['receipt'] is None and not training_result_task(view):
                     target = output.get('current_run_id', output['run_id'])
                     command = files.load_check(opening, attempt, target, view)
                     if command is None and view['source'].get('pending') is True and view['waiting_receipt'] is None:
@@ -307,7 +310,7 @@ async def status(state: State, project: str, campaign: str, *, online: bool = Fa
         elif check_commands:
             output['task_observation_history'] = _task_observation_history(check_commands, unobserved='not_requested')
     output = _recipient_status(state, files, opening, attempt, result, output)
-    if task is not None:
+    if task is not None and not training_result_task(task):
         history = output.get('task_observation_history', {}).get(task_id, {})
         readback = output.get('readback_completion') if task.get('wake_on_observe') is True else None
         output['task_evidence'] = await _task_evidence(registration, state.root, task, history.get('terminal'), readback)
@@ -378,7 +381,7 @@ async def create(state: State, project: str, campaign: str, path: Path, revision
     opening, _, _ = files.load()
     if opening is None:
         # Reject unsupported or stale authorization before creating the campaign namespace.
-        selected = project_selection(state, state.project(project), revision)
+        selected = project_selection(state, state.project(project), revision, plan=plan)
         preview = _opening(files, revision, plan, plan_sha, selected, _freeze_recipient(state, files, revision, plan))
         _future(preview)
     files.ensure_directory()
@@ -387,7 +390,7 @@ async def create(state: State, project: str, campaign: str, path: Path, revision
         if opening is None:
             with State(state.root).connect() as db:
                 db.execute('BEGIN IMMEDIATE')
-                selected = project_selection(state, state.project(project), revision)
+                selected = project_selection(state, state.project(project), revision, plan=plan)
                 opening = _opening(files, revision, plan, plan_sha, selected, _freeze_recipient(state, files, revision, plan))
                 _future(opening)
                 files.write('start-intent', opening)
@@ -407,7 +410,7 @@ async def create(state: State, project: str, campaign: str, path: Path, revision
                 return {**output, 'remote_status': 'unavailable', 'remote_error': 'connection_before_attempt'}
             with State(state.root).connect() as db:
                 db.execute('BEGIN IMMEDIATE')
-                selected = project_selection(state, state.project(project), revision)
+                selected = project_selection(state, state.project(project), revision, plan=plan)
                 if any(opening[key] != value for key, value in selected.items()):
                     raise ValueError('Original project registration or scheduler changed before attempt')
                 if 'recipient_binding' in opening and _freeze_recipient(state, files, revision, plan) != opening['recipient_binding']:
@@ -497,15 +500,15 @@ async def stop(state: State, project: str, campaign: str, *, confirm: bool) -> d
         verify_registration(state, opening)
         records = files.load_stop(opening, start_attempt, start_result)
         intent, attempt, result = records
-        recipient = recipient_task(opening) is not None
-        if recipient and intent is None:
+        local_fence = local_readback_stop(opening)
+        if local_fence and intent is None:
             original_run = start_result['run_id'] if start_result is not None else files.load_checks(opening, start_attempt, None)[0]
             if original_run is not None:
                 # Stop local admission and the original native reaper before depending on the remote Worker.
                 intent = stop_intent(opening, identity(start_attempt), original_run)
                 files.write('stop-intent', intent)
                 records = (intent, attempt, result)
-        output = {**_snapshot(files, opening, start_attempt, start_result), 'stop': _stop_snapshot(records, recipient=recipient)}
+        output = {**_snapshot(files, opening, start_attempt, start_result), 'stop': _stop_snapshot(records, local_fence=local_fence)}
         run_id = output['run_id'] or (intent['run_id'] if intent else None)
         runtime = _temporal()
         try:
@@ -541,7 +544,7 @@ async def stop(state: State, project: str, campaign: str, *, confirm: bool) -> d
                 result = {'receipt': receipt}
                 files.write('stop-result', result)
             records = (intent, attempt, result)
-            output['stop'] = _stop_snapshot(records, recipient=recipient)
+            output['stop'] = _stop_snapshot(records, local_fence=local_fence)
             observed = await _read_original(runtime, output, opening, start_attempt, run_id, client=client,
                                             read_state=True, stop_records=records, files=files)
         else:
@@ -694,9 +697,11 @@ async def observe_check(state: State, project: str, campaign: str, task_id: str,
     if attempt is None:
         raise ValueError('Campaign task observation requires a saved original start attempt')
     verify_registration(state, opening)
-    task = fixed_tasks(opening).get(task_id)
+    task = tasks_by_id(opening).get(task_id)
     if task is None:
         raise ValueError('Campaign task is absent from the original frozen plan')
+    if training_result_task(task):
+        raise ValueError('Read the original guarded training result with campaign status --online')
     runtime = _temporal()
     first_run_id = result['run_id'] if result is not None else None
     client, handle, description, successor = await _check_run(runtime, files, opening, attempt, first_run_id)
@@ -727,7 +732,8 @@ async def observe_check(state: State, project: str, campaign: str, task_id: str,
 
     def stopped():
         stop_intent_saved, _, saved_stop = files.load_stop(opening, attempt, result)
-        if rollover_task(opening) is not None or task.get('wake_on_observe') is True:
+        if (rollover_task(opening) is not None or task.get('wake_on_observe') is True
+                or training_result_task(readback_task(opening))):
             return stop_intent_saved is not None
         return saved_stop is not None and saved_stop['receipt']['decision'] == 'accepted'
 
@@ -814,9 +820,9 @@ async def worker(state: State, project: str, campaign: str) -> dict:
 
 async def _run_worker(files, opening, attempt, result, poller_identity):
     runtime = _temporal()
-    recipient = recipient_task(opening) is not None
+    local_fence = local_readback_stop(opening)
     stop_records = files.load_stop(opening, attempt, result)
-    output = {**_snapshot(files, opening, attempt, result), 'stop': _stop_snapshot(stop_records, recipient=recipient)}
+    output = {**_snapshot(files, opening, attempt, result), 'stop': _stop_snapshot(stop_records, local_fence=local_fence)}
     first_run = output['run_id'] or (stop_records[0]['run_id'] if stop_records[0] is not None else None)
     try:
         async with asyncio.timeout(runtime.RPC_SECONDS):
@@ -833,7 +839,7 @@ async def _run_worker(files, opening, attempt, result, poller_identity):
     if description.status != runtime.WorkflowExecutionStatus.RUNNING:
         # A concurrent stop can close the run during the first remote observation.
         stop_records = files.load_stop(opening, attempt, result)
-        output['stop'] = _stop_snapshot(stop_records, recipient=recipient)
+        output['stop'] = _stop_snapshot(stop_records, local_fence=local_fence)
         return {**await _observe(runtime, output, client, handle, description, opening, stop_records, True,
                                 successor=successor),
                 'worker_status': 'already_closed'}
