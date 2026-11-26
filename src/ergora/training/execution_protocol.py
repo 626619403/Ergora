@@ -2939,7 +2939,7 @@ class ExecutionRecords:
         from ergora.runtime import gpu_pool
 
         path = self.folder / 'gpu-lease.json'
-        capability = (self.native['runner']['configuration_readback'] or {}) if self.records['request'] else {}
+        capability = (self.native['runner'].get('configuration_readback') or {}) if self.records['request'] else {}
         selection = capability.get('local_gpu_pool')
         if selection is None and not (path.exists() or path.is_symlink()):
             return None

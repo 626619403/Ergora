@@ -51,11 +51,11 @@ def prepared(experiments):
 
 
 @pytest.fixture
-def historical_execution(prepared):
-    return synthetic_execution(prepared)
+def historical_execution(prepared, request):
+    return synthetic_execution(prepared, omit_readback=getattr(request, 'param', False))
 
 
-def synthetic_execution(prepared, *, controller=None, ident='alpha'):
+def synthetic_execution(prepared, *, controller=None, ident='alpha', omit_readback=False):
     """A synthetic stopped archive, deliberately carrying no live execution authority."""
     from datetime import datetime, timezone
     import ergora.training.cycles as training_cycles
@@ -75,6 +75,8 @@ def synthetic_execution(prepared, *, controller=None, ident='alpha'):
         plan, admission, ready, binding = controller
         intent['budget'] = binding
         intent['observation'] = plan['admissions'][binding['controller']['ordinal']]['observation']
+    if omit_readback:
+        intent['observation']['experiment']['current_runner'].pop('configuration_readback')
     write(prefix / (ident + '.intent.json'), intent)
     sha = training_cycles._sha
     start = {'schema_version': 1, 'intent_sha256': sha(intent), 'workflow_id': intent['workflow_id'],
@@ -169,6 +171,7 @@ def test_original_action_observation_preserves_the_selected_owner_receipt(tmp_pa
         actions.observe('stop', project, tmp_path)
 
 
+@pytest.mark.parametrize('historical_execution', [False, True], ids=['plain-runner', 'no-readback-field'], indirect=True)
 def test_execution_history_is_sdk_free_and_survives_missing_installation(historical_execution, capsys):
     from ergora.interfaces.cli import main
 
@@ -188,7 +191,18 @@ def test_execution_history_is_sdk_free_and_survives_missing_installation(histori
     assert result['executor_stop_confirmed'] is (True if sys.platform == 'linux' else None)
     assert result['runtime_status'] == 'not_queried' and result['execution_authorized'] is False
     assert result['current_sources']['status'] == 'unavailable_or_changed'
-    assert result['execution_success'] is None
+    assert result['execution_success'] is None and 'local_gpu_lease' not in result
+    orphan = runtime / 'training/jobs/alpha/managed-execution/gpu-lease.json'
+    orphan.write_bytes(b'{}')
+    try:
+        observed = training.execution(state, 'demo', 'alpha')
+        assert observed['executor_stop_confirmed'] is result['executor_stop_confirmed']
+        lease = observed['local_gpu_lease']
+        assert lease['status'] == 'unknown' and lease['release_ref'] is None and lease['read_only'] is True
+        assert 'local GPU lease selection' in lease['reason']
+        assert orphan.read_bytes() == b'{}'
+    finally:
+        orphan.unlink()
     assert all(p.read_bytes() == raw for p, raw in before.items())
     with state.connect() as db:
         assert list(db.iterdump()) == database
