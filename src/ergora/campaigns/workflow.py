@@ -23,11 +23,11 @@ from temporalio.worker import Worker
 
 with workflow.unsafe.imports_passed_through():
     from ergora.campaigns.records import (
-        ATTEMPT_MEMO, OPENING_MEMO, READBACK_ACTIVITY, READBACK_CLEANUP_SECONDS, WORKFLOW_TYPE,
+        ATTEMPT_MEMO, OPENING_MEMO, READBACK_ACTIVITY, READBACK_CLEANUP_SECONDS, RECIPIENT_ACTIVITY, WORKFLOW_TYPE,
         check_receipt, checked_readback, fixed_task_state, fixed_tasks, has_pending_checks, identity,
-        readback_grant, readback_id, readback_result, readback_task, require_check_receipt,
+        readback_grant, readback_id, readback_result, readback_task, recipient_task, require_check_receipt,
         require_stop_receipt, sha256, stop_intent, update_receipt, validate_check_command,
-        validate_stop_attempt,
+        validate_stop_attempt, wake_intent,
     )
 
 
@@ -139,6 +139,19 @@ class Campaign:
         self.readback = {**self.readback, 'status': 'available', 'observation_sha256': evidence,
                          'receipt_sha256': job['receipt_sha256'], 'fixed_results_sha256': job['fixed_results_sha256'],
                          'reader_cleanup_sha256': result['reader_cleanup_sha256']}
+        if 'recipient' in task:
+            intent = wake_intent(self.opening, workflow.info().run_id, task, self.readback)
+            allowance = intent['expires_at'] - workflow.time()
+            if allowance > 0 and self.stop_decision is None:
+                try:
+                    await workflow.execute_activity(RECIPIENT_ACTIVITY, intent, activity_id=intent['wake_id'],
+                        schedule_to_close_timeout=timedelta(seconds=allowance),
+                        start_to_close_timeout=timedelta(seconds=allowance),
+                        heartbeat_timeout=timedelta(seconds=min(3, allowance)), retry_policy=RetryPolicy(maximum_attempts=1),
+                        cancellation_type=workflow.ActivityCancellationType.TRY_CANCEL, result_type=dict)
+                except ActivityError:
+                    # The original native attempt, if published, is observed independently and never replayed.
+                    pass
 
     def _state(self, phase):
         result = record_state(self.opening, workflow.info().run_id, phase)
@@ -344,9 +357,23 @@ async def read_task_history(client, handle, opening, commands):
     activity_id = readback_id(grant) if grant is not None else None
     activity_events = []
     schedule_ids = set()
+    wake_events = []
+    wake_ids = set()
+    recipient = recipient_task(opening)
     converter = client.data_converter.with_context(WorkflowSerializationContext(client.namespace, handle.id))
     async for event in handle.fetch_history_events(rpc_timeout=RPC_TIMEOUT):
         await _read_update_event(converter, event, entries, CHECK_UPDATE, require_check_receipt)
+        if recipient is not None and len(wake_events) < 4:
+            if (event.HasField('activity_task_scheduled_event_attributes')
+                    and event.activity_task_scheduled_event_attributes.activity_type.name == RECIPIENT_ACTIVITY):
+                wake_ids.add(event.event_id)
+                wake_events.append(event)
+            else:
+                for kind in ('started', 'completed', 'failed', 'timed_out', 'canceled'):
+                    field = f'activity_task_{kind}_event_attributes'
+                    if event.HasField(field) and getattr(event, field).scheduled_event_id in wake_ids:
+                        wake_events.append(event)
+                        break
         # Keep at most one schedule, start and completion, plus one event to detect a duplicate.
         if activity_id is None or len(activity_events) == 4:
             continue
@@ -369,7 +396,48 @@ async def read_task_history(client, handle, opening, commands):
     completion = None
     if timer_wait is not None and entries[timer_wait['attempt']['update_id']].get('receipt') is not None:
         completion = await _readback_completion(converter, activity_events, opening, task, grant, activity_id)
+    if wake_events:
+        if completion is None:
+            raise ValueError('Campaign recipient History lacks its original passing readback')
+        source_keys = ('activity_id', 'waiting_receipt_sha256', 'observation_sha256', 'receipt_sha256',
+                       'fixed_results_sha256', 'reader_cleanup_sha256')
+        source = {'status': 'available', **{key: completion[key] for key in source_keys}}
+        intent = wake_intent(opening, handle.run_id, recipient, source)
+        completion['recipient'] = await _read_recipient_history(converter, wake_events, opening, intent,
+                                                                 completion['completed_event_id'])
     return updates, completion
+
+
+async def _read_recipient_history(converter, events, opening, intent, readback_completed_id):
+    event = events[0]
+    scheduled = event.activity_task_scheduled_event_attributes
+    values = await converter.decode(scheduled.input.payloads)
+    if (len(events) > 3 or event.event_id <= readback_completed_id or scheduled.activity_id != intent['wake_id']
+            or scheduled.task_queue.name != opening['task_queue'] or scheduled.retry_policy.maximum_attempts != 1
+            or values != [intent]):
+        raise ValueError('Campaign recipient History differs from the exact original wake intent')
+    result = {'intent': intent, 'status': 'scheduled', 'scheduled_event_id': event.event_id}
+    start_id = None
+    for following in events[1:]:
+        if following.HasField('activity_task_started_event_attributes'):
+            if start_id is not None or following.activity_task_started_event_attributes.attempt != 1:
+                raise ValueError('Campaign recipient History has a different original attempt')
+            start_id = following.event_id
+            result.update(status='unknown', started_event_id=start_id)
+        elif following.HasField('activity_task_completed_event_attributes'):
+            done = following.activity_task_completed_event_attributes
+            if start_id is None or done.started_event_id != start_id:
+                raise ValueError('Campaign recipient completion lacks its original start')
+            replies = await converter.decode(done.result.payloads)
+            if (len(replies) != 1 or not isinstance(replies[0], dict)
+                    or replies[0].get('status') not in ('observed', 'blocked', 'unknown')):
+                raise ValueError('Campaign original recipient completion has an invalid outcome')
+            result.update(status=replies[0]['status'], completed_event_id=following.event_id, outcome=replies[0])
+        elif following.HasField('activity_task_scheduled_event_attributes'):
+            raise ValueError('Campaign recipient History scheduled a second delivery')
+        else:
+            result.update(status='unknown', completed_event_id=following.event_id)
+    return result
 
 
 async def _readback_completion(converter, events, opening, task, grant, activity_id):
@@ -571,6 +639,10 @@ async def run_worker(client, handle, opening, files, attempt):
             from ergora.campaigns.readback import FixedCheckReadback
 
             activities = [FixedCheckReadback(files, opening, attempt, handle.run_id).read]
+        if recipient_task(opening) is not None:
+            from ergora.campaigns.recipient import CodexRecipient
+
+            activities.append(CodexRecipient(files, opening, attempt, handle.run_id).deliver)
         worker = Worker(client, task_queue=opening['task_queue'], workflows=[Campaign], activities=activities,
                         graceful_shutdown_timeout=timedelta(seconds=READBACK_CLEANUP_SECONDS if activities else 0))
         async with worker:

@@ -29,6 +29,7 @@ FIXED_TASK_SOURCE = (*FIXED_TASK_LOCATOR, *FIXED_CHECK_TERMINAL)
 PENDING_JOB_STATES = ('queued', 'attempted')
 READBACK_CLEANUP_SECONDS = 0.8
 READBACK_ACTIVITY = 'ergora_campaign_fixed_check_readback'
+RECIPIENT_ACTIVITY = 'ergora_campaign_codex_recipient'
 # Last whole UTC second supported by both Python datetime and protobuf Timestamp.
 MAX_EXPIRY = 253_402_300_799
 
@@ -123,7 +124,7 @@ def validate_fixed_tasks(tasks):
     dependencies = {}
     scheduled = False
     for task in tasks:
-        if not isinstance(task, dict) or task.keys() - {'readback'} != {'task_id', 'depends_on', 'source'}:
+        if not isinstance(task, dict) or task.keys() - {'readback', 'recipient'} != {'task_id', 'depends_on', 'source'}:
             raise ValueError('Campaign task requires task_id, depends_on and an exact fixed-check source')
         task_id, parents, source = task['task_id'], task['depends_on'], task['source']
         if not safe_id(task_id) or task_id in dependencies:
@@ -149,6 +150,10 @@ def validate_fixed_tasks(tasks):
                     or not 1 <= window['due_at'] < window['deadline_at'] <= MAX_EXPIRY):
                 raise ValueError('Campaign admits one original readback window on an explicitly pending task')
             scheduled = True
+        if 'recipient' in task:
+            validate_recipient(task['recipient'])
+            if 'readback' not in task:
+                raise ValueError('Campaign Codex recipient requires the selected original timed readback')
         dependencies[task_id] = parents
     if any(parent not in dependencies for parents in dependencies.values() for parent in parents):
         raise ValueError('Campaign task dependency is absent from the frozen plan')
@@ -168,6 +173,37 @@ def has_pending_checks(opening):
 
 def readback_task(opening):
     return next((task for task in opening['plan'].get('tasks', ()) if 'readback' in task), None)
+
+
+def validate_recipient(recipient):
+    if (not isinstance(recipient, dict)
+            or recipient.keys() != {'session_id', 'parent_run_id', 'intent_id', 'prompt', 'timeout_seconds'}
+            or not all(safe_id(recipient[key]) for key in ('session_id', 'parent_run_id', 'intent_id'))
+            or not isinstance(recipient['prompt'], str) or not recipient['prompt'].strip() or '\0' in recipient['prompt']
+            or type(recipient['timeout_seconds']) is not int or not 1 <= recipient['timeout_seconds'] <= 3600):
+        raise ValueError('Campaign Codex recipient requires an exact session, parent, intent, prompt and bounded timeout')
+
+
+def recipient_task(opening):
+    task = readback_task(opening)
+    return task if task is not None and 'recipient' in task else None
+
+
+def require_recipient_binding(binding):
+    paths = ('source_executable', 'payload_executable')
+    if (not isinstance(binding, dict)
+            or binding.keys() != {*paths, 'context_digest', 'role', 'native_id', 'payload_sha256', 'device', 'inode', 'size'}
+            or not all(isinstance(binding[key], str) and Path(binding[key]).is_absolute() and '\0' not in binding[key] for key in paths)
+            or not safe_id(binding['role']) or not uuid_text(binding['native_id'])
+            or not sha256(binding['context_digest']) or not sha256(binding['payload_sha256'])
+            or any(type(binding[key]) is not int or binding[key] <= 0 for key in ('device', 'inode', 'size'))):
+        raise ValueError('Campaign Codex recipient lacks the original native context and executable binding')
+
+
+def wake_intent(opening, run_id, task, readback):
+    scope = {'opening_sha256': identity(opening), 'workflow_id': opening['workflow_id'], 'run_id': run_id,
+             'task_id': task['task_id'], 'source': readback, 'expires_at': opening['plan']['limits']['expires_at']}
+    return {'wake_id': 'codex-recipient:' + identity(scope), **scope}
 
 
 def readback_grant(opening, run_id, task, waiting):
@@ -409,8 +445,8 @@ class CampaignFiles:
         fields = {'schema_version', 'mode', 'control_home', 'project', 'project_revision', 'registration',
                   'configuration_sha256', 'campaign', 'actor', 'scheduler', 'creation_id', 'plan', 'plan_sha256',
                   'plan_document_sha256', 'task_queue', 'workflow_id', 'workflow_type'}
-        if (set(opening) != fields or type(opening['schema_version']) is not int or opening['schema_version'] != 1
-                or opening['mode'] != 'record_only' or opening['control_home'] != str(self.home)
+        if (set(opening) - {'recipient_binding'} != fields or type(opening['schema_version']) is not int or opening['schema_version'] != 1
+                or opening['control_home'] != str(self.home)
                 or opening['project'] != self.project or opening['campaign'] != self.campaign
                 or identity(opening['actor']) != identity(self.actor)
                 or type(opening['project_revision']) is not int or opening['project_revision'] < 1
@@ -420,6 +456,14 @@ class CampaignFiles:
                 or opening['workflow_id'] != workflow_id(self.project, self.campaign)):
             raise ValueError('Campaign intent differs from its original project, control home or operator')
         validate_plan(opening['plan'])
+        recipient = recipient_task(opening)
+        if recipient is None:
+            if opening['mode'] != 'record_only' or 'recipient_binding' in opening:
+                raise ValueError('Record-only Campaign cannot contain recipient execution authority')
+        else:
+            if opening['mode'] != 'codex_recipient':
+                raise ValueError('Campaign opening does not authorize its frozen Codex recipient')
+            require_recipient_binding(opening.get('recipient_binding'))
         if opening['plan_document_sha256'] != identity(opening['plan']):
             raise ValueError('Campaign intent does not bind its saved plan document')
         scheduler = opening['scheduler']

@@ -965,6 +965,142 @@ def test_campaign_one_pending_readback_window_is_frozen():
     pinned.update(receipt_sha256='d' * 64, fixed_results_sha256='e' * 64)
     with pytest.raises(ValueError, match='explicitly pending'):
         validate_plan({**plan, 'tasks': [{**task, 'source': pinned}]})
+    recipient = {'session_id': 'root', 'parent_run_id': 'parent', 'intent_id': 'next',
+                 'prompt': 'Use the original evidence', 'timeout_seconds': 60}
+    validate_plan({**plan, 'tasks': [{**task, 'recipient': recipient}]})
+    with pytest.raises(ValueError, match='selected original timed readback'):
+        validate_plan({**plan, 'tasks': [{key: value for key, value in task.items() if key != 'readback'} | {'recipient': recipient}]})
+    for change in ({'timeout_seconds': True}, {'intent_id': '../other'}, {'prompt': ' '}):
+        with pytest.raises(ValueError, match='exact session, parent, intent, prompt and bounded timeout'):
+            validate_plan({**plan, 'tasks': [{**task, 'recipient': {**recipient, **change}}]})
+
+
+@pytest.mark.parametrize('kind', ['completed', 'lost', 'changed', 'duplicate'])
+def test_recipient_history_retains_the_original_wake_and_unknown_delivery(kind):
+    pytest.importorskip('temporalio')
+    from temporalio.api.history.v1 import HistoryEvent
+    from temporalio.converter import DataConverter
+    from ergora.campaigns.workflow import _read_recipient_history
+
+    async def exercise():
+        converter = DataConverter.default
+        intent = {'wake_id': 'codex-recipient:fixed-controlled-intent'}
+        schedule = HistoryEvent(event_id=22)
+        attrs = schedule.activity_task_scheduled_event_attributes
+        attrs.activity_id = intent['wake_id']
+        attrs.task_queue.name = 'original-queue'
+        attrs.retry_policy.maximum_attempts = 1
+        values = {**intent, 'changed': True} if kind == 'changed' else intent
+        attrs.input.payloads.extend(await converter.encode([values]))
+        started = HistoryEvent(event_id=23)
+        started.activity_task_started_event_attributes.scheduled_event_id = 22
+        started.activity_task_started_event_attributes.attempt = 1
+        ending = HistoryEvent(event_id=24)
+        if kind == 'lost':
+            ending.activity_task_timed_out_event_attributes.scheduled_event_id = 22
+        elif kind == 'duplicate':
+            ending.activity_task_scheduled_event_attributes.CopyFrom(attrs)
+        else:
+            completed = ending.activity_task_completed_event_attributes
+            completed.scheduled_event_id = 22
+            completed.started_event_id = 23
+            completed.result.payloads.extend(await converter.encode([{'status': 'observed', 'native_run_id': 'original'}]))
+        args = (converter, [schedule, started, ending], {'task_queue': 'original-queue'}, intent, 18)
+        if kind in ('changed', 'duplicate'):
+            with pytest.raises(ValueError, match='original wake intent|second delivery'):
+                await _read_recipient_history(*args)
+        else:
+            result = await _read_recipient_history(*args)
+            assert result['intent'] == intent and result['scheduled_event_id'] == 22 and result['completed_event_id'] == 24
+            assert result['status'] == ('observed' if kind == 'completed' else 'unknown')
+
+    asyncio.run(exercise())
+
+
+def test_recipient_gate_obeys_the_same_native_cutoff_during_campaign_lock_contention(tmp_path, monkeypatch):
+    from ergora.campaigns.recipient_gate import RecipientBlocked, RecipientGate
+    from ergora.runtime import budget_clock
+    from ergora.storage.state import file_lock
+
+    lock = tmp_path / 'campaign.lock'
+    gate = RecipientGate.__new__(RecipientGate)
+    gate.files = SimpleNamespace(lock=lock)
+    monkeypatch.setattr(gate, 'blocker', lambda: None)
+    monkeypatch.setattr(gate, 'remaining', lambda: 120)
+    saved_clock = {'original': True}
+    allowances = iter((0.5, 0))
+
+    def original_remaining(clock, timeout):
+        assert clock is saved_clock and timeout == 1
+        return next(allowances)
+
+    monkeypatch.setattr(budget_clock, 'remaining', original_remaining)
+    with file_lock(lock, blocking=False):
+        with pytest.raises(RecipientBlocked, match='native_turn_expired'):
+            with gate.admission(native_clock=saved_clock, native_timeout=1):
+                pytest.fail('A contended launch cannot enter after its native turn cutoff')
+
+
+def test_recipient_write_open_breaks_the_lease_and_kills_its_original_gate(tmp_path):
+    import select
+
+    installed = tmp_path / 'codex'
+    approved = b'approved original executable bytes'
+    installed.write_bytes(approved)
+    metadata = installed.stat()
+    binding = {'payload_sha256': hashlib.sha256(approved).hexdigest(), 'payload_executable': str(installed),
+               'device': metadata.st_dev, 'inode': metadata.st_ino, 'size': len(approved)}
+    helper = '''
+import json, sys
+from ergora.campaigns.recipient_gate import RecipientGate
+gate = RecipientGate.__new__(RecipientGate)
+gate.binding = json.loads(sys.argv[1])
+gate.require_open = lambda **kwargs: None
+with gate.leased_payload({}, 1):
+    print('leased exact bytes', flush=True)
+    sys.stdin.read()
+'''
+    child = subprocess.Popen([sys.executable, '-P', '-c', helper, json.dumps(binding)], stdin=subprocess.PIPE,
+                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    try:
+        assert select.select([child.stdout], [], [], 10)[0] and child.stdout.readline() == b'leased exact bytes\n'
+        try:
+            changed = os.open(installed, os.O_WRONLY | os.O_NONBLOCK)
+        except BlockingIOError:
+            pass
+        else:
+            os.close(changed)
+        assert child.wait(timeout=10) == -signal.SIGKILL
+        with installed.open('ab') as changed:
+            changed.write(b'different same-inode bytes')
+        assert installed.stat().st_ino == metadata.st_ino and installed.read_bytes() != approved
+    finally:
+        if child.poll() is None:
+            child.kill()
+        child.communicate(timeout=10)
+
+
+@pytest.mark.parametrize('dispatch', ['unrecorded', 'incomplete'])
+def test_recipient_status_retains_a_proven_blocker_and_separates_partial_publication(monkeypatch, dispatch):
+    from ergora.agents import runs
+    from ergora.campaigns import recipient_gate
+
+    recipient = {'session_id': 'session', 'parent_run_id': 'parent', 'intent_id': 'original'}
+    native = runs._continuation_run_id(recipient['session_id'], recipient['intent_id'])
+    intent = {'wake_id': 'original-wake'}
+    saved = {'native_run_id': native, 'intent': intent}
+    opening = {'plan': {'tasks': [{'recipient': recipient, 'readback': {}}]}}
+    files = SimpleNamespace(project='demo', _read=lambda _: saved)
+    monkeypatch.setattr(recipient_gate, 'RecipientGate', lambda *args: SimpleNamespace(intent=intent))
+    monkeypatch.setattr(runs, 'continuation_receipt', lambda *args: {'run_id': native, 'dispatch': dispatch, 'run': None})
+    prior = {'intent': intent, 'status': 'blocked', 'outcome': {'native_run_id': native, 'reason': 'session_slot_timeout'}}
+    output = application._recipient_status(None, files, opening, {'started': True}, None,
+                                           {'readback_completion': {'recipient': prior}})['recipient']
+    assert output['native_receipt']['dispatch'] == dispatch
+    if dispatch == 'unrecorded':
+        assert output['status'] == 'blocked' and output['reason'] == 'session_slot_timeout'
+    else:
+        assert output['status'] == 'unknown' and 'reason' not in output
 
 
 @pytest.mark.parametrize('outcome', ['passing', 'unrelated', 'pending', 'unaccepted', 'changed-grant',

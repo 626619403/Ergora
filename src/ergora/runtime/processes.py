@@ -196,15 +196,24 @@ def run(argv: list[str], cwd: Path, output: Path, timeout: float, stdin: str = "
         env: dict | None = None, *, supervised: bool = False, lock_fd: int | None = None,
         command_record: Path | None = None, stop_requested: Callable[[], bool] | None = None,
         record_lifecycle: bool = False, deadline: float | None = None,
-        on_start: Callable[[dict], None] | None = None, observe_direct_child_start: bool = False) -> dict:
+        on_start: Callable[[dict], None] | None = None, observe_direct_child_start: bool = False,
+        payload_executable: tuple[int, int] | None = None) -> dict:
     if (record_lifecycle or on_start is not None) and not supervised:
         raise ValueError('Durable subtree receipts require the original supervised process owner')
+    if payload_executable is not None and (sys.platform != 'linux' or on_start is None
+            or len(payload_executable) != 2 or not all(type(value) is int and value > 0 for value in payload_executable)):
+        raise ValueError('Selected payload exec witness requires Linux, a native start observer and the pinned inode')
     if deadline is not None:
         if supervised:
             raise ValueError('Supervised processes require their original stop owner, not an ordinary deadline')
         deadline = min(deadline, time.monotonic() + timeout)
     def should_stop():
-        return (supervised and _cancel_requested) or (stop_requested is not None and stop_requested())
+        signalled = supervised and _cancel_requested
+        if payload_executable is not None:
+            # Consult the original gated owner even when its supervisor already received a signal.
+            requested = stop_requested is not None and stop_requested()
+            return signalled or requested
+        return signalled or (stop_requested is not None and stop_requested())
     output.mkdir(parents=True, exist_ok=False, mode=0o700)
     (output / "stdin.txt").write_text(stdin, encoding="utf-8", newline="\n")
     if os.name == "nt":
@@ -221,6 +230,22 @@ def run(argv: list[str], cwd: Path, output: Path, timeout: float, stdin: str = "
     owner = identity(os.getpid()) if record_lifecycle else None
     model = None
     direct_child_start = None
+    payload_exec_at = None
+    stopped_at_cleanup = None
+
+    def observe_payload_exec():
+        nonlocal payload_exec_at
+        if payload_executable is None or payload_exec_at is not None or model is None:
+            return
+        try:
+            executable = Path(f'/proc/{model["pid"]}/exe').stat()
+            if (executable.st_dev, executable.st_ino) != payload_executable or identity(model['pid']) != model:
+                return
+        except (OSError, ValueError):
+            return
+        payload_exec_at = time.monotonic_ns()
+        on_start(model)
+
     with ((output / "stdout.txt").open("w", encoding="utf-8") as stdout,
           (output / "stderr.txt").open("w", encoding="utf-8") as stderr,
           (output / "stdin.txt").open("rb") as recorded_input):
@@ -240,13 +265,14 @@ def run(argv: list[str], cwd: Path, output: Path, timeout: float, stdin: str = "
                 elif observe_direct_child_start and not supervised and sys.platform == 'linux':
                     # The original Popen still owns this child, including an unreaped fast exit.
                     direct_child_start = _observe_direct_child_start(process.pid)
-                if on_start is not None:
+                if on_start is not None and payload_executable is None:
                     on_start(model)
                 try:
                     if supervised or stop_requested is not None:
                         # TERM only requests cancellation, including during final cleanup.
                         wait_deadline = None if supervised else (deadline if deadline is not None else time.monotonic() + timeout)
                         while not should_stop():
+                            observe_payload_exec()
                             interval = 0.2 if wait_deadline is None else min(0.2, wait_deadline - time.monotonic())
                             if interval <= 0:
                                 status = "timed_out"
@@ -279,6 +305,9 @@ def run(argv: list[str], cwd: Path, output: Path, timeout: float, stdin: str = "
                 process.wait()
             if supervised:
                 descendants = _reap_children()
+                if payload_executable is not None:
+                    # Process termination precedes publishing its cleanup receipt, which may outlast a deadline.
+                    stopped_at_cleanup = should_stop()
                 if record_lifecycle:
                     _record_cleanup(output, {'schema_version': 1, 'kind': 'supervised-process-cleanup',
                         'owner': owner, 'model': model, 'model_waited': process is not None,
@@ -286,11 +315,15 @@ def run(argv: list[str], cwd: Path, output: Path, timeout: float, stdin: str = "
                         'descendants': descendants, 'remaining_children':
                         Path(f'/proc/{os.getpid()}/task/{os.getpid()}/children').read_text().split()})
     code = process.returncode if process is not None else None
-    if should_stop():
+    stopped = should_stop() if stopped_at_cleanup is None else stopped_at_cleanup
+    if stopped:
         status = "cancelled"
     if code and status == "succeeded":
         status = "failed"
     result = {"status": status, "returncode": code, "output": str(output)}
+    if payload_executable is not None and model is not None:
+        result['payload_exec'] = {'status': 'observed' if payload_exec_at is not None else 'unverified',
+                                  'direct_child': model, 'observed_at_ns': payload_exec_at}
     if direct_child_start is not None:
         result['direct_child_start'] = direct_child_start
     return result

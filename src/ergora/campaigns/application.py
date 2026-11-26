@@ -9,7 +9,7 @@ from uuid import uuid4
 from ergora.campaigns.records import (
     FIXED_TASK_UPDATE_PREFIX, PENDING_JOB_STATES, WORKFLOW_TYPE, CampaignFiles, attempt_document, check_intent,
     check_record_name, fixed_tasks, identity, original_check_evidence, project_selection, read_plan,
-    require_check_project, result_document, sha256, stop_intent, update_attempt, uuid_text, verify_registration,
+    recipient_task, require_check_project, result_document, sha256, stop_intent, update_attempt, uuid_text, verify_registration,
     worker_queue, workflow_id,
 )
 from ergora.storage.state import State, file_lock
@@ -25,13 +25,25 @@ def _temporal():
     return workflow
 
 
-def _opening(files, revision, plan, plan_sha, selection):
+def _opening(files, revision, plan, plan_sha, selection, binding=None):
     creation_id = str(uuid4())
-    return {'schema_version': 1, 'mode': 'record_only', 'control_home': str(files.home), 'project': files.project,
+    result = {'schema_version': 1, 'mode': 'record_only', 'control_home': str(files.home), 'project': files.project,
             'project_revision': revision, 'campaign': files.campaign, 'actor': files.actor, 'plan': plan,
             'plan_sha256': plan_sha, 'plan_document_sha256': identity(plan), 'creation_id': creation_id,
             'task_queue': worker_queue(files.project, files.campaign, selection['scheduler'], creation_id),
             'workflow_id': workflow_id(files.project, files.campaign), 'workflow_type': WORKFLOW_TYPE, **selection}
+    if binding is not None:
+        result.update(mode='codex_recipient', recipient_binding=binding)
+    return result
+
+
+def _freeze_recipient(state, files, revision, plan):
+    task = recipient_task({'plan': plan})
+    if task is None:
+        return None
+    from ergora.agents.runs import prepare_campaign_recipient
+
+    return prepare_campaign_recipient(state, files.project, revision, task['recipient'])
 
 
 def _future(opening):
@@ -49,6 +61,8 @@ def _snapshot(files, opening, attempt, result):
         return {**state, 'status': 'not_recorded'}
     outcome = 'recorded' if result else 'unknown' if attempt else 'prepared'
     return {**state, 'status': outcome, 'project_revision': opening['project_revision'],
+            'mode': opening['mode'],
+            **({'recipient_execution_authorized': True} if 'recipient_binding' in opening else {}),
             'operator_euid': opening['actor']['euid'], 'registration_sha256': opening['registration']['sha256'],
             'configuration_sha256': opening['configuration_sha256'], 'plan': opening['plan'],
             'plan_sha256': opening['plan_sha256'], 'plan_document_sha256': opening['plan_document_sha256'],
@@ -57,11 +71,14 @@ def _snapshot(files, opening, attempt, result):
             'workflow_id': opening['workflow_id'], 'run_id': result['run_id'] if result else None}
 
 
-def _stop_snapshot(records):
+def _stop_snapshot(records, *, recipient=False):
     intent, attempt, result = records
     phase = 'recorded' if result else 'unknown' if attempt else 'prepared' if intent else 'not_recorded'
-    return {'status': phase, 'result_saved': result is not None, 'remote_status': 'not_requested', 'retryable': False,
-            'update_id': attempt['update_id'] if attempt else None, 'receipt': result['receipt'] if result else None}
+    snapshot = {'status': phase, 'result_saved': result is not None, 'remote_status': 'not_requested', 'retryable': False,
+                'update_id': attempt['update_id'] if attempt else None, 'receipt': result['receipt'] if result else None}
+    if recipient:
+        snapshot['local_fence_saved'] = intent is not None
+    return snapshot
 
 
 async def _observe(runtime, output, client, handle, description, opening, stop_records, read_state):
@@ -113,7 +130,7 @@ async def _read_original(runtime, output, opening, attempt, run_id, *, client=No
     except (TimeoutError, ConnectionError):
         return {**output, 'remote_status': 'unavailable', 'remote_error': 'connection_or_lookup'}
     observed = await _observe(runtime, output, client, handle, description, opening, stop_records, read_state)
-    if check_commands and observed['workflow_state_status'] == 'unavailable':
+    if check_commands and (observed['workflow_state_status'] == 'unavailable' or recipient_task(opening) is not None):
         try:
             async with asyncio.timeout(runtime.RPC_SECONDS):
                 updates, completion = await runtime.read_task_history(client, handle, opening, check_commands)
@@ -140,6 +157,53 @@ def _task_observation_history(commands, updates=None, *, unobserved='unavailable
     return history
 
 
+def _recipient_status(state, files, opening, attempt, result, output):
+    if opening is None or recipient_task(opening) is None:
+        return output
+    original = output.get('readback_completion', {}).get('recipient')
+    local_attempt = files._read('recipient-attempt') if attempt is not None else None
+    selected = recipient_task(opening)['recipient']
+    wake = {'status': 'awaiting_readback', 'intent': None, 'native_receipt': None, 'history': original}
+    if original is not None:
+        wake.update(status=original['status'], intent=original['intent'])
+        if 'outcome' in original:
+            from ergora.agents.runs import _continuation_run_id
+
+            expected = _continuation_run_id(selected['session_id'], selected['intent_id'])
+            if original['outcome'].get('native_run_id') != expected:
+                raise ValueError('Original Campaign recipient outcome names a different native turn')
+            if original['status'] == 'blocked':
+                wake['reason'] = original['outcome']['reason']
+    if local_attempt is not None:
+        from ergora.agents.runs import continuation_receipt
+        from ergora.campaigns.recipient_gate import RecipientGate
+
+        gate = RecipientGate(files, opening, attempt, result, local_attempt)
+        if original is not None and original['intent'] != gate.intent:
+            raise ValueError('Saved Campaign recipient attempt differs from its original History')
+        receipt = continuation_receipt(state, files.project, selected['session_id'], selected['parent_run_id'], selected['intent_id'])
+        if receipt['run_id'] != local_attempt['native_run_id']:
+            raise ValueError('Campaign native receipt names a different original turn')
+        run = receipt['run']
+        if run is not None and (run['submitted'] != gate.submission() or run['context_digest'] != gate.binding['context_digest']):
+            raise ValueError('Campaign native receipt does not bind the original selected recipient')
+        wake.update(intent=gate.intent, native_receipt=receipt)
+        if receipt['dispatch'] in ('unrecorded', 'incomplete'):
+            blocked = receipt['dispatch'] == 'unrecorded' and original is not None and original['status'] == 'blocked'
+            wake['status'] = 'blocked' if blocked else 'unknown'
+            if not blocked:
+                wake.pop('reason', None)
+        else:
+            wake['status'] = 'observed'
+            wake.pop('reason', None)
+    elif wake['status'] in ('awaiting_readback', 'scheduled'):
+        stopped = output['stop']['status'] != 'not_recorded'
+        expired = time.time() >= opening['plan']['limits']['expires_at']
+        if stopped or expired:
+            wake.update(status='blocked' if original is None else 'unknown', reason='stopped' if stopped else 'expired')
+    return {**output, 'recipient': wake}
+
+
 async def status(state: State, project: str, campaign: str, *, online: bool = False) -> dict:
     """Read the saved evidence, optionally observing the verified original Workflow on the saved route."""
     files = CampaignFiles(state.root, project, campaign)
@@ -150,15 +214,16 @@ async def status(state: State, project: str, campaign: str, *, online: bool = Fa
     if attempt is not None:
         # A concurrent writer may start and stop after a prepared-only snapshot.
         stop_records = files.load_stop(opening, attempt, result)
-    output = {**_snapshot(files, opening, attempt, result), 'stop': _stop_snapshot(stop_records)}
+    recipient = opening is not None and recipient_task(opening) is not None
+    output = {**_snapshot(files, opening, attempt, result), 'stop': _stop_snapshot(stop_records, recipient=recipient)}
     if attempt is None:
-        return output
+        return _recipient_status(state, files, opening, attempt, result, output)
     run_id = stop_records[0]['run_id'] if stop_records[0] is not None else output['run_id']
     run_id, check_commands = files.load_checks(opening, attempt, run_id)
     if not online:
         if check_commands:
             output['task_observation_history'] = _task_observation_history(check_commands, unobserved='not_requested')
-        return output
+        return _recipient_status(state, files, opening, attempt, result, output)
     output = await _read_original(_temporal(), output, opening, attempt, run_id, read_state=True,
                                   stop_records=stop_records, check_commands=check_commands)
     if (check_commands and output['workflow_state_status'] != 'observed'
@@ -171,7 +236,7 @@ async def status(state: State, project: str, campaign: str, *, online: bool = Fa
                 command = files.load_check(opening, attempt, output['run_id'], task, waiting=True)
             if command is not None:
                 task.update(eligible=False, attempt_status='unknown', update_id=command['attempt']['update_id'])
-    return output
+    return _recipient_status(state, files, opening, attempt, result, output)
 
 
 async def create(state: State, project: str, campaign: str, path: Path, revision: int, plan_sha: str,
@@ -186,7 +251,7 @@ async def create(state: State, project: str, campaign: str, path: Path, revision
     if opening is None:
         # Reject unsupported or stale authorization before creating the campaign namespace.
         selected = project_selection(state, state.project(project), revision)
-        preview = _opening(files, revision, plan, plan_sha, selected)
+        preview = _opening(files, revision, plan, plan_sha, selected, _freeze_recipient(state, files, revision, plan))
         _future(preview)
     files.ensure_directory()
     with file_lock(files.lock, blocking=False):
@@ -195,7 +260,7 @@ async def create(state: State, project: str, campaign: str, path: Path, revision
             with State(state.root).connect() as db:
                 db.execute('BEGIN IMMEDIATE')
                 selected = project_selection(state, state.project(project), revision)
-                opening = _opening(files, revision, plan, plan_sha, selected)
+                opening = _opening(files, revision, plan, plan_sha, selected, _freeze_recipient(state, files, revision, plan))
                 _future(opening)
                 files.write('start-intent', opening)
         elif (opening['project_revision'] != revision or opening['plan_sha256'] != plan_sha
@@ -217,6 +282,8 @@ async def create(state: State, project: str, campaign: str, path: Path, revision
                 selected = project_selection(state, state.project(project), revision)
                 if any(opening[key] != value for key, value in selected.items()):
                     raise ValueError('Original project registration or scheduler changed before attempt')
+                if 'recipient_binding' in opening and _freeze_recipient(state, files, revision, plan) != opening['recipient_binding']:
+                    raise ValueError('Frozen Campaign recipient changed before the original attempt')
                 _future(opening)
                 attempt = attempt_document(opening, str(uuid4()))
                 files.write('start-attempt', attempt)
@@ -249,15 +316,23 @@ async def stop(state: State, project: str, campaign: str, *, confirm: bool) -> d
     _, start_attempt, _ = files.load()
     if start_attempt is None:
         raise ValueError('Campaign stop requires a saved original start attempt')
-    runtime = _temporal()
     files.ensure_directory()
     with file_lock(files.lock, blocking=False):
         opening, start_attempt, start_result = files.load()
         verify_registration(state, opening)
         records = files.load_stop(opening, start_attempt, start_result)
         intent, attempt, result = records
-        output = {**_snapshot(files, opening, start_attempt, start_result), 'stop': _stop_snapshot(records)}
+        recipient = recipient_task(opening) is not None
+        if recipient and intent is None:
+            original_run = start_result['run_id'] if start_result is not None else files.load_checks(opening, start_attempt, None)[0]
+            if original_run is not None:
+                # Stop local admission and the original native reaper before depending on the remote Worker.
+                intent = stop_intent(opening, identity(start_attempt), original_run)
+                files.write('stop-intent', intent)
+                records = (intent, attempt, result)
+        output = {**_snapshot(files, opening, start_attempt, start_result), 'stop': _stop_snapshot(records, recipient=recipient)}
         run_id = intent['run_id'] if intent else output['run_id']
+        runtime = _temporal()
         try:
             async with asyncio.timeout(runtime.RPC_SECONDS):
                 client = await runtime.connect(opening)
@@ -286,7 +361,7 @@ async def stop(state: State, project: str, campaign: str, *, confirm: bool) -> d
                 result = {'receipt': receipt}
                 files.write('stop-result', result)
             records = (intent, attempt, result)
-            output['stop'] = _stop_snapshot(records)
+            output['stop'] = _stop_snapshot(records, recipient=recipient)
             observed = await _read_original(runtime, output, opening, start_attempt, description.run_id, client=client,
                                             read_state=True, stop_records=records)
         else:
@@ -476,8 +551,9 @@ async def worker(state: State, project: str, campaign: str) -> dict:
         raise ValueError('Campaign worker requires a saved original start attempt')
     verify_registration(state, opening)
     runtime = _temporal()
+    recipient = recipient_task(opening) is not None
     stop_records = files.load_stop(opening, attempt, result)
-    output = {**_snapshot(files, opening, attempt, result), 'stop': _stop_snapshot(stop_records)}
+    output = {**_snapshot(files, opening, attempt, result), 'stop': _stop_snapshot(stop_records, recipient=recipient)}
     run_id = stop_records[0]['run_id'] if stop_records[0] is not None else output['run_id']
     try:
         async with asyncio.timeout(runtime.RPC_SECONDS):
@@ -491,7 +567,7 @@ async def worker(state: State, project: str, campaign: str) -> dict:
     if description.status != runtime.WorkflowExecutionStatus.RUNNING:
         # A concurrent stop can close the run during the first remote observation.
         stop_records = files.load_stop(opening, attempt, result)
-        output['stop'] = _stop_snapshot(stop_records)
+        output['stop'] = _stop_snapshot(stop_records, recipient=recipient)
         return {**await _observe(runtime, output, client, handle, description, opening, stop_records, True),
                 'worker_status': 'already_closed'}
     try:
@@ -500,7 +576,7 @@ async def worker(state: State, project: str, campaign: str) -> dict:
         raise ValueError('Campaign worker exited without observing original closure') from error
     if worker_status == 'closed':
         stop_records = files.load_stop(opening, attempt, result)
-        observed['stop'] = _stop_snapshot(stop_records)
+        observed['stop'] = _stop_snapshot(stop_records, recipient=recipient)
         return {**await _read_original(runtime, observed, opening, attempt, description.run_id, client=client,
                                        read_state=True, stop_records=stop_records), 'worker_status': worker_status}
     return {**observed, 'worker_status': worker_status}

@@ -657,6 +657,77 @@ def test_session_concurrent_parent_has_one_real_effect(native_session_case):
     assert len((repo / 'native-calls.jsonl').read_text().splitlines()) == 2
 
 
+def test_campaign_recipient_rejects_a_consumed_parent_before_native_reservation(native_session_case, monkeypatch):
+    from types import SimpleNamespace
+
+    state, repo, config, runs = native_session_case
+    revision = state.project('demo')['revision']
+    original = runs.run_agent(state, 'demo', 'implementer', 'first', timeout=10,
+                              session_intent='campaign-parent', expected_revision=revision, codex_config=config)
+    parent = original['id']
+    assert runs.continue_session(state, 'demo', parent, parent, 'already authorized follow-up',
+        expected_revision=revision, intent_id='existing-turn', timeout=10)['status'] == 'succeeded'
+    monkeypatch.setattr(runs.RecipientGate, 'load', lambda *args: SimpleNamespace(require_open=lambda: None))
+    with pytest.raises(runs.RecipientBlocked, match='stale_parent'):
+        runs.continue_session(state, 'demo', parent, parent, 'the frozen Campaign prompt', expected_revision=revision,
+                              intent_id='campaign-intent', campaign_recipient={'original': True}, timeout=10, wait_for_slot=True)
+    assert runs.continuation_receipt(state, 'demo', parent, parent, 'campaign-intent')['dispatch'] == 'unrecorded'
+    assert len((repo / 'native-calls.jsonl').read_text().splitlines()) == 2
+
+
+def test_campaign_recipient_slot_timeout_leaves_the_original_intent_unreserved(native_session_case, monkeypatch):
+    from types import SimpleNamespace
+
+    state, repo, config, runs = native_session_case
+    revision = state.project('demo')['revision']
+    original = runs.run_agent(state, 'demo', 'implementer', 'first', timeout=10,
+                              session_intent='held-campaign-parent', expected_revision=revision, codex_config=config)
+    parent = original['id']
+    gate = SimpleNamespace(require_open=lambda: None, remaining=lambda: 90)
+    monkeypatch.setattr(runs.RecipientGate, 'load', lambda *args: gate)
+    monkeypatch.setattr(runs.budget_clock, 'remaining', lambda *args: 0)
+    with runs.file_lock(state.root / 'runs' / f'{parent}.session.lock', blocking=False):
+        with pytest.raises(runs._SessionSlotTimeout, match='original session slot'):
+            runs.continue_session(state, 'demo', parent, parent, 'the frozen Campaign prompt', expected_revision=revision,
+                                  intent_id='held-campaign-intent', campaign_recipient={'original': True}, timeout=10,
+                                  wait_for_slot=True)
+    assert runs.continuation_receipt(state, 'demo', parent, parent, 'held-campaign-intent')['dispatch'] == 'unrecorded'
+    assert len((repo / 'native-calls.jsonl').read_text().splitlines()) == 1
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Requires the original Linux process semantics')
+def test_gated_reaper_freezes_stop_before_cleanup_publication(tmp_path):
+    helper = '''
+import json, os, shutil, sys
+from pathlib import Path
+from ergora.runtime import processes
+
+working = Path(sys.argv[1])
+program = shutil.which('sleep')
+executable = os.stat(program)
+observed = {'started': False, 'publishing': False, 'late_samples': 0}
+publish = processes._record_cleanup
+def started(_):
+    observed['started'] = True
+def original_stop():
+    if observed['publishing']:
+        observed['late_samples'] += 1
+    return observed['started']
+def delayed_cleanup(directory, receipt):
+    assert receipt['model_waited'] and receipt['remaining_children'] == []
+    observed['publishing'] = True
+    publish(directory, receipt)
+processes._record_cleanup = delayed_cleanup
+outcome = processes.run([program, '20'], working, working / 'output', 10, supervised=True,
+                        record_lifecycle=True, stop_requested=original_stop, on_start=started,
+                        payload_executable=(executable.st_dev, executable.st_ino))
+print(json.dumps({'status': outcome['status'], 'late_samples': observed['late_samples']}))
+'''
+    result = subprocess.run([sys.executable, '-P', '-c', helper, str(tmp_path)], capture_output=True, text=True, timeout=12)
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout) == {'status': 'cancelled', 'late_samples': 0}
+
+
 @pytest.mark.parametrize('end', ['release', 'expiry'])
 def test_continuation_cli_waits_for_original_slot_within_turn_timeout(
         native_session_case, tmp_path, monkeypatch, capsys, end):

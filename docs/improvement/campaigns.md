@@ -2,7 +2,7 @@
 
 English · [Documentation](../README.md)
 
-The local Unix operator can record the goal, acceptance criteria, baseline commit, evidence format and absolute expiry of a campaign. The original Temporal workflow records the passage of that deadline. This entry point grants no execution permissions. Expert actions and experiment jobs use their own execution and authorization paths.
+The local Unix operator can record the goal, acceptance criteria, baseline commit, evidence format and absolute expiry of a campaign. The original Temporal workflow records the passage of that deadline. Ordinary plans are record-only. An explicit Codex recipient on the timed-readback task can authorize one continuation of an existing native session.
 
 Use an existing published project and explicitly bind its scheduler to the selected trusted Temporal service. Install the existing `ergora[temporal]` extra for `create`, `worker`, `stop`, `observe-check` and online `status`. The operation uses the protected control home's owner and the CLI process's effective UID. This is local-process assurance. The current scheduler uses the configured address and namespace and relies on the selected service's access controls. [Project registration](../projects/registration.md) · [Configure Temporal](research-and-schedules.md)
 
@@ -43,18 +43,18 @@ After an uncertain start, read `status --online` and repeat `create` with the sa
 
 Use the same local Unix operator and control home. The confirmed stop binds one request to the saved scheduler and original first Run.
 
-Before submitting STOP on an open plan, run the current `ergora campaign worker` on the original campaign queue. If an older worker lacks the STOP handler, shut it down normally before starting the current worker.
+Run the current `ergora campaign worker` on the original campaign queue to deliver STOP to Temporal. If an older worker lacks the STOP handler, shut it down normally before starting the current worker. With an authorized Codex recipient and a pinned first Run, the confirmed operation also saves the local native STOP fence even when Temporal or its Worker cannot receive the Update.
 
 ```bash
 ergora campaign stop my-project first-plan --confirm
 ergora campaign status my-project first-plan --online
 ```
 
-An unavailable Worker check returns exit 1 with `stop.remote_status: worker_unavailable` and `stop.retryable: true` before saving a new stop intent or attempt. Retry the same command once the current worker is running.
+An unavailable Worker check returns exit 1 with `stop.remote_status: worker_unavailable` and `stop.retryable: true`. A record-only Campaign leaves the stop intent unrecorded. An opted-in native recipient can show `stop.local_fence_saved: true` with a prepared intent and no Update attempt. Retry the same command once the current Worker is running to send that original intent.
 
 After a lost reply, read online status and repeat the same stop command to reconcile the saved attempt and save its verified decision. Once an attempt exists, `stop.retryable` is `false` and the command observes the original `stop.update_id`. An unavailable service or missing decision leaves that attempt uncertain. An already closed Run at preflight returns its original terminal status.
 
-Read `stop.status` for progress and `stop.receipt.decision` for the verified Update outcome. `accepted` records the original Workflow's decision to stop, and `expired` records that the original deadline took effect. The command can return exit 0 for an accepted receipt before closure is verified. Use online `temporal_status` and `workflow_state.phase` to check the original terminal outcome. This stop applies to the campaign plan. Agent, Job and resource lifecycle remain with their execution owners.
+Read `stop.status` for progress and `stop.receipt.decision` for the verified Update outcome. `accepted` records the original Workflow's decision to stop, and `expired` records that the original deadline took effect. The command can return exit 0 for an accepted receipt before closure is verified. Use online `temporal_status` and `workflow_state.phase` to check the original terminal outcome. For the selected native recipient, its own `recipient.native_receipt.run.execution_stopped` records confirmed process cleanup. The original Job and resource owners supply their own stop and release evidence.
 
 ## Record an original fixed check for a task
 
@@ -122,3 +122,21 @@ Online status reports `readback_observation` for the opted-in task. It starts at
 When the Worker cannot return Workflow state, `status --online` can show `readback_completion` for a passing Activity recorded in the original Temporal History. This includes the original schedule and completion event IDs, the accepted waiting receipt digest and the readback proof digests. Current Workflow state remains unavailable until the Worker can return it.
 
 Use a confirmed `observe-check` to verify the original Job, record its passing terminal receipt and make dependents eligible. Reader cleanup covers the local status reader. Read any late Job outcome through the original fixed-check status and obtain resource release evidence from the original resource owner.
+
+### Authorize one local Codex recipient
+
+Add `recipient` to the one task with a timed readback. Select an existing persistent native Codex session in the same published project and revision. Use its latest stopped turn as `parent_run_id` and choose a new stable `intent_id`. The existing native session supplies the approved role, settings and workspace policy. This entry uses the selected installed Linux Codex ELF and the same protected local control home. A session whose installed executable cannot be pinned to that payload is refused at Campaign creation.
+
+```json
+{
+  "session_id": "SESSION_ID",
+  "parent_run_id": "LATEST_STOPPED_RUN_ID",
+  "intent_id": "read-original-check",
+  "prompt": "Use the original verification result to summarize this candidate.",
+  "timeout_seconds": 60
+}
+```
+
+Supply those fields as the `recipient` object's value and confirm the exact plan bytes with the existing `campaign create` command. The opening freezes the native recipient and original prompt. The normal `campaign worker` schedules one authorized continuation after one successful original timed readback. The launch helper verifies the installed binary under a Linux read lease and keeps its ordinary installed pathname through exec. An attempted write that breaks the lease terminates the inert helper. The launch gate observes the original native clock and the Campaign expiry while waiting for its lock and before exec. The original native session lock and process owner retain reservation and cleanup. Local STOP publication is serialized with the protected exec handoff. The running native owner observes a saved STOP or the original cutoff and reaps its process tree.
+
+Read `recipient` in Campaign status for local attempt evidence, optional exact wake History, and the native continuation receipt. A verified pre-reservation rejection can report a blocker such as `stale_parent` or `session_slot_timeout`. `native_start` advances only when the original process owner observes the selected Codex payload. Use `run.native_session` for the separately verified native thread and outcome. If the Activity reply or native launch evidence is incomplete, retain the original intent and read status again. Worker replacement processes the pinned Run. An uncertain original dispatch stays bound to the same attempt and receives no replacement authorization.

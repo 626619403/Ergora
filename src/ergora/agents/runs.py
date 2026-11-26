@@ -25,6 +25,8 @@ import ergora.agents.mcp as task_mcp
 import ergora.definitions.workflows as workflow_definitions
 import ergora.improvement.document_corrections as document_corrections
 from ergora.runtime import budget_clock
+from ergora.campaigns.recipient_gate import RecipientBlocked, RecipientGate, require_payload_support
+from ergora.campaigns.records import CampaignFiles
 from ergora.configuration import catalog as components
 from ergora.configuration import validation as contracts
 from ergora.development import dags
@@ -1155,6 +1157,41 @@ def _continuation_run_id(session_id: str, intent_id: str) -> str:
     return uuid.uuid5(uuid.NAMESPACE_URL, 'ergora:native-turn:' + session_id + ':' + intent_id).hex
 
 
+def prepare_campaign_recipient(state: State, project_id: str, revision: int, declaration: dict) -> dict:
+    """Freeze the exact existing native Codex session and Linux executable before Campaign start."""
+    session, parent = declaration['session_id'], declaration['parent_run_id']
+    _session_prompt(declaration['prompt'], declaration['timeout_seconds'])
+    turns = _session_turns(state, project_id, session)
+    latest = turns[-1]
+    native_id = latest.get('native_session', {}).get('id')
+    if (latest['id'] != parent or latest.get('execution_stopped') is not True or not native_id
+            or latest.get('status') in ('unknown', 'reserved', 'running')):
+        raise ValueError('Campaign recipient must select the original latest stopped native turn')
+    context = _read_session_context(state, turns[0])
+    if context['project_revision'] != revision or context['binding']['tool'] != 'codex':
+        raise ValueError('Campaign requires a persistent Codex recipient from the approved project revision')
+    _validate_session_authority(state, context)
+    if (continuation_receipt(state, project_id, session, parent, declaration['intent_id'])['dispatch'] != 'unrecorded'):
+        raise ValueError('Campaign recipient intent already has original native dispatch evidence')
+    inference = context['inference']
+    candidates = []
+    for path, expected in inference['executable_files'].items():
+        with open(path, 'rb') as stream:
+            if stream.read(4) == b'\x7fELF':
+                stream.seek(0)
+                details = os.fstat(stream.fileno())
+                if hashlib.file_digest(stream, 'sha256').hexdigest() != expected:
+                    raise ValueError('Selected native Codex executable changed while freezing Campaign authority')
+                candidates.append((path, expected, details))
+    if len(candidates) != 1:
+        raise ValueError('Campaign recipient requires one frozen installed Codex ELF and protected Linux descriptor exec')
+    require_payload_support()
+    path, digest, details = candidates[0]
+    return {'context_digest': turns[0]['context_digest'], 'role': context['role'], 'native_id': native_id,
+            'source_executable': inference['executable'], 'payload_executable': path, 'payload_sha256': digest,
+            'device': details.st_dev, 'inode': details.st_ino, 'size': details.st_size}
+
+
 def _dispatch_packet(folder: Path, name: str, request_digest: str) -> dict | None:
     path = folder / name
     try:
@@ -1284,12 +1321,15 @@ class _SessionSlotTimeout(TimeoutError):
 
 
 def continue_session(state: State, project_id: str, session_id: str, parent_run_id: str, prompt: str, *,
-                     expected_revision: int, intent_id: str, timeout: int = 300, wait_for_slot: bool = False) -> dict:
+                     expected_revision: int, intent_id: str, timeout: int = 300, wait_for_slot: bool = False,
+                     campaign_recipient: dict | None = None) -> dict:
     ident = _continuation_run_id(session_id, intent_id)
     native_sources.session_id(parent_run_id, 'Parent run')
     _session_prompt(prompt, timeout)
     submitted = {'parent_run': parent_run_id, 'prompt': prompt, 'expected_revision': expected_revision,
                  'timeout': timeout, 'intent_id': intent_id}
+    if campaign_recipient is not None:
+        submitted['campaign_recipient'] = campaign_recipient
 
     def observe_existing():
         existing = native_sources.find_run(state, project_id, ident)
@@ -1301,6 +1341,7 @@ def continue_session(state: State, project_id: str, session_id: str, parent_run_
     observed = observe_existing()
     if observed is not None:
         return observed
+    gate = RecipientGate.load(state.root, project_id, campaign_recipient) if campaign_recipient is not None else None
     clock = None
     if wait_for_slot:
         clock = budget_clock.authorize(timeout)
@@ -1313,12 +1354,16 @@ def continue_session(state: State, project_id: str, session_id: str, parent_run_
     lock_path = state.root / 'runs' / (session_id + '.session.lock')
     with ExitStack() as resources:
         while True:
+            if gate is not None:
+                gate.require_open()
             try:
                 lock = resources.enter_context(file_lock(lock_path, blocking=False))
             except BlockingIOError:
                 if clock is None:
                     raise
                 remaining = budget_clock.remaining(clock, timeout)
+                if gate is not None:
+                    remaining = min(remaining, gate.remaining())
                 if remaining <= 0:
                     raise _SessionSlotTimeout('Timed out waiting for the original session slot') from None
                 time.sleep(min(.1, remaining))
@@ -1336,23 +1381,28 @@ def continue_session(state: State, project_id: str, session_id: str, parent_run_
         if expected_revision != context['project_revision']:
             raise ValueError('Turn revision differs from its original session')
         _validate_session_authority(state, context)
-        if (latest['id'] != parent_run_id or latest.get('status') in ('unknown', 'reserved', 'running')
-                or latest.get('execution_stopped') is not True
-                or not latest.get('native_session', {}).get('id')):
-            raise ValueError('Select the latest stopped turn with its saved native UUID; consumed or unknown parents cannot be dispatched')
         try:
             native_sources.turn_folder(state, ident).lstat()
         except FileNotFoundError:
             pass
         else:
             raise ValueError('Original continuation evidence has no verified reservation; read its continuation receipt')
+        if gate is not None and latest['id'] != parent_run_id:
+            raise RecipientBlocked('stale_parent')
+        if (latest['id'] != parent_run_id or latest.get('status') in ('unknown', 'reserved', 'running')
+                or latest.get('execution_stopped') is not True
+                or not latest.get('native_session', {}).get('id')):
+            raise ValueError('Select the latest stopped turn with its saved native UUID; consumed or unknown parents cannot be dispatched')
+        if gate is not None:
+            gate.require_turn(state, ident, session_id, turns[0]['context_digest'], context['role'],
+                              latest['native_session']['id'], submitted)
         return _reserve_session_turn(state, project_id, session_id, latest, ident, len(turns), prompt, timeout,
                                      clock or budget_clock.authorize(timeout), context, turns[0]['context_digest'],
-                                     submitted, lock, check_admission_deadline=wait_for_slot)
+                                     submitted, lock, check_admission_deadline=wait_for_slot, gate=gate)
 
 
 def _reserve_session_turn(state, project, root, parent, ident, ordinal, prompt, timeout, clock, context, digest,
-                          submitted, lock, *, check_admission_deadline=False):
+                          submitted, lock, *, check_admission_deadline=False, gate=None):
     _validate_session_authority(state, context)
     full_prompt = prompt + context['suffix']
     if len(full_prompt.encode('utf-8')) > 10_000_000:
@@ -1360,6 +1410,8 @@ def _reserve_session_turn(state, project, root, parent, ident, ordinal, prompt, 
     session = {'id': root, 'parent_run': parent['id'] if parent else None, 'ordinal': ordinal}
     original_prompt = full_prompt
     policy = context.get('correction_suggestions')
+    if gate is not None and policy is not None:
+        policy = {**policy, 'available': False, 'reason': 'Campaign authorizes only the frozen native continuation'}
     correction = None
     task = None
     admitted = False
@@ -1406,15 +1458,16 @@ def _reserve_session_turn(state, project, root, parent, ident, ordinal, prompt, 
     except ValueError as error:
         raise SessionRejected(str(error), submitted['intent_id']) from error
     folder = native_sources.turn_folder(state, ident)
-    admit()
-    _publish_session_packet(folder, {'request.json': encoded_request})
-    document = {'id': ident, 'project': project, 'kind': 'native-agent-run', 'role': context['role'],
-                'binding': context['binding'], 'project_revision': context['project_revision'],
-                'template': context['template'], 'session': session, 'submitted': submitted,
-                'context_digest': digest, 'request_sha256': hashlib.sha256(encoded_request).hexdigest(),
-                'prompt_sha256': hashlib.sha256(full_prompt.encode()).hexdigest(),
-                'started': now(), 'status': 'reserved', 'formal_execution_authorized': False}
-    _store(state, document)
+    with (gate.admission(native_clock=clock, native_timeout=timeout) if gate is not None else nullcontext()):
+        admit()
+        _publish_session_packet(folder, {'request.json': encoded_request})
+        document = {'id': ident, 'project': project, 'kind': 'native-agent-run', 'role': context['role'],
+                    'binding': context['binding'], 'project_revision': context['project_revision'],
+                    'template': context['template'], 'session': session, 'submitted': submitted,
+                    'context_digest': digest, 'request_sha256': hashlib.sha256(encoded_request).hexdigest(),
+                    'prompt_sha256': hashlib.sha256(full_prompt.encode()).hexdigest(),
+                    'started': now(), 'status': 'reserved', 'formal_execution_authorized': False}
+        _store(state, document)
     if task is not None:
         document_corrections.bind_native(state, project, task['proposal_id'], ident)
     if budget_clock.remaining(clock, timeout) <= 0:
@@ -1458,12 +1511,15 @@ def stop_session(state: State, project_id: str, session_id: str, run_id: str, *,
     folder = native_sources.turn_folder(state, run_id)
     stop = {'project': project_id, 'session': session_id, 'run_id': run_id,
             'request_sha256': document['request_sha256'], 'intent_id': intent_id}
-    if (folder / 'stop').exists():
-        if native_sources.packet(folder / 'stop') != stop:
-            raise ValueError('The original stop request is already recorded')
-        native_sources.sync_directory_chain(folder / 'stop')
-    else:
-        _publish_session_packet(folder / 'stop', {'record.json': native_sources.encode(stop)})
+    recipient = document['submitted'].get('campaign_recipient')
+    with (file_lock(CampaignFiles(state.root, project_id, recipient['campaign']).lock, blocking=False)
+          if recipient is not None else nullcontext()):
+        if (folder / 'stop').exists():
+            if native_sources.packet(folder / 'stop') != stop:
+                raise ValueError('The original stop request is already recorded')
+            native_sources.sync_directory_chain(folder / 'stop')
+        else:
+            _publish_session_packet(folder / 'stop', {'record.json': native_sources.encode(stop)})
     notification = 'unconfirmed'
     try:
         owner = native_sources.packet(folder / 'owner')
@@ -1501,6 +1557,9 @@ def session_main():
         'identity': owner, 'request_sha256': document['request_sha256']})})
     stopping = False
     expired = False
+    gate = None
+    campaign_blocker = None
+    observed_stop = False
     start_writer = None
     start_error = None
 
@@ -1514,11 +1573,29 @@ def session_main():
 
     def should_stop():
         nonlocal expired
+        nonlocal campaign_blocker
+        nonlocal observed_stop
+        if gate is not None:
+            if observed_stop:
+                return True
+            if (folder / 'stop').exists():
+                observed_stop = True
+                return True
+            try:
+                campaign_blocker = gate.blocker()
+            except (OSError, ValueError):
+                campaign_blocker = 'authority_unavailable'
+            if campaign_blocker is not None:
+                observed_stop = True
+                return True
         try:
             expired = budget_clock.remaining(request['clock'], request['timeout']) <= 0
         except ValueError:
             expired = True
-        return stopping or expired or (folder / 'stop').exists()
+        requested = stopping or expired or (folder / 'stop').exists()
+        if gate is not None:
+            observed_stop = requested
+        return requested
 
     def publish_native_start(process):
         nonlocal start_writer, start_error
@@ -1545,20 +1622,32 @@ def session_main():
     try:
         context = _read_session_context(state, document)
         _validate_session_authority(state, context)
+        recipient = request['submitted'].get('campaign_recipient')
+        if recipient is not None:
+            gate = RecipientGate.load(state.root, document['project'], recipient)
+            gate.require_turn(state, ident, root, request['context_digest'], document['role'],
+                              request['native_id'], request['submitted'])
         if should_stop():
             document.update(status='cancelled', error='Turn stopped or expired before native effect')
         else:
             environment = dict(os.environ, CODEX_HOME=context['native_home'])
             native = {'configuration': context['inference'], 'native_id': request['native_id']}
-            remaining = max(.01, budget_clock.remaining(request['clock'], request['timeout']))
+            remaining = budget_clock.remaining(request['clock'], request['timeout'])
+            if gate is not None:
+                remaining = min(remaining, gate.remaining())
             invocation_entered = True
             document.update(agents.invoke(context['binding'], context['role'], request['prompt'], Path(context['repo']),
-                state.root / 'runs' / ident, remaining,
+                state.root / 'runs' / ident, max(.01, remaining),
                 request['schema'], env=environment, supervised=True, lock_fd=fd, session=native, stop_requested=should_stop,
+                **({'launch_prefix': gate.command_prefix(ident, fd), 'payload_executable': gate.payload_identity(),
+                    'record_lifecycle': True} if gate is not None else {}),
                 on_start=publish_native_start if request['session']['parent_run'] is not None else None))
-        if expired:
+        if expired or campaign_blocker == 'expired':
             document['status'] = 'timed_out'
         document['execution_stopped'] = True
+    except RecipientBlocked as error:
+        outcome = 'timed_out' if str(error) in ('expired', 'native_turn_expired') else 'cancelled'
+        document.update(status=outcome, error=str(error), execution_stopped=True)
     except (OSError, ValueError, TypeError, KeyError) as error:
         document.update(status='unknown' if invocation_entered else 'failed', error=str(error),
                         execution_stopped=not invocation_entered)
@@ -1567,6 +1656,10 @@ def session_main():
             start_writer.join(timeout=.2)
         if start_writer.is_alive():
             start_error = 'Original native start receipt publication remained pending at stop or deadline'
+    if start_error is None and document.get('payload_exec', {}).get('status') == 'unverified':
+        start_error = 'Selected native payload exec was not verified'
+    if campaign_blocker is not None:
+        document['campaign_recipient_blocker'] = campaign_blocker
     if start_error is not None:
         document['native_start_error'] = start_error
     if document['execution_stopped']:

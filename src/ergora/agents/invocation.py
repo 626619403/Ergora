@@ -51,7 +51,8 @@ def invoke(binding: dict, role: str, prompt: str, cwd: Path, output: Path, timeo
            codex_config: str | Path | None = None, mode: str = "native", task_mcp: dict | None = None,
            lock_fd: int | None = None,
            session: dict | None = None, stop_requested=None, record_lifecycle: bool = False,
-           deadline: float | None = None, on_start=None, observe_direct_child_start: bool = False) -> dict:
+           deadline: float | None = None, on_start=None, observe_direct_child_start: bool = False,
+           launch_prefix: list[str] | None = None, payload_executable: tuple[int, int] | None = None) -> dict:
     """A successful process is not evidence acceptance; structured consumers validate separately."""
     validate_binding(role, binding, formal=bool(schema))
     backend = agent_backends.for_binding(binding, {"codex": {
@@ -70,12 +71,17 @@ def invoke(binding: dict, role: str, prompt: str, cwd: Path, output: Path, timeo
         (protocol / "schema.json").write_text(json.dumps(schema), encoding="utf-8", newline="\n")
     request = agent_backends.Invocation(role, prompt, cwd, protocol, timeout, schema, mode, task_mcp, session)
     argv, stdin = backend.command(request)
+    if launch_prefix is not None:
+        if session is None or on_start is None or payload_executable is None:
+            raise ValueError('Protected launch requires one original native continuation and its payload witness')
+        argv = [*launch_prefix, *argv]
     if stop_requested is not None and stop_requested():
         return {'status': 'cancelled', 'returncode': None, 'error': 'Parent stopped before native spawn'}
     document = processes.run(argv, cwd, output, timeout, stdin, env, supervised=supervised,
                              command_record=protocol / "command.json" if mode != "native" or session is not None else None,
                              **({'deadline': deadline} if deadline is not None else {}),
                              **({'on_start': on_start} if on_start is not None else {}),
+                             **({'payload_executable': payload_executable} if payload_executable is not None else {}),
                              **({'observe_direct_child_start': True} if observe_direct_child_start else {}),
                              **({"stop_requested": stop_requested} if stop_requested is not None else {}),
                              **({'record_lifecycle': True} if record_lifecycle else {}),
