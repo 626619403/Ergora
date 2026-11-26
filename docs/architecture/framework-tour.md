@@ -4,7 +4,7 @@ English · [Documentation](../README.md) · [Architecture contract](current.md)
 
 Ergora is a control plane for project-bound specialist Agents, workflow composition, formal software delivery, training experiments and reusable improvements. Definitions describe reusable behavior. Each operation freezes its own inputs, checks its execution authority and produces evidence under its original identity.
 
-This tour uses runtime revision `070d1cb3ae8a821c81931297c2c15c3eaa2d276f` and its `src` tree `57abfb1479953222332bdca7c01f4e94585da1a7` as the exact source reference. Packages, installed applications and local definition libraries have separate identities. The [current plan](../PLAN.md) and its delivery records track review, CI and installation status.
+This tour uses runtime revision `5103b92c2c3ee65eff0aeda97eb7df2ea46b7505` and its `src` tree `b1fc49af941f93068fb4dfc7ed2a50e5fa75597c` as the exact source reference. Packages, installed applications and local definition libraries have separate identities. The [current plan](../PLAN.md) and its delivery records track review, CI and installation status.
 
 ## The whole system
 
@@ -58,11 +58,13 @@ flowchart TB
   CampaignRun --> CampaignRead["Optional timer or immediate due read<br/>One guarded status Activity"]
   CampaignRead -->|fixed-check wake| Ready["One verified original readiness<br/>Guarded result or opted-in observation"]
   CampaignRead -. "guarded managed full result" .-> TrainingRoot["Observed training root<br/>Result and separate lease evidence"]
+  CampaignRead -. "guarded managed screen" .-> ScreenRoot["Observed screen decision<br/>Original outcome and separate lease"]
   TrainingRoot -. "enables explicit campaign observe-check" .-> DependentCheck["Dependent fixed-check observation<br/>Pre-authorized original Job"]
   CheckJob -. "own original Job evidence" .-> DependentCheck
   CampaignRun -. "confirmed passing observation" .-> Ready
   Ready --> Wake["Opt-in Codex wake<br/>One original attempt and owned STOP"]
   TrainingRoot -. "opt-in verified training readiness" .-> Wake
+  ScreenRoot -. "opt-in verified screen decision" .-> Wake
   Wake --> Turn
   Improve --> Eval["Trusted evaluation<br/>Reviewed identity and explicit adoption"]
 
@@ -84,10 +86,11 @@ flowchart TB
   Rollover -. "first and current Run" .-> CampaignStatus
   CampaignRead -. "recorded completion" .-> CampaignStatus
   TrainingRoot -. "verified root result" .-> CampaignStatus
+  ScreenRoot -. "retained decision evidence" .-> CampaignStatus
   DependentCheck -. "saved observation Update" .-> CampaignStatus
   Ready -. "original readiness evidence" .-> CampaignStatus
   Wake -. "same native receipt" .-> CampaignStatus
-  CampaignStatus -. "selected fixed check or typed training root" .-> ConsoleTimeline["Formal Tasks timeline<br/>Original Job or training result evidence"]
+  CampaignStatus -. "selected fixed check or typed training root" .-> ConsoleTimeline["Formal Tasks timeline<br/>Original Job, full result or screen decision"]
   ConsoleTimeline -.-> Recover
   CampaignStatus -.-> Recover
   Eval -.-> Recover
@@ -155,7 +158,7 @@ With a reachable Temporal service and unavailable Workflow state, `campaign stat
 
 For a fixed-check task, `campaign status --online --task-id TASK` reads its original Update History and separately owned Job together. `matched` requires the same Job identity, terminal fields and complete observation digest. Differing, contradictory or unavailable evidence retains its own status and the saved Run and Update identities. Offline `status --task-id` reads the original Job and local attempt IDs. Both are read-only, including after Campaign STOP or expiry. [Correlate an original fixed check and task Update](../improvement/campaigns.md#record-an-original-fixed-check-for-a-task)
 
-The read-only Formal Tasks Console selects one original task by Campaign and task ID. For a fixed-check task it shows the current Workflow Activity, verified original History and separately owned Job evidence. A failed terminal Update shows its saved reason, when supplied, with its original Run, Update and event IDs. For a typed training root it shows the frozen locator, verified original result, training reap and reader guard cleanup. The separate lease panel uses the observation saved in verified History. When the root has a recipient, the timeline shows its original wake Activity and native continuation receipt separately. A recorded Activity timeout can coexist with a verified native success. [Formal Tasks Campaign timeline](../../src/ergora/data/console/campaign-timeline.js)
+The read-only Formal Tasks Console selects one original task by Campaign and task ID. For a fixed-check task it shows the current Workflow Activity, verified original History and separately owned Job evidence. A failed terminal Update shows its saved reason, when supplied, with its original Run, Update and event IDs. For a typed training root it shows the frozen locator, verified original result, training reap and reader guard cleanup. A selected screen root also shows its original native screen state, literal decision and screen result SHA-256. The separate lease panel uses the observation saved in verified History. When the root has a recipient, the timeline shows its original wake Activity and native continuation receipt separately. A recorded Activity timeout can coexist with a verified native success. [Formal Tasks Campaign timeline](../../src/ergora/data/console/campaign-timeline.js)
 
 The confirmed plan can explicitly authorize one existing local Codex recipient for the timed task. After the original waiting receipt, `wake_on_observe` lets the first verified passing guarded result or confirmed terminal observation admit one original readiness under the same readback window, deadline and STOP fence. The guarded result can also make dependents eligible. `recipient.history.intent.source` identifies the guarded Activity by `activity_id`, or a `manual_update` by its original `update_id`. If a matching terminal Update loses the race to a guarded result, History preserves its failed disposition, original events and `readback_already_admitted` reason with a null receipt. [Admit the guarded result or a confirmed observation](../improvement/campaigns.md#admit-the-guarded-result-or-a-confirmed-observation)
 
@@ -166,6 +169,8 @@ The Worker schedules one original wake from the admitted source. The native sess
 A plan can bind one root to `training_full_result` for an already authorized managed full verification. The locator pins the original experiment, Workflow, Run, Job and raw request and attempt digests under the same registered project revision. The original Campaign Run schedules one guarded read. A verified successful native result and archive evidence make the root observed. The readback reports the result digest and the resource owner's lease observation separately. A dependent fixed-check task uses confirmed `campaign observe-check` on its own pre-authorized Job. [Read one managed training full result](../improvement/campaigns.md#read-one-managed-training-full-result)
 
 An explicit `recipient` on that root opts in to one wake from the verified original training Activity. The existing local Codex recipient uses its authorized stopped parent and approved prompt under the same registered project revision. The native gate checks the original result and wake schedule before reserving the turn under the original cutoff and STOP fence. [Training-result recipient gate](../../src/ergora/campaigns/recipient_gate.py)
+
+A `training_screen_result` root selects one original managed screen by its exact locator and read window. The existing guard and History verify `SCREEN_COMPLETED` or `SCREEN_REJECTED`, the literal decision, diagnostic evidence and separate lease observation. A verified rejection is usable decision evidence and can trigger one wake for its explicitly authorized recipient. A linked full verification requires its own prepared experiment and execution grant. [Read one managed training screen decision](../improvement/campaigns.md#read-one-managed-training-screen-decision)
 
 The original read cutoff and Campaign STOP fence govern the reader and result publication. A saved local STOP closes new dependent eligibility and leaves verified result evidence readable, including through original online History after Worker exit. The registered training executor keeps execution control and the original resource owner confirms lease release. [Guarded Campaign readback](../../src/ergora/campaigns/readback.py)
 
