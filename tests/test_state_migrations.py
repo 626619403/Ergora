@@ -25,6 +25,27 @@ V4_TABLES = V3_TABLES | {'candidate_review_links'}
 CURRENT_TABLES = V4_TABLES
 
 
+def test_configured_home_does_not_probe_the_system_user_home(tmp_path, monkeypatch):
+    def unavailable_home(cls):
+        raise RuntimeError("Could not determine home directory")
+
+    monkeypatch.setattr(Path, "home", classmethod(unavailable_home))
+    explicit = tmp_path / "explicit"
+    configured = tmp_path / "configured"
+    platform_data = tmp_path / "platform"
+    monkeypatch.setenv("ERGORA_HOME", str(configured))
+    assert storage.resolve_home(explicit) == explicit
+    assert storage.resolve_home() == configured
+
+    monkeypatch.delenv("ERGORA_HOME")
+    if sys.platform == "win32":
+        monkeypatch.setenv("LOCALAPPDATA", str(platform_data))
+        assert storage.resolve_home() == platform_data / "Ergora/data"
+    else:
+        monkeypatch.setenv("XDG_DATA_HOME", str(platform_data))
+        assert storage.resolve_home() == platform_data / "ergora"
+
+
 def test_read_only_state_observes_live_wal_without_writer_access(tmp_path):
     state = State(tmp_path / 'home #read%')
     with state.connect() as writer:

@@ -156,11 +156,16 @@ def now() -> str:
 
 
 def resolve_home(root: Path | None = None) -> Path:
-    if os.name == "nt":
-        default = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData/Local")) / "Ergora/data"
-    else:
-        default = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local/share")) / "ergora"
-    return Path(root or os.environ.get("ERGORA_HOME", default)).expanduser().resolve()
+    location = root or os.environ.get("ERGORA_HOME")
+    if location is None:
+        if os.name == "nt":
+            variable, user_directory, app_directory = "LOCALAPPDATA", "AppData/Local", "Ergora/data"
+        else:
+            variable, user_directory, app_directory = "XDG_DATA_HOME", ".local/share", "ergora"
+        configured_data = os.environ.get(variable)
+        data_root = Path(configured_data) if configured_data is not None else Path.home() / user_directory
+        location = data_root / app_directory
+    return Path(location).expanduser().resolve()
 
 
 class State:
