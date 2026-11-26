@@ -1679,9 +1679,10 @@ def main(argv: list[str] | None = None) -> int:
                 elif args.operation == "continuation-receipt":
                     output = agent_runs.continuation_receipt(state, args.project, args.id, args.parent, args.intent)
                 elif args.operation == "continue":
+                    options = {"wait_for_slot": True} if args.wait_for_slot else {}
                     output = agent_runs.continue_session(state, args.project, args.id, args.parent,
                         args.prompt.read_text(encoding="utf-8-sig"), expected_revision=args.revision,
-                        intent_id=args.intent, timeout=args.timeout, wait_for_slot=args.wait_for_slot)
+                        intent_id=args.intent, timeout=args.timeout, **options)
                 elif args.operation == "stop":
                     output = agent_runs.stop_session(state, args.project, args.id, args.run, intent_id=args.intent)
                 elif args.operation == "runs":

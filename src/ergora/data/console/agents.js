@@ -340,9 +340,11 @@ export function agentDialog(data, base, refresh, origin = null) {
               incomplete: "派发证据不完整" }[receipt.dispatch];
             const native = { running: "原执行子进程正在运行", started: "已核对原执行子进程启动",
               unrecorded: "启动回执暂无记录", incomplete: "启动证据不完整" }[receipt.native_start?.status];
-            if (!label || !receipt.run || receipt.run.id !== receipt.run_id) throw new Error("原续接回执不完整。");
-            observed(item.intent);
-            observations.push(panel(`原续接 ${receipt.run_id}`, [label, native].filter(Boolean).join(" · "), pre(receipt),
+            const unresolved = receipt.dispatch === "incomplete" && receipt.run === null;
+            if (!label || (!unresolved && (!receipt.run || receipt.run.id !== receipt.run_id)))
+              throw new Error("原续接回执不完整。");
+            if (!unresolved) observed(item.intent);
+            observations.push(panel(`原续接 ${receipt.run_id}`, [label, native, unresolved ? "仍保留原提交" : null].filter(Boolean).join(" · "), pre(receipt),
               row(button("选择这个原会话", () => selectSession(item.session)))));
           }
         } else {

@@ -1399,6 +1399,67 @@ def native_document_history(state):
     return {path.relative_to(directory).as_posix(): path.read_bytes() for path in directory.rglob('*') if path.is_file()}
 
 
+def test_continuation_receipt_preserves_partial_request_before_reservation(native_correction_case, monkeypatch):
+    state, repo, config, runs, _ = native_correction_case
+    projects.create(state, 'other', repo)
+    revision = state.project('demo')['revision']
+    first = runs.run_agent(state, 'demo', 'implementer', 'first', timeout=10,
+                          session_intent='partial-parent', expected_revision=revision, codex_config=config)
+    assert first['status'] == 'succeeded' and first['correction_suggestion']['available'] is True
+    parent = first['id']
+    intent = 'partial-successor'
+    selection = (state, 'demo', parent, parent)
+    absent = runs.continuation_receipt(*selection, intent)
+    assert absent['dispatch'] == 'unrecorded' and absent['run'] is None
+    ident = absent['run_id']
+    turn = runs.native_sources.turn_folder(state, ident)
+    request = turn / 'request.json'
+
+    def lose_after_request(owner, document):
+        assert document['id'] == ident and request.is_file()
+        raise OSError('Fixture database reservation failure after native request publication')
+
+    with monkeypatch.context() as patch:
+        patch.setattr(runs, '_store', lose_after_request)
+        with pytest.raises(OSError, match='reservation failure'):
+            runs.continue_session(*selection, 'second original turn', expected_revision=revision,
+                                  intent_id=intent, timeout=10)
+
+    original = request.read_bytes(), request.stat().st_ino
+    original_input = json.loads(original[0])
+    assert original_input['correction_suggestion']['proposal_id'] is not None
+    documents = native_document_history(state)
+    control = State(state.root, read_only=True)
+    receipt = runs.continuation_receipt(control, 'demo', parent, parent, intent)
+    assert receipt == dict(absent, dispatch='incomplete',
+                           dispatch_error='Original continuation request has no verified reservation')
+    assert runs.continuation_receipt(control, 'other', parent, parent, intent) == absent
+    with pytest.raises(ValueError, match='selected project, session, parent or intent'):
+        runs.continuation_receipt(control, 'demo', parent, 'other-parent', intent)
+    assert runs.continuation_receipt(control, 'demo', parent, parent, 'other-intent')['dispatch'] == 'unrecorded'
+    assert runs.continuation_receipt(control, 'demo', 'other-session', parent, intent)['dispatch'] == 'unrecorded'
+
+    def unexpected_effect(*args, **kwargs):
+        pytest.fail('An unverified reservation can only be observed')
+
+    with monkeypatch.context() as patch:
+        patch.setattr(runs.document_corrections, 'prepare_native', unexpected_effect)
+        patch.setattr(runs, '_publish_session_packet', unexpected_effect)
+        patch.setattr(runs, '_store', unexpected_effect)
+        patch.setattr(runs.subprocess, 'Popen', unexpected_effect)
+        for wait_for_slot, prompt in ((False, 'second original turn'), (True, 'different submitted prompt')):
+            with pytest.raises(ValueError, match='no verified reservation') as error:
+                runs.continue_session(*selection, prompt, expected_revision=revision, intent_id=intent,
+                                      timeout=10, wait_for_slot=wait_for_slot)
+            assert not isinstance(error.value, runs.SessionRejected)
+    assert runs.continuation_receipt(control, 'demo', parent, parent, intent) == receipt
+    assert (request.read_bytes(), request.stat().st_ino) == original
+    assert list(turn.iterdir()) == [request]
+    assert runs.native_sources.find_run(control, 'demo', ident) is None
+    assert native_document_history(state) == documents
+    assert len((repo / 'native-calls.jsonl').read_text().splitlines()) == 1
+
+
 @pytest.mark.parametrize('expire_during', ['authority', 'correction'])
 def test_slot_wait_expires_before_first_durable_admission(native_correction_case, monkeypatch, expire_during):
     state, repo, config, runs, _ = native_correction_case

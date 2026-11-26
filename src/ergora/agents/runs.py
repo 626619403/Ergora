@@ -1177,6 +1177,36 @@ def _process_identity(value) -> bool:
             and isinstance(boot_id, str) and len(boot_id) == 36)
 
 
+def _matches_continuation(record, receipt):
+    session, submitted = record.get('session'), record.get('submitted')
+    return (isinstance(session, dict) and isinstance(submitted, dict)
+            and session.get('id') == receipt['session_id']
+            and session.get('parent_run') == submitted.get('parent_run') == receipt['parent_run_id']
+            and submitted.get('intent_id') == receipt['intent_id'])
+
+
+def _continuation_without_reservation(state, project_id, folder, receipt):
+    session_id = receipt['session_id']
+    root = native_sources.find_run(state, project_id, session_id)
+    if (root is None or root.get('kind') != 'native-agent-run'
+            or root.get('session') != {'id': session_id, 'parent_run': None, 'ordinal': 0}):
+        return receipt
+    reason = 'Original continuation request evidence is incomplete'
+    try:
+        request = native_sources.packet(folder, 'request.json')
+    except FileNotFoundError as error:
+        if error.filename == str(folder):
+            return receipt
+    except (OSError, ValueError):
+        pass
+    else:
+        if (not isinstance(request, dict) or request.get('project') != project_id
+                or request.get('run_id') != receipt['run_id'] or not _matches_continuation(request, receipt)):
+            raise ValueError('Continuation request differs from the selected project, session, parent or intent')
+        reason = 'Original continuation request has no verified reservation'
+    return dict(receipt, dispatch='incomplete', dispatch_error=reason)
+
+
 def continuation_receipt(state: State, project_id: str, session_id: str, parent_run_id: str, intent_id: str) -> dict:
     """Observe one continuation and its existing dispatch evidence without sending it."""
     ident = _continuation_run_id(session_id, intent_id)
@@ -1184,15 +1214,12 @@ def continuation_receipt(state: State, project_id: str, session_id: str, parent_
     state.project(project_id)
     receipt = {'session_id': session_id, 'parent_run_id': parent_run_id, 'intent_id': intent_id,
                'run_id': ident, 'dispatch': 'unrecorded', 'native_start': {'status': 'unrecorded'}, 'run': None}
+    folder = native_sources.turn_folder(state, ident)
     saved = native_sources.find_run(state, project_id, ident)
     if saved is None:
-        return receipt
-    session, submitted = saved.get('session'), saved.get('submitted')
-    if (not isinstance(session, dict) or not isinstance(submitted, dict) or saved.get('kind') != 'native-agent-run'
-            or session.get('id') != session_id or session.get('parent_run') != parent_run_id
-            or submitted.get('parent_run') != parent_run_id or submitted.get('intent_id') != intent_id):
+        return _continuation_without_reservation(state, project_id, folder, receipt)
+    if saved.get('kind') != 'native-agent-run' or not _matches_continuation(saved, receipt):
         raise ValueError('Continuation receipt differs from the selected session, parent or intent')
-    folder = native_sources.turn_folder(state, ident)
     request = _session_request(folder, saved)
     try:
         run, final_verified = _session_outcome(state, saved, request=request)
@@ -1313,6 +1340,12 @@ def continue_session(state: State, project_id: str, session_id: str, parent_run_
                 or latest.get('execution_stopped') is not True
                 or not latest.get('native_session', {}).get('id')):
             raise ValueError('Select the latest stopped turn with its saved native UUID; consumed or unknown parents cannot be dispatched')
+        try:
+            native_sources.turn_folder(state, ident).lstat()
+        except FileNotFoundError:
+            pass
+        else:
+            raise ValueError('Original continuation evidence has no verified reservation; read its continuation receipt')
         return _reserve_session_turn(state, project_id, session_id, latest, ident, len(turns), prompt, timeout,
                                      clock or budget_clock.authorize(timeout), context, turns[0]['context_digest'],
                                      submitted, lock, check_admission_deadline=wait_for_slot)
