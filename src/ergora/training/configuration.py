@@ -104,7 +104,15 @@ def validate_runner(runner: dict) -> None:
     if capability is None:
         return
     _exact(capability, ('protocol', 'source', 'prepared_json_format', 'manifest_configuration_role',
-                        'observation_scheme', 'baseline_reference_protocol', 'screen', *(['profile'] if 'profile' in capability else [])), 'Configuration readback')
+                        'observation_scheme', 'baseline_reference_protocol', 'screen',
+                        *(name for name in ('profile', 'local_gpu_pool') if name in capability)), 'Configuration readback')
+    if 'local_gpu_pool' in capability:
+        from ergora.runtime import gpu_pool
+
+        selected = capability['local_gpu_pool']
+        gpu_pool.validate_lease_selection(selected)
+        if selected['runtime_sha256'] != gpu_pool.runtime_source_sha256():
+            raise ValueError('Local GPU runtime sources differ from the reviewed runner')
     if 'profile' in capability and capability['profile'] is not None:
         from ergora.training.materials import _exact as exact_profile
         declared = capability['profile']
@@ -1049,6 +1057,105 @@ def _record_screen(driver, context, request, output, observations, frozen, raw, 
     _inputs(request, raw)
 
 
+def _run_local_gpu(driver, context, request, original_raw, output):
+    """Give one reviewed full runner its original owner-checked guarded child."""
+    from copy import deepcopy
+    import signal
+
+    from ergora.runtime import gpu_guard, gpu_pool, processes
+    from ergora.training import execution_protocol as protocol
+
+    selected = request['configuration_readback']['local_gpu_pool']
+    chain, _ = _inputs(request, original_raw)
+    lease_path = chain.folder / 'gpu-lease.json'
+    if lease_path.exists() or lease_path.is_symlink():
+        raise ValueError('Original training GPU lease opportunity was already observed')
+    original = request['context']
+    intent, authorization, policy = (original[name] for name in ('intent', 'authorization', 'policy'))
+    auth_path = Path(chain.home) / 'training-cycles' / intent['project'] / intent['budget']['cycle_id'] / 'authorization.json'
+    attempt_path = chain.folder / 'attempt.json'
+    attempt_raw = chain.originals[attempt_path]
+    runner_path = chain.folder.parent / 'request.json'
+    trusted = Path(request['trusted_repo'])
+    trusted_source = _file(trusted, request['configuration_readback']['source']['entrypoint'])
+
+    def reference(path):
+        return {'root': str(path.parent), 'relative_path': path.name,
+                'raw_sha256': hashlib.sha256(protocol.read_raw(path)).hexdigest(), 'semantic_sha256': None}
+
+    source_refs = [reference(Path(__file__).resolve()), reference(trusted_source)]
+    config_ref = reference(runner_path)
+    origin = {'kind': 'supervised-command-v1',
+              'operation_id': chain.records['launch']['execution_phase_id'],
+              'attempt_ref': reference(attempt_path), 'authorization_ref': reference(auth_path),
+              'source_sha256': chain.sha(source_refs), 'config_sha256': config_ref['raw_sha256'],
+              'clock': authorization['clock'], 'wall_seconds': policy['wall_seconds'],
+              'cleanup_reserve_seconds': policy['cleanup_seconds'], 'owner_identity': processes.identity(os.getpid())}
+
+    stopped = False
+    used = False
+    outcome = None
+
+    def stop_requested(_signum, _frame):
+        nonlocal stopped
+        stopped = True
+
+    def authorize(expected):
+        current, _ = _inputs(request, original_raw)
+        if (stopped or expected != origin or current.originals.get(attempt_path) != attempt_raw
+                or current.records['ack'] != chain.records['ack']
+                or selected['runtime_sha256'] != gpu_pool.runtime_source_sha256()):
+            raise ValueError('Original managed training stopped or its GPU attempt changed')
+        processes.require_ancestor(os.getpid(), chain.records['attempt']['executor'])
+
+    def run_guarded(argv, *, cwd=None, env=None):
+        nonlocal used, outcome
+        if used:
+            raise ValueError('Original training GPU lease permits one guarded invocation')
+        if stopped:
+            raise ValueError('Original managed training stopped before GPU guard creation')
+        used = True
+        active, _ = _inputs(request, original_raw)
+        if active.originals.get(attempt_path) != attempt_raw:
+            raise ValueError('Original managed GPU attempt changed before guard creation')
+        pool = gpu_pool.LocalGpuPool.connect(selected['configuration'], session_id=selected['session_id'])
+        pool.verify_runtime(selected['runtime_sha256'])
+
+        publication_error = None
+
+        def before_request(resource_request, lease_id, guard_identity):
+            nonlocal publication_error
+            try:
+                pool.verify_runtime(selected['runtime_sha256'])
+                binding = chain.gpu_lease_record(selected, resource_request['request_id'],
+                                                 chain.sha(resource_request), lease_id, guard_identity)
+                protocol.publish(lease_path, binding, chain.root)
+                protocol.confirm_gpu_guard(binding, chain.records['attempt']['supervisor'],
+                                           lambda: gpu_pool._remaining(origin), lambda: stopped)
+            except Exception as error:
+                publication_error = error
+                raise
+
+        outcome = gpu_guard.run_owned_guard(pool, origin, argv, trusted if cwd is None else Path(cwd),
+            dict(os.environ) if env is None else env, device_uuids=selected['ordered_device_uuids'],
+            source_refs=source_refs, config_ref=config_ref,
+            guard_source_refs=[reference(Path(module.__file__).resolve()) for module in (gpu_guard, processes)],
+            authorize=authorize, stop_requested=lambda: stopped, before_request=before_request)
+        if publication_error is not None:
+            raise publication_error
+        return deepcopy(outcome)
+
+    previous_term = signal.signal(signal.SIGTERM, stop_requested)
+    previous_int = signal.signal(signal.SIGINT, stop_requested)
+    try:
+        driver['run'](context, request, output, run_guarded=run_guarded)
+    finally:
+        signal.signal(signal.SIGINT, previous_int)
+        signal.signal(signal.SIGTERM, previous_term)
+    if stopped or not outcome or (outcome['process_result'] or {}).get('status') != 'succeeded':
+        raise ValueError('Original training GPU runner has no confirmed successful guarded child result')
+
+
 def main(request_path):
     """Construct, observe, freeze and run the same source-owned configuration objects."""
     import ergora.training.execution_protocol as protocol
@@ -1172,7 +1279,10 @@ def main(request_path):
         _record_screen(driver, context, request, output, observations, frozen, raw, manifest, guards, reference_project)
         return
     cpu_before = _cpu_window_snapshots(request, raw)
-    driver['run'](context, request, output)
+    if 'local_gpu_pool' in request['configuration_readback']:
+        _run_local_gpu(driver, context, request, raw, output)
+    else:
+        driver['run'](context, request, output)
     cpu_after = _cpu_window_snapshots(request, raw)
     _inputs(request, raw)
     frozen.update(_record_profile(driver, context, request, output, raw))

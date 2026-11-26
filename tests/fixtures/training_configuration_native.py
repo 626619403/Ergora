@@ -14,9 +14,13 @@ def install():
             if len(command) > 1 and command[1].endswith('/training/configuration.py'):
                 for key in ('PYTHONPATH', 'AGENTFLOW_CONFIG_DIR', 'AGENTFLOW_STATE_DIR'):
                     environment.pop(key, None)
+            timeout = options['timeout']
+            if environment.get('ERGORA_TEST_GUARDED_TRAINING') == '1':
+                command = ['/usr/bin/timeout', '--signal=TERM', '--kill-after=5', str(timeout), *command]
+                timeout += 7
             with (output / 'execution.log').open('wb') as log:
                 return subprocess.run(command, cwd=checkout, stdout=log, stderr=log,
-                                      env=environment, timeout=options['timeout'], check=False).returncode
+                                      env=environment, timeout=timeout, check=False).returncode
 
     training_executor.Sandbox = LocalRunner
 

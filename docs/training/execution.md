@@ -96,6 +96,21 @@ Compute expiry or explicit original cancel notifies the execution subtree to sto
 
 `execution` uses a bundled independent stdlib reader, needing no Temporal SDK/service, GPU or continued existence of the selected native installation. It only reads existing original chains and confirms durability of the same originals; it creates no records or changes to file contents. Sync failure remains unknown; the same originals can be observed again later. Current-source checks have independent limits; installation loss or upgrade drift is displayed separately. This reader neither selects nor executes candidates. Finite controllers require [separate explicit authorization](controllers.md#start-a-local-training-budget-and-recover-original-authorization). Real training quality and performance still need the original evidence flow; kernel experts remain in the proposal path.
 
+### Observe the local GPU lease of a managed run
+
+Use the same `ergora training execution PROJECT EXPERIMENT_ID` command for a runner with a [reviewed local GPU selection](prepare-experiments.md#preview-and-register-a-trusted-runner). The managed runner saves the exact resource request and lease binding before it asks the pool for admission. The `local_gpu_lease` field matches the pool evidence to the raw SHA-256 of the original managed attempt. It can read the original open owner without requesting or reconciling a lease, and it can recover the accepted receipt from the original closed journal after a successor takes over.
+
+|Resource observation|Meaning|
+|---|---|
+|`pending`, `granted`, `consumed`|The original request is in the reported owner state. A guarded output or executor stop may already be visible.|
+|`released`|The original pool accepted the stopped guard's proof and independently observed the assigned devices clear. The response includes the exact release reference.|
+|`cancelled`, `expired`|The original pool ended the pending request without a consume.|
+|`unknown`|The original binding, owner, or complete matching proof could not be established. Preserve the original request and inspect its evidence.|
+
+On catchable STOP or compute expiry, the original execute supervisor notifies the exact admitted guard and lets it finish its own cleanup within the original cleanup reserve and total budget before reaping the managed subtree. A lost guard can leave the original resource state unknown. A managed stop receipt remains independent of resource release.
+
+Read the native result and quality through the existing training observation and evidence commands. The current pool owner decides present capacity.
+
 ### Read an original local GPU release after pool closure
 
 Use the original pool configuration, session ID and lease ID to read a release after the pool closes and relinquishes its sentinel. The command checks the accepted release, the exact stopped proof and the assigned device observations. You can also read it when a successor session uses the same coordination directory and sentinel path with a different set of devices.

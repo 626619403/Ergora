@@ -326,6 +326,15 @@ def validate_configuration(value):
     return value
 
 
+def validate_lease_selection(value):
+    """The reviewed runner selects one existing pool lifetime and ordered devices."""
+    _fields(value, {'configuration', 'session_id', 'ordered_device_uuids', 'runtime_sha256'}, 'local GPU lease selection')
+    configuration = validate_configuration(value['configuration'])
+    _session_id(value['session_id'])
+    _devices(value['ordered_device_uuids'], configuration['device_uuids'])
+    _digest(value['runtime_sha256'])
+
+
 def _devices(values, universe=None):
     if (not isinstance(values, list) or not values
             or any(not isinstance(value, str) or re.fullmatch('GPU-[A-Za-z0-9-]+', value) is None for value in values)
@@ -340,6 +349,11 @@ def guard_source_sha256():
     directory = Path(__file__).parent
     return _sha([{'name': name, 'raw_sha256': hashlib.sha256(_read(directory / name)).hexdigest()}
                  for name in ('gpu_guard.py', 'processes.py')])
+
+
+def runtime_source_sha256():
+    """Fingerprint the actual pool, guard and their shared process owner."""
+    return _sha({'pool': hashlib.sha256(_read(Path(__file__))).hexdigest(), 'guard': guard_source_sha256()})
 
 
 def _lease_id(request_id):
@@ -723,23 +737,7 @@ def _stopped_proof(directory, reference, session_id, request, guard_identity):
     return binding
 
 
-def observe_closed_release(configuration, session_id, lease_id):
-    """Read one original release from a closed journal without a current owner."""
-    validate_configuration(configuration)
-    _digest(lease_id)
-    records = _archived_session_records(configuration, session_id)
-    directory, session_record = records[:2]
-    journal_path = directory / 'journal.json'
-    raw, binding = _read_bound(journal_path)
-    journal = _journal(raw, session_record)
-    if journal['mode'] != 'closed' or any(item['state'] not in _TERMINAL for item in journal['requests']):
-        raise PoolUnavailable('Original GPU resource journal is not closed')
-    request = next((item for item in journal['requests'] if item['lease_id'] == lease_id), None)
-    if request is None:
-        raise ValueError('Unknown original GPU resource lease')
-    if request['state'] != 'released':
-        raise PoolUnavailable('Original GPU resource lease has no accepted release')
-
+def _accepted_release_proof(directory, request, session_id):
     release = request['release_ref']
     consume = request['consume_binding']
     if (release['sequence'] <= request['enqueue_sequence'] or consume is not None and
@@ -753,7 +751,25 @@ def observe_closed_release(configuration, session_id, lease_id):
     if ([row['uuid'] for row in rows] != request['ordered_device_uuids']
             or any(row['compute_pids'] or row['graphics_pids'] for row in rows)):
         raise ValueError('Accepted GPU release lacks empty observations for its assigned devices')
-    proof_binding = _stopped_proof(directory, release['proof_ref'], session_id, request, release['guard_identity'])
+    return _stopped_proof(directory, release['proof_ref'], session_id, request, release['guard_identity'])
+
+
+def _observe_closed_lease(configuration, session_id, lease_id):
+    validate_configuration(configuration)
+    _digest(lease_id)
+    records = _archived_session_records(configuration, session_id)
+    directory, session_record = records[:2]
+    journal_path = directory / 'journal.json'
+    raw, binding = _read_bound(journal_path)
+    journal = _journal(raw, session_record)
+    if journal['mode'] != 'closed' or any(item['state'] not in _TERMINAL for item in journal['requests']):
+        raise PoolUnavailable('Original GPU resource journal is not closed')
+    request = next((item for item in journal['requests'] if item['lease_id'] == lease_id), None)
+    if request is None:
+        raise ValueError('Unknown original GPU resource lease')
+
+    release = request['release_ref']
+    proof_binding = _accepted_release_proof(directory, request, session_id) if release is not None else None
     try:
         current_raw, current_binding = _read_bound(configuration['legacy_sentinel'], FRAME_LIMIT)
     except FileNotFoundError:
@@ -764,29 +780,47 @@ def observe_closed_release(configuration, session_id, lease_id):
             raise PoolUnavailable('Original GPU resource session still owns the original sentinel')
     if _archived_session_records(configuration, session_id) != records:
         raise ValueError('Original closed GPU session changed during observation')
-    if _read_proof(directory, release['proof_ref'], lease_id, 'stopped')[1] != proof_binding:
+    if release is not None and _read_proof(directory, release['proof_ref'], lease_id, 'stopped')[1] != proof_binding:
         raise ValueError('Original stopped proof inode changed during observation')
     if _read_bound(journal_path) != (raw, binding):
         raise ValueError('Original closed GPU journal changed during observation')
-    return {'status': 'released', 'mode': 'closed', 'session_id': session_id, 'lease_id': lease_id,
+    return {'status': request['state'], 'mode': 'closed', 'session_id': session_id, 'lease_id': lease_id,
             'request_id': request['request_id'], 'request_sha256': request['request_sha256'],
             'attempt_sha256': request['origin']['attempt_ref']['raw_sha256'], 'release_ref': release}
+
+
+def observe_closed_release(configuration, session_id, lease_id):
+    """Read one original release from a retired session without a live owner."""
+    observed = _observe_closed_lease(configuration, session_id, lease_id)
+    if observed['status'] != 'released':
+        raise PoolUnavailable('Original GPU resource lease has no accepted release')
+    return observed
+
+
+def observe_lease(configuration, session_id, lease_id):
+    """Read original archived or live lease evidence without reconciling it."""
+    try:
+        return _observe_closed_lease(configuration, session_id, lease_id)
+    except PoolUnavailable:
+        pool = LocalGpuPool.connect(configuration, session_id=session_id)
+        return pool.call('observe_lease', {'lease_id': lease_id})
 
 
 class LocalGpuPool:
     """Client bound to an existing immutable session; connect never creates it."""
 
-    def __init__(self, configuration):
+    def __init__(self, configuration, *, session_id=None):
         self.configuration = validate_configuration(configuration)
         self.coordination_directory = Path(configuration['coordination_directory'])
-        self.directory, self.session, self._session_raw, self._descriptor_raw, self._sentinel_raw = _load_session(configuration)
+        self.directory, self.session, self._session_raw, self._descriptor_raw, self._sentinel_raw = _load_session(
+            configuration, session_id)
         self.current_owner = None
         self.owner_epoch = None
         self._owner()
 
     @classmethod
-    def connect(cls, configuration):
-        return cls(configuration)
+    def connect(cls, configuration, *, session_id=None):
+        return cls(configuration, session_id=session_id)
 
     def _owner(self):
         directory, session_record, session_raw, descriptor_raw, sentinel_raw = _load_session(
@@ -848,6 +882,11 @@ class LocalGpuPool:
     def inspect(self):
         return self.call('inspect')
 
+    def verify_runtime(self, expected_sha256):
+        result = self.call('observe_runtime')
+        if result.get('status') != 'observed' or result.get('runtime_sha256') != expected_sha256:
+            raise ValueError('Original GPU pool runtime could not be matched to the reviewed runner')
+
     def request(self, request):
         return self.call('request', request)
 
@@ -874,6 +913,7 @@ class _Session:
         self.lock_descriptor = lock_descriptor
         self.lock_stat = os.fstat(lock_descriptor)
         self.provider = inventory_provider
+        self.runtime_sha256 = runtime_source_sha256()
         self.guards = {}
         self.fatal = None
         self.uncertain = None
@@ -969,21 +1009,33 @@ class _Session:
             updated['mode'] = 'active'
             self._commit(updated)
 
+    def _original_journal_bytes(self, *, allow_closed=False):
+        _ordinary(self.coordination / 'pool.lock')
+        lock_stat = (self.coordination / 'pool.lock').stat(follow_symlinks=False)
+        if (lock_stat.st_dev, lock_stat.st_ino) != (self.lock_stat.st_dev, self.lock_stat.st_ino):
+            raise ValueError('Lifetime GPU pool lock inode changed')
+        directory, record, session_raw, descriptor_raw, sentinel_raw = _load_session(
+            self.configuration, self.session['session_id'],
+            closed_missing=allow_closed and self.journal['mode'] == 'closed')
+        if (directory != self.directory or record != self.session or session_raw != self.session_raw
+                or descriptor_raw != self.descriptor_raw or sentinel_raw != self.sentinel_raw):
+            raise ValueError('Original GPU pool immutable record changed')
+        return _read(self.directory / 'journal.json')
+
+    def _verify_owner(self, *, allow_closed=False, recovery=False):
+        current = _identity()
+        if not recovery and self.journal['current_owner'] != current:
+            raise ValueError('GPU journal current owner changed')
+        if self.journal['mode'] == 'closed' and not allow_closed:
+            raise PoolUnavailable('Original GPU resource session is closed')
+        if current['boot_id'] != self.session['initial_owner']['boot_id']:
+            raise ValueError('GPU resource session boot identity changed')
+
     def _ensure(self, *, allow_closed=False, recovery=False):
         if self.fatal is not None:
             raise PoolUnavailable(self.fatal)
         try:
-            _ordinary(self.coordination / 'pool.lock')
-            lock_stat = (self.coordination / 'pool.lock').stat(follow_symlinks=False)
-            if (lock_stat.st_dev, lock_stat.st_ino) != (self.lock_stat.st_dev, self.lock_stat.st_ino):
-                raise ValueError('Lifetime GPU pool lock inode changed')
-            directory, record, session_raw, descriptor_raw, sentinel_raw = _load_session(
-                self.configuration, self.session['session_id'],
-                closed_missing=allow_closed and self.journal['mode'] == 'closed')
-            if (directory != self.directory or record != self.session or session_raw != self.session_raw
-                    or descriptor_raw != self.descriptor_raw or sentinel_raw != self.sentinel_raw):
-                raise ValueError('Original GPU pool immutable record changed')
-            raw = _read(self.directory / 'journal.json')
+            raw = self._original_journal_bytes(allow_closed=allow_closed)
             if self.uncertain is not None and raw == self.uncertain:
                 _sync(self.directory)
                 if _read(self.directory / 'journal.json') != raw:
@@ -992,17 +1044,33 @@ class _Session:
                 self.journal_raw, self.uncertain = raw, None
             elif raw != self.journal_raw:
                 raise ValueError('GPU journal changed outside its sole resource owner')
-            if not recovery and self.journal['current_owner'] != _identity():
-                raise ValueError('GPU journal current owner changed')
-            if self.journal['mode'] == 'closed' and not allow_closed:
-                raise PoolUnavailable('Original GPU resource session is closed')
-            if _identity()['boot_id'] != self.session['initial_owner']['boot_id']:
-                raise ValueError('GPU resource session boot identity changed')
+            self._verify_owner(allow_closed=allow_closed, recovery=recovery)
         except PoolUnavailable:
             raise
         except (ValueError, OSError, KeyError, TypeError) as error:
             self.fatal = 'unknown: ' + str(error)
             raise PoolUnavailable(self.fatal) from error
+
+    def _observable_journal(self):
+        """Validate the original owner snapshot without adopting uncertain writes."""
+        if self.fatal is not None or self.uncertain is not None:
+            raise PoolUnavailable(self.fatal or 'Original GPU journal acknowledgement is unconfirmed')
+        raw = self._original_journal_bytes()
+        if raw != self.journal_raw:
+            raise PoolUnavailable('Original GPU journal bytes are unconfirmed')
+        self._verify_owner()
+        return raw
+
+    def _observe_lease(self, body):
+        _fields(body, {'lease_id'}, 'GPU lease observation')
+        raw = self._observable_journal()
+        request = self._find(lease_id=_digest(body['lease_id']))
+        if request['release_ref'] is not None:
+            _accepted_release_proof(self.directory, request, self.session['session_id'])
+        if self._original_journal_bytes() != raw:
+            raise PoolUnavailable('Original GPU owner or journal changed during lease observation')
+        return self._reply(request['state'], request=request, reason=request['reason'],
+            mode=self.journal['mode'], attempt_sha256=request['origin']['attempt_ref']['raw_sha256'])
 
     def _commit(self, updated, *, recovering=False):
         self._ensure(allow_closed=True, recovery=recovering)
@@ -1388,6 +1456,7 @@ class _Session:
         return self._reply('unknown' if self.fatal else 'unavailable' if not observation['available'] else 'pending',
                            reason=self.fatal or 'observation_only', mode='unknown' if self.fatal else self.journal['mode'],
                            availability={'kernel': self.kernel, 'nvml': observation},
+                           runtime_sha256=self.runtime_sha256,
                            requests=self.journal['requests'], initial_owner=self.session['initial_owner'],
                            current_owner=self.journal['current_owner'], ordered_device_uuids=self.configuration['device_uuids'])
 
@@ -1404,6 +1473,15 @@ class _Session:
             except PoolUnavailable:
                 pass
             return self._inspect()
+        if action == 'observe_lease':
+            if connection.request_id is not None:
+                raise ValueError('Invalid GPU lease observation channel')
+            return self._observe_lease(body)
+        if action == 'observe_runtime':
+            if body is not None or connection.request_id is not None:
+                raise ValueError('Invalid GPU runtime observation')
+            self._observable_journal()
+            return self._reply('observed', runtime_sha256=self.runtime_sha256)
         self._ensure(allow_closed=action == 'close')
         if action == 'guard_ready':
             return self._guard_ready(body, connection)

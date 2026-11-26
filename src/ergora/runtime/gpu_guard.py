@@ -157,17 +157,21 @@ def _deadline(origin, *, cleanup=False):
 
 
 def run_owned_guard(pool, origin, argv, cwd, env, *, device_uuids, source_refs, config_ref, guard_source_refs,
-                    authorize: Callable[[dict], None], stop_requested: Callable[[], bool]) -> dict:
+                    authorize: Callable[[dict], None], stop_requested: Callable[[], bool],
+                    before_request: Callable[[dict, str, dict], None] | None = None) -> dict:
     """Run exactly one dedicated guard while serving the original owner's authority.
 
     Both callbacks are required and run in this calling process. They must be
     bounded and check the original authority, attempt, source/config and stop.
+    A caller may durably associate the exact request and lease before admission.
     A returned resource release says nothing about training quality or gains.
     """
     if sys.platform != 'linux':
         raise ValueError('Owned local GPU guards require Linux')
     if not callable(authorize) or not callable(stop_requested):
         raise ValueError('Original owner authorization and stop callbacks are required')
+    if before_request is not None and not callable(before_request):
+        raise ValueError('Original lease publication must be a callback')
     owner = processes.identity(os.getpid())
     if origin['owner_identity'] != owner:
         raise ValueError('Owned guard must be called by the original execution owner')
@@ -226,9 +230,23 @@ def run_owned_guard(pool, origin, argv, cwd, env, *, device_uuids, source_refs, 
         expected = pool.request_identity(origin, list(device_uuids), guardian, binding['input_sha256'])
         if (ready['request_id'], ready['lease_id']) != expected:
             raise ValueError('Dedicated guardian returned another resource identity')
-        request = {'request_id': ready['request_id'], 'origin': origin,
-                   'ordered_device_uuids': list(device_uuids), 'guard_ready_ref': ready['ready_ref']}
+        selected = {'request_id': ready['request_id'], 'origin': origin,
+                    'ordered_device_uuids': list(device_uuids), 'guard_ready_ref': ready['ready_ref']}
+        if before_request is not None:
+            before_request(selected, ready['lease_id'], guardian)
+            decision = check()
+            if decision['decision'] != 'permit':
+                raise ValueError('Original owner refused resource request after lease publication: ' + decision['reason'])
+        _wire(parent, _deadline(origin), value=_message(binding, 'SUBMITTING', 0, {}))
+        acknowledged = _verify_message(_wire(parent, _deadline(origin)), binding, 'SUBMIT_ACK', 0)
+        _exact(acknowledged, set(), 'guard resource submission acknowledgment')
+        decision = check()
+        if decision['decision'] != 'permit':
+            _wire(parent, _deadline(origin, cleanup=True), value=_message(binding, 'ABORTED', 0, {}))
+            raise ValueError('Original owner refused acknowledged resource submission: ' + decision['reason'])
+        request = selected
         pool.request(request)
+        _wire(parent, _deadline(origin), value=_message(binding, 'SUBMITTED', 0, {}))
         sequence = 1
         while process.poll() is None:
             try:
@@ -348,6 +366,36 @@ def _guard(connection, pool):
             raise ValueError('Pool rejected the dedicated guard')
         _wire(connection, _deadline(origin), value=_message(binding, 'READY', 0,
               {'request_id': request_id, 'lease_id': lease_id, 'ready_ref': ready_ref}))
+
+        def read_submission(kinds, *, cleanup=False):
+            message = _wire(connection, _deadline(origin, cleanup=cleanup))
+            kind = message.get('type')
+            if kind not in kinds:
+                raise ValueError('Unexpected original resource submission progress')
+            _exact(_verify_message(message, binding, kind, 0), set(), 'resource submission progress')
+            return kind
+
+        def await_submission(kinds):
+            while not stopped and resources._remaining(origin) > 0:
+                if select.select([connection], [], [], min(.05, max(0, resources._remaining(origin))))[0]:
+                    return read_submission(kinds)
+            return None
+
+        try:
+            if await_submission(('SUBMITTING',)) is None or stopped:
+                return 0
+            _wire(connection, _deadline(origin), value=_message(binding, 'SUBMIT_ACK', 0, {}))
+        except (OSError, ValueError, EOFError):
+            return 0  # The owner cannot submit without the complete acknowledgment.
+        disposition = None
+        try:
+            disposition = await_submission(('SUBMITTED', 'ABORTED'))
+        except (OSError, ValueError, EOFError):
+            disposition = 'unknown'
+        if disposition == 'ABORTED':
+            return 0  # Only the original pre-send owner may establish this fact.
+        if disposition != 'SUBMITTED':
+            stopped = True
         consumed = None
         while owner_check('pending'):
             try:
@@ -396,13 +444,24 @@ def _guard(connection, pool):
         stopped = True
         observation = None
         while resources._remaining(origin, cleanup=True) > 0:
+            if disposition is None and select.select([connection], [], [], 0)[0]:
+                try:
+                    disposition = read_submission(('SUBMITTED', 'ABORTED'), cleanup=True)
+                except (OSError, ValueError, EOFError):
+                    disposition = 'unknown'
+                if disposition == 'ABORTED':
+                    return 0
             try:
                 if consumed is None:
                     pool.cancel(request_id, origin)
-                observation = pool.reconcile(lease_id)
-                break
+                current = pool.reconcile(lease_id)
+                if current.get('request_id') == request_id and current.get('lease_id') == lease_id:
+                    observation = current
+                    break
             except (OSError, ValueError, EOFError):
-                time.sleep(min(.2, max(0, resources._remaining(origin, cleanup=True))))
+                pass
+            # An absent snapshot cannot dispose of an acknowledged in-flight request.
+            time.sleep(min(.2, max(0, resources._remaining(origin, cleanup=True))))
         if observation is None:
             return 1
         if observation['status'] in ('pending', 'cancelled', 'expired', 'rejected'):

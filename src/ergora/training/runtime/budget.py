@@ -2,7 +2,7 @@
 
 import ergora.training.runtime.evidence as execution_evidence
 import asyncio
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 from dataclasses import asdict
 import hashlib
 import json
@@ -11,6 +11,7 @@ from pathlib import Path
 import re
 import selectors
 import signal
+import socket
 import sqlite3
 import stat
 import subprocess
@@ -149,6 +150,78 @@ async def check_cycle_predecessors(plan, admission, ready, binding, client, rema
             return originals[0][0] if originals else None
     finally:
         await adapter.close()
+
+
+class _GuardCleanup:
+    """Receive one exact guard in the active phase, with no stop-time record reads."""
+
+    def __init__(self, phase, grant, channel):
+        self.phase, self.grant, self.channel = phase, grant, channel
+        self.executor = self.attempt_sha256 = self.guard = None
+        self.phase_id = phase.identity['phase_id']
+        channel.setsockopt(socket.SOL_SOCKET, socket.SO_PASSCRED, 1)
+        channel.setblocking(False)
+        channel.bind(training_execution_protocol.gpu_control_socket(self.phase_id))
+
+    def on_start(self, executor):
+        from dev_platform import adapter
+
+        self.executor = executor
+        attempt = training_execution_protocol.managed_attempt(self.grant['request'], self.grant['launch'],
+                    processes.identity(os.getpid()), executor, self.phase.budget.operation.sha)
+        self.attempt_sha256 = hashlib.sha256(adapter.canonical(attempt) + b'\n').hexdigest()
+
+    def observe(self, stop_requested):
+        if self.executor is None or self.guard is not None:
+            return
+        protocol = training_execution_protocol
+        for _ in range(8):
+            try:
+                raw, pid, uid, address = protocol.recv_gpu_control(self.channel)
+                value = decode_record(raw)
+                protocol._exact(value, ('phase_id', 'attempt_sha256', 'request_sha256', 'lease_id', 'guard'),
+                                'GPU guard announcement')
+                guard = value['guard']
+                protocol._process(guard)
+                protocol._digest(value['request_sha256'])
+                protocol._digest(value['lease_id'])
+                if uid != os.getuid() or value['phase_id'] != self.phase_id or value['attempt_sha256'] != self.attempt_sha256:
+                    continue
+                sender = processes.identity(pid)
+                processes.require_ancestor(pid, self.executor)
+                processes.require_ancestor(guard['pid'], sender)
+                if processes.identity(guard['pid']) != guard or not address or stop_requested():
+                    continue
+                self.guard = guard
+                try:
+                    self.channel.sendto(b'ACK' + raw, address)
+                except OSError:
+                    pass  # A missing ACK never permits a lease request.
+                return
+            except BlockingIOError:
+                return
+            except (OSError, ValueError, KeyError, TypeError):
+                # Empty, stale or unusable announcements confer no authority.
+                continue
+
+    def stop(self, executor_pid):
+        guard = self.guard
+        if guard is None or self.executor['pid'] != executor_pid or self.phase.expired(total=True):
+            return
+        cleanup_deadline = time.monotonic() + self.phase.context['policy']['cleanup_seconds']
+        try:
+            processes.notify_identity(guard, signal.SIGTERM)
+        except (OSError, ValueError):
+            return
+        while not self.phase.expired(total=True) and time.monotonic() < cleanup_deadline:
+            try:
+                if processes.identity(guard['pid']) != guard:
+                    return
+            except (FileNotFoundError, ProcessLookupError, ValueError):
+                return
+            except OSError:
+                pass  # Failed observation is not a stopped process.
+            time.sleep(.05)
 
 
 class _BudgetPhase:
@@ -293,18 +366,26 @@ class _BudgetPhase:
         with (self.output / 'supervisor.stderr').open('xb') as stderr:
             os.dup2(stderr.fileno(), sys.stderr.fileno())
         cancelled = False
+        guard_cleanup = None
 
         def cancel(signum, frame):
             nonlocal cancelled
             cancelled = True
 
-        def stopped():
+        def stop_requested():
             if cancelled or self.expired():
                 return True
             try:
                 return self.identity['owner'] != _process_identity(self.identity['owner']['pid'])
             except (OSError, ValueError):
                 return True
+
+        def stopped():
+            if stop_requested():
+                return True
+            if guard_cleanup is not None:
+                guard_cleanup.observe(stop_requested)
+            return stop_requested()
 
         def frame(event, field, value):
             print(json.dumps({**self.identity, 'event': event, field: value},
@@ -332,9 +413,17 @@ class _BudgetPhase:
             environment['PYTHONPATH'] = os.pathsep.join(str(installation / part) for part in
                 ('local', 'upstream/platform', 'upstream/temporal', 'upstream'))
             payload = {**payload, 'phase': self.identity}
-        result = processes.run(command, Path.cwd(), self.output / 'helper',
-            self.context['policy']['wall_seconds'], json.dumps(payload, ensure_ascii=False, allow_nan=False),
-            environment, supervised=True, stop_requested=stopped)
+        with ExitStack() as resources:
+            stop_options = {}
+            if self.mode == 'execute':
+                original_runner = self.context['intent']['observation']['experiment']['current_runner']
+                if (original_runner['configuration_readback'] or {}).get('local_gpu_pool') is not None:
+                    channel = resources.enter_context(socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM))
+                    guard_cleanup = _GuardCleanup(self, grant, channel)
+                    stop_options = {'on_start': guard_cleanup.on_start, 'on_supervised_stop': guard_cleanup.stop}
+            result = processes.run(command, Path.cwd(), self.output / 'helper',
+                self.context['policy']['wall_seconds'], json.dumps(payload, ensure_ascii=False, allow_nan=False),
+                environment, supervised=True, stop_requested=stopped, **stop_options)
         frame('stopped', 'process', result)
         if self.mode == 'execute':
             # No subprocess may be created after the matching reap frame.

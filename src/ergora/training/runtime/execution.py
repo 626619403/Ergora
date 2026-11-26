@@ -287,10 +287,7 @@ def native_main(installation: str) -> None:
                                               context['policy']['cleanup_seconds']) <= 0):
                 raise ValueError('Original execution fence, owner or computation deadline forbids work')
         active()
-        attempt = {'schema_version': 1, 'kind': 'training-execution-attempt', 'protocol': protocol.PROTOCOL,
-            'launch_sha256': chain.sha(launch), 'request_sha256': chain.sha(request), 'owner_sha256': chain.sha(chain.owner),
-            'run_id': request['run_id'], 'job_id': request['job_id'], 'native_request_sha256': request['native_request_sha256'],
-            'supervisor': supervisor, 'executor': executor}
+        attempt = protocol.managed_attempt(request, launch, supervisor, executor, chain.sha)
         protocol.publish(chain.folder / 'attempt.json', attempt, chain.root)
         active()
         ack = {'schema_version': 1, 'kind': 'training-execution-ack', 'protocol': protocol.PROTOCOL,

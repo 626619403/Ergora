@@ -295,3 +295,11 @@ def test_cli_http_share_normalized_confirmation_and_original_publisher(runner_pr
     assert code == 0 and json.loads(output.getvalue())['status'] == 'already_registered'
     assert (Path(definition['execution']['config_directory']) / 'training-runners/demo-training.json').read_bytes() == raw
     assert not marker.exists()
+
+
+def test_managed_gpu_driver_requires_the_exact_live_ancestor():
+    expected = processes.identity(os.getppid())
+    processes.require_ancestor(os.getpid(), expected)
+    for foreign in (processes.identity(os.getpid()), {**expected, 'start_ticks': str(int(expected['start_ticks']) + 1)}):
+        with pytest.raises(ValueError, match='no longer an ancestor'):
+            processes.require_ancestor(os.getpid(), foreign)

@@ -87,6 +87,9 @@ def wire(connection,deadline,*,value=None):
  global phase,fired
  if value is None:
   message=original(connection,deadline)
+  if fault=='drop-resource-ack' and message.get('type')=='SUBMIT_ACK':
+   setup.with_name('ack-lost').touch()
+   raise EOFError('Controlled loss of the original guard acknowledgment')
   if message.get('type')=='CHECK':
    phase=message['body']['phase']
    if not fired and phase=='prelaunch' and fault in ('prelaunch-stop','prelaunch-deadline'):
@@ -102,6 +105,29 @@ def wire(connection,deadline,*,value=None):
   else:time.sleep(1.25)
  return original(connection,deadline,value=value)
 guard._wire=wire
+if fault == 'delayed-resource-submit':
+ original_request = pool.LocalGpuPool.request
+ def deferred_request(instance, request):
+  time.sleep(1.1)
+  return original_request(instance, request)
+ pool.LocalGpuPool.request = deferred_request
+if fault == 'stop-after-resource-grant':
+ original_request = pool.LocalGpuPool.request
+ def held_grant(instance, request):
+  result = original_request(instance, request)
+  if result['status']!='granted':
+   raise ValueError('Expected the original reserved resource before response hold')
+  setup.with_name('grant-received').touch()
+  while not setup.with_name('release-grant-response').exists():time.sleep(.01)
+  raise TimeoutError('Controlled loss of the original resource request reply after grant')
+ pool.LocalGpuPool.request = held_grant
+if fault == 'stop-before-resource-send':
+ original_request = pool.LocalGpuPool.request
+ def held_send(instance, request):
+  setup.with_name('submit-ack-observed').touch()
+  while not setup.with_name('release-original-send').exists():time.sleep(.01)
+  return original_request(instance, request)
+ pool.LocalGpuPool.request = held_send
 raise SystemExit(fixture.main(['--input',str(setup)]))
 '''
         command = [sys.executable, '-c', script, str(_OWNER), str(setup), transport_fault]
@@ -165,6 +191,89 @@ def test_public_owner_executes_once_with_ordered_devices_then_reaps_and_releases
         assert (setup.parent / 'marker').read_text().count('\n') == 1
 
 
+def test_guard_waits_for_the_original_request_before_asking_to_consume(tmp_path):
+    with fake_pool(tmp_path / 'pool', count=1) as (pool, config, _):
+        setup, _ = _setup(tmp_path / 'task', config, config['device_uuids'],
+                         "from pathlib import Path;Path('started').open('a').write('once\\n')")
+        with _owner(setup, transport_fault='delayed-resource-submit') as owner:
+            result = _result(owner)
+        assert result['process_result']['status'] == 'succeeded'
+        assert result['resource']['status'] == 'released'
+        assert (setup.parent / 'started').read_text().splitlines() == ['once']
+        request, = pool.inspect()['requests']
+        assert request['consume_binding']['sequence'] < request['release_ref']['sequence']
+
+
+def test_missing_guard_submission_ack_has_no_resource_effect(tmp_path):
+    with fake_pool(tmp_path / 'pool', count=1) as (pool, config, _):
+        setup, _ = _setup(tmp_path / 'task', config, config['device_uuids'],
+                         "from pathlib import Path;Path('started').touch()", wall=6, reserve=2)
+        with _owner(setup, transport_fault='drop-resource-ack') as owner:
+            _until(setup.with_name('ack-lost').exists)
+            assert pool.inspect()['requests'] == []
+            result = _result(owner)
+        assert result['request_id'] is None
+        assert pool.inspect()['requests'] == []
+        assert not (setup.parent / 'started').exists()
+
+
+def test_stop_after_acknowledged_resource_grant_cleans_the_original_lease(tmp_path):
+    with fake_pool(tmp_path / 'pool', count=1) as (pool, config, _):
+        setup, _ = _setup(tmp_path / 'task', config, config['device_uuids'],
+                         "from pathlib import Path;Path('started').touch()")
+        with _owner(setup, transport_fault='stop-after-resource-grant') as owner:
+            _until(setup.with_name('grant-received').exists)
+            original, = pool.inspect()['requests']
+            assert original['state'] == 'granted' and original['consume_binding'] is None
+            ready = json.loads((pool.directory / original['guard_ready_ref']['relative_path']).read_bytes())
+            try:
+                processes.notify_identity(ready['guard_identity'], signal.SIGTERM)
+                released = _until(lambda: next((row for row in pool.inspect()['requests']
+                    if row['lease_id'] == original['lease_id'] and row['state'] == 'released'), None))
+                assert released['release_ref']['guard_identity'] == ready['guard_identity']
+                assert released['consume_binding'] is None
+            finally:
+                setup.with_name('release-grant-response').touch()
+            result = _result(owner)
+        assert result['resource']['release_ref'] == released['release_ref']
+        assert not (setup.parent / 'started').exists()
+
+
+def test_stop_before_send_keeps_the_acknowledged_guard_through_absent_readback(tmp_path):
+    absent = tmp_path / 'absent-request-observed'
+    pool_probe = f'''
+original_reconcile = local_gpu_pool._Session._reconcile
+def observe_absent(self, body):
+    try:
+        return original_reconcile(self, body)
+    except ValueError:
+        Path({str(absent)!r}).touch()
+        raise
+local_gpu_pool._Session._reconcile = observe_absent
+'''
+    with fake_pool(tmp_path / 'pool', count=1, _setup=pool_probe) as (pool, config, _):
+        setup, _ = _setup(tmp_path / 'task', config, config['device_uuids'],
+                         "from pathlib import Path;Path('started').touch()")
+        with _owner(setup, transport_fault='stop-before-resource-send') as owner:
+            _until(setup.with_name('submit-ack-observed').exists)
+            ready_file, = pool.directory.glob('proofs/*/ready.json')
+            ready = json.loads(ready_file.read_bytes())
+            try:
+                assert pool.inspect()['requests'] == []
+                processes.notify_identity(ready['guard_identity'], signal.SIGTERM)
+                _until(absent.exists)
+                assert pool.inspect()['requests'] == []
+                assert processes.identity(ready['guard_identity']['pid']) == ready['guard_identity']
+            finally:
+                setup.with_name('release-original-send').touch()
+            result = _result(owner)
+        original, = pool.inspect()['requests']
+        assert original['state'] == 'released' and original['consume_binding'] is None
+        assert original['release_ref']['guard_identity'] == ready['guard_identity']
+        assert result['resource']['release_ref'] == original['release_ref']
+        assert not (setup.parent / 'started').exists()
+
+
 def test_real_subreaper_drains_setsid_descendant_before_resource_release(tmp_path):
     with fake_pool(tmp_path / 'pool', count=1) as (pool, config, session):
         descendant = "import os,time;from pathlib import Path;os.setsid();Path('adopted').write_text(str(os.getpid()));time.sleep(30)"
@@ -222,11 +331,20 @@ def test_pending_live_owner_stop_or_frozen_source_change_never_spawns(tmp_path, 
                 result = _result(second)
             assert not (pending.parent / 'unexpected').exists()
             assert result['process_result'] is None or result['process_result']['returncode'] is None
-            state = pool.inspect()['requests'][1]['state']
+            request = pool.inspect()['requests'][1]
+            state = request['state']
             assert state in ('expired', 'cancelled') if stop_kind == 'deadline' else state == 'cancelled'
+            live = local_gpu_pool.observe_lease(config, pool.session['session_id'], request['lease_id'])
+            assert live['status'] == state and live['release_ref'] is None
+            assert live['attempt_sha256'] == original['origin']['attempt_ref']['raw_sha256']
             assert first.poll() is None, 'Stopping one original task must leave its sibling running'
             (holder.parent / 'release').touch()
             assert _result(first)['resource']['status'] == 'released'
+        assert pool.close()['mode'] == 'closed'
+        session.wait(timeout=5)
+        archived = local_gpu_pool.observe_lease(config, pool.session['session_id'], request['lease_id'])
+        assert archived['status'] == state and archived['release_ref'] is None
+        assert archived['attempt_sha256'] == live['attempt_sha256']
 
 
 @pytest.mark.parametrize('stop_kind', ['signal', 'owner-eof', 'deadline'])

@@ -139,6 +139,32 @@
         },
         "profile": {
           "type": "object"
+        },
+        "local_gpu_pool": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["configuration", "session_id", "ordered_device_uuids", "runtime_sha256"],
+          "properties": {
+            "configuration": {
+              "type": "object"
+            },
+            "session_id": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{32}$"
+            },
+            "runtime_sha256": {
+              "$ref": "#/$defs/sha256"
+            },
+            "ordered_device_uuids": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "pattern": "^GPU-[A-Za-z0-9-]+$"
+              }
+            }
+          }
         }
       }
     },

@@ -26,6 +26,18 @@ def identity(pid: int) -> dict:
             'boot_id': Path('/proc/sys/kernel/random/boot_id').read_text().strip()}
 
 
+def require_ancestor(pid: int, expected: dict) -> None:
+    """Match a live original ancestor of the selected Linux process."""
+    while pid > 1:
+        fields = Path(f'/proc/{pid}/stat').read_text().rsplit(')', 1)[1].split()
+        pid = int(fields[1])
+        if pid == expected['pid']:
+            if identity(pid) == expected:
+                return
+            break
+    raise ValueError('Original managed executor is no longer an ancestor of its GPU driver or guard')
+
+
 def notify_identity(expected: dict, signum: int) -> None:
     """Signal a PID-bound Linux descriptor even on Python builds without wrappers."""
     libc = ctypes.CDLL(None, use_errno=True)
@@ -197,8 +209,9 @@ def run(argv: list[str], cwd: Path, output: Path, timeout: float, stdin: str = "
         command_record: Path | None = None, stop_requested: Callable[[], bool] | None = None,
         record_lifecycle: bool = False, deadline: float | None = None,
         on_start: Callable[[dict], None] | None = None, observe_direct_child_start: bool = False,
-        payload_executable: tuple[int, int] | None = None) -> dict:
-    if (record_lifecycle or on_start is not None) and not supervised:
+        payload_executable: tuple[int, int] | None = None,
+        on_supervised_stop: Callable[[int], None] | None = None) -> dict:
+    if (record_lifecycle or on_start is not None or on_supervised_stop is not None) and not supervised:
         raise ValueError('Durable subtree receipts require the original supervised process owner')
     if payload_executable is not None and (sys.platform != 'linux' or on_start is None
             or len(payload_executable) != 2 or not all(type(value) is int and value > 0 for value in payload_executable)):
@@ -282,6 +295,8 @@ def run(argv: list[str], cwd: Path, output: Path, timeout: float, stdin: str = "
                                 break
                             except subprocess.TimeoutExpired:
                                 pass
+                        if on_supervised_stop is not None and process.poll() is None and should_stop():
+                            on_supervised_stop(process.pid)
                     else:
                         remaining = timeout if deadline is None else deadline - time.monotonic()
                         if remaining <= 0:

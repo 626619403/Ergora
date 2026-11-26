@@ -824,3 +824,32 @@ def test_client_rejects_a_reply_with_another_session_or_epoch(tmp_path, field):
         finally:
             arm.unlink()
         assert pool.inspect()['owner_epoch'] == original['owner_epoch']
+
+
+def test_exact_lease_observation_never_adopts_unconfirmed_owner_state(monkeypatch):
+    from types import SimpleNamespace
+
+    owner = object.__new__(local_gpu_pool._Session)
+    owner.session = {'session_id': '0' * 32}
+    owner.journal_raw = b'original-committed-journal'
+    owner.fatal = None
+    owner.uncertain = b'visible-replacement'
+
+    def repair(*args, **kwargs):
+        pytest.fail('Lease observation must leave repair to the original resource operation')
+
+    monkeypatch.setattr(local_gpu_pool, '_sync', repair)
+    monkeypatch.setattr(owner, '_ensure', repair)
+    connection = SimpleNamespace(request_id=None)
+    message = {'protocol': local_gpu_pool.PROTOCOL, 'session_id': owner.session['session_id'],
+               'action': 'observe_lease', 'body': {'lease_id': 'f' * 64}}
+    with pytest.raises(local_gpu_pool.PoolUnavailable, match='acknowledgement is unconfirmed'):
+        owner._handle(message, connection)
+    assert owner.uncertain == b'visible-replacement' and owner.fatal is None
+    assert owner.journal_raw == b'original-committed-journal'
+    owner.uncertain = None
+    monkeypatch.setattr(owner, '_original_journal_bytes', lambda: b'foreign-on-disk-snapshot')
+    with pytest.raises(local_gpu_pool.PoolUnavailable, match='bytes are unconfirmed'):
+        owner._handle(message, connection)
+    assert owner.uncertain is None and owner.fatal is None
+    assert owner.journal_raw == b'original-committed-journal'

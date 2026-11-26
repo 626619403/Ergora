@@ -250,6 +250,10 @@ def execution_plan(manifest, runner):
     execution = manifest.get('execution')
     if not isinstance(execution, dict):
         raise ValueError('Current execution requires an explicit operation')
+    if ('local_gpu_pool' in (runner.get('configuration_readback') or {})
+            and (execution.get('operation') != 'full-verify' or 'cpu_contract' in execution
+                 or execution.get('profile') is not None)):
+        raise ValueError('Local GPU lease supports an ordinary managed full verification run')
     if execution.get('operation') == 'full-verify':
         _exact(execution, ('operation', *(['profile'] if 'profile' in execution else []), *(['cpu_contract'] if 'cpu_contract' in execution else [])), 'Full execution')
         if 'cpu_contract' in execution:

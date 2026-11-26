@@ -153,6 +153,42 @@ if (os.environ.get('ERGORA_TEST_TRAINING_CONTROLLER_PAUSE') in ('attempt', 'ack'
 
 if fault == 'configuration-full' and base.payload['mode'] == 'phase-supervisor' and base.payload['phase']['mode'] == 'execute':
     import ergora.native.commands as native_commands
+
+    if os.environ.get('ERGORA_TEST_BLOCK_GPU_STOP_RECORD'):
+        from ergora.training import execution_protocol
+
+        original_read_gpu_stop = execution_protocol.read_raw
+
+        def block_gpu_stop_record(path, *args, **kwargs):
+            if path.name == 'gpu-lease.json':
+                Path(os.environ['ERGORA_TEST_BLOCK_GPU_STOP_RECORD']).touch()
+                time.sleep(45)
+            return original_read_gpu_stop(path, *args, **kwargs)
+
+        execution_protocol.read_raw = block_gpu_stop_record
+    if os.environ.get('ERGORA_TEST_DELAY_GUARD_ACK'):
+        import socket
+
+        from ergora.training import execution_protocol
+
+        release_ack = Path(os.environ['ERGORA_TEST_DELAY_GUARD_ACK'])
+        guard_init = budget._GuardCleanup.__init__
+        observe_guard = budget._GuardCleanup.observe
+
+        def queue_invalid_control(self, phase, grant, channel):
+            guard_init(self, phase, grant, channel)
+            with socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM) as bad:
+                address = execution_protocol.gpu_control_socket(self.phase_id)
+                bad.sendto(b'not a control JSON packet', address)
+                bad.sendto(b'{}', address)
+
+        def hold_ack(self, stop_requested):
+            if release_ack.exists():
+                observe_guard(self, stop_requested)
+
+        budget._GuardCleanup.__init__ = queue_invalid_control
+        budget._GuardCleanup.observe = hold_ack
+
     import ergora
 
     worker_command = native_commands.worker_command

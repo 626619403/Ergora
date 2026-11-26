@@ -2692,6 +2692,71 @@ class CycleAdmission:
         return self.observe(synchronize=True, drain=True)
 
 
+def managed_attempt(request, launch, supervisor, executor, sha):
+    return {'schema_version': 1, 'kind': 'training-execution-attempt', 'protocol': PROTOCOL,
+            'launch_sha256': sha(launch), 'request_sha256': sha(request), 'owner_sha256': request['owner_sha256'],
+            'run_id': request['run_id'], 'job_id': request['job_id'], 'native_request_sha256': request['native_request_sha256'],
+            'supervisor': supervisor, 'executor': executor}
+
+
+def gpu_control_socket(phase_id):
+    if not isinstance(phase_id, str) or re.fullmatch('[a-f0-9]{32}', phase_id) is None:
+        raise ValueError('Invalid original GPU execution phase')
+    return '\0ergora-training-gpu-' + phase_id
+
+
+def recv_gpu_control(channel):
+    """Read one bounded packet with its kernel-authenticated process credentials."""
+    import socket
+    import struct
+
+    size = struct.calcsize('3i')
+    raw, credentials, flags, address = channel.recvmsg(1024, socket.CMSG_SPACE(size))
+    if flags & (socket.MSG_TRUNC | socket.MSG_CTRUNC):
+        raise ValueError('Truncated GPU control packet')
+    try:
+        pid, uid, _ = next(struct.unpack('3i', data) for level, kind, data in credentials
+                           if level == socket.SOL_SOCKET and kind == socket.SCM_CREDENTIALS)
+    except (StopIteration, struct.error) as error:
+        raise ValueError('GPU control packet has no valid kernel credentials') from error
+    return raw, pid, uid, address
+
+
+def confirm_gpu_guard(binding, supervisor, remaining, stop_requested):
+    """Obtain the exact phase owner's ACK before submitting a resource request."""
+    import socket
+    import time
+
+    phase_id = binding['execution_phase_id']
+    address = gpu_control_socket(phase_id)
+    message = {'phase_id': phase_id, 'guard': binding['guard_identity'],
+               **{name: binding[name] for name in ('attempt_sha256', 'request_sha256', 'lease_id')}}
+    raw = json.dumps(message, ensure_ascii=False, allow_nan=False).encode()
+    deadline = time.monotonic() + min(1.0, remaining())
+    with socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM) as channel:
+        channel.setsockopt(socket.SOL_SOCKET, socket.SO_PASSCRED, 1)
+        channel.bind(address + '-' + uuid.uuid4().hex)
+        window = deadline - time.monotonic()
+        if stop_requested() or window <= 0:
+            raise TimeoutError('Original GPU guard acknowledgment allowance ended')
+        channel.settimeout(window)
+        channel.sendto(raw, address)
+        while not stop_requested():
+            window = min(remaining(), deadline - time.monotonic())
+            if window <= 0:
+                break
+            channel.settimeout(min(.05, window))
+            try:
+                observed, pid, uid, _ = recv_gpu_control(channel)
+            except (TimeoutError, ValueError):
+                continue
+            if (observed == b'ACK' + raw and uid == os.getuid() and pid == supervisor['pid']
+                    and processes.identity(pid) == supervisor and remaining() > 0
+                    and time.monotonic() < deadline and not stop_requested()):
+                return
+    raise TimeoutError('Original GPU supervisor acknowledgment was not received')
+
+
 class ExecutionRecords:
     """Read and bind one original chain without importing application state or SDKs."""
 
@@ -2764,10 +2829,8 @@ class ExecutionRecords:
                 raise ValueError('Execution attempt has no consumed launch')
             _process(attempt.get('supervisor'))
             _process(attempt.get('executor'))
-            _match(attempt, {'schema_version': 1, 'kind': 'training-execution-attempt', 'protocol': PROTOCOL,
-                'launch_sha256': self.sha(launch), 'request_sha256': self.sha(request), 'owner_sha256': self.sha(self.owner),
-                'run_id': request['run_id'], 'job_id': request['job_id'], 'native_request_sha256': request['native_request_sha256'],
-                'supervisor': attempt['supervisor'], 'executor': attempt['executor']}, 'Execution attempt')
+            _match(attempt, managed_attempt(request, launch, attempt['supervisor'], attempt['executor'], self.sha),
+                   'Execution attempt')
         if ack is not None:
             if attempt is None:
                 raise ValueError('Execution ack has no matching attempt')
@@ -2820,6 +2883,65 @@ class ExecutionRecords:
             'native_request_sha256': hashlib.sha256(self.originals[self.root / self.prefix / 'request.json']).hexdigest(),
             'native_request_semantic_sha256': self.sha(self.native), 'confirmation': True, 'actor_id': actor}
         return expected
+
+    def gpu_lease_record(self, selection, request_id, request_sha256, lease_id, guard_identity):
+        """Bind the exact resource request to the validated original managed attempt."""
+        from ergora.runtime import gpu_pool
+
+        gpu_pool.validate_lease_selection(selection)
+        if self.records['ack'] is None:
+            raise ValueError('Local GPU lease has no complete original managed attempt and acknowledgement')
+        if gpu_pool._lease_id(request_id) != lease_id:
+            raise ValueError('Local GPU lease ID differs from its original request')
+        _digest(request_sha256)
+        _process(guard_identity)
+        return {'schema_version': 1, 'kind': 'training-execution-local-gpu-lease',
+                'execution_phase_id': self.records['launch']['execution_phase_id'],
+                'attempt_sha256': hashlib.sha256(self.originals[self.folder / 'attempt.json']).hexdigest(),
+                'session_id': selection['session_id'], 'request_id': request_id,
+                'request_sha256': request_sha256, 'lease_id': lease_id, 'guard_identity': guard_identity}
+
+    def read_gpu_lease(self, raw):
+        if self.records['ack'] is None:
+            raise ValueError('Local GPU lease has no complete original managed attempt and acknowledgement')
+        runner = self.native['runner']['configuration_readback'] or {}
+        lease = decode_record(raw)
+        _match(lease, self.gpu_lease_record(runner.get('local_gpu_pool'), lease['request_id'],
+                lease['request_sha256'], lease['lease_id'], lease['guard_identity']), 'Original local GPU lease binding')
+        return lease
+
+    def observe_gpu_lease(self):
+        """Read the selected resource owner independently of native result and process stop."""
+        from ergora.runtime import gpu_pool
+
+        path = self.folder / 'gpu-lease.json'
+        capability = (self.native['runner']['configuration_readback'] or {}) if self.records['request'] else {}
+        selection = capability.get('local_gpu_pool')
+        if selection is None and not (path.exists() or path.is_symlink()):
+            return None
+        result = {'status': 'unknown', 'release_ref': None, 'read_only': True}
+        try:
+            gpu_pool.validate_lease_selection(selection)
+            result['session_id'] = selection['session_id']
+            try:
+                raw = read_raw(path)
+            except FileNotFoundError:
+                return {**result, 'reason': 'Original GPU lease binding has not been observed'}
+            lease = self.read_gpu_lease(raw)
+            identity = {key: lease[key] for key in ('session_id', 'lease_id', 'request_id', 'request_sha256', 'attempt_sha256')}
+            result.update(identity)
+            observed = gpu_pool.observe_lease(selection['configuration'], selection['session_id'], lease['lease_id'])
+            if observed['status'] in ('rejected', 'unavailable'):
+                raise ValueError(observed['reason'])
+            _match({key: observed[key] for key in identity}, identity, 'Resource owner original local GPU lease')
+            if observed['release_ref'] is not None:
+                _match(observed['release_ref']['guard_identity'], lease['guard_identity'], 'Original resource guard')
+            if (read_raw(path) != raw or
+                    read_raw(self.folder / 'attempt.json') != self.originals[self.folder / 'attempt.json']):
+                raise ValueError('Original managed attempt or GPU lease binding changed during observation')
+            return {**observed, 'read_only': True}
+        except (EOFError, KeyError, OSError, TypeError, ValueError) as error:
+            return {**result, 'reason': str(error)}
 
     def observe(self, *, durable: bool = False) -> dict:
         request, stopped = self.records['request'], self.records['stopped']
@@ -3109,6 +3231,9 @@ def inspect_main() -> None:
             result = {'status': 'matching'}
     else:
         result = chain.observe(durable=True)
+        resource = chain.observe_gpu_lease()
+        if resource is not None:
+            result['local_gpu_lease'] = resource
     print(json.dumps(result, ensure_ascii=False, allow_nan=False))
 
 

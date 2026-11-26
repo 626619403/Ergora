@@ -5737,3 +5737,304 @@ def test_round_parent_request_chunks_keep_original_bytes_and_loop_fair(round_can
     assert sum(size for size, _ in writes) == len(current.encoded)
     assert len(writes) > 2 and all(b > a for (_, a), (_, b) in zip(writes, writes[1:]))
     assert (current.output / 'request.json').read_bytes() == current.encoded
+
+
+@pytest.fixture
+def local_gpu_configuration(configuration_project, request, tmp_path, monkeypatch):
+    """Freeze a trusted driver binding while the genuine pool uses simulated inventory."""
+    from ergora.training.configuration import source_reference
+    from test_local_gpu_pool import fake_pool
+
+    monkeypatch.setenv('ERGORA_TEST_GUARDED_TRAINING', '1')
+    entry = configuration_project['source'] / 'driver.py'
+    entry.write_text(entry.read_text() + '''
+_original_run = run
+
+def run(context, request, output, *, run_guarded):
+    result = run_guarded([sys.executable, str(Path(__file__).with_name('guarded.py')), str(output)])
+    if result['process_result']['status'] != 'succeeded':
+        raise ValueError('Original guarded fixture command did not succeed')
+    try:
+        run_guarded([sys.executable, '-c', 'raise RuntimeError("duplicate start")'])
+    except ValueError as error:
+        if 'one guarded invocation' not in str(error):
+            raise
+    else:
+        raise ValueError('Original guarded fixture accepted another invocation')
+    _original_run(context, request, output)
+''')
+    (entry.parent / 'guarded.py').write_text('''
+import os
+from pathlib import Path
+import sys
+import time
+
+output = Path(sys.argv[1])
+with (output / 'guarded-start').open('a') as stream:
+    stream.write('one original start\\n')
+while not (output / 'guarded-exit').exists():
+    time.sleep(.02)
+with (output / 'guarded-output').open('x') as stream:
+    stream.write(os.environ['CUDA_VISIBLE_DEVICES'])
+''')
+    commit = configuration_project['commit'](entry.parent, 'Fixture guarded child under the original managed run')
+    capability = configuration_project['runner']['configuration_readback']
+    capability['source'] = source_reference(entry.parent, commit, entry.name)
+    with fake_pool(tmp_path / 'resources', count=1) as (pool, configuration, owner):
+        stale = getattr(request, 'param', None) == 'stale-session'
+        capability['local_gpu_pool'] = {
+            'configuration': configuration,
+            'session_id': '0' * 32 if stale else pool.session['session_id'],
+            'ordered_device_uuids': configuration['device_uuids'],
+            'runtime_sha256': pool.inspect()['runtime_sha256']}
+        yield request.getfixturevalue('configuration_execution'), pool, configuration, owner
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Managed local GPU ownership requires Linux')
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+def test_managed_training_reads_original_local_gpu_lease_without_advancing_admission(
+        local_gpu_configuration, tmp_path, capsys):
+    from ergora.interfaces.cli import main
+    from ergora.runtime import gpu_pool
+    from test_local_gpu_guard import _owner, _result, _setup, _until
+    from test_local_gpu_pool import _inventory
+
+    item, pool, configuration, owner = local_gpu_configuration
+    device, = configuration['device_uuids']
+    session = pool.session['session_id']
+    directory = Path(configuration['coordination_directory']) / 'sessions' / session
+    journal = directory / 'journal.json'
+    inventory_path = tmp_path / 'resources/fake-inventory.json'
+    attempt_identity = {}
+
+    def report_occupancy(pids):
+        rows = _inventory(configuration)
+        rows[0]['compute_pids'] = pids
+        pending = inventory_path.with_suffix('.pending')
+        pending.write_text(json.dumps(rows))
+        pending.replace(inventory_path)
+
+    def completed_child_before_release(current):
+        job = current['job']
+        output = job / 'run-output'
+        _until(lambda: (output / 'guarded-start').exists())
+        records = job / 'managed-execution'
+        binding = json.loads((records / 'gpu-lease.json').read_bytes())
+        attempt_sha = hashlib.sha256((records / 'attempt.json').read_bytes()).hexdigest()
+        assert binding['attempt_sha256'] == attempt_sha
+        assert binding['session_id'] == session
+        stopped = directory / 'proofs' / binding['lease_id'] / 'stopped.json'
+        report_occupancy([os.getpid()])
+        try:
+            (output / 'guarded-exit').touch()
+            _until(stopped.exists)
+            assert json.loads(stopped.read_bytes())['process_result']['status'] == 'succeeded'
+            assert (output / 'guarded-output').read_text() == device
+            raw_before = journal.read_bytes()
+            observed = training.execution(current['state'], 'demo', 'alpha')
+            assert observed['records']['attempt']['run_id'] == current['submission']['run_id']
+            assert observed['executor_stop_confirmed'] is None and observed['execution_success'] is None
+            assert observed['local_gpu_lease']['status'] == 'consumed'
+            assert observed['local_gpu_lease']['release_ref'] is None
+            assert observed['local_gpu_lease']['attempt_sha256'] == attempt_sha
+            assert training.inspect(current['state'], 'demo', 'alpha')['experiment']['recorded_result_state'] is None
+            assert journal.read_bytes() == raw_before
+            attempt_identity.update(binding=binding, attempt_sha=attempt_sha)
+        finally:
+            report_occupancy([])
+
+    executed = run_configuration_execution(item, on_requested=completed_child_before_release)
+    job = item['job']
+    assert training.inspect(item['state'], 'demo', 'alpha')['experiment']['recorded_result_state'] == 'SUCCEEDED'
+    assert executed['executor_stop_confirmed'] is True and executed['execution_success'] is None
+    assert executed['local_gpu_lease']['status'] == 'released'
+    assert (job / 'run-output/guarded-start').read_text().splitlines() == ['one original start']
+
+    lease = attempt_identity['binding']
+    original, = pool.inspect()['requests']
+    request = {name: original[name] for name in ('request_id', 'origin', 'ordered_device_uuids', 'guard_ready_ref')}
+    assert pool.request(request)['release_ref'] == executed['local_gpu_lease']['release_ref']
+    with pytest.raises(ValueError):
+        training.execute(item['state'], 'demo', 'alpha', 1, item['submission']['intent_sha256'],
+                         item['submission']['run_id'], item['native_sha256'], confirm=True)
+    assert json.loads(item['service'][1].read_bytes())['starts'] == 1
+    assert (job / 'run-output/guarded-start').read_text().splitlines() == ['one original start']
+
+    foreign, _ = _setup(tmp_path / 'foreign', configuration, [device], 'pass')
+    with _owner(foreign) as foreign_owner:
+        foreign_receipt = _result(foreign_owner)['resource']
+    assert foreign_receipt['status'] == 'released'
+    assert pool.close()['mode'] == 'closed'
+    owner.wait(timeout=5)
+    archived = gpu_pool.observe_closed_release(configuration, session, lease['lease_id'])
+    command = ['--home', str(item['state'].root), 'training', 'execution', 'demo', 'alpha']
+    assert main(command) == 0
+    offline = json.loads(capsys.readouterr().out)
+    assert offline['local_gpu_lease'] == {**archived, 'read_only': True}
+    assert offline['local_gpu_lease']['attempt_sha256'] == attempt_identity['attempt_sha']
+
+    binding_path = job / 'managed-execution/gpu-lease.json'
+    original_raw = binding_path.read_bytes()
+    for invalid in ({**lease, 'session_id': '0' * 32},
+                    {**lease, **{name: foreign_receipt[name] for name in ('request_id', 'request_sha256', 'lease_id')}}):
+        binding_path.write_text(json.dumps(invalid))
+        refused = training.execution(item['state'], 'demo', 'alpha')
+        assert refused['executor_stop_confirmed'] is True
+        assert refused['local_gpu_lease']['status'] == 'unknown'
+        assert refused['local_gpu_lease']['release_ref'] is None
+        assert 'identity' in refused['local_gpu_lease']['reason']
+    binding_path.write_bytes(original_raw)
+    assert training.execution(item['state'], 'demo', 'alpha')['local_gpu_lease'] == offline['local_gpu_lease']
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Managed local GPU ownership requires Linux')
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('local_gpu_configuration', ['stale-session'], indirect=True)
+def test_stale_managed_gpu_session_refuses_before_guard_creation(local_gpu_configuration):
+    item, pool, _, _ = local_gpu_configuration
+    execution = run_configuration_execution(item)
+    assert execution['executor_stop_confirmed'] is True
+    assert execution['local_gpu_lease']['status'] == 'unknown'
+    assert execution['local_gpu_lease']['release_ref'] is None
+    assert pool.inspect()['requests'] == []
+    assert not (item['job'] / 'managed-execution/gpu-lease.json').exists()
+    assert not (item['job'] / 'run-output/guarded-start').exists()
+    assert training.inspect(item['state'], 'demo', 'alpha')['experiment']['recorded_result_state'] == 'FAILED'
+    log = (item['job'] / 'run-output/execution.log').read_text()
+    assert 'session' in log and 'ValueError' in log
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Managed local GPU ownership requires Linux')
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('changed_source', ['trusted payload', 'candidate input', 'stored request'])
+def test_pending_managed_gpu_request_loses_authority_after_source_drift(local_gpu_configuration, tmp_path, changed_source):
+    from test_local_gpu_guard import _owner, _result, _setup, _until
+
+    item, pool, configuration, _ = local_gpu_configuration
+    holder, _ = _setup(tmp_path / 'original-peer', configuration, configuration['device_uuids'],
+        "import time\nfrom pathlib import Path\nPath('held').touch()\n"
+        "while not Path('release').exists(): time.sleep(.02)\n", wall=75, reserve=5)
+
+    def change_pending_source(current):
+        _until(lambda: any(request['state'] == 'pending' for request in pool.inspect()['requests']))
+        relative = {'trusted payload': 'configuration-driver/guarded.py',
+                    'candidate input': 'candidate/src/configuration.json',
+                    'stored request': 'configuration-request.json'}[changed_source]
+        original = current['job'] / relative
+        original.write_bytes(original.read_bytes() + b'\n')
+
+    with _owner(holder) as peer:
+        _until(lambda: (holder.parent / 'held').exists())
+        try:
+            execution = run_configuration_execution(item, on_requested=change_pending_source)
+            assert execution['executor_stop_confirmed'] is True
+            assert execution['local_gpu_lease']['status'] == 'cancelled'
+            assert execution['local_gpu_lease']['release_ref'] is None
+            assert not (item['job'] / 'run-output/guarded-start').exists()
+            assert training.inspect(item['state'], 'demo', 'alpha')['experiment']['recorded_result_state'] == 'FAILED'
+            assert peer.poll() is None
+        finally:
+            (holder.parent / 'release').touch()
+        assert _result(peer)['resource']['status'] == 'released'
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Managed local GPU ownership requires Linux')
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('stop_kind', ['original-stop', 'work-expiry', 'guard-hard-loss'])
+def test_managed_gpu_cleanup_uses_the_original_stop_reserve(local_gpu_configuration, stop_kind, monkeypatch, tmp_path):
+    import signal
+
+    from ergora.runtime import budget_clock
+    from test_local_gpu_guard import _until
+
+    item, pool, configuration, owner = local_gpu_configuration
+    wall, cleanup = 38, 10
+    blocked_read = tmp_path / 'execute-supervisor-read-lease'
+    monkeypatch.setenv('ERGORA_TEST_BLOCK_GPU_STOP_RECORD', str(blocked_read))
+
+    def stop_during_original_payload(current):
+        _until(lambda: (current['job'] / 'run-output/guarded-start').exists())
+        original = training.execution(item['state'], 'demo', 'alpha')
+        assert original['local_gpu_lease']['status'] == 'consumed'
+        assert original['local_gpu_lease']['release_ref'] is None
+        if stop_kind in ('original-stop', 'guard-hard-loss'):
+            if stop_kind == 'guard-hard-loss':
+                lease_binding = current['job'] / 'managed-execution/gpu-lease.json'
+                guard = json.loads(lease_binding.read_bytes())['guard_identity']
+                processes.notify_identity(guard, signal.SIGKILL)
+            original_owner = original['owner']
+            processes.notify_identity({key: original_owner[key] for key in ('pid', 'start_ticks', 'boot_id')},
+                                      signal.SIGTERM)
+        else:
+            auth = item['state'].root / 'training-cycles/demo/budget/authorization.json'
+            clock = json.loads(auth.read_bytes())['clock']
+            _until(lambda: budget_clock.remaining(clock, wall, cleanup) <= 0, timeout=38)
+
+    execution = run_configuration_execution(item, wall=wall, cleanup=cleanup, on_requested=stop_during_original_payload)
+    job = item['job']
+    assert execution['executor_stop_confirmed'] is True
+    assert execution['execution_success'] is None
+    assert not blocked_read.exists()
+    if stop_kind != 'guard-hard-loss':
+        assert execution['records']['stopped']['process']['status'] == 'cancelled'
+    lease = execution['local_gpu_lease']
+    assert lease['attempt_sha256'] == hashlib.sha256((job / 'managed-execution/attempt.json').read_bytes()).hexdigest()
+    if stop_kind == 'guard-hard-loss':
+        latest = _until(lambda: next((request for request in pool.inspect()['requests']
+            if request['lease_id'] == lease['lease_id'] and request['state'] == 'unknown'), None))
+        assert latest['release_ref'] is None
+        assert training.execution(item['state'], 'demo', 'alpha')['local_gpu_lease']['status'] == 'unknown'
+        return
+    assert lease['status'] == 'released', lease
+    path = Path(configuration['coordination_directory']) / 'sessions' / lease['session_id'] / lease['release_ref']['proof_ref']['relative_path']
+    assert json.loads(path.read_bytes())['process_result']['status'] == 'cancelled'
+    assert (job / 'run-output/guarded-start').read_text().splitlines() == ['one original start']
+    assert not (job / 'run-output/guarded-output').exists()
+    assert pool.close()['mode'] == 'closed'
+    owner.wait(timeout=5)
+    archived = training.execution(item['state'], 'demo', 'alpha')['local_gpu_lease']
+    assert archived['status'] == 'released' and archived['mode'] == 'closed'
+    assert archived['release_ref'] == lease['release_ref']
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Managed local GPU ownership requires Linux')
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('before_ack', ['release-ack', 'original-stop'])
+def test_managed_gpu_pool_admission_waits_for_the_original_supervisor_ack(
+        local_gpu_configuration, before_ack, monkeypatch, tmp_path):
+    import signal
+
+    from test_local_gpu_guard import _until
+
+    item, pool, _, _ = local_gpu_configuration
+    release_ack = tmp_path / 'permit-original-guard-ack'
+    monkeypatch.setenv('ERGORA_TEST_DELAY_GUARD_ACK', str(release_ack))
+    journal = pool.directory / 'journal.json'
+
+    def wait_before_ack(current):
+        job = current['job']
+        _until(lambda: (job / 'managed-execution/gpu-lease.json').exists())
+        time.sleep(.12)
+        assert json.loads(journal.read_bytes())['requests'] == []
+        assert not (job / 'run-output/guarded-start').exists()
+        if before_ack == 'original-stop':
+            original = item['runtime'] / 'ergora/training-submissions/alpha.budget/owner.json'
+            original_owner = json.loads(original.read_bytes())
+            processes.notify_identity({key: original_owner[key] for key in ('pid', 'start_ticks', 'boot_id')},
+                                      signal.SIGTERM)
+        else:
+            release_ack.touch()
+            _until(lambda: (job / 'run-output/guarded-start').exists())
+            (job / 'run-output/guarded-exit').touch()
+
+    result = run_configuration_execution(item, on_requested=wait_before_ack)
+    requests = json.loads(journal.read_bytes())['requests']
+    assert result['executor_stop_confirmed'] is True
+    if before_ack == 'original-stop':
+        assert not requests
+        assert result['local_gpu_lease']['status'] == 'unknown'
+        assert not (item['job'] / 'run-output/guarded-start').exists()
+    else:
+        original, = requests
+        assert original['state'] == result['local_gpu_lease']['status'] == 'released'
+        assert (item['job'] / 'run-output/guarded-start').read_text().splitlines() == ['one original start']
