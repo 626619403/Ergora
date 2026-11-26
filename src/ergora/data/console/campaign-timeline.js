@@ -6,14 +6,68 @@ const facts = (rows) => node("dl", { className: "task-facts" },
 const record = (title, value) => value == null ? null :
   node("details", {}, node("summary", {}, title), pre(value));
 
+function trainingEvidence({ locator, recipient }, completion, conflict) {
+  const lease = completion?.local_gpu_lease;
+  const history = recipient?.history;
+  const native = recipient?.native_receipt;
+  return [
+    panel("原训练结果", null,
+      conflict,
+      facts([
+        ["原实验 ID", locator.experiment_id],
+        ["原训练 Job ID", locator.job_id],
+        ["原训练 Workflow ID", locator.workflow_id],
+        ["原训练 Run ID", locator.run_id],
+        ["原训练尝试 SHA256", locator.attempt_sha256],
+        ["原训练请求 SHA256", locator.native_request_sha256],
+        ["原训练结果 SHA256", completion?.native_result_sha256],
+        ["训练执行回收记录 SHA256", completion?.reap_record_sha256],
+        ["读取守卫清理 SHA256", completion?.reader_cleanup_sha256],
+        ["训练读取 Activity 完成事件 ID", completion?.completed_event_id],
+      ]),
+      record("History 核对的原训练读取回执", completion)),
+    panel("原训练资源租约", null,
+      facts([["本地 GPU 租约观测", lease === null ? "源记录返回 null" : lease?.status]]),
+      record("源返回的原租约观测", lease)),
+    recipient ? panel("原接手唤醒", recipient.reason,
+      facts([
+        ["唤醒读取状态", recipient.status],
+        ["原唤醒 ID", recipient.wake_id],
+        ["History 唤醒 Activity 状态", history?.status],
+        ["唤醒 Activity 调度事件 ID", history?.scheduled_event_id],
+        ["唤醒 Activity 开始事件 ID", history?.started_event_id],
+        ["唤醒 Activity 终止事件 ID", history?.completed_event_id],
+      ])) : null,
+    recipient ? panel("原接手原生回执", null,
+      native ? facts([
+        ["原接手会话 ID", native?.session_id],
+        ["原接手父 Run ID", native?.parent_run_id],
+        ["原接手意图 ID", native?.intent_id],
+        ["原接手 Run ID", native?.run_id],
+        ["原接手派发", native?.dispatch],
+        ["原接手进程启动", native?.start_status],
+        ["原接手结果", native?.status],
+        ...(native.campaign_recipient_blocker ? [["原接手阻塞原因", native.campaign_recipient_blocker]] : []),
+        ["原接手执行已停止", native?.execution_stopped],
+        ["原接手退出码", native?.returncode],
+        ["原接手结果 SHA256", native?.result_sha256],
+      ]) : empty("未返回原接手原生回执。")) : null,
+  ];
+}
+
 function timeline(result) {
   const evidence = result.task_evidence;
-  const job = evidence.native_job;
+  const training = result.training_task;
+  const selected = training ?? evidence;
+  const job = evidence?.native_job;
   const current = result.task_state;
   const currentReadback = current?.readback_observation;
   const history = result.task_observation_history;
   const completion = result.readback_completion;
   const { stop, rollover } = result;
+  const conflict = result.task_observation_history_status === "contradictory" ?
+    node("p", { className: "form-note", role: "status" },
+      `History 证据冲突（contradictory）。${result.task_observation_history_error}`) : null;
   const update = (title, attempt) => attempt == null ? null :
     node("section", {},
       node("h3", {}, title),
@@ -32,8 +86,8 @@ function timeline(result) {
       facts([
         ["项目", result.project],
         ["原 Campaign ID", result.campaign],
-        ["原任务 ID", evidence.task_id],
-        ["依赖任务 ID", evidence.depends_on.join("、") || "无"],
+        ["原任务 ID", selected.task_id],
+        ["依赖任务 ID", selected.depends_on.join("、") || "无"],
         ["原计划 SHA256", result.plan_sha256],
         ["原项目修订", result.project_revision],
         ["原操作者 EUID", result.operator_euid],
@@ -76,27 +130,26 @@ function timeline(result) {
         record("Workflow 返回的定时读取记录", currentReadback)) : null,
       record("Workflow 返回的原等待回执", current?.waiting_receipt),
       record("Workflow 返回的原终态回执", current?.receipt)),
-    panel("原 Update 与 History", null,
-      result.task_observation_history_status === "contradictory" ?
-        node("p", { className: "form-note", role: "status" },
-          `History 证据冲突（contradictory）。${result.task_observation_history_error}`) : null,
-      history.waiting || history.terminal ? null : empty("该任务未返回已保存的 Update 尝试。"),
-      update("等待 Update", history.waiting),
-      record("History 核对的原定时读取 Activity 回执", completion),
-      update("终态 Update", history.terminal)),
-    panel("原固定检查 Job", evidence.native_read_error,
-      facts([
-        ["证据关联", evidence.correlation],
-        ...(evidence.different_fields?.length ? [["冲突字段", evidence.different_fields.join("、")]] : []),
-        ["冻结的 Job ID", evidence.source.job_id],
-        ["冻结的 Job SHA256", evidence.source.job_sha256],
-        ["原操作 ID", evidence.source.operation_id],
-        ["原 Job 状态", job?.status],
-        ["原 Job 清理已确认", job?.cleanup_confirmed],
-        ["本次原 Job 读取 SHA256", evidence.native_observation_sha256],
-      ]),
-      record("冻结的原 Job 选择", evidence.source),
-      record("原 Job 所有者返回的证据", job)),
+    ...(training ? trainingEvidence(training, completion, conflict) : [
+      panel("原 Update 与 History", null, conflict,
+        history.waiting || history.terminal ? null : empty("该任务未返回已保存的 Update 尝试。"),
+        update("等待 Update", history.waiting),
+        record("History 核对的原定时读取 Activity 回执", completion),
+        update("终态 Update", history.terminal)),
+      panel("原固定检查 Job", evidence.native_read_error,
+        facts([
+          ["证据关联", evidence.correlation],
+          ...(evidence.different_fields?.length ? [["冲突字段", evidence.different_fields.join("、")]] : []),
+          ["冻结的 Job ID", evidence.source.job_id],
+          ["冻结的 Job SHA256", evidence.source.job_sha256],
+          ["原操作 ID", evidence.source.operation_id],
+          ["原 Job 状态", job?.status],
+          ["原 Job 清理已确认", job?.cleanup_confirmed],
+          ["本次原 Job 读取 SHA256", evidence.native_observation_sha256],
+        ]),
+        record("冻结的原 Job 选择", evidence.source),
+        record("原 Job 所有者返回的证据", job)),
+    ]),
   ];
 }
 
@@ -108,7 +161,7 @@ export function campaignTimeline({ base, projectId, controlDirectory, isCurrent 
   let selection = 0;
   const active = () => isCurrent() && content.isConnected && $("#dialog").open;
   const content = node("div", {},
-    node("p", {}, `项目 ${projectId} · 按冻结计划中的 ID 读取一个固定检查任务。每次查询同时读取原 Workflow 和 Job 的证据。`),
+    node("p", {}, `项目 ${projectId} · 按冻结计划中的 ID 读取一个固定检查或训练结果任务的原证据。`),
     form([
       field("原 Campaign ID", "campaign", previousCampaign, "text", idInput),
       field("原任务 ID", "task", previousTask, "text", idInput),

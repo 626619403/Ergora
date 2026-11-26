@@ -63,7 +63,7 @@ def test_campaign_timeline_reads_and_exposes_only_the_selected_original_task(con
         return {"project": project, "campaign": campaign, "run_id": "original", "current_run_id": "successor",
                 "workflow_state_status": "observed",
                 "plan": {"acceptance": "Inspect original evidence", "limits": {"expires_at": 100},
-                         "tasks": ["other-private"]},
+                         "tasks": [{"task_id": "selected", "source": {}}, {"task_id": "other-private"}]},
                 "tasks": {"selected": selected, "other-private": {}},
                 "task_observation_history": {"selected": attempt, "other-private": {}},
                 "task_evidence": {"task_id": task_id, "correlation": "unavailable"},
@@ -83,11 +83,61 @@ def test_campaign_timeline_reads_and_exposes_only_the_selected_original_task(con
     assert observed["run_id"] == "original" and observed["current_run_id"] == "successor"
     assert observed["task_state"] == selected and observed["task_observation_history"] == attempt
     assert observed["task_evidence"]["correlation"] == "unavailable"
+    assert "training_task" not in observed
     assert observed["stop"] == {"status": "unknown", "remote_status": "unavailable", "update_id": "original-stop",
                                 "decision": None, "receipt_run_id": None, "local_fence_saved": True}
     assert observed["rollover"] == {"status": "unresolved", "update_id": "original-rollover"}
     assert observed["readback_completion"] == completion
     assert "other-private" not in response.text
+
+
+@pytest.mark.parametrize("workflow_observed", [True, False])
+def test_campaign_training_timeline_keeps_the_original_result_and_native_dispositions(console, monkeypatch,
+                                                                                        workflow_observed):
+    from ergora.campaigns import application
+
+    client, state, _ = console
+    locator = {"experiment_id": "alpha", "workflow_id": "training-workflow", "run_id": "training-run",
+               "job_id": "original-job", "attempt_sha256": "a" * 64, "native_request_sha256": "b" * 64}
+    task = {"task_id": "full", "depends_on": [],
+            "source": {"kind": "training_full_result", "locator": locator},
+            "recipient": {"prompt": "hidden-prompt"}}
+    readback = {"status": "available", "activity_id": "original-reader", "native_result_sha256": "c" * 64}
+    completion = {"task_id": "full", "native_result_sha256": "c" * 64, "reader_cleanup_sha256": "d" * 64,
+                  "local_gpu_lease": {"status": "unknown", "read_only": True}, "completed_event_id": 13}
+    run = {"status": "succeeded", "execution_stopped": True, "result_sha256": "e" * 64, "returncode": 0}
+    receipt = {"session_id": "original-session", "parent_run_id": "original-parent", "intent_id": "original-intent",
+               "run_id": "native-run", "dispatch": "accepted"}
+    activity = {"status": "unknown", "scheduled_event_id": 17, "started_event_id": 18, "completed_event_id": 19}
+
+    async def status(store, project, campaign, *, online, task_id):
+        assert (store.root, project, campaign, online, task_id) == (state.root, "demo", "record", True, "full")
+        return {"project": project, "campaign": campaign, "run_id": "campaign-run",
+                "workflow_state_status": "observed" if workflow_observed else "unavailable",
+                "plan": {"acceptance": "Verify original training", "limits": {"expires_at": 100}, "tasks": [task]},
+                "tasks": {"full": {**task, "status": "observed", "eligible": False, "readback_observation": readback}}
+                if workflow_observed else {},
+                "stop": {"status": "not_recorded", "remote_status": "not_requested", "update_id": None, "receipt": None},
+                "readback_completion": {**completion, "recipient": {"hidden-prompt": "private-value"}},
+                "recipient": {"status": "observed", "intent": {"wake_id": "original-wake", "source": "private-value"},
+                              "history": {**activity, "intent": "private-value"},
+                              "native_receipt": {**receipt, "native_start": {"status": "started", "process": "private-value"},
+                                                 "run": {**run, "binding": "private-value", "submitted": "hidden-prompt"}}}}
+
+    monkeypatch.setattr(application, "status", status)
+    response = client.get("/api/projects/demo/campaigns/record/tasks/full/timeline")
+    assert response.status_code == 200, response.text
+    observed = response.json()
+    assert observed["run_id"] == "campaign-run"
+    assert observed["task_state"] == ({"status": "observed", "eligible": False, "readback_observation": readback}
+                                      if workflow_observed else None)
+    assert observed["readback_completion"] == completion
+    assert observed["training_task"] == {
+        "task_id": "full", "depends_on": [], "locator": locator,
+        "recipient": {"status": "observed", "reason": None, "wake_id": "original-wake", "history": activity,
+                      "native_receipt": {**receipt, "start_status": "started", **run}},
+    }
+    assert "hidden-prompt" not in response.text and "private-value" not in response.text
 
 
 def test_formal_work_priority_confirms_exact_command_and_reads_the_original(console, monkeypatch):

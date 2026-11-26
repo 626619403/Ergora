@@ -17,6 +17,7 @@ import ergora.training.application as training
 import ergora.definitions.agents as agent_definitions
 import ergora.agents.runs as agent_runs
 import ergora.campaigns.application as campaigns
+from ergora.campaigns.records import tasks_by_id, training_result_task
 import ergora.definitions.bundles as definition_bundles
 import ergora.development.drafts as drafts
 import ergora.improvement.document_corrections as document_corrections
@@ -505,6 +506,26 @@ class CompositionPreviewPayload(CompositionSelectionPayload):
 
 class CompositionFreezePayload(CompositionSelectionPayload):
     preview_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+
+
+def _training_timeline_recipient(recipient: dict) -> dict:
+    history = recipient["history"]
+    intent = recipient["intent"]
+    receipt = recipient["native_receipt"]
+    native = None
+    if receipt is not None:
+        run = receipt["run"] or {}
+        native = {key: receipt[key] for key in ("session_id", "parent_run_id", "intent_id", "run_id", "dispatch")}
+        native.update(start_status=receipt["native_start"]["status"],
+                      **{key: run[key] for key in ("status", "result_sha256", "execution_stopped", "returncode",
+                                                   "campaign_recipient_blocker")
+                         if key in run})
+    return {"status": recipient["status"], "reason": recipient.get("reason"),
+            "wake_id": intent["wake_id"] if intent is not None else None,
+            "history": ({key: history[key] for key in ("status", "scheduled_event_id", "started_event_id",
+                                                      "completed_event_id") if key in history}
+                        if history is not None else None),
+            "native_receipt": native}
 
 
 def create_app(home: Path | None = None) -> FastAPI:
@@ -1005,6 +1026,17 @@ def create_app(home: Path | None = None) -> FastAPI:
                   "remote_status", "remote_error", "temporal_status", "workflow_state_status",
                   "task_observation_history_status", "task_observation_history_error", "task_evidence")
         plan = observed["plan"]
+        selected = tasks_by_id(observed)[task_id]
+        task_state = observed.get("tasks", {}).get(task_id)
+        training_task = {}
+        if training_result_task(selected):
+            training_task = {"task_id": task_id, "depends_on": selected["depends_on"],
+                             "locator": selected["source"]["locator"]}
+            if task_state is not None:
+                task_state = {key: task_state[key] for key in ("status", "eligible", "readback_observation")
+                              if key in task_state}
+            if "recipient" in selected and "recipient" in observed:
+                training_task["recipient"] = _training_timeline_recipient(observed["recipient"])
         stop = observed["stop"]
         stop_receipt = stop["receipt"] or {}
         rollover = observed.get("rollover")
@@ -1016,7 +1048,8 @@ def create_app(home: Path | None = None) -> FastAPI:
         return {**{name: observed[name] for name in fields if name in observed},
                 "acceptance": plan["acceptance"], "expires_at": plan["limits"]["expires_at"],
                 "workflow_phase": observed.get("workflow_state", {}).get("phase"),
-                "task_state": observed.get("tasks", {}).get(task_id),
+                "task_state": task_state,
+                **({"training_task": training_task} if training_task else {}),
                 "stop": {"status": stop["status"], "remote_status": stop["remote_status"],
                          "update_id": stop["update_id"], "local_fence_saved": stop.get("local_fence_saved"),
                          "decision": stop_receipt.get("decision"), "receipt_run_id": stop_receipt.get("run_id")},
