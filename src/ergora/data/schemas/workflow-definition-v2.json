@@ -73,6 +73,30 @@
       },
       "minProperties": 1
     },
+    "completion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["continue_after_failure", "optional_outputs"],
+      "properties": {
+        "continue_after_failure": {
+          "type": "array",
+          "uniqueItems": true,
+          "minItems": 1,
+          "maxItems": 128,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "optional_outputs": {
+          "type": "array",
+          "uniqueItems": true,
+          "maxItems": 31,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        }
+      }
+    },
     "nodes": {
       "type": "array",
       "minItems": 1,

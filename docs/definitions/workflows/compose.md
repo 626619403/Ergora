@@ -47,9 +47,26 @@ ergora composition run-graph my-project ./complete-manifest --manifest-digest MA
 
 The command schedules read-only, text-only Agent leaves when their declared dependencies are satisfied and the frozen project, root and ancestor concurrency limits allow another call. With a free slot, a successor can start while an unrelated branch is still running. Nested workflows pass data through their declared ports. Each Agent leaf supplies its complete structured reply as `result`, and an all-join maps the outputs of all its declared predecessors by exact instance path.
 
-The graph coordinator records each original Agent attempt and run ID in `run.json` before launch, then checks the current stop, completed calls and result capacity again. An attempt stopped before the Agent runner starts is recorded as `not_dispatched`. One deadline covers the whole graph. On failure, cancellation or timeout, the coordinator stops dispatch and waits for the original process owners to stop and collect active calls. Ctrl+C requests cancellation through those owners. On Linux/WSL2, SIGTERM uses the same path.
+The graph coordinator records each original Agent attempt and run ID in `run.json` before launch, then checks the current stop, completed calls and result capacity again. An attempt stopped before the Agent runner starts is recorded as `not_dispatched`. One deadline covers the whole graph. By default, a failure fences new dispatch. A global cancellation or timeout also fences dispatch. On a fence, the coordinator waits for the original process owners to collect active calls. Ctrl+C requests cancellation through those owners. On Linux/WSL2, SIGTERM uses the same path.
 
-Read `run.json` in the selected directory for the original manifest, inputs, attempted Agent run IDs and named outputs. Use `composition inspect-run` to read each original leaf, including completed leaves from a failed or interrupted graph. The graph retains up to 8 MiB of complete verified leaf results and caps its final output at 8 MiB. Exceeding either limit fails the graph with the original leaf records available. `run-graph` takes an unused directory and returns a nonzero status when the graph ends without complete success.
+Read `run.json` in the selected directory for the original manifest, inputs, attempted Agent run IDs and named outputs. Use `composition inspect-run` to read each original leaf, including completed leaves from a failed or interrupted graph. The graph retains up to 8 MiB of complete verified leaf results and caps its final output at 8 MiB. Exceeding either limit fails the graph with the original leaf records available. `run-graph` takes an unused directory. A failed, cancelled or timed-out graph returns a nonzero exit code.
+
+### Continue independent work after a declared failure
+
+A standalone Workflow v2 root can include the following declaration when its graph uses only Agents, Workflows and all-joins without a FlowMap gate. In this example the root has a direct Agent named `dependency` and an existing `review` output from an all-join depending on it. The remaining root output `structure` is required.
+
+```json
+{
+  "completion": {
+    "continue_after_failure": ["dependency"],
+    "optional_outputs": ["review"]
+  }
+}
+```
+
+For a named Agent, the coordinator can continue after verifying its original normal process exit with a positive code from 1 to 255. It retains the failed attempt and records the code and original run digest in `original_failure`. Hard dependencies on that Agent block their consumers. Independent branches settle under the original deadline. Other failures, including an invalid result or unconfirmed original identity, fence new work. STOP and expiry apply to the entire graph.
+
+If all required outputs are available, the graph returns `succeeded` and publishes each available named output. An optional port blocked by an original failure is omitted from `outputs`, with its producer and the failed instances listed in `unavailable_outputs`. In this example, `structure` is available and the paired `review` is incomplete. If the `review` port is required, the graph returns `failed` and the original structure result remains readable by its Agent run ID. Formal review uses its own candidate-bound responsibilities. [Required and advisory review](contracts.md#static-required-and-advisory-review-declarations)
 
 ### Observe an original graph run
 
@@ -59,7 +76,7 @@ After an interrupted run or a lost reply, use the original control home, project
 ergora --home ROOT composition inspect-graph PROJECT DIRECTORY --manifest-digest SHA256
 ```
 
-The reader verifies the frozen manifest and reports its root, the saved `run.json` status and digest, the recorded output port names and Agent attempts in reservation order. Each attempt includes the reserved input identity and separate observations of the original Agent run, input, prompt and result. For example, a saved `attempted` entry can have an observed `succeeded` Agent run while the graph receipt still reads `incomplete`. Use the original Agent run ID for complete result content. [Read an original leaf by ID](leaf-calls.md#read-an-original-composition-run-by-exact-id)
+The reader verifies the frozen manifest and reports its root, the saved `run.json` status and digest, the recorded output port names and Agent attempts in reservation order. Each attempt includes the reserved input identity and separate observations of the original Agent run, input, prompt and result. For example, a saved `attempted` entry can have an observed `succeeded` Agent run while the graph receipt still reads `incomplete`. For an omitted optional output, the reader checks the producer and the recorded failure against the frozen dependency graph. It reports whether the original attempts corroborate the reason. Use the original Agent run ID for complete result content. [Read an original leaf by ID](leaf-calls.md#read-an-original-composition-run-by-exact-id)
 
 In `route_decisions`, a `corroborated` automatic choice matches the frozen branch list and the original analyzer's verified result. A corroborated supervised choice also checks the original operator action against that recommendation and checkpoint. For `verify-evidence`, the report shows the graph-recorded locator and evidence status with the original native receipt marked `not_queried`. Per-leaf `original_run.process_start` shows the original Agent run's historical direct-child observation. The graph-level `process_start` and `stop_and_cleanup` report `unknown`. Inspection is for observation only. Repeat the read with the same identifiers when more evidence becomes available.
 
@@ -83,7 +100,7 @@ If the coordinator is interrupted and leaves the run `incomplete`, inspect the o
 ergora composition resume-graph PROJECT ./original-graph-run --manifest-digest MANIFEST_DIGEST
 ```
 
-Resumption acquires the original coordinator lock and verifies the control home before opening State for writes. It checks the saved project revision, manifest, inputs, remaining budget and original leaf evidence, and corroborates each reservation with its durable pre-send record. It reconstructs the declared outputs of verified successful leaves from their original attempts and Agent run IDs. Only previously unreserved leaves can start. The original deadline and result limits still apply.
+Resumption acquires the original coordinator lock and verifies the control home before opening State for writes. It checks the saved project revision, manifest, inputs, remaining budget and original leaf evidence, and corroborates each reservation with its durable pre-send record. It reconstructs the declared outputs of verified successful leaves from their original attempts and Agent run IDs. For a [declared branch failure](#continue-independent-work-after-a-declared-failure), it checks the reserved leaf against the original run, input and prompt, and compares the original failure evidence with the recorded digest if the graph already observed it. Only previously unreserved leaves can start. The original deadline and result limits still apply.
 
 For an automatic `choose-agent` route, recovery derives the selected branch or `none` from the analyzer's verified original result. A [supervised route](#decide-on-a-recommended-follow-up) additionally verifies the original checkpoint and applies its saved operator action. A mismatch blocks resumption. Recovery saves the effective decision before preparing or dispatching the selected branch. A missing decision blocks recovery when dependent work was already prepared or reserved. A conditional branch can start only if selected and previously unreserved. All-joins retain the skipped states of unselected branches. [Conditional routing contract](contracts.md#conditional-agent-routing)
 

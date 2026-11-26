@@ -50,6 +50,8 @@ def fixed_check_review(graph: dict) -> tuple[dict, dict] | None:
 
 def require_formal_nodes(graph: dict) -> None:
     for node in graph['instances']:
+        if 'completion' in node:
+            raise RouteBlocked(node['path'], 'Standalone workflow completion policies are unsupported for formal execution')
         if node['kind'] in ('verify-evidence', 'verify-fixed-check'):
             raise RouteBlocked(node['path'], 'Candidate verification evidence reads require standalone graph execution')
         if node['kind'] == 'choose-agent':

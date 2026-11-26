@@ -600,6 +600,68 @@ def test_review_requirement_is_explicit_and_only_valid_on_v2_reviewer_instances(
     assert workflows.definitions(state) == registered
 
 
+def completion_definition(agent):
+    leaves = [{**leaf(name, agent), "review_requirement": "required"} for name in ("dependency", "structure")]
+    doc = definition("branch-completion", [
+        *leaves, {"id": "gather", "join": "all", "depends_on": ["dependency", "structure"]},
+    ])
+    doc.update(schema_version=2, outputs={
+        "structure": {"node": "structure", "output": "result"},
+        "review": {"node": "gather", "output": "result"},
+    }, completion={"continue_after_failure": ["dependency"], "optional_outputs": ["review"]})
+    return doc
+
+
+@pytest.mark.parametrize("field,values,message", [
+    ("continue_after_failure", ["missing"], "direct Agent"),
+    ("continue_after_failure", ["gather"], "direct Agent"),
+    ("optional_outputs", ["missing"], "unknown output"),
+    ("optional_outputs", ["review", "structure"], "at least one required output"),
+])
+def test_graph_completion_rejects_unknown_or_unsuitable_declarations(base, field, values, message):
+    state, agent, directory = base
+    doc = completion_definition(agent)
+    doc["completion"][field] = values
+    source = write_bundle(directory / "invalid-completion", doc)
+    with pytest.raises(ValueError, match=message):
+        workflows.inspect_bundle(source)
+    with pytest.raises(ValueError, match=message):
+        workflows.import_bundle(state, source)
+    assert workflows.definitions(state) == []
+
+
+def test_graph_completion_is_frozen_for_the_standalone_root_only(base):
+    from ergora.development.dags import require_formal_nodes
+    from ergora.development.route_errors import RouteBlocked
+
+    state, agent, directory = base
+    doc = completion_definition(agent)
+    default = {key: value for key, value in doc.items() if key != "completion"}
+    original = imported(base, default)
+    old = workflows.prepare_manifest(state.root, doc["id"], doc["version"], grant(), directory / "old")
+    require_formal_nodes(workflows.inspect_manifest(directory / "old", material=True)["composition"])
+
+    doc["version"] = "1.0.1"
+    updated = imported(base, doc)
+    frozen = workflows.prepare_manifest(state.root, doc["id"], doc["version"], grant(), directory / "new")
+    checked = workflows.inspect_manifest(directory / "new", material=True)
+    graph = checked["composition"]
+    assert checked["digest"] == frozen["digest"] != old["digest"]
+    assert graph["instances"][0]["completion"] == {
+        "continue_after_failure": ["root/dependency"], "optional_outputs": ["review"],
+    }
+    assert graph["instances"][0]["outputs"] == doc["outputs"]
+    assert workflows.inspect_manifest(directory / "old")["manifest"]["root"]["digest"] == original["digest"]
+    with pytest.raises(RouteBlocked, match="Standalone workflow completion") as error:
+        require_formal_nodes(graph)
+    assert error.value.instance == "root"
+
+    nested = definition("nested-completion", [child("inner", ref(updated, "workflow"))])
+    nested["outputs"]["result"]["output"] = "structure"
+    with pytest.raises(ValueError, match="Only the root workflow.*root/inner"):
+        imported(base, nested)
+
+
 def test_repeated_references_are_distinct_instances_and_preserve_ancestor_sources(base):
     state, agent, _ = base
     sub = imported(base, definition("sub", [leaf("review", agent)]), "Sub instructions.\n")

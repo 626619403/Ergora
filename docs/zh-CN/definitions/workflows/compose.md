@@ -23,6 +23,23 @@ ergora composition run-graph my-project ./complete-manifest --manifest-digest MA
 
 运行目录的 `run.json` 记录原 manifest、输入、已尝试叶子的 ID 和具名输出。可用 `composition inspect-run` 查询各叶子。整图保留的完整叶子结果累计上限是 8 MiB，最终输出也遵守 8 MiB 上限。超限时保留原叶子记录并返回失败。Ctrl+C 通过原进程所有者请求取消，Linux/WSL2 上的 SIGTERM 也走同一条路径。中断后沿原记录核对，执行命令要求一个尚未使用的目录。
 
+### 在声明的分支失败后继续独立工作
+
+仅由 Agent、子工作流和 all-join 组成且没有 FlowMap 门控的独立 Workflow v2，可在根定义中声明以下策略。这里 `dependency` 是根的直接 Agent，`review` 是依赖该 Agent 的汇合输出，`structure` 是必需的结构审查输出。
+
+```json
+{
+  "completion": {
+    "continue_after_failure": ["dependency"],
+    "optional_outputs": ["review"]
+  }
+}
+```
+
+协调器核实原进程正常退出且退出码为 1 至 255 后，可以继续独立工作。失败尝试、原运行摘要和退出码保留在原记录中。依赖该 Agent 的消费者被阻塞。所有必需输出就绪时，图以 `succeeded` 交付已有输出，并用 `unavailable_outputs` 记录缺失可选端口的生产者和原失败实例。此例可取得 `structure`，配对的 `review` 仍未完成。若 `review` 为必需端口，图返回 `failed`，可按原 Agent ID 读取已完成的结构审查。正式审查沿用候选绑定的必需与建议职责。 [正式审查合同](../../../definitions/workflows/contracts.md#static-required-and-advisory-review-declarations)
+
+默认首个失败会停止派发。取消、到期和证据无法核实时，协调器继续按原范围围栏。恢复核对原运行、输入、提示、预留、截止及已记录的失败证据，只有尚未预留的叶子可以启动。 [原图恢复](../../../definitions/workflows/compose.md#resume-an-interrupted-graph)
+
 ### 确认是否启动建议的专家
 
 在 Linux/WSL2 上，为原始 `run-graph --recoverable` 命令加 `--pause-before-route root/choose`，使用冻结图中一个 `choose-agent` 的精确实例路径。分析专家建议启动后续专家时，图等待已启动的工作收尾，返回 `awaiting_route_decision`，退出码为零。分析专家给出 `none` 时，按图的声明完成该节点。

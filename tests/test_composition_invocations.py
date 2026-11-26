@@ -532,6 +532,399 @@ def test_standalone_graph_stops_dispatch_and_drains_owned_leaves(parallel_graph,
             assert attempt['status'] in ('cancelled', 'timed_out')
 
 
+@pytest.fixture
+def pilot_a_branch_completion(tmp_path):
+    from ergora._paths import DATA_ROOT
+
+    repository = tmp_path / 'repo'
+    subprocess.run(['git', 'init', str(repository)], check=True, capture_output=True)
+    state = State(tmp_path / 'state')
+    projects.create(state, 'demo', repository)
+    preset = workflows.install_preset(state, 'large-change')
+    inventory, = (item for item in preset['workflows'] if item['id'] == 'ergora-development-inventory')
+    inventory_definition = workflows.get(state, inventory['id'], inventory['version'])['definition']
+    permissions = inventory_definition['permissions']
+    leaves = []
+    for name in ('dependency', 'structure'):
+        agent = agent_definitions.import_bundle(state, DATA_ROOT / 'presets' / 'agents' / f'ergora-{name}-reviewer')
+        leaf = agent['definition']
+        leaves.append({'id': name, 'ref': {'kind': 'agent', 'id': leaf['id'], 'version': leaf['version'],
+                                          'digest': agent['digest']},
+                       'role': 'reviewer', 'review_requirement': 'required', 'permissions': permissions,
+                       'depends_on': ['inventory'], 'inputs': {'task': {'node': 'inventory', 'output': 'result'}}})
+    source, witnesses = tmp_path / 'workflow', tmp_path / 'witnesses'
+    source.mkdir()
+    witnesses.mkdir()
+    provider = tmp_path / 'provider.py'
+    provider.write_text(r'''import json
+import os
+from pathlib import Path
+import sys
+import time
+
+path, directory, fault, mode = sys.argv[1:]
+result, directory = Path(path), Path(directory)
+request = json.loads((result.parent.with_suffix('.input') / 'request.json').read_bytes())
+instance = request['instance']
+witnesses = directory.with_name('witnesses')
+name = instance.replace('/', '-')
+task = json.loads(sys.stdin.read().split('Workflow task port (JSON value):\n')[-1])
+started = witnesses / (name + '.started')
+assert not started.exists(), f'Duplicate native start: {instance}'
+staged = started.with_suffix('.pending')
+staged.write_text(json.dumps({'pid': os.getpid(), 'task': task}), encoding='utf-8')
+staged.replace(started)
+
+def wait_for(condition):
+    end = time.monotonic() + 20
+    while not condition():
+        assert time.monotonic() < end
+        time.sleep(.01)
+
+if instance == 'root/dependency' and fault == 'exit':
+    if mode == 'parallel':
+        wait_for(lambda: (witnesses / 'root-structure.started').exists())
+    raise SystemExit(7)
+if instance == 'root/dependency' and fault == 'malformed':
+    result.write_text('{}', encoding='utf-8')
+    raise SystemExit(0)
+if instance == 'root/structure' and mode == 'parallel':
+    wait_for(lambda: any(attempt['instance'] == 'root/dependency' and attempt['status'] == 'failed'
+                         for attempt in json.loads((directory / 'run.json').read_bytes())['leaves']))
+if instance == 'root/structure' and mode == 'stop':
+    wait_for(lambda: False)
+
+document = {'summary': instance, 'artifacts': {'response': 'Original ' + instance}}
+if instance in ('root/dependency', 'root/structure'):
+    document['decision'] = 'approve'
+result.write_text(json.dumps(document), encoding='utf-8')
+''', encoding='utf-8')
+    coordinator = tmp_path / 'coordinator.py'
+    coordinator.write_text(r'''from pathlib import Path
+import signal
+import sys
+
+from ergora.agents import backends, graphs
+from ergora.interfaces.cli import main
+
+provider, path, fault, mode, cut = sys.argv[1:6]
+directory = Path(path)
+original_command = backends.CodexBackend.command
+def command(backend, request):
+    argv, prompt = original_command(backend, request)
+    assert argv[argv.index('--sandbox') + 1] == 'read-only'
+    result = argv[argv.index('--output-last-message') + 1]
+    return [sys.executable, provider, result, path, fault, mode], prompt
+backends.CodexBackend.command = command
+backends.CodexBackend.check_invocation = lambda self: None
+
+def before_observation(self):
+    for future, attempt in self.running.items():
+        if (attempt['instance'] == 'root/dependency' and future.done()
+                and future.result()['status'] == 'failed'):
+            hold()
+    return original_collect(self)
+
+def after_observation(self):
+    original_save(self)
+    if self.receipt['status'] == 'incomplete' and any(
+            attempt['instance'] == 'root/dependency' and attempt['status'] == 'failed'
+            for attempt in self.receipt['leaves']):
+        hold()
+
+def hold():
+    directory.with_name('interrupted').touch(exist_ok=False)
+    signal.pause()
+
+original_collect, original_save = graphs._GraphRun.collect_finished, graphs._GraphRun.save
+if cut == 'before':
+    graphs._GraphRun.collect_finished = before_observation
+elif cut == 'after':
+    graphs._GraphRun.save = after_observation
+raise SystemExit(main(sys.argv[6:]))
+''', encoding='utf-8')
+    directory = tmp_path / 'run'
+    inputs = tmp_path / 'inputs.json'
+    inputs.write_text('{"task":{"request":"Assess the architecture and dependency boundary."}}', encoding='utf-8')
+    env = {name: os.environ[name] for name in ('PATH', 'SYSTEMROOT', 'TMP', 'TEMP', 'TMPDIR') if name in os.environ}
+    env.update(PYTHONPATH=str(IMPORT_ROOT), PYTHONDONTWRITEBYTECODE='1')
+
+    def commands(policy, fault, *, mode='serial', recoverable=False):
+        limits = {**inventory_definition['limits'], 'concurrency': 2 if mode == 'parallel' else 1}
+        definition = {'schema_version': 2, 'id': 'pilot-a-completion', 'version': '1.0.0',
+                      'description': 'Read-only architecture feedback with an optional paired review.',
+                      'resources': [], 'permissions': permissions, 'limits': limits, 'inputs': ['task'],
+                      'outputs': {'structure': {'node': 'structure', 'output': 'result'},
+                                  'review': {'node': 'gather', 'output': 'result'}},
+                      'nodes': [{'id': 'inventory', 'ref': inventory, 'depends_on': [],
+                                 'inputs': {'task': {'input': 'task'}}}, *leaves,
+                                {'id': 'gather', 'join': 'all', 'depends_on': ['dependency', 'structure']}]}
+        if policy != 'default':
+            definition['completion'] = {'continue_after_failure': ['dependency'],
+                                        'optional_outputs': ['review'] if policy == 'optional' else []}
+        (source / 'workflow.json').write_text(json.dumps(definition), encoding='utf-8')
+        workflows.import_bundle(state, source)
+        manifest = tmp_path / 'manifest'
+        grant = {'schema_version': 1, 'permissions': permissions, 'limits': limits}
+        selected = workflows.prepare_manifest(state.root, definition['id'], definition['version'], grant, manifest)
+        selector = ['--manifest-digest', selected['digest']]
+        start = ['run-graph', 'demo', str(manifest), *selector,
+                 '--inputs', str(inputs), '--max-prompt-bytes', '200000', '--timeout', '45']
+        if recoverable:
+            start.append('--recoverable')
+        common = ['demo', str(directory), *selector]
+        def command(cut, args, run_directory=directory):
+            return [sys.executable, str(coordinator), str(provider), str(run_directory), fault, mode, cut,
+                    '--home', str(state.root), 'composition', *args]
+        def launch(cut='none', *, run_directory=directory):
+            return command(cut, [*start, '--directory', str(run_directory)], run_directory)
+        return launch, command('none', ['resume-graph', *common]), command('none', ['inspect-graph', *common])
+
+    return state, directory, witnesses, env, commands
+
+
+@pytest.mark.parametrize('policy,fault,mode,expected', [
+    ('optional', 'none', 'serial', 'succeeded'),
+    ('optional', 'exit', 'serial', 'succeeded'),
+    ('optional', 'exit', 'parallel', 'succeeded'),
+    ('required', 'exit', 'serial', 'failed'),
+    ('default', 'exit', 'serial', 'failed'),
+    ('optional', 'malformed', 'serial', 'failed'),
+])
+def test_pilot_a_branch_completion_uses_the_frozen_required_output(pilot_a_branch_completion, policy, fault, mode, expected):
+    state, directory, witnesses, env, commands = pilot_a_branch_completion
+    start, _, inspect = commands(policy, fault, mode=mode)
+    result = subprocess.run(start(), env=env, capture_output=True, text=True, timeout=35)
+    assert result.returncode == (0 if expected == 'succeeded' else 1), (result.stderr, result.stdout)
+    receipt = json.loads((directory / 'run.json').read_bytes())
+    assert receipt['status'] == expected
+    attempts = {leaf['instance']: leaf for leaf in receipt['leaves']}
+    dependency = attempts['root/dependency']
+    original = agent_runs.inspect_run(state, 'demo', dependency['run_id'])
+    assert original['run']['returncode'] == (7 if fault == 'exit' else 0)
+
+    if policy == 'default' or fault == 'malformed':
+        assert 'original_failure' not in dependency
+        assert 'root/structure' not in attempts
+        assert not (witnesses / 'root-structure.started').exists()
+        assert 'outputs' not in receipt
+        return
+    structure = agent_runs.inspect_run(state, 'demo', attempts['root/structure']['run_id'])
+    assert structure['run']['status'] == 'succeeded'
+    assert structure['result']['sha256'] == attempts['root/structure']['result_sha256']
+    if fault == 'exit':
+        assert dependency['status'] == 'failed' and dependency['input_digest'] == original['input']['digest']
+        assert dependency['original_failure']['returncode'] == 7
+        assert json.loads((witnesses / 'root-dependency.started').read_bytes())['task'] == json.loads(
+            (witnesses / 'root-structure.started').read_bytes())['task']
+    if policy == 'required':
+        assert 'outputs' not in receipt and 'review' in receipt['error']
+        return
+    assert receipt['outputs']['structure'] == structure['result']['document']
+    if fault == 'none':
+        assert list(receipt['outputs']) == ['structure', 'review']
+        assert 'unavailable_outputs' not in receipt
+        return
+    assert set(receipt['outputs']) == {'structure'}
+    omitted = {'review': {'producer': 'root/gather', 'blocked_by': ['root/dependency']}}
+    assert receipt['unavailable_outputs'] == omitted
+    (directory / 'reservation-1.json').write_text('Unrelated fixture file', encoding='utf-8')
+    result = subprocess.run(inspect, env=env, capture_output=True, text=True, timeout=10)
+    assert result.returncode == 0, result.stderr
+    observation = json.loads(result.stdout)
+    assert observation['unavailable_outputs'] == {'review': {**omitted['review'], 'reason_state': 'corroborated'}}
+    observed_failure = next(item for item in observation['agent_attempts'] if item['instance'] == 'root/dependency')
+    assert observed_failure['original_reservation'] == {'state': 'not_applicable'}
+    gather = next(item for item in observation['nodes'] if item['instance'] == 'root/gather')
+    assert gather['blocked_by'] == ['root/dependency']
+    if mode == 'serial':
+        receipt['unavailable_outputs']['review']['blocked_by'] = ['root/structure']
+        (directory / 'run.json').write_text(json.dumps(receipt), encoding='utf-8')
+        rejected = subprocess.run(inspect, env=env, capture_output=True, text=True, timeout=10)
+        assert rejected.returncode == 2 and 'original workflow branch outcomes' in rejected.stderr
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Recoverable graph reservations require Linux/WSL2')
+def test_pilot_a_branch_completion_corroborates_its_own_reservation(pilot_a_branch_completion):
+    state, directory, witnesses, env, commands = pilot_a_branch_completion
+    start, _, inspect = commands('optional', 'exit', recoverable=True)
+    other = directory.with_name('other') / 'run'
+    other.with_name('witnesses').mkdir(parents=True)
+    for target in (directory, other):
+        completed = subprocess.run(start(run_directory=target), env=env, capture_output=True, text=True, timeout=35)
+        assert completed.returncode == 0, completed.stderr
+    receipt_path = directory / 'run.json'
+    reservation_path = directory / 'reservation-4.json'
+    recovery_path = directory / 'recovery.json'
+    original_receipt, original_reservation, original_recovery = (
+        file.read_bytes() for file in (receipt_path, reservation_path, recovery_path))
+    receipt = json.loads(original_receipt)
+    foreign = json.loads((other / 'run.json').read_bytes())['leaves'][3]
+    dependency = receipt['leaves'][3]
+    assert foreign['instance'] == dependency['instance'] == 'root/dependency'
+    assert foreign['input_digest'] == dependency['input_digest'] and foreign['run_id'] != dependency['run_id']
+    assert all(leaf['status'] == 'failed' and leaf['original_failure']['returncode'] == 7
+               for leaf in (foreign, dependency))
+    reviewed_runs = {item['id']: item for item in agent_runs.runs(state, 'demo')}
+    assert len(reviewed_runs) == 10 and len(list(witnesses.glob('*.started'))) == 5
+
+    def readback(reason_state, reservation_state):
+        before = receipt_path.read_bytes()
+        observed = subprocess.run(inspect, env=env, capture_output=True, text=True, timeout=10)
+        assert observed.returncode == 0, observed.stderr
+        result = json.loads(observed.stdout)
+        omission = receipt['unavailable_outputs']['review']
+        assert result['unavailable_outputs']['review'] == {**omission, 'reason_state': reason_state}
+        leaf = result['agent_attempts'][3]
+        assert leaf['original_reservation']['state'] == reservation_state
+        assert leaf['original_run']['original_failure']['state'] == 'corroborated'
+        assert receipt_path.read_bytes() == before
+
+    receipt['leaves'][3] = foreign
+    receipt_path.write_text(json.dumps(receipt), encoding='utf-8')
+    readback('mismatch', 'mismatch')
+    assert reservation_path.read_bytes() == original_reservation
+
+    # Even an internally consistent copied row and witness cannot change the original graph's allocated run ID.
+    witness = {**json.loads(original_reservation), 'run_id': foreign['run_id']}
+    reservation_path.write_bytes(native_sources.encode(witness) + b'\n')
+    readback('mismatch', 'mismatch')
+
+    receipt_path.write_bytes(original_receipt)
+    readback('mismatch', 'mismatch')
+    reservation_path.unlink()
+    readback('receipt-reported', 'missing')
+    reservation_path.write_bytes(original_reservation)
+
+    recovery_path.write_text(json.dumps({**json.loads(original_recovery), 'authority_sha256': '0' * 64}),
+                             encoding='utf-8')
+    readback('mismatch', 'mismatch')
+    recovery_path.write_bytes(original_recovery)
+
+    owner = directory / '.owner.lock'
+    retained_owner = directory / '.retained-owner'
+    partial = json.loads(original_receipt)
+    del partial['recovery_sha256']
+    partial['leaves'][3] = foreign
+    owner.rename(retained_owner)
+    recovery_path.unlink()
+    receipt_path.write_text(json.dumps(partial), encoding='utf-8')
+    try:
+        assert reservation_path.read_bytes() == original_reservation
+        readback('mismatch', 'mismatch')
+    finally:
+        receipt_path.write_bytes(original_receipt)
+        recovery_path.write_bytes(original_recovery)
+        retained_owner.rename(owner)
+
+    readback('corroborated', 'corroborated')
+    assert {item['id']: item for item in agent_runs.runs(state, 'demo')} == reviewed_runs
+    assert len(list(witnesses.glob('*.started'))) == 5
+
+
+def wait_for_graph_witness(path, coordinator):
+    import time
+
+    cutoff = time.monotonic() + 15
+    while not path.exists() and coordinator.poll() is None and time.monotonic() < cutoff:
+        time.sleep(.01)
+    assert path.exists() and coordinator.poll() is None
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Recoverable graph signal handling requires Linux/WSL2')
+@pytest.mark.parametrize('policy,fault', [('optional', 'exit'), ('default', 'none')])
+def test_pilot_a_branch_completion_stop_fences_the_original_graph(pilot_a_branch_completion, policy, fault):
+    import signal
+
+    state, directory, witnesses, env, commands = pilot_a_branch_completion
+    start, resume, _ = commands(policy, fault, mode='stop', recoverable=True)
+    with subprocess.Popen(start(), env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) as coordinator:
+        try:
+            started = witnesses / 'root-structure.started'
+            wait_for_graph_witness(started, coordinator)
+            coordinator.send_signal(signal.SIGTERM)
+            _, stderr = coordinator.communicate(timeout=10)
+        finally:
+            if coordinator.poll() is None:
+                coordinator.kill()
+                coordinator.communicate(timeout=10)
+        assert coordinator.returncode == 1, stderr
+    receipt_bytes = (directory / 'run.json').read_bytes()
+    receipt = json.loads(receipt_bytes)
+    assert receipt['status'] == 'cancelled' and {'outputs', 'unavailable_outputs'}.isdisjoint(receipt)
+    assert json.loads((directory / 'stop.json').read_bytes()) == {'status': 'cancelled'}
+    dependency, structure = receipt['leaves'][-2:]
+    assert dependency['status'] == ('failed' if policy == 'optional' else 'succeeded')
+    if policy == 'optional':
+        assert dependency['original_failure']['returncode'] == 7
+    assert structure['status'] == 'cancelled'
+    assert agent_runs.inspect_run(state, 'demo', structure['run_id'])['run']['status'] == 'cancelled'
+    with pytest.raises(ProcessLookupError):
+        os.kill(json.loads(started.read_bytes())['pid'], 0)
+    refused = subprocess.run(resume, env=env, capture_output=True, text=True, timeout=10)
+    assert refused.returncode == 2 and 'explicitly stopped graph cannot resume' in refused.stderr
+    assert (directory / 'run.json').read_bytes() == receipt_bytes
+    assert len(list(witnesses.glob('*.started'))) == 5
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Original recoverable graph process loss requires Linux/WSL2')
+@pytest.mark.parametrize('cut', ['before', 'after'])
+def test_pilot_a_branch_completion_recovers_the_original_failure(pilot_a_branch_completion, cut):
+    import signal
+
+    state, directory, witnesses, env, commands = pilot_a_branch_completion
+    start, resume, inspect = commands('optional', 'exit', recoverable=True)
+    with subprocess.Popen(start(cut), env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) as coordinator:
+        try:
+            wait_for_graph_witness(directory.with_name('interrupted'), coordinator)
+        finally:
+            if coordinator.poll() is None:
+                coordinator.kill()
+            coordinator.communicate(timeout=10)
+        assert coordinator.returncode == -signal.SIGKILL
+    earlier_bytes = (directory / 'run.json').read_bytes()
+    earlier = json.loads(earlier_bytes)
+    authority = (directory / 'recovery.json').read_bytes()
+    reservation = (directory / 'reservation-4.json').read_bytes()
+    dependency = earlier['leaves'][-1]
+    assert dependency['instance'] == 'root/dependency'
+    original = agent_runs.inspect_run(state, 'demo', dependency['run_id'])
+    assert dependency['status'] == ('attempted' if cut == 'before' else 'failed')
+    assert original['run']['status'] == 'failed' and original['run']['returncode'] == 7
+    assert not (witnesses / 'root-structure.started').exists()
+    if cut == 'after':
+        run_id = dependency['run_id']
+        with state.connect() as db:
+            stored, = db.execute('SELECT document FROM agent_runs WHERE id=?', (run_id,)).fetchone()
+            changed = {**json.loads(stored), 'returncode': 8}
+            db.execute('UPDATE agent_runs SET document=? WHERE id=?', (json.dumps(changed), run_id))
+        try:
+            refused = subprocess.run(resume, env=env, capture_output=True, text=True, timeout=10)
+            assert refused.returncode == 2 and 'matching original ordinary failure evidence' in refused.stderr
+            assert (directory / 'run.json').read_bytes() == earlier_bytes
+            assert not (witnesses / 'root-structure.started').exists()
+            observed = subprocess.run(inspect, env=env, capture_output=True, text=True, timeout=10)
+            assert observed.returncode == 0, observed.stderr
+            attempted = json.loads(observed.stdout)['agent_attempts'][-1]
+            assert attempted['original_run']['original_failure']['state'] == 'mismatch'
+        finally:
+            with state.connect() as db:
+                db.execute('UPDATE agent_runs SET document=? WHERE id=?', (stored, run_id))
+    resumed = subprocess.run(resume, env=env, capture_output=True, text=True, timeout=20)
+    assert resumed.returncode == 0, resumed.stderr
+    receipt = json.loads((directory / 'run.json').read_bytes())
+    retained = receipt['leaves'][-2]
+    assert receipt['status'] == 'succeeded' and receipt['leaves'][-1]['instance'] == 'root/structure'
+    assert {key: retained[key] for key in ('instance', 'run_id', 'input_digest')} == {
+        key: dependency[key] for key in ('instance', 'run_id', 'input_digest')}
+    assert retained['status'] == 'failed' and retained['original_failure']['returncode'] == 7
+    assert receipt['leaves'][:3] == earlier['leaves'][:3]
+    assert (directory / 'recovery.json').read_bytes() == authority
+    assert (directory / 'reservation-4.json').read_bytes() == reservation
+    assert agent_runs.inspect_run(state, 'demo', dependency['run_id']) == original
+    assert len(list(witnesses.glob('*.started'))) == 5
+
+
 @pytest.mark.parametrize('condition,terminal,error', [
     ('failure', 'failed', 'Workflow leaf root/nested/a reported failed'),
     ('stop', 'cancelled', 'Workflow interrupted'),

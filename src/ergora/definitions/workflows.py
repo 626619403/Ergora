@@ -160,6 +160,17 @@ def inspect_bundle(source: Path, *, material: bool = False) -> dict:
         if "permissions" in node:
             _permissions(node["permissions"])
     _levels(definition)
+    if "completion" in definition:
+        completion = definition["completion"]
+        agents = {node["id"] for node in definition["nodes"] if node.get("ref", {}).get("kind") == "agent"}
+        for name in completion["continue_after_failure"]:
+            if name not in agents:
+                raise ValueError(f"Workflow failure scope must name a direct Agent: {name}")
+        optional_outputs = set(completion["optional_outputs"])
+        if optional_outputs - definition["outputs"].keys():
+            raise ValueError("Workflow completion policy names an unknown output")
+        if optional_outputs == definition["outputs"].keys():
+            raise ValueError("Workflow completion policy needs at least one required output")
     return document
 
 
@@ -376,6 +387,8 @@ class _Compilation:
                   scopes: list[dict], lineage: tuple, inputs: dict, dependencies: list[str], *, project: bool) -> None:
         self.path = path
         definition = document["definition"]
+        if path != "root" and "completion" in definition:
+            raise ValueError(f"Only the root workflow can declare a completion policy: {path}")
         self.preview_version = max(self.preview_version, definition["schema_version"])
         reference = _reference(document, "workflow")
         identity = (reference["id"], reference["version"], reference["digest"])
@@ -397,6 +410,12 @@ class _Compilation:
         instance = {"path": path, "parent": path.rpartition("/")[0] or None, "kind": "workflow", "ref": reference,
                     "permissions": permissions, "inputs": inputs, "outputs": definition["outputs"], "depends_on": dependencies,
                     "levels": [[f"{path}/{name}" for name in level] for level in levels], "limits": definition["limits"]}
+        if "completion" in definition:
+            completion = definition["completion"]
+            instance["completion"] = {
+                "continue_after_failure": [f"{path}/{name}" for name in completion["continue_after_failure"]],
+                "optional_outputs": completion["optional_outputs"],
+            }
         self.instances.append(instance)
         nodes = {node["id"]: node for node in definition["nodes"]}
         for level in levels:

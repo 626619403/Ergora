@@ -213,6 +213,10 @@ def _follow_up_invocation(receipt, checkpoint, decision, result_limit):
             'output_projection': binding['output_projection'], 'result_limit': result_limit}
 
 
+def _recovery_run_id(receipt, path):
+    return native_sources.sha([receipt['recovery_sha256'], path])[:32]
+
+
 def _reservation_witness(receipt, sequence, attempt):
     return {'schema_version': 1, 'sequence': sequence, 'recovery_sha256': receipt['recovery_sha256'],
             **{key: attempt.get(key) for key in ('instance', 'run_id', 'input_digest')}}
@@ -239,19 +243,25 @@ def _reconstruct_graph_input(composition, source, path, task, limit):
     return prepared
 
 
-def _recover_agent_result(state, project, revision, node, attempt, prepared, result_limit):
-    path, run_id = node['path'], attempt['run_id']
-    observed = runs.inspect_run(state, project, run_id, max_result_bytes=result_limit)
+def _matches_original_leaf(observed, attempt, node, project_revision):
+    original, supplied = observed['run'], observed['input']
+    policy = original.get('policy')
+    return (original['id'] == attempt['run_id']
+            and type(original.get('project_revision')) is int and original['project_revision'] == project_revision
+            and original.get('formal_execution_authorized') is False
+            and original.get('role') == node['role'] and original.get('binding') == node['backend_request']
+            and isinstance(policy, dict) and policy.get('mode') == 'text-only'
+            and supplied['available'] and supplied['digest'] == attempt['input_digest']
+            and supplied['request']['instance'] == node['path'] and supplied['request']['input_origin'] == 'workflow-port'
+            and observed['prompt']['available'])
+
+
+def _recover_agent_result(observed, revision, node, attempt):
+    path = node['path']
     original, result = observed['run'], observed['result']
     if original['status'] != 'succeeded':
         raise ValueError(f'Graph recovery requires a proven successful original Agent outcome: {path}')
-    if (type(original.get('project_revision')) is not int
-            or original['project_revision'] != revision
-            or original.get('formal_execution_authorized') is not False
-            or original.get('role') != node['role'] or original.get('binding') != node['backend_request']
-            or original.get('policy', {}).get('mode') != 'text-only'
-            or not observed['input']['available'] or observed['input']['digest'] != prepared['digest']
-            or not observed['prompt']['available'] or not result['available']
+    if (not _matches_original_leaf(observed, attempt, node, revision) or not result['available']
             or (('result_sha256' in attempt or attempt['status'] == 'succeeded')
                 and attempt.get('result_sha256') != result['sha256'])):
         raise native_sources.ArtifactIdentityError(
@@ -468,6 +478,44 @@ def _flow_map_blocks(receipt, nodes):
     return {value['instance']: value for value in values}
 
 
+def _ordinary_exit_code(code):
+    return type(code) is int and 0 < code <= 255
+
+
+def _original_branch_failure(observed, attempt, node, project_revision):
+    original = observed['run']
+    if (original['status'] == 'failed' and _ordinary_exit_code(original.get('returncode'))
+            and original.get('result_sha256') is None and 'error' not in original
+            and isinstance(original.get('finished'), str)
+            and _matches_original_leaf(observed, attempt, node, project_revision)):
+        return {'returncode': original['returncode'], 'run_sha256': native_sources.sha(original)}
+    return None
+
+
+def _branch_blocks(nodes, failures):
+    # Frozen instance order visits each structural parent and each control dependency before its consumers.
+    blocked = {}
+    for path, node in nodes.items():
+        causes = {cause for dependency in (node['parent'], *node['depends_on']) for cause in blocked.get(dependency, ())}
+        if path in failures:
+            if causes:
+                raise ValueError(f'Blocked Workflow leaf has an original branch failure: {path}')
+            causes.add(path)
+        if causes:
+            blocked[path] = sorted(causes)
+    return blocked
+
+
+def _unavailable_root_outputs(root, blocked):
+    unavailable = {}
+    for name, binding in root['outputs'].items():
+        if 'node' in binding:
+            producer = root['path'] + '/' + binding['node']
+            if producer in blocked:
+                unavailable[name] = {'producer': producer, 'blocked_by': blocked[producer]}
+    return unavailable
+
+
 class _GraphRun:
     def __init__(self, state, project, composition, directory, receipt, deadline, codex_config, stop_requested, fixed_review,
                  *, recovery=None, lock_fd=None):
@@ -484,6 +532,11 @@ class _GraphRun:
         self.active_slots = Counter()
         self.completed = {}
         self.blocked = set()
+        completion = self.nodes['root'].get('completion', {})
+        self.continuing_branches = set(completion.get('continue_after_failure', ()))
+        self.optional_outputs = set(completion.get('optional_outputs', ()))
+        self.branch_failures = set()
+        self.unavailable_outputs = {}
         self.leaf_task_hashes = {}
         self.flow_map_producers = _flow_map_producers(self.nodes)
         self.flow_map_producer_paths = set(self.flow_map_producers.values())
@@ -547,9 +600,6 @@ class _GraphRun:
             if _owner_identity(lock.stat(follow_symlinks=False)) != self.recovery['owner_identity']:
                 raise ValueError('The original graph owner lock was replaced')
 
-    def recovery_run_id(self, path):
-        return native_sources.sha([self.receipt['recovery_sha256'], path])[:32]
-
     def reservation_witness(self, sequence, attempt):
         return _reservation_witness(self.receipt, sequence, attempt)
 
@@ -595,7 +645,7 @@ class _GraphRun:
         if flow_map_producer:
             options['_allow_omitted_response'] = True
         self.check_leaf_admission()
-        run_id = uuid.uuid4().hex if self.recovery is None else self.recovery_run_id(path)
+        run_id = uuid.uuid4().hex if self.recovery is None else _recovery_run_id(self.receipt, path)
         attempt = {'instance': path, 'run_id': run_id, 'input_digest': prepared['digest'], 'status': 'attempted'}
         self.receipt['leaves'].append(attempt)
         try:
@@ -655,6 +705,15 @@ class _GraphRun:
                 raise TimeoutError(f'Workflow leaf reached its deadline: {path}')
             if job['status'] == 'cancelled':
                 raise KeyboardInterrupt
+            if (path in self.continuing_branches and not self.stop.is_set()
+                    and job['status'] == 'failed' and _ordinary_exit_code(job.get('returncode'))):
+                observed = runs.inspect_run(self.state, self.project['id'], attempt['run_id'])
+                original = observed['run']
+                failure = _original_branch_failure(observed, attempt, self.nodes[path], self.project['revision'])
+                if (failure is None or native_sources.encode(original)
+                        != native_sources.encode({key: job.get(key) for key in original})):
+                    raise ValueError(f'Workflow leaf lacks matching original ordinary failure evidence: {path}')
+                return self.record_branch_failure(attempt, failure)
             raise ValueError(f'Workflow leaf {path} reported {job["status"]}')
         remaining = self.result_limit - self.result_bytes
         if remaining <= 0:
@@ -671,6 +730,14 @@ class _GraphRun:
         if path in self.flow_map_producer_paths:
             self.leaf_task_hashes[path] = observed['input']['request']['task_sha256']
         return {'result': result['document']}
+
+    def record_branch_failure(self, attempt, failure):
+        self.check_active()
+        path = attempt['instance']
+        attempt.update(status='failed', result_sha256=None, original_failure=failure)
+        self.branch_failures.add(path)
+        self.blocked.add(path)
+        return {'status': 'failed'}
 
     def check_fixed_read_cutoff(self, attempt):
         self.check_active()
@@ -768,7 +835,7 @@ class _GraphRun:
             if not pending or attempt['mode'] != 'wait':
                 raise ValueError('Recovery requires the original completed fixed-check proof')
             self.check_fixed_read_cutoff(attempt)
-            run_id = self.recovery_run_id(self.fixed_review['instance'])
+            run_id = _recovery_run_id(self.receipt, self.fixed_review['instance'])
             try:
                 entries = (self.state.root / 'runs').iterdir()
                 if any(path.name == run_id or path.name.startswith(run_id + '.') for path in entries):
@@ -968,7 +1035,8 @@ class _GraphRun:
                 self.completed[path + '/' + binding['node']][binding['output']] for name, binding in bindings.items()}
 
     def ready(self, node, opened):
-        return (node['parent'] in opened and all(path in self.completed for path in node['depends_on'])
+        return (node['parent'] in opened and all(path in self.completed and path not in self.blocked
+                                                for path in node['depends_on'])
                 and all(self.active_slots[scope['path']] < scope['limit'] for scope in node.get('concurrency_scopes', ())))
 
     def block_node(self, path):
@@ -1026,7 +1094,13 @@ class _GraphRun:
         for path in reversed(tuple(opened)):
             if all(child in self.completed for child in children[path]):
                 inputs = opened.pop(path)
-                if any(child in self.blocked for child in children[path]):
+                if path == 'root' and self.branch_failures:
+                    blocked = _branch_blocks(self.nodes, self.branch_failures)
+                    self.unavailable_outputs = _unavailable_root_outputs(self.nodes[path], blocked)
+                    bindings = {name: binding for name, binding in self.nodes[path]['outputs'].items()
+                                if name not in self.unavailable_outputs}
+                    self.completed[path] = self.ports(path, inputs, bindings)
+                elif any(child in self.blocked for child in children[path]):
                     self.block_node(path)
                 else:
                     self.completed[path] = self.ports(path, inputs, self.nodes[path]['outputs'])
@@ -1043,16 +1117,28 @@ class _GraphRun:
 
     def recover_leaf(self, node, attempt, prepared):
         path, run_id = node['path'], attempt.get('run_id')
-        if run_id != self.recovery_run_id(path) or attempt.get('input_digest') != prepared['digest']:
+        if run_id != _recovery_run_id(self.receipt, path) or attempt.get('input_digest') != prepared['digest']:
             raise ValueError(f'Saved Agent reservation differs from its original identity: {path}')
         status = attempt.get('status')
-        if status not in ('attempted', 'succeeded'):
+        continuing = path in self.continuing_branches
+        if status not in ('attempted', 'succeeded') and not (continuing and status == 'failed'):
             raise ValueError(f'Graph recovery is blocked by the prior {status!r} Agent attempt: {path}')
         remaining = self.result_limit - self.result_bytes
         if remaining <= 0:
             raise ValueError('Original leaves exceed the graph result capacity')
-        result = _recover_agent_result(self.state, self.project['id'], self.project['revision'], node, attempt,
-                                       prepared, remaining)
+        observed = runs.inspect_run(self.state, self.project['id'], run_id, max_result_bytes=remaining)
+        if continuing and observed['run']['status'] == 'failed' and status in ('attempted', 'failed'):
+            failure = _original_branch_failure(observed, attempt, node, self.project['revision'])
+            saved_failure_matches = (native_sources.encode(attempt.get('original_failure')) == native_sources.encode(failure)
+                                     if status == 'failed' else 'original_failure' not in attempt)
+            if (failure is None or attempt.get('result_sha256') is not None
+                    or not saved_failure_matches):
+                raise ValueError(f'Graph recovery requires matching original ordinary failure evidence: {path}')
+            self.completed[path] = self.record_branch_failure(attempt, failure)
+            return
+        if status == 'failed' or 'original_failure' in attempt:
+            raise ValueError(f'Saved branch failure differs from the original Agent outcome: {path}')
+        result = _recover_agent_result(observed, self.project['revision'], node, attempt)
         flow_map_producer = path in self.flow_map_producer_paths
         invocation.validate_result(result['document'], _leaf_result_schema(node, flow_map_producer=flow_map_producer),
                                    allow_omitted_response=flow_map_producer)
@@ -1162,7 +1248,7 @@ class _GraphRun:
             self.check_route_checkpoint(self.route_decision(selector, source))
         for path in agent_nodes.keys() - reserved:
             self.check_active()
-            if native_sources.run_id_exists(self.state, self.recovery_run_id(path)):
+            if native_sources.run_id_exists(self.state, _recovery_run_id(self.receipt, path)):
                 raise ValueError(f'An Agent run ID is already recorded outside the graph reservations: {path}')
         if next_slot in slots:
             source = self.directory / next_slot
@@ -1274,6 +1360,12 @@ def _graph_inputs(composition, inputs, max_prompt_bytes, *, recoverable=False):
     if not isinstance(inputs, dict) or inputs.keys() != composition['instances'][0]['inputs'].keys():
         raise RouteBlocked(composition['instances'][0]['path'], 'Workflow inputs must supply exactly the declared root ports')
     encoded_inputs = _bounded_json(inputs, max_prompt_bytes)
+    if 'completion' in composition['instances'][0]:
+        unsupported = next((node for node in composition['instances']
+                            if node['kind'] not in ('agent', 'workflow', 'join') or 'required_flow_map' in node), None)
+        if unsupported is not None:
+            raise RouteBlocked(unsupported['path'],
+                               'Workflow completion policies require a static Agent, Workflow and all-join graph')
     if recoverable:
         allowed = {'agent', 'workflow', 'join', 'choose-agent', 'verify-fixed-check'}
         unsupported = next((node for node in composition['instances'] if node['kind'] not in allowed), None)
@@ -1346,12 +1438,17 @@ def _execute_graph(run, inputs, composition):
         if outputs is not None:
             _bounded_json(outputs, run.result_limit)
         run.check_active()
+        missing_required = sorted(run.unavailable_outputs.keys() - run.optional_outputs)
         if outputs is None:
             receipt['status'] = _AWAITING_ROUTE
-        elif run.blocked:
+        elif missing_required:
+            receipt.update(status='failed', error='Required workflow outputs unavailable: ' + ', '.join(missing_required))
+        elif run.blocked and not run.branch_failures:
             receipt.update(status='failed', error='Required training FlowMap evidence blocked a dependent Agent')
         else:
             receipt.update(status='succeeded', outputs=outputs)
+            if run.unavailable_outputs:
+                receipt['unavailable_outputs'] = run.unavailable_outputs
     except TimeoutError as error:
         receipt.update(status='timed_out', error=str(error))
     except KeyboardInterrupt:
@@ -1521,7 +1618,7 @@ def resume_graph(home: Path | None, project_id: str, directory: Path, manifest_d
             raise ValueError('Resume a bound child through its original parent graph')
         if receipt.get('status') not in ('incomplete', _AWAITING_ROUTE) or os.path.lexists(directory / 'stop.json'):
             raise ValueError('A terminal or explicitly stopped graph cannot resume')
-        if 'outputs' in receipt or 'error' in receipt:
+        if {'outputs', 'unavailable_outputs', 'error'} & receipt.keys():
             raise ValueError('Saved graph progress differs from the supported incomplete recovery state')
         if any(field not in receipt for field in _RECOVERY_FIELDS):
             raise ValueError('Saved recovery is missing original graph authority')
@@ -1606,7 +1703,7 @@ def _observe_reserved_input(directory, attempt, manifest, max_prompt_bytes):
 
 
 def _observe_leaf_run(state, project, receipt, manifest, attempt, remaining_result_bytes, route_choices,
-                      *, flow_evidence=None):
+                      *, flow_evidence=None, failure_node=None):
     try:
         observed = runs.inspect_run(state, project, attempt['run_id'], max_result_bytes=max(1, remaining_result_bytes))
     except native_sources.RunNotFound as error:
@@ -1639,6 +1736,11 @@ def _observe_leaf_run(state, project, receipt, manifest, attempt, remaining_resu
         source['graph_outcome_agreement'] = 'matching'
     else:
         source['graph_outcome_agreement'] = 'mismatch'
+    if failure_node is not None:
+        failure = _original_branch_failure(observed, attempt, failure_node, receipt['project_revision'])
+        source['original_failure'] = {
+            'state': 'corroborated' if failure == attempt['original_failure'] else 'mismatch',
+        }
     choice = None
     if route_choices and observed['result']['available']:
         result = observed['result']['document']
@@ -1902,6 +2004,26 @@ def _observe_graph_recovery(directory, state_home, receipt, selected_project, re
     return observation
 
 
+def _observe_branch_failure_reservation(directory, receipt, authorization, attempt):
+    if authorization == 'ordinary':
+        reservation = directory / f"reservation-{attempt['sequence']}.json"
+        if os.path.lexists(reservation):
+            return {'state': 'mismatch', 'error': 'Original reservation lacks verified recovery authority'}
+        return {'state': 'not_applicable'}
+    if authorization != 'corroborated':
+        return {'state': authorization}
+    try:
+        path = attempt['instance']
+        if attempt['run_id'] != _recovery_run_id(receipt, path):
+            raise native_sources.ArtifactIdentityError(f'Saved branch failure differs from its allocated run ID: {path}')
+        _check_reservation(directory, receipt, attempt['sequence'], attempt)
+    except native_sources.ArtifactIdentityError as error:
+        origin = error.__cause__
+        state = _local_evidence_state(origin) if isinstance(origin, OSError) else 'mismatch'
+        return {'state': state, 'error': str(error)}
+    return {'state': 'corroborated'}
+
+
 def _read_fixed_follow_up(state, project, parent_receipt, parent_recovery, child, child_id, invocation_record):
     binding = parent_receipt['fixed_follow_up']
     projection = invocation_record['output_projection']
@@ -1947,7 +2069,7 @@ def _read_fixed_follow_up(state, project, parent_receipt, parent_recovery, child
     leaves = _observed_attempts(receipt, 'leaves', {projection['producer']}, required=True)
     if leaves:
         attempt, = leaves
-        if attempt['run_id'] != native_sources.sha([receipt['recovery_sha256'], leaf['path']])[:32]:
+        if attempt['run_id'] != _recovery_run_id(receipt, leaf['path']):
             raise native_sources.ArtifactIdentityError('Original follow-up output producer differs from its reservation')
         _check_reservation(child, receipt, 1, attempt)
         prepared = _reconstruct_graph_input(composition, child / 'input-1', leaf['path'],
@@ -1961,8 +2083,8 @@ def _read_fixed_follow_up(state, project, parent_receipt, parent_recovery, child
     if (not leaves or attempt['status'] != 'succeeded' or authority['fixed_check']['state'] != 'recorded_complete'
             or len(reads) != 1 or native_sources.encode(outputs['proof']) != native_sources.encode(reads[0].get('evidence'))):
         raise native_sources.ArtifactIdentityError('Original follow-up Agent and fixed-check receipts are not corroborated')
-    result = _recover_agent_result(state, project, receipt['project_revision'], leaf, attempt, prepared,
-                                  invocation_record['result_limit'])
+    observed = runs.inspect_run(state, project, attempt['run_id'], max_result_bytes=invocation_record['result_limit'])
+    result = _recover_agent_result(observed, receipt['project_revision'], leaf, attempt)
     invocation.validate_result(result['document'], _leaf_result_schema(leaf))
     projected = {projection['producer']: {'result': result['document']}}
     if native_sources.encode(projected) != native_sources.encode(outputs[projection['port']]):
@@ -2020,9 +2142,16 @@ def inspect_graph(state: State, project: str, directory: Path, manifest_digest: 
     nodes = composition['instances']
     root = nodes[0]
     inputs, outputs, status = (receipt.get(name) for name in ('inputs', 'outputs', 'status'))
+    completion = root.get('completion', {})
+    continuing_branches = set(completion.get('continue_after_failure', ()))
+    unavailable = receipt.get('unavailable_outputs', {})
+    if (not isinstance(unavailable, dict) or unavailable.keys() - set(completion.get('optional_outputs', ()))
+            or ('unavailable_outputs' in receipt and (status != 'succeeded' or not unavailable))):
+        raise ValueError('Saved unavailable outputs differ from the frozen workflow completion policy')
     if (not isinstance(inputs, dict) or inputs.keys() != root['inputs'].keys()
             or status not in ('incomplete', _AWAITING_ROUTE, *_TERMINAL_STATUSES)
-            or (status == 'succeeded' and (not isinstance(outputs, dict) or outputs.keys() != root['outputs'].keys()))
+            or (status == 'succeeded' and (not isinstance(outputs, dict)
+                                           or outputs.keys() != root['outputs'].keys() - unavailable.keys()))
             or (status != 'succeeded' and 'outputs' in receipt)):
         raise ValueError('Graph receipt status or ports differ from the frozen graph')
     contracts.validate(receipt.get('project_revision'), {'type': 'integer', 'minimum': 1}, 'Receipt project revision')
@@ -2065,19 +2194,56 @@ def inspect_graph(state: State, project: str, directory: Path, manifest_digest: 
             contracts.validate(leaf['result_sha256'], digest_contract, 'Attempt result SHA256')
         attempt = {'sequence': sequence, 'instance': leaf['instance'], 'run_id': run_id, 'input_digest': input_digest,
                    'status': leaf_status, 'result_sha256': leaf.get('result_sha256')}
+        failure_node = None
+        if 'original_failure' in leaf:
+            failure = leaf['original_failure']
+            if (leaf['instance'] not in continuing_branches or leaf_status != 'failed' or attempt['result_sha256'] is not None
+                    or not isinstance(failure, dict) or failure.keys() != {'returncode', 'run_sha256'}
+                    or not _ordinary_exit_code(failure['returncode'])):
+                raise ValueError('Invalid original branch failure record')
+            contracts.validate(failure['run_sha256'], digest_contract, 'Original branch failure SHA256')
+            failure_node = agent_nodes[leaf['instance']]
+            attempt['original_failure'] = failure
         attempt['reserved_input'] = _observe_reserved_input(directory, attempt, manifest, receipt['max_prompt_bytes'])
         route_choices = agent_nodes[leaf['instance']].get('route_choices', ())
         attempt['original_run'], result_bytes, choice = _observe_leaf_run(
             state, project, receipt, manifest, attempt, remaining, route_choices,
-            flow_evidence=flow_evidence if leaf['instance'] in flow_producer_paths else None)
+            flow_evidence=flow_evidence if leaf['instance'] in flow_producer_paths else None, failure_node=failure_node)
         remaining -= result_bytes
         attempts[leaf['instance']] = attempt
         if choice is not None:
             choices[leaf['instance']] = choice
+    branch_failures = {path for path, attempt in attempts.items() if 'original_failure' in attempt}
+    branch_blocks = _branch_blocks(nodes_by_path, branch_failures) if branch_failures else {}
+    blocked_dependents = branch_blocks.keys() - branch_failures
+    if attempts.keys() & blocked_dependents:
+        raise ValueError('A blocked workflow consumer has an original Agent attempt')
+    if continuing_branches and status == 'succeeded':
+        if (attempts.keys() != agent_nodes.keys() - blocked_dependents
+                or any(attempt['status'] != 'succeeded' for path, attempt in attempts.items() if path not in branch_failures)
+                or native_sources.encode(unavailable) != native_sources.encode(_unavailable_root_outputs(root, branch_blocks))):
+            raise ValueError('Saved successful outputs differ from the original workflow branch outcomes')
     reads = [_observe_verification(project, sequence, read, sources[read['instance']], fixed_review=fixed_review)
              for sequence, read in enumerate(verification_reads, 1)]
     gate = next((node['path'] for node in nodes if node['kind'] == 'verify-fixed-check'), None)
     recovery = _observe_graph_recovery(directory, state.root, receipt, selected_project, review, gate, verification_reads)
+    for path in branch_failures:
+        attempt = attempts[path]
+        attempt['original_reservation'] = _observe_branch_failure_reservation(
+            directory, receipt, recovery['authorization']['state'], attempt)
+    observed_unavailable = {}
+    for name, output in unavailable.items():
+        causes = [attempts[path] for path in output['blocked_by']]
+        states = {entry['original_run'].get('original_failure', {}).get('state') for entry in causes}
+        reservations = {entry['original_reservation']['state'] for entry in causes}
+        reason_state = 'receipt-reported'
+        if (states == {'corroborated'} and reservations <= {'corroborated', 'not_applicable'}
+                and all(entry['reserved_input']['state'] == 'available' for entry in causes)):
+            reason_state = 'corroborated'
+        elif 'mismatch' in states | reservations or any(entry['reserved_input']['state'] == 'mismatch'
+                                                        or entry['original_run']['state'] == 'mismatch' for entry in causes):
+            reason_state = 'mismatch'
+        observed_unavailable[name] = {**output, 'reason_state': reason_state}
     checkpoint, operator_route = _observe_route_checkpoint(directory, receipt, selectors, attempts, choices, recovery)
     follow_up = _observe_fixed_follow_up(state, project, directory, composition, receipt, recovery,
                                         checkpoint, operator_route, attempts)
@@ -2129,10 +2295,12 @@ def inspect_graph(state: State, project: str, directory: Path, manifest_digest: 
             'ordering': {'agent_attempts': 'graph_receipt_reservation_order', 'verification_reads': 'graph_receipt_read_order',
                          'route_decisions': 'graph_receipt_decision_order', 'nodes': 'frozen_manifest_order'},
             'nodes': [{'instance': node['path'], 'kind': node['kind'], 'depends_on': node['depends_on'],
-                       'graph_record': 'recorded' if node['path'] in recorded_paths else 'not_recorded'}
+                       'graph_record': 'recorded' if node['path'] in recorded_paths else 'not_recorded',
+                       **({'blocked_by': branch_blocks[node['path']]} if node['path'] in blocked_dependents else {})}
                       for node in nodes],
             'agent_attempts': list(attempts.values()), 'verification_reads': reads, 'route_decisions': decisions,
             **({'follow_up': follow_up} if follow_up is not None else {}),
+            **({'unavailable_outputs': observed_unavailable} if observed_unavailable else {}),
             **({'flow_map_blocks': observed_blocks} if observed_blocks else {}),
             'recovery': recovery,
             'process_start': 'unknown',
