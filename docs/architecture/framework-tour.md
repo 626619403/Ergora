@@ -4,7 +4,7 @@ English · [Documentation](../README.md) · [Architecture contract](current.md)
 
 Ergora is a control plane for project-bound specialist Agents, workflow composition, formal software delivery, training experiments and reusable improvements. Definitions describe reusable behavior. Each operation freezes its own inputs, checks its execution authority and produces evidence under its original identity.
 
-This tour uses runtime revision `1217cfbbcd6ae8615de550bcf637aa8e2845ae4c` and its `src` tree `9b34b09d010737d3eb937a4dc44634e16522b368` as the exact source reference. Packages, installed applications and local definition libraries have separate identities. The [current plan](../PLAN.md) and its delivery records track review, CI and installation status.
+This tour uses runtime revision `8d45c8a5a6f8a41523ae310cdfaeaaf863089cfb` and its `src` tree `4d41eaa4ff52a014028e62186b1c0e4271639123` as the exact source reference. Packages, installed applications and local definition libraries have separate identities. The [current plan](../PLAN.md) and its delivery records track review, CI and installation status.
 
 ## The whole system
 
@@ -24,7 +24,7 @@ flowchart TB
   Select --> Check["Fixed-check CLI<br/>Separate authorization"]
   Select --> Graph["Standalone graph CLI<br/>Ready Agents and typed operations"]
   Select --> Session["Prepared leaf or native project session<br/>Original role and context"]
-  Select --> Dev["Formal task<br/>Explicit native root or nested invocation"]
+  Select --> Dev["Formal task<br/>Original preparation and creation readiness"]
   Select --> Train["Training experiments and finite controllers<br/>training.application"]
   Select --> Campaign["Campaign operator CLI<br/>Record, observe or stop"]
   Select --> Improve["Retrospectives and Skill evaluation<br/>improvement"]
@@ -35,30 +35,37 @@ flowchart TB
   Choice -. "saved decision" .-> GraphProof
   Graph --> Gate["verify-fixed-check<br/>Receipt gate before advisory review"]
   CheckJob -. "receipt or bounded wait" .-> Gate
-  CheckJob -. "read original Job status" .-> Campaign
   Gate --> GraphProof
+  Graph --> CandidateRead["verify-evidence<br/>One read alongside ready Agents"]
+  CandidateRead -. "verified evidence" .-> GraphProof
+  Graph --> FlowMap["Training proposal<br/>Verified FlowMap before profile"]
+  FlowMap -. "original producer or block" .-> GraphProof
   Graph -. "Agent graph, saved proof or interrupted wait" .-> Resume["Opt-in resume-graph<br/>Acquire original lock and check saved cutoffs"]
   Resume --> GraphProof
-  Session --> Turn["Original leaf result or Codex turn<br/>Session slot and dispatch receipts"]
-  Dev --> Six["Original Temporal six stages<br/>Exact approval and candidate evidence"]
-  Train --> Runner["Original training executor<br/>Runner and experiment archive"]
+  Session --> Turn["Original leaf result or Codex turn<br/>Dispatch and native observations"]
+  Dev -->|explicit submit| Six["Original Temporal six stages<br/>Exact approval and candidate evidence"]
+  Train --> Runner["Original training executor<br/>Guard preflight, runner and archive"]
   Campaign --> CampaignRun["Original Temporal campaign<br/>Explicit observations, STOP and expiry"]
+  Campaign --> Worker["Local record-only Worker service<br/>Poll health and original STOP fence"]
+  Worker -. "original queue" .-> CampaignRun
   CampaignRun --> CampaignRead["Optional timer or immediate due read<br/>One guarded status Activity"]
-  CheckJob -. "same original Job" .-> CampaignRead
   CampaignRead --> Wake["Opt-in Codex wake<br/>One original attempt and owned STOP"]
   Wake --> Turn
   Improve --> Eval["Trusted evaluation<br/>Reviewed identity and explicit adoption"]
 
   GraphProof -.-> Recover["Read original IDs, receipts and outcomes"]
-  CheckJob -.-> Recover
+  CheckJob -.-> ActionRead["Original action observation<br/>Fixed-check and training receipts"]
   Turn -.-> Recover
   Six -.-> Recover
   Runner -.-> Recover
   Runner -. "archive retained after failure" .-> RetainedArchive["Training evidence<br/>Explicit retained archive read"]
   RetainedArchive -.-> Recover
   Runner -. "original managed attempt" .-> Lease["Training execution readback<br/>Open or closed local lease evidence"]
-  Lease -.-> Recover
-  CampaignRun -.-> CampaignStatus["Campaign online status<br/>Original History and wake timing"]
+  Lease -.-> ActionRead
+  ActionRead -. "same original Job" .-> CampaignRead
+  ActionRead -. "original Job status" .-> CampaignStatus
+  ActionRead -.-> Recover
+  CampaignRun -.-> CampaignStatus["Campaign status<br/>History timing and Job correlation"]
   CampaignRead -. "recorded completion" .-> CampaignStatus
   Wake -. "same native receipt" .-> CampaignStatus
   CampaignStatus -.-> Recover
@@ -81,8 +88,10 @@ The optional route check in the definition preview takes the selected standalone
 
 - `choose-agent` reads the verified analyzer result and records the decision before any follow-up dispatch. Its typed route selects one declared sibling Agent or `none`. The all-join carries the selected branch's original result and explicit skipped states for untaken branches. [Routing contract](../definitions/workflows/contracts.md#conditional-agent-routing)
 - An operator can select one frozen `choose-agent` instance with `run-graph --recoverable --pause-before-route`. A specialist recommendation pauses before its original reservation. `resume-graph` accepts `follow-up` or `finish` at the same checkpoint digest, under the same owner lock and deadline. A `none` recommendation completes the selector without a pause. [Decide on a recommended follow-up](../definitions/workflows/compose.md#decide-on-a-recommended-follow-up)
-- `verify-evidence` takes an exact original fixed-verify locator from a declared root input. The native reader uses the registered reference installation, original Temporal history and Job artifacts to validate the candidate, receipt, complete check results and process records. Independent branches can start while the reader is pending. Its dependents require validated evidence, and the graph joins the original reader on stop or deadline. The formal executor owns execution of that verify Job. [Verification readback](../definitions/workflows/compose.md#read-original-fixed-verification-evidence)
+- `verify-evidence` takes an exact original fixed-verify locator from a declared root input. The native reader uses the registered reference installation, original Temporal History and Job artifacts to validate the candidate, receipt, complete check results and process records. One candidate evidence read can wait alongside dependency-ready Agents. The graph saves the original locator and verified result before exposing the node's output and joins the original reader on stop or deadline. The formal executor owns execution of that verify Job. [Verification readback](../definitions/workflows/compose.md#read-original-fixed-verification-evidence)
 - `verify-fixed-check` reads a separately authorized fixed-check Job. Given a queued or attempted Job, it can wait until the earlier of the original graph deadline and the requested observation window. The original executor owns check execution, stop and cleanup. The gate requires a passing receipt and confirmed cleanup bound to the exact candidate, review packet, frozen manifest and prepared task before the pinned correctness reviewer starts. The graph publishes the verified receipt and report identities in `proof` alongside the separate advisory result. [Gated advisory review](../definitions/workflows/compose.md#gate-an-advisory-review-on-a-completed-fixed-check)
+
+In the standalone `ergora-training-proposal@4.2.12` graph, profile receives the original task with its checked FlowMap and producer identity. The gate verifies the map against the original source and baseline digests. Null, missing, malformed, mismatched or over-limit evidence blocks profile before reservation and preserves the independent design result. `inspect-graph` can corroborate the saved block from the original task and producer. [Training proposal and original evidence](../training/proposals.md#organize-complete-proposals-around-bottlenecks)
 
 After an interrupted run, `composition inspect-graph` uses the original directory and manifest digest and opens the existing control database read-only. It reports the saved graph status and attempts alongside the observed original Agent input, prompt and result identities. A corroborated route matches the frozen branches and original analyzer evidence. Saved verification references show native receipts as `not_queried`.
 
@@ -100,9 +109,13 @@ A surviving reader can hold the original lock after coordinator loss. Once resum
 
 On Linux/WSL2, `task candidate-check` authorizes one fixed-check Job for an already exported Git candidate using an exact request SHA256 and a stable operation ID. The registered reference executor runs `CandidateCheckJob` under the original clock, owns checker launch and cleanup, and publishes the scoped receipt. `task candidate-check-status` reads that original Job and `task candidate-check-stop` fences it. The checker Job's execution authority stays with its original permit and executor. [Fixed-check CLI and recovery](../development/run-and-recover.md#run-registered-fixed-checks-on-an-exported-candidate) · [Native operation](../../src/ergora/development/runtime/candidate_checks.py) · [Job owner](../../src/ergora/development/runtime/jobs.py)
 
+The fixed-check status CLI and Campaign status Activity share the same read-only original action observer. `training execution` uses its training operation to read the registered attempt. The observer verifies returned identities through the original native readers. Outcome, executor stop and resource release each come from their owner. [Original action observations](../../src/ergora/runtime/action_observations.py)
+
 ### Campaign operator record
 
 On Unix, `campaign create` binds an exact confirmed plan to the original published project revision, selected Temporal scheduler and absolute expiry. This operator entry uses local Unix process assurance. `campaign status` reads saved evidence offline or verifies the first Start event in the original Temporal History online. After a saved Start attempt, recovery checks its original identity and reports uncertainty unless it finds matching History. The foreground `campaign worker` serves its dedicated queue and the Workflow records expiry under the original deadline. [Campaign operator guide](../improvement/campaigns.md)
+
+On Linux/WSL2, `campaign worker-service` can give a local record-only Campaign one Supervisor-managed Worker on its original queue. The service reports the process generation and original polling evidence separately. A Worker can be replaced under the same Supervisor. Maintenance retains the owner during an in-flight Campaign command or a saved unresolved STOP. Repeating Campaign STOP reads the same Update ID. Verified closure of the original Run allows maintenance to drain. [Manage one Campaign Worker](../improvement/campaigns.md#manage-one-campaign-worker)
 
 `campaign stop` binds the local operator's confirmed request to the original first Run and scheduler. The CLI checks that the current Worker can handle the Update before saving an Update attempt. With an authorized native recipient, the same confirmed operation can save the local STOP fence while the Worker is unavailable. The native owner reads that fence during execution, stops its payload and records actual reap. A replacement Worker receives the same saved STOP intent. [Stop the campaign plan](../improvement/campaigns.md#stop-the-original-campaign-plan)
 
@@ -112,6 +125,8 @@ With the Linux Worker, one pending task can opt in to a bounded readback. An acc
 
 With a reachable Temporal service and unavailable Workflow state, `campaign status --online` can recover a verified `readback_completion` from the original Temporal History. It matches the accepted waiting receipt, frozen Activity grant and original passing result, and reports the schedule and completion event IDs. The same status call can verify saved waiting and terminal Update receipts by task and stage in `task_observation_history`. A verified entry carries the original accepted and completed event IDs. Current eligibility requires live Workflow state. An explicit terminal `campaign observe-check` records the task receipt. A dependent task can become eligible only after all of its prerequisites have been observed and the original Run still admits observations. The executor owns the original Job. [Campaign operator guide](../improvement/campaigns.md#allow-one-timed-readback-of-a-waiting-check)
 
+`campaign status --online --task-id TASK` reads the selected task's original Update History and separately owned fixed-check Job together. `matched` requires the same Job identity, terminal fields and complete observation digest. Differing, contradictory or unavailable evidence retains its own status and the saved Run and Update identities. Offline `status --task-id` reads the original Job and local attempt IDs. Both are read-only, including after Campaign STOP or expiry. [Correlate an original fixed check and task Update](../improvement/campaigns.md#record-an-original-fixed-check-for-a-task)
+
 The confirmed plan can explicitly authorize one existing local Codex recipient for the timed task. The normal Worker schedules one original wake after a successful readback. The native session owner reserves the same turn and protects the selected installed ELF through the launch using a Linux read lease. The original Campaign expiry, native turn deadline and STOP fence bind the launch and cleanup. Unknown delivery is read back through the pinned wake History and the same native receipt. [Authorize one local Codex recipient](../improvement/campaigns.md#authorize-one-local-codex-recipient) · [Recipient Activity](../../src/ergora/campaigns/recipient.py) · [Launch gate](../../src/ergora/campaigns/recipient_gate.py)
 
 `recipient.history.timing` links readback readiness, wake scheduling, Worker start and delivery termination by original event ID and Temporal timestamp. Intervals use nanoseconds on that History clock. Missing or reversed timestamps leave the affected interval null. The original native receipt reports actual payload start and cleanup. [Campaign timing and receipts](../improvement/campaigns.md#authorize-one-local-codex-recipient)
@@ -119,6 +134,8 @@ The confirmed plan can explicitly authorize one existing local Codex recipient f
 ### One leaf or a native project session
 
 `composition run-input` explicitly runs one admitted leaf. Supply its prerequisite evidence with the prepared input. The backend validates the requested mode; fixed task MCP, when used, exposes the frozen resource table and records resource reads. Backend admission, delivered bytes, actual reading and model quality are separate observations. [Leaf calls](../definitions/workflows/leaf-calls.md)
+
+For completed DeepSeek SDK `text-only` Chat Completions leaves, `composition inspect-run` verifies `native_usage` against the original native result hash and zero-based assistant event index. It retains the SDK's token fields, including separate input and cache-read counters when supplied. The SDK's identical all-zero counters for omitted and explicit-zero usage appear as `zero_or_unreported`. An invalid optional usage observation can stay unavailable while the accepted leaf result remains readable. Billing and workflow-wide cost have their own evidence. [DeepSeek Harness leaf readback](../agents/deepseek-harness.md#deepseek-harness-read-only-leaf-backend)
 
 An ordinary native project session uses the role's original workspace grants. It freezes the role, repository, selected backend configuration and context at session start. The current persistent native session route uses Codex on Linux/WSL2. Continuation selects the latest stopped parent with its saved native session identity and a stable turn intent. A caller that opts in with `agent continue --wait-for-slot` waits for the original session slot within the same turn timeout. The CLI and Console read the same receipt by original session, parent and intent. [Project sessions](../operations/services.md#project-native-sessions)
 
@@ -135,6 +152,8 @@ The start receipt's metadata writer runs in a separate thread from the native ch
 ## From a development request to a reviewable candidate
 
 Choose the formal task route when delivery requires an approved plan, an exact Git candidate and trusted checks. In Definition8, `composition.native` can explicitly select one six-stage instance at `root` or under a supported parent that forwards its task and result. `development.application` checks the registered repository, baseline, permissions, budget and optional issue, memory and Skill snapshots, then prepares and creates the frozen task. Explicit submission uses Input12 and `PreparationDAGWorkflow`. The original Temporal run owns these stages. [Formal route selection](../definitions/workflows/compose.md#select-a-composition-on-the-formal-task-page)
+
+For a prepared, budgeted native task, the Console checks the original preparation and preview digests and reads original creation status before offering first creation. `task preview` reports this readiness on standard error and preserves its static JSON and exit status. When an original creation is pending, published or uncertain, `task creation` reads that intent by the original task ID. `task preparation` reads the receipt when the original budget blocks publication. The creation owner checks that budget again on explicit publication. [Formal task page](../development/tasks.md#formal-task-page)
 
 1. **`inventory`** inspects the exact starting Git objects. Frozen inventory specialists supply declared results to their coordinator; the canonical inventory records the trusted sources.
 2. **`plan`** uses that inventory and the selected planning DAG. The original workflow computes the plan receipt digest and waits for **the original owner's approval of that exact request and plan**. `development.application.approve` delivers this decision through the native approval owner. A proposed plan alone grants no work execution.
@@ -154,6 +173,8 @@ PR/MR review also works without creating a formal development task. `development
 `training.application` previews and registers baselines and runners, prepares experiment manifests, submits original runs, explicitly requests managed execution, reads archives and delivers exact-evidence approval. `training.native` uses dedicated operations and readers. `training.runtime.execution.Execution` checks the original queued run and publishes a single request and launch chain before the executor enters its existing lock, sandbox, runner and archive path. `training.execution_protocol` owns cross-process records, source and context bindings and offline lifecycle reads. Target models, optimizers, datasets, gradients and numerical quality remain the target training project's responsibility.
 
 `training evidence --retained-archive` verifies the local archive of an unsuccessful managed full experiment against its original request, process outcome, gate, archive output and artifact digests. The response preserves the original execution state and reports retained evidence separately from accepted evidence. Baseline references and approval still use the original accepted archive. [Retained archive guide](../training/evidence-and-approval.md#read-a-retained-local-archive-after-unsuccessful-execution)
+
+The local GPU guard resolves the registered executable using the child's actual working directory and PATH before READY and pool admission. If process launch raises an OS error after lease consumption, the original guard checks for an empty child list and can publish stopped evidence for that attempt. The pool independently verifies the guard's proof and assigned devices before accepting the original release. [GPU guard](../../src/ergora/runtime/gpu_guard.py)
 
 For a reviewed local GPU runner, `training execution PROJECT EXPERIMENT_ID` links `local_gpu_lease` to the raw SHA-256 of the original managed attempt and its resource request. It can read the original open pool or recover the accepted release from its closed journal after a successor takes over. Release requires the original stopped guard proof and the pool's own observation that the assigned devices are clear. Execution outcome, confirmed cleanup, release and current capacity each have their original owner. [Observe the local GPU lease](../training/execution.md#observe-the-local-gpu-lease-of-a-managed-run) · [Read a closed-pool release](../training/execution.md#read-an-original-local-gpu-release-after-pool-closure)
 
@@ -176,7 +197,7 @@ Optional GEPA search in `optimization` starts from the registered Skill's exact 
 |Development and review|[application](../../src/ergora/development/application.py), [native](../../src/ergora/development/native.py), [runtime](../../src/ergora/development/runtime), [review](../../src/ergora/development/review), [verification](../../src/ergora/development/verification.py). Exact task/candidate decisions and trusted evidence.|
 |External sources|[issue backends](../../src/ergora/issues/backends.py), [snapshots](../../src/ergora/issues/snapshots.py), [writebacks](../../src/ergora/issues/writebacks.py). Platform identity, frozen context and attempted external effects.|
 |Training|[application](../../src/ergora/training/application.py), [execution protocol](../../src/ergora/training/execution_protocol.py), [runtime](../../src/ergora/training/runtime), [cycles](../../src/ergora/training/cycles.py), [rounds](../../src/ergora/training/rounds.py). Original experiments, managed attempt and local lease readback, finite controllers and [archive evidence reads](../../src/ergora/training/runtime/evidence.py).|
-|Campaign operator records|[application](../../src/ergora/campaigns/application.py), [records](../../src/ergora/campaigns/records.py), [workflow](../../src/ergora/campaigns/workflow.py), [readback](../../src/ergora/campaigns/readback.py), [recipient](../../src/ergora/campaigns/recipient.py). Original plan, Updates, timed readback and optional wake, with History evidence and timing.|
+|Campaign operator records|[application](../../src/ergora/campaigns/application.py), [records](../../src/ergora/campaigns/records.py), [workflow](../../src/ergora/campaigns/workflow.py), [readback](../../src/ergora/campaigns/readback.py), [Worker service](../../src/ergora/campaigns/worker_service.py), [recipient](../../src/ergora/campaigns/recipient.py). Original plan, Updates, Worker ownership, History and Job correlation, timed readback and optional wake.|
 |Improvement|[retrospectives](../../src/ergora/improvement/retrospectives.py), [memory](../../src/ergora/improvement/memory.py), [evaluation](../../src/ergora/improvement/evaluation.py), [optimization](../../src/ergora/improvement/optimization.py), [adoption](../../src/ergora/improvement/skill_adoption.py). Generation, evaluation and explicit reuse.|
 |Persistence and live resources|[State](../../src/ergora/storage/state.py), [assets](../../src/ergora/storage/assets.py), [Git material](../../src/ergora/storage/git.py), [processes](../../src/ergora/runtime/processes.py), [budget clock](../../src/ergora/runtime/budget_clock.py), [GPU pool](../../src/ergora/runtime/gpu_pool.py). Durable control records, complete material and owned lifetimes.|
 |Native integration and operations|[resources](../../src/ergora/native/resources.py), [compiler](../../src/ergora/native/compiler.py), [registration](../../src/ergora/native/registration.py), [operations](../../src/ergora/operations). Source identity, isolated integration, diagnostics, services and coordinated backups.|
