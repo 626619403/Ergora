@@ -44,14 +44,14 @@
     "review": {
       "kind": "workflow",
       "id": "ergora-delivery-review",
-      "version": "1.2.6",
-      "digest": "a5feee920db408384176c4db7ebd01cd4715ba025cd43ddf10cb8485ee31e372"
+      "version": "1.2.7",
+      "digest": "5eb05a0f3b48757108ec078323828c5252e6664a6cccdad7e3514161a9d581a5"
     },
     "delivery": {
       "kind": "workflow",
       "id": "ergora-large-change-delivery",
-      "version": "1.5.7",
-      "digest": "eabc5b13f11b518b4ae35c27e93b236481712108c566be3eaffd2f85e1035b14"
+      "version": "1.5.8",
+      "digest": "394e2ffa48b99b663163fb3f3b3ecd47bb695dd3a08996c93fbeec957df0169d"
     },
     "root": {
       "kind": "workflow",
@@ -82,20 +82,20 @@
     "review": {
       "kind": "workflow",
       "id": "ergora-delivery-review",
-      "version": "1.3.6",
-      "digest": "e497bdfa45fb1ad08404c7ac72f11a3343e9e091dc325ec87694940dbf3c2b35"
+      "version": "1.3.7",
+      "digest": "d195be998c0ad7c3d7f38f0a2508c837845541d14fda8b852144e8763c5eb585"
     },
     "delivery": {
       "kind": "workflow",
       "id": "ergora-large-change-delivery",
-      "version": "1.6.10",
-      "digest": "d26f712a4cad717443f0810c5e9747a19f6df8c086631f4b8eacc1a4aea14b70"
+      "version": "1.6.11",
+      "digest": "dbd531717b757252549606b255a1cbb7e77f7161998fa4df2f81476b92d0cec8"
     },
     "root": {
       "kind": "workflow",
       "id": "ergora-selected-moe-development",
-      "version": "1.1.10",
-      "digest": "bd0bd30da12f2632625ce92a4fb851cbe1528847d5a4d2eb0ffd124f9862aa94"
+      "version": "1.1.11",
+      "digest": "f1f47544d164c96a16a2d143af37ea53a7f4e48431b6d65a5a21e4fcd820d358"
     }
   }
 }

@@ -53,10 +53,10 @@
         }
       },
       "ref": {
-        "digest": "e497bdfa45fb1ad08404c7ac72f11a3343e9e091dc325ec87694940dbf3c2b35",
-        "id": "ergora-delivery-review",
         "kind": "workflow",
-        "version": "1.3.6"
+        "id": "ergora-delivery-review",
+        "version": "1.3.7",
+        "digest": "d195be998c0ad7c3d7f38f0a2508c837845541d14fda8b852144e8763c5eb585"
       }
     }
   ],
@@ -82,7 +82,7 @@
       "id": "ergora-large-change-delivery-instructions",
       "kind": "instructions",
       "path": "instructions.md",
-      "sha256": "8b94667875c6c825986db6c2a514cbaff417702e555140332aafb30cc98473ac"
+      "sha256": "e2c416398b4e9d7b12e04bb7d6c8820e06ced8c7d0e6abaea97816d5e86ea8a9"
     },
     {
       "digest": "3cd809f1ace62f80ac77f599b75726d4eac7bd15fe69be0572594c55801a2934",
@@ -104,5 +104,5 @@
     }
   ],
   "schema_version": 2,
-  "version": "1.6.10"
+  "version": "1.6.11"
 }

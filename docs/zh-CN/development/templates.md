@@ -8,8 +8,8 @@
 
 |模板／preset|当前随包根身份|专家关系与入口|
 |---|---|---|
-|repository-governance|`ergora-governance-template@1.1.7`|knowledge-map与boundary-test并行，接可信集成／验证及结构、正确性、测试价值审查|
-|large-change|`ergora-large-change-template@1.1.9`|contract→server／client并行→integration-tests，再接可信集成／验证和三审查|
+|repository-governance|`ergora-governance-template@1.1.8`|knowledge-map与boundary-test并行，接可信集成／验证及结构、正确性、测试价值审查|
+|large-change|`ergora-large-change-template@1.1.10`|contract→server／client并行→integration-tests，再接可信集成／验证和三审查|
 |training-optimization|`ergora-training-proposal@4.2.11`|源码流程→跨域规划／诊断→kernel实施方案→测量审查；全部五叶继承库／环境选择，独立只读建议，原runner执行实验|
 |optimization-memory-tuning|`ergora-opt-memory-tuning-proposal@1.2.2`|容量／allocator方向资料＋共享设计／诊断专家，接独立测量证据审查|
 |optimization-activation-recompute|`ergora-opt-activation-recompute-proposal@1.2.1`|重计算边界、数值与图／卸载约束；复用v2专家的只读子模板|
@@ -24,7 +24,7 @@
 |optimization-cluster-resiliency|`ergora-opt-cluster-resiliency-proposal@1.2.1`|启动／原job身份、日志与checkpoint／恢复证据，复用三位v2只读专家；集群动作仍交原执行器|
 |optimization-low-precision|`ergora-opt-low-precision-proposal@1.2.1`|design／profile→kernel→measurement的只读低精度方案；原实验与质量／性能门禁保持|
 |optimization-kernel|`ergora-opt-kernel-proposal@1.2.1`|design／profile→kernel→measurement的算子／wrapper及独立验证方案；原生流程与真实测量另验|
-|refactoring|`ergora-refactoring-template@1.3.7`|准备→rewrite→compatibility→原可信集成／验证→三审查；普通父引用一个原生large-change六阶段实例|
+|refactoring|`ergora-refactoring-template@1.3.8`|准备→rewrite→compatibility→原可信集成／验证→三审查；普通父引用一个原生large-change六阶段实例|
 |optimization-performance-diagnosis|`ergora-opt-performance-diagnosis-proposal@1.2.2`|同症状反馈命令与按实际报告选择工具；design／profile→measurement只读提案|
 
 每个Agent是独立版本包，可有自己的专长、初始指令、Skill和后端。结构父链完整累加资料并限制子权限；依赖边安排执行先后，具名端口传递结果。这三种关系可在“Agent 与组合库”展开查看。[定义格式与继承规则](../../definitions/workflows/compose.md)。
@@ -62,7 +62,7 @@ ergora templates copy training-optimization "$WALKTHROUGH_HOME/training-template
 以治理组合为例，先读取原根声明，将明确审阅的权限和预算写成grant：
 
 ```bash
-ergora composition show ergora-governance-template 1.1.7 --material > "$WALKTHROUGH_HOME/root.json"
+ergora composition show ergora-governance-template 1.1.8 --material > "$WALKTHROUGH_HOME/root.json"
 python3 - "$WALKTHROUGH_HOME" <<'PY'
 import json, pathlib, sys
 directory = pathlib.Path(sys.argv[1])
@@ -70,13 +70,13 @@ definition = json.loads((directory / "root.json").read_text())["definition"]
 grant = {"schema_version": 1, "permissions": definition["permissions"], "limits": definition["limits"]}
 (directory / "grant.json").write_text(json.dumps(grant, indent=2) + "\n")
 PY
-ergora composition preview ergora-governance-template 1.1.7 --grant "$WALKTHROUGH_HOME/grant.json"
+ergora composition preview ergora-governance-template 1.1.8 --grant "$WALKTHROUGH_HOME/grant.json"
 ```
 
 审阅完整预览，确认实例、祖先资料和授权上限。把实际返回的`preview_sha256`填入下面的`PREVIEW_SHA256`：
 
 ```bash
-ergora composition freeze-manifest ergora-governance-template 1.1.7 --grant "$WALKTHROUGH_HOME/grant.json" --preview-sha256 PREVIEW_SHA256
+ergora composition freeze-manifest ergora-governance-template 1.1.8 --grant "$WALKTHROUGH_HOME/grant.json" --preview-sha256 PREVIEW_SHA256
 ```
 
 保存返回的完整包`path`、包`digest`和`manifest.preview_sha256`，随后运行`ergora composition verify-manifest FULL_MANIFEST_DIRECTORY`。更换领域时使用上表对应根ID，重新取得并审阅该根的grant；训练根不请求shell或写权限。页面也可预览后选择“保存当前预览为完整 manifest”。下载的preview JSON用于阅读，分享或备份时带上完整目录。[完整包说明](../../definitions/workflows/compose.md#save-and-share-a-complete-composition)。

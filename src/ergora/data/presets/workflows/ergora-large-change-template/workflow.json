@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "id": "ergora-large-change-template",
-  "version": "1.1.9",
+  "version": "1.1.10",
   "description": "Native parent for the large-change six-stage delivery.",
   "resources": [
     {
@@ -43,8 +43,8 @@
       "ref": {
         "kind": "workflow",
         "id": "ergora-large-change-delivery",
-        "version": "1.5.7",
-        "digest": "eabc5b13f11b518b4ae35c27e93b236481712108c566be3eaffd2f85e1035b14"
+        "version": "1.5.8",
+        "digest": "394e2ffa48b99b663163fb3f3b3ecd47bb695dd3a08996c93fbeec957df0169d"
       },
       "depends_on": [],
       "inputs": {

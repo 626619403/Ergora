@@ -790,7 +790,11 @@ def test_revision_impact_finds_cross_end_limit_before_shared_work_publication(tm
         assert not preview['published'] and index.read_bytes() == before
         return preview, changes
 
-    oversized, _ = inspect(text + b'An added shared instruction.\n' * 80)
+    material_limit = cross_grant['limits']['material_bytes']
+    available = material_limit - baseline['composition']['usage']['material_bytes']
+    added_line = b'An added shared instruction.\n'
+    line_charge = 4 * len(added_line)  # One copy in each affected work leaf.
+    oversized, _ = inspect(text + added_line * (available // line_charge + 1))
     impact = oversized['impact']
     assert impact['status'] == 'blocked'
     cross_result, moe_result = impact['roots']
@@ -800,11 +804,11 @@ def test_revision_impact_finds_cross_end_limit_before_shared_work_publication(tm
     projection = cross_result['projection']
     blocker, project = projection['blocker'], projection['scopes'][0]
     assert blocker['scope'] == 'project' and blocker['path'].startswith('root/')
-    assert blocker['observed_material_bytes'] == project['material_bytes'] > project['limit'] == 262144
+    assert blocker['observed_material_bytes'] == project['material_bytes'] > project['limit'] == material_limit
     assert not project['complete'] and project['remaining_bytes'] == project['limit'] - project['material_bytes']
     assert sum(item['material_bytes'] for item in projection['leaves']) + blocker['attempted_leaf']['material_bytes'] == project['material_bytes']
 
-    valid, changes = inspect(text + b'\nRecord exact evidence.\n')
+    valid, changes = inspect(text + added_line * ((available - 1) // line_charge))
     assert valid['impact']['status'] == 'checked'
     predicted = valid['impact']['roots'][0]['projection']['scopes'][0]
     assert predicted['complete'] and 0 < predicted['remaining_bytes'] < 4096
