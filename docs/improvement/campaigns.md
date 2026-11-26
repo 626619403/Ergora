@@ -35,7 +35,7 @@ ergora campaign status my-project first-plan
 ergora campaign status my-project first-plan --online
 ```
 
-Offline status reads the saved start and stop evidence without the SDK. Online status verifies the original start History and reports the Temporal run and any observed workflow state separately. A running workflow may have state unavailable while its worker is offline. The expiry phase is reported when the original completion can be verified.
+Offline status reads the saved start, stop and task attempts without the SDK. Saved task entries include their local Run and Update IDs and report `status: not_requested`. Online status verifies the original start History and reports the Temporal run and any observed workflow state separately. A running workflow may have state unavailable while its worker is offline. The expiry phase is reported when the original completion can be verified.
 
 After an uncertain start, read `status --online` and repeat `create` with the same project, campaign, exact plan bytes, revision and digest to save the verified original start. Once the dispatch attempt is saved, repeated `create` observes the same original start even if the current project scheduler changed. An unavailable service or missing original History leaves that attempt uncertain.
 
@@ -103,7 +103,7 @@ ergora campaign observe-check my-project fixed-check-plan verify-candidate --con
 
 `observe-check` verifies the original passing Job, cleanup and source identities before recording the observation. Its result reports `campaign_project_revision` and `job_project_revision` separately. After an uncertain reply, read online status and look up the saved `update_id`. When task state is available, a saved unresolved attempt shows `attempt_status: unknown` and `eligible: false`. STOP and expiry close admission for new observations. The original receipts remain readable, including by reconciliation of a saved attempt. The fixed-check executor retains Job ownership and authority.
 
-When live task state is unavailable, `status --online` reports saved attempts in `task_observation_history` by task ID and stage (`waiting` or `terminal`). A `verified` entry includes the receipt and its matching accepted and completed Update event IDs on the original Run. `unresolved` means readable History did not establish an exact successful receipt for that attempt. `unavailable` means the original History could not be read. Each entry retains its original Run and Update IDs. Use this view to recover a lost reply without submitting an observation. Task eligibility requires current Workflow state.
+When live task state is unavailable, `status --online` reports saved attempts in `task_observation_history` by task ID and stage (`waiting` or `terminal`). A `verified` entry includes the receipt and its matching accepted and completed Update event IDs on the original Run. A `failed` entry includes the two event IDs when the accepted Update completed with a failure. It carries no observation receipt. `unresolved` means readable History did not establish a completed outcome for that attempt. `unavailable` means the original History could not be read. Each entry retains its original Run and Update IDs. Use this view to recover a lost reply without submitting an observation. Task eligibility requires current Workflow state.
 
 ### Observe an original check that is still pending
 

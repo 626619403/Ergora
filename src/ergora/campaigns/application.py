@@ -125,7 +125,7 @@ async def _read_original(runtime, output, opening, attempt, run_id, *, client=No
     return observed
 
 
-def _task_observation_history(commands, updates=None):
+def _task_observation_history(commands, updates=None, *, unobserved='unavailable'):
     """Project original attempts without interpreting live task state."""
     history = {}
     for command in commands:
@@ -133,9 +133,9 @@ def _task_observation_history(commands, updates=None):
         stage = 'waiting' if intent['operation'] == 'wait_check' else 'terminal'
         update_id = attempt['update_id']
         entry = {'run_id': intent['run_id'], 'update_id': update_id, 'receipt': None,
-                 'status': 'unavailable' if updates is None else 'unresolved'}
+                 'status': unobserved if updates is None else 'unresolved'}
         if updates is not None and update_id in updates:
-            entry.update(updates[update_id], status='verified')
+            entry.update(updates[update_id])
         history.setdefault(intent['task_id'], {})[stage] = entry
     return history
 
@@ -151,21 +151,26 @@ async def status(state: State, project: str, campaign: str, *, online: bool = Fa
         # A concurrent writer may start and stop after a prepared-only snapshot.
         stop_records = files.load_stop(opening, attempt, result)
     output = {**_snapshot(files, opening, attempt, result), 'stop': _stop_snapshot(stop_records)}
-    if online and attempt is not None:
-        run_id = stop_records[0]['run_id'] if stop_records[0] is not None else output['run_id']
-        run_id, check_commands = files.load_checks(opening, attempt, run_id)
-        output = await _read_original(_temporal(), output, opening, attempt, run_id, read_state=True,
-                                      stop_records=stop_records, check_commands=check_commands)
-        if (check_commands and output['workflow_state_status'] != 'observed'
-                and 'task_observation_history' not in output):
-            output['task_observation_history'] = _task_observation_history(check_commands)
-        for task in output.get('tasks', {}).values():
-            if task['receipt'] is None:
-                command = files.load_check(opening, attempt, output['run_id'], task)
-                if command is None and task['source'].get('pending') is True and task['waiting_receipt'] is None:
-                    command = files.load_check(opening, attempt, output['run_id'], task, waiting=True)
-                if command is not None:
-                    task.update(eligible=False, attempt_status='unknown', update_id=command['attempt']['update_id'])
+    if attempt is None:
+        return output
+    run_id = stop_records[0]['run_id'] if stop_records[0] is not None else output['run_id']
+    run_id, check_commands = files.load_checks(opening, attempt, run_id)
+    if not online:
+        if check_commands:
+            output['task_observation_history'] = _task_observation_history(check_commands, unobserved='not_requested')
+        return output
+    output = await _read_original(_temporal(), output, opening, attempt, run_id, read_state=True,
+                                  stop_records=stop_records, check_commands=check_commands)
+    if (check_commands and output['workflow_state_status'] != 'observed'
+            and 'task_observation_history' not in output):
+        output['task_observation_history'] = _task_observation_history(check_commands)
+    for task in output.get('tasks', {}).values():
+        if task['receipt'] is None:
+            command = files.load_check(opening, attempt, output['run_id'], task)
+            if command is None and task['source'].get('pending') is True and task['waiting_receipt'] is None:
+                command = files.load_check(opening, attempt, output['run_id'], task, waiting=True)
+            if command is not None:
+                task.update(eligible=False, attempt_status='unknown', update_id=command['attempt']['update_id'])
     return output
 
 

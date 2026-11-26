@@ -825,7 +825,8 @@ def test_campaign_one_pending_readback_window_is_frozen():
 
 @pytest.mark.parametrize('outcome', ['passing', 'unrelated', 'pending', 'unaccepted', 'changed-grant',
                                      'history-unavailable', 'service-unavailable', 'no-timer',
-                                     'changed-command', 'wrong-acceptance', 'changed-receipt', 'accepted-only'])
+                                     'changed-command', 'wrong-acceptance', 'changed-receipt', 'accepted-only',
+                                     'offline', 'completed-failure', 'duplicate-id'])
 def test_status_recovers_original_task_history_without_worker(registration, tmp_path, monkeypatch, outcome):
     pytest.importorskip('temporalio')
     from temporalio.api.history.v1 import HistoryEvent
@@ -873,10 +874,12 @@ def test_status_recovers_original_task_history_without_worker(registration, tmp_
     terminal_receipt = check_receipt(terminal_command)
     unresolved_intent = check_intent(opening, identity(attempt), run_id, 'unresolved', 'f' * 64)
     unresolved_id = 'ergora-campaign-check:53038d63-20d9-4580-80f2-2632e6258c99'
+    if outcome == 'duplicate-id':
+        unresolved_id = terminal_id
     unresolved_command = {'intent': unresolved_intent, 'attempt': update_attempt(unresolved_intent, unresolved_id)}
     owner.write('start-intent', opening)
     owner.write('start-attempt', attempt)
-    if outcome != 'service-unavailable':
+    if outcome not in ('service-unavailable', 'offline'):
         owner.write('start-result', result_document(opening, attempt, run_id))
     owner.write('wait-check-wait', command)
     if outcome != 'unaccepted':
@@ -885,6 +888,28 @@ def test_status_recovers_original_task_history_without_worker(registration, tmp_
     before = files(state.root)
 
     async def exercise():
+        if outcome in ('offline', 'duplicate-id'):
+            def unavailable_sdk():
+                pytest.fail('Offline status must not load the Temporal runtime')
+
+            monkeypatch.setattr(application, '_temporal', unavailable_sdk)
+            if outcome == 'duplicate-id':
+                with pytest.raises(ValueError, match='share an original Update ID'):
+                    await application.status(state, 'demo', owner.campaign)
+                return
+            observed = await application.status(state, 'demo', owner.campaign)
+            assert observed['remote_status'] == 'not_requested'
+            assert observed['run_id'] is None and 'tasks' not in observed
+            assert observed['task_observation_history'] == {
+                'wait': {
+                    'waiting': {'run_id': run_id, 'update_id': update_id, 'status': 'not_requested', 'receipt': None},
+                    'terminal': {'run_id': run_id, 'update_id': terminal_id, 'status': 'not_requested', 'receipt': None},
+                },
+                'unresolved': {
+                    'terminal': {'run_id': run_id, 'update_id': unresolved_id, 'status': 'not_requested', 'receipt': None},
+                },
+            }
+            return
         converter = DataConverter.default
         observation = {key: value for key, value in source.items() if key != 'pending'}
         observation.update(project='demo', status='succeeded', stop_requested=False, cleanup_confirmed=True,
@@ -928,6 +953,9 @@ def test_status_recovers_original_task_history_without_worker(registration, tmp_
             if outcome == 'changed-receipt':
                 result = completed.workflow_execution_update_completed_event_attributes.outcome.success
                 result.payloads[0].data = (await converter.encode([waiting]))[0].data
+            if outcome == 'completed-failure':
+                result = completed.workflow_execution_update_completed_event_attributes.outcome
+                result.failure.application_failure_info.non_retryable = True
             events.append(accepted)
             if outcome != 'accepted-only':
                 events.append(completed)
@@ -982,14 +1010,16 @@ def test_status_recovers_original_task_history_without_worker(registration, tmp_
                 'receipt': waiting, 'accepted_event_id': 2, 'completed_event_id': 3,
             }
             terminal = {'run_id': run_id, 'update_id': terminal_id, 'status': unresolved_status, 'receipt': None}
-            if outcome != 'accepted-only':
+            if outcome == 'completed-failure':
+                terminal.update(status='failed', accepted_event_id=7, completed_event_id=8)
+            elif outcome != 'accepted-only':
                 terminal.update(status='verified', receipt=terminal_receipt, accepted_event_id=7, completed_event_id=8)
             assert observations['wait']['terminal'] == terminal
         else:
             assert observations['wait']['waiting'] == {
                 'run_id': run_id, 'update_id': update_id, 'status': unresolved_status, 'receipt': None,
             }
-        if outcome in ('passing', 'accepted-only'):
+        if outcome in ('passing', 'accepted-only', 'completed-failure'):
             assert observed['readback_completion'] == {
                 'task_id': 'wait', 'activity_id': activity_id, 'waiting_receipt_sha256': identity(waiting),
                 'scheduled_event_id': 4, 'completed_event_id': 6, 'receipt_sha256': 'd' * 64,

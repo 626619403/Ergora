@@ -359,12 +359,17 @@ async def read_task_history(client, handle, opening, commands):
               or event.HasField('activity_task_completed_event_attributes')
               and event.activity_task_completed_event_attributes.scheduled_event_id in schedule_ids):
             activity_events.append(event)
-    verified = {key: {field: entry[field] for field in ('accepted_event_id', 'completed_event_id', 'receipt')}
-                for key, entry in entries.items() if entry.get('receipt') is not None}
+    updates = {}
+    for update_id, entry in entries.items():
+        if entry.get('receipt') is not None or entry.get('failed'):
+            updates[update_id] = {'accepted_event_id': entry['accepted_event_id'],
+                                  'completed_event_id': entry['completed_event_id'],
+                                  'receipt': entry['receipt'],
+                                  'status': 'failed' if entry.get('failed') else 'verified'}
     completion = None
-    if timer_wait is not None and timer_wait['attempt']['update_id'] in verified:
+    if timer_wait is not None and entries[timer_wait['attempt']['update_id']].get('receipt') is not None:
         completion = await _readback_completion(converter, activity_events, opening, task, grant, activity_id)
-    return verified, completion
+    return updates, completion
 
 
 async def _readback_completion(converter, events, opening, task, grant, activity_id):
@@ -435,6 +440,7 @@ async def _read_update_event(converter, event, entries, update_name, require_rec
                 raise ValueError('Campaign completion does not bind its original accepted Update')
             entry['completed_event_id'] = event.event_id
             entry['receipt'] = await _update_outcome(converter, entry['command'], completed.outcome, require_receipt)
+            entry['failed'] = completed.outcome.HasField('failure')
 
 
 async def _read_update(client, handle, command, update_name, require_receipt):

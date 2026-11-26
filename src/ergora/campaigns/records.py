@@ -390,13 +390,19 @@ class CampaignFiles:
     def load_checks(self, opening, start_attempt, run_id):
         """Read saved attempts and keep them all pinned to the same candidate first Run."""
         commands = []
+        update_ids = set()
         for task in fixed_tasks(opening).values():
             stages = (False, True) if task['source'].get('pending') is True else (False,)
             for waiting in stages:
                 command = self.load_check(opening, start_attempt, run_id, task, waiting=waiting)
-                if command is not None:
-                    run_id = command['intent']['run_id']
-                    commands.append(command)
+                if command is None:
+                    continue
+                update_id = command['attempt']['update_id']
+                if update_id in update_ids:
+                    raise ValueError('Saved campaign task attempts share an original Update ID')
+                update_ids.add(update_id)
+                run_id = command['intent']['run_id']
+                commands.append(command)
         return run_id, commands
 
     def _validate_opening(self, opening):
