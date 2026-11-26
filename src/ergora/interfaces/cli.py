@@ -1563,7 +1563,28 @@ def main(argv: list[str] | None = None) -> int:
                 elif args.operation == "preview":
                     output = tasks.preview(state, args.project, definition, args.revision)
                     print(json.dumps(output, ensure_ascii=False, indent=2))
-                    return 1 if output["route_admission"]["status"] == "blocked" else 0
+                    if output["route_admission"]["status"] == "blocked":
+                        return 1
+                    if "prepare_sha256" in output:
+                        task_id = output["definition"]["task_id"]
+                        try:
+                            readiness = tasks.preparation_readiness(state, args.project, task_id,
+                                prepare_sha256=output["prepare_sha256"], preview_sha256=output["preview_sha256"])
+                        except (OSError, ValueError) as error:
+                            readiness = {"status": "unconfirmed", "detail": str(error),
+                                         "next_action": "read_original_preparation"}
+                        detail = readiness.get("detail", "")
+                        read_creation = readiness["next_action"] == "read_original_creation"
+                        owner = "creation" if read_creation else "preparation"
+                        print(f"Original {owner} for {task_id}: {readiness['status']}. {detail}".rstrip(),
+                              file=sys.stderr)
+                        if readiness["next_action"] == "confirm_create":
+                            print("Next: review the frozen preview and explicitly run task create with both digests.",
+                                  file=sys.stderr)
+                        else:
+                            print(f"Next: task {owner} {args.project} {task_id} in the same control home.",
+                                  file=sys.stderr)
+                    return 0
                 else:
                     output = tasks.create(state, args.project, definition, args.revision, args.preview_sha256,
                                           prepare_sha256=args.prepare_sha256)

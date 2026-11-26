@@ -86,6 +86,113 @@ def _prepared(creation):
     return preview, preview['files']['task.spec.json']
 
 
+def test_console_reads_publication_readiness_for_the_exact_prepared_preview(native_definition):
+    pytest.importorskip('fastapi')
+    pytest.importorskip('httpx')
+    from fastapi.testclient import TestClient
+
+    from ergora.configuration import projects
+    from ergora.interfaces.web import create_app
+
+    state, _, definition = native_definition
+    task_id = definition['task_id']
+    preview, _ = _prepared(native_definition)
+    query = {key: preview[key] for key in ('prepare_sha256', 'preview_sha256')}
+    path = f'/api/projects/demo/tasks/{task_id}/preparation'
+    with TestClient(create_app(state.root), base_url='http://127.0.0.1:8977') as client:
+        record = client.get(path).json()
+        assert record['status'] == 'prepared'
+        assert record['outcome']['record_sha256'] == query['preview_sha256']
+        exact = client.get(path, params=query)
+        assert exact.status_code == 200
+        assert exact.json()['next_action'] == 'confirm_create'
+        assert exact.json()['status'] == 'available'
+        for key in query:
+            unconfirmed = client.get(path, params={**query, key: '0' * 64}).json()
+            assert unconfirmed['status'] == 'unconfirmed'
+            assert unconfirmed['next_action'] == 'read_original_preparation'
+        projects.bind(state, 'demo', 'reviewer', {'tool': 'codex', 'model': 'later-model'}, 1)
+        changed = client.get(path, params=query).json()
+        assert changed['status'] == 'project_revision_changed'
+        assert changed['next_action'] == 'read_original_preparation'
+        assert client.get(path).json()['prepare_sha256'] == record['prepare_sha256']
+
+
+@pytest.mark.parametrize('publication', ['pending', 'published'])
+def test_console_and_cli_read_original_creation_after_an_uncertain_reply(
+        native_definition, monkeypatch, tmp_path, capsys, publication):
+    pytest.importorskip('fastapi')
+    pytest.importorskip('httpx')
+    from fastapi.testclient import TestClient
+
+    from ergora.interfaces import cli
+    from ergora.interfaces.web import create_app
+    from test_task_budget import _worker_injection
+    from test_task_creation import _files
+
+    state, registered, definition = native_definition
+    task_id = definition['task_id']
+    root = Path(registered['execution']['state_directory'])
+    preview, _ = _prepared(native_definition)
+    query = {key: preview[key] for key in ('prepare_sha256', 'preview_sha256')}
+    original = tasks.create
+    definition_file = tmp_path / 'operator-definition.json'
+    definition_file.write_text(json.dumps(definition), encoding='utf-8')
+    body = {'definition': definition, 'revision': 1}
+    base = '/api/projects/demo/tasks'
+    headers = {'X-Ergora-Request': '1', 'Origin': 'http://127.0.0.1:8977'}
+
+    def lose_reply(*args, **kwargs):
+        assert original(*args, **kwargs)['status'] == 'published'
+        raise OSError('Original creation reply was unavailable')
+
+    with TestClient(create_app(state.root), base_url='http://127.0.0.1:8977', headers=headers) as client:
+        preview_http = client.post(f'{base}/preview', json=body).json()
+        assert preview_http['preview_sha256'] == query['preview_sha256']
+        path = f'{base}/{task_id}/preparation'
+        assert client.get(path, params=query).json()['next_action'] == 'confirm_create'
+        with monkeypatch.context() as patch:
+            if publication == 'published':
+                patch.setattr(tasks, 'create', lose_reply)
+            else:
+                _worker_injection(patch, '', """
+from ergora.development.runtime.creation import _Creation
+def interrupt(self, record, *, save_intent):
+    assert save_intent
+    self.core.write(self.intent_path, record)
+    raise OSError('Original creation was interrupted after saving its intent')
+_Creation.publish = interrupt
+""")
+            uncertain = client.post(base, json={**body, **query})
+            assert uncertain.status_code >= 400 and 'Original creation' in uncertain.text
+
+        original_files = _files(root)
+        original_record = client.get(f'{base}/{task_id}/creation').json()
+        assert original_record['status'] == publication
+        assert original_record['intent_sha256'] == query['preview_sha256']
+        assert client.get(path).json()['budget_status']['status'] == 'available'
+        assert client.post(f'{base}/preview', json=body).json() == preview_http
+        readiness = client.get(path, params=query).json()
+        assert readiness['status'] == publication and readiness['next_action'] == 'read_original_creation'
+        argv = ['--home', str(state.root), 'task', 'preview', 'demo',
+                '--definition', str(definition_file), '--revision', '1']
+        assert cli.main(argv) == 0
+        output = capsys.readouterr()
+        assert json.loads(output.out) == preview
+        assert f'Original creation for {task_id}: {publication}.' in output.err
+        assert f'Next: task creation demo {task_id}' in output.err and 'task create' not in output.err
+        assert _files(root) == original_files and not (root / 'ergora/task-submissions').exists()
+        if publication == 'published':
+            # An incomplete restore can retain the receipt without its intent or task files.
+            prefix = root / 'ergora/task-creations'
+            (prefix / f'{task_id}.intent.json').rename(tmp_path / 'original-intent.json')
+            (root / 'tasks' / task_id).rename(tmp_path / 'original-task')
+            assert (prefix / f'{task_id}.result.json').is_file()
+            readiness = client.get(path, params=query).json()
+            assert readiness['status'] == 'unconfirmed' and readiness['next_action'] == 'read_original_creation'
+            assert 'without its original intent' in readiness['detail']
+
+
 @pytest.fixture
 def selected_context_task(native_definition, tmp_path):
     state, registered, definition = native_definition

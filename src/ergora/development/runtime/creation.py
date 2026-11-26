@@ -309,6 +309,11 @@ class _Creation:
     def status(self, record: dict | None) -> dict:
         result = {'project': self.project['id'], 'project_revision': self.project['revision'],
                   'task_id': self.task_id, 'runtime_status': 'not_queried', 'execution_started_by_operation': False}
+        if record is None and self.result_path.exists():
+            # The intent may have appeared since the first unlocked read.
+            record = self.load()
+            if record is None:
+                raise ValueError('Creation result exists without its original intent')
         if record is None:
             return {**result, 'status': 'not_recorded', 'task_directory_exists': self.target.exists()}
         states = self.file_states(record)

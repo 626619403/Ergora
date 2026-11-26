@@ -20,6 +20,21 @@ const facts = (items) =>
     node("dt", {}, name), node("dd", {}, value ?? "未返回"),
   ]));
 
+const preparationBudgetLabels = {
+  available: "核对时可用",
+  exhausted: "工作预算已耗尽",
+  unsupported_clock: "无法核对原预算时钟",
+  unconfirmed: "原准备回执未确认",
+  project_revision_changed: "当前项目修订与原准备不同",
+};
+
+const originalCreationLabels = {
+  pending: "原意图已保存，合同待发布",
+  published: "原合同已发布",
+  conflict: "原创建记录冲突",
+  unconfirmed: "原创建记录未确认",
+};
+
 const submissionActions = {
   start: {
     description: "尚无统一提交意图。可检查冻结合同并确认首次提交。",
@@ -120,8 +135,16 @@ export function tasksView(data, base, { sourceSnapshot = "" } = {}) {
     try {
       const record = await api(`${base}/tasks/${encodeURIComponent(taskId)}/preparation`);
       if (!active()) return;
+      const budget = record.budget_status;
       target.replaceChildren(panel(`准备记录：${record.status}`,
-        "读取不会重新授权、延长预算或载入创建表单。prepared 表示材料已冻结；须回到原表单或用已下载的授权输入通过 CLI 预览。关闭表单前请下载完整授权输入；修改已授权输入须使用新的任务 ID。",
+        record.status === "prepared" && budget?.status === "available"
+          ? "材料已冻结。用原表单或已下载的授权输入预览，创建会重新核对原预算。"
+          : "保留原任务 ID 和准备记录。读取不会重新授权或延长预算。",
+        facts([
+          ["原任务 ID", taskId],
+          ...(budget ? [["原准备预算", preparationBudgetLabels[budget.status] ?? budget.status]] : []),
+          ...(budget?.detail ? [["时钟说明", budget.detail]] : []),
+        ]),
         disclosure("完整准备与预算记录", record),
         row(button("重新读取原准备记录", () => { if (active()) readPreparation(taskId, target, active); }))));
     } catch (error) {
@@ -320,7 +343,9 @@ export function tasksView(data, base, { sourceSnapshot = "" } = {}) {
           try {
             const record = await api(`${base}/tasks/prepare`, { definition, revision: snapshot.project_revision });
             if (current(reading)) result.replaceChildren(panel(`准备记录：${record.status}`,
-              "预算已开始计时。prepared 后可预览原输入，再明确创建；预览不会续期。失败时保留原记录，修订输入须换新任务 ID。",
+              record.status === "prepared"
+                ? "用原输入预览冻结合同。创建前核对原准备预算。"
+                : `请按原任务 ID ${definition.task_id} 读取准备记录，再决定下一步。`,
               disclosure("完整准备与预算记录", record),
               row(button("下载完整授权输入", downloadDefinition)),
               row(button("读取原准备记录", () => { if (current(reading)) readPreparation(definition.task_id, result, () => current(reading)); }))));
@@ -362,6 +387,39 @@ export function tasksView(data, base, { sourceSnapshot = "" } = {}) {
           disclosure("完整服务端预览", snapshot)));
         return;
       }
+      let publication = null;
+      if (snapshot.prepare_sha256) {
+        const taskId = snapshot.definition.task_id;
+        const query = new URLSearchParams({
+          prepare_sha256: snapshot.prepare_sha256, preview_sha256: snapshot.preview_sha256,
+        });
+        result.replaceChildren(empty(`正在读取 ${taskId} 的原准备回执…`));
+        try {
+          publication = await api(`${base}/tasks/${encodeURIComponent(taskId)}/preparation?${query}`);
+        } catch (error) {
+          publication = { status: "unconfirmed", detail: error.message };
+        }
+        if (!current(reading)) return;
+        if (publication.next_action !== "confirm_create") {
+          const readCreation = publication.next_action === "read_original_creation";
+          const label = readCreation ? originalCreationLabels[publication.status] : preparationBudgetLabels[publication.status];
+          result.replaceChildren(panel(readCreation ? "先读取原创建记录" : "原准备暂不可创建",
+            readCreation ? "保留原任务 ID，并核对原创建记录。" : "保留原任务 ID，并读取原准备记录。",
+            admissionFacts(snapshot),
+            facts([
+              ["原任务 ID", taskId],
+              [readCreation ? "原创建状态" : "原准备预算", label ?? publication.status],
+              ...(publication.detail ? [["原因", publication.detail]] : []),
+            ]),
+            disclosure("完整服务端预览", snapshot),
+            button(readCreation ? "按原 ID 读取创建记录" : "读取原准备记录", () => {
+              if (!current(reading)) return;
+              if (readCreation) creationLookup(taskId);
+              else readPreparation(taskId, result, () => current(reading));
+            }, "primary")));
+          return;
+        }
+      }
       const bindings = snapshot.files["agent-bindings.json"];
       const frozen = snapshot.files["task.spec.json"].composition;
       result.replaceChildren(panel("审阅冻结预览", "确认后发布此合同，启动运行另行操作。",
@@ -373,6 +431,7 @@ export function tasksView(data, base, { sourceSnapshot = "" } = {}) {
           ["基线提交", snapshot.files["compiled.json"].spec.request.repository.base_sha],
           ["预览 SHA256", snapshot.preview_sha256],
           ...(snapshot.prepare_sha256 ? [["准备 SHA256", snapshot.prepare_sha256]] : []),
+          ...(publication ? [["原准备预算", preparationBudgetLabels[publication.status]]] : []),
         ]),
         node("h3", {}, "冻结项目角色"),
         table(["角色", "工具", "模型"], Object.entries(bindings.bindings).map(([role, binding]) =>

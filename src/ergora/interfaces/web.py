@@ -939,7 +939,13 @@ def create_app(home: Path | None = None) -> FastAPI:
         return tasks.prepare(state, project_id, body.definition, body.revision)
 
     @application.get("/api/projects/{project_id}/tasks/{task_id}/preparation")
-    def formal_task_preparation(project_id: str, task_id: str):
+    def formal_task_preparation(project_id: str, task_id: str,
+                                prepare_sha256: str | None = None, preview_sha256: str | None = None):
+        if prepare_sha256 is not None or preview_sha256 is not None:
+            if prepare_sha256 is None or preview_sha256 is None:
+                raise ValueError("Select both the original preparation and prepared preview digests")
+            return tasks.preparation_readiness(state, project_id, task_id,
+                prepare_sha256=prepare_sha256, preview_sha256=preview_sha256)
         return tasks.preparation(state, project_id, task_id)
 
     @application.post("/api/projects/{project_id}/tasks/preview")

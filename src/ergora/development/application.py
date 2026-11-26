@@ -406,6 +406,39 @@ def preparation(state: State, project_id: str, task_id: str) -> dict:
     return creation_process.task_creation(project, state.root, 'preparation', {'task_id': task_id})
 
 
+def preparation_readiness(state: State, project_id: str, task_id: str, *,
+                          prepare_sha256: str, preview_sha256: str) -> dict:
+    """Observe whether a selected prepared preview can be offered for publication."""
+    _digest(prepare_sha256, 'Preparation')
+    _digest(preview_sha256, 'Preview')
+    receipt = preparation(state, project_id, task_id)
+    result = {'task_id': task_id, 'next_action': 'read_original_preparation'}
+    if (receipt['status'] != 'prepared' or receipt['prepare_sha256'] != prepare_sha256
+            or receipt['outcome']['record_sha256'] != preview_sha256):
+        return {**result, 'status': 'unconfirmed',
+                'detail': 'The original preparation receipt does not confirm the selected preview'}
+    read_creation = {**result, 'next_action': 'read_original_creation'}
+    try:
+        original = creation(state, project_id, task_id)
+    except (OSError, ValueError) as error:
+        return {**read_creation, 'status': 'unconfirmed', 'detail': str(error)}
+    if original['status'] != 'not_recorded':
+        if original['intent_sha256'] != preview_sha256:
+            return {**read_creation, 'status': 'conflict',
+                    'detail': 'The saved creation intent differs from the selected preview'}
+        return {**read_creation, 'status': original['status']}
+    if original['task_directory_exists']:
+        return {**read_creation, 'status': 'unconfirmed',
+                'detail': 'Task files exist without a verified original creation intent'}
+    if original['project_revision'] != receipt['budget']['scope']['project_revision']:
+        return {**result, 'status': 'project_revision_changed',
+                'detail': 'The current project revision differs from the original preparation'}
+    budget_status = receipt['budget_status']
+    if budget_status['status'] == 'available':
+        result['next_action'] = 'confirm_create'
+    return {**result, **budget_status}
+
+
 def status(state: State, project_id: str, task_id: str, *, run_id: str | None = None, timeout: int = 20) -> dict:
     """Read verified native execution facts; absence and transport errors stay distinct."""
     if type(timeout) is not int or not 1 <= timeout <= 60:

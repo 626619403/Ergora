@@ -437,6 +437,9 @@ def test_lost_preparation_reply_keeps_one_budget_and_preview_is_read_only(budget
     assert result['status'] == 'prepared'
     prefix = _prefix(registered, definition)
     original = _files(prefix.parent)
+    observed = tasks.preparation(State(state.root), 'demo', definition['task_id'])
+    assert observed['status'] == 'prepared' and observed['prepare_sha256'] == result['prepare_sha256']
+    assert observed['budget'] == result['budget'] and _files(prefix.parent) == original
     restored = tasks.prepare(State(state.root), 'demo', definition, 1)
     assert restored['budget'] == result['budget'] and restored['prepare_sha256'] == result['prepare_sha256']
     assert _files(prefix.parent) == original
@@ -539,15 +542,32 @@ def slow(*args, **kwargs):
         tasks.preview(state, 'demo', definition, 1)
 
 
-def test_expiration_and_revision_cannot_renew_or_publish_an_authorization(budget_creation):
+def test_expiration_and_revision_cannot_renew_or_publish_an_authorization(budget_creation, tmp_path, capsys):
+    from ergora.interfaces import cli
+
     state, registered, definition = budget_creation
-    definition['budget'].update(wall_seconds=3, cleanup_seconds=1)
+    definition['budget'].update(wall_seconds=5, cleanup_seconds=1)
     prepared = tasks.prepare(state, 'demo', definition, 1)
     assert prepared['status'] == 'prepared'
     preview = tasks.preview(state, 'demo', definition, 1)
+    definition_file = tmp_path / 'operator-task.json'
+    definition_file.write_text(json.dumps(definition), encoding='utf-8')
+    argv = ['--home', str(state.root), 'task', 'preview', 'demo',
+            '--definition', str(definition_file), '--revision', '1']
+    assert cli.main(argv) == 0
+    admitted = capsys.readouterr()
+    assert json.loads(admitted.out) == preview
+    assert 'available' in admitted.err and 'explicitly run task create with both digests' in admitted.err
     remaining = tasks.preparation(state, 'demo', definition['task_id'])['budget_status']['work_remaining_seconds']
     time.sleep(remaining + .1)
     assert tasks.preview(state, 'demo', definition, 1) == preview
+    original_files = _files(_root(registered))
+    assert cli.main(argv) == 0
+    expired = capsys.readouterr()
+    assert expired.out == admitted.out
+    assert 'Original preparation for new-task: exhausted' in expired.err
+    assert 'Next: task preparation demo new-task' in expired.err and 'task create' not in expired.err
+    assert _files(_root(registered)) == original_files
     with pytest.raises(ValueError, match='budget is exhausted'):
         tasks.create(state, 'demo', definition, 1, preview['preview_sha256'], prepare_sha256=prepared['prepare_sha256'])
     assert not (_root(registered) / 'tasks').exists()
