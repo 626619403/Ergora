@@ -2867,7 +2867,11 @@ def test_unsuccessful_calls_are_visible_in_cli_and_durable_record(prepared, monk
 
 @pytest.mark.parametrize('case', ['success', 'missing', 'omitted', 'null-response', 'baseline', 'source',
                                   'lone-surrogate', 'identity-newline', 'source-newline',
-                                  'oversize', 'oversize-prompt', 'resume-success', 'resume-blocked'])
+                                  'oversize', 'oversize-prompt',
+                                  pytest.param('resume-success', marks=pytest.mark.skipif(
+                                      sys.platform != 'linux', reason='Graph recovery requires Linux/WSL2')),
+                                  pytest.param('resume-blocked', marks=pytest.mark.skipif(
+                                      sys.platform != 'linux', reason='Graph recovery requires Linux/WSL2'))])
 def test_training_proposal_binds_its_original_flow_map_or_keeps_independent_design(
         prepared, tmp_path, monkeypatch, case):
     from ergora.agents import graphs
