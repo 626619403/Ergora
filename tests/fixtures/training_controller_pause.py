@@ -22,11 +22,11 @@ def install():
         from agent_platform import training_executor
 
         process = training_executor.process
-        def locked_process(folder, *, admit, before_runner):
+        def locked_process(folder, *, admit, **kwargs):
             def locked_admit(job, record):
                 pause()
                 return admit(job, record)
-            return process(folder, admit=locked_admit, before_runner=before_runner)
+            return process(folder, admit=locked_admit, **kwargs)
         training_executor.process = locked_process
     else:
         fault = os.environ.get('ERGORA_TEST_NATIVE_BOUNDARY_FAULT')
