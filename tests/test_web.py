@@ -92,19 +92,25 @@ def test_campaign_timeline_reads_and_exposes_only_the_selected_original_task(con
 
 
 @pytest.mark.parametrize("workflow_observed", [True, False])
+@pytest.mark.parametrize("kind", ["training_full_result", "training_screen_result"])
 def test_campaign_training_timeline_keeps_the_original_result_and_native_dispositions(console, monkeypatch,
-                                                                                        workflow_observed):
+                                                                                     workflow_observed, kind):
     from ergora.campaigns import application
 
     client, state, _ = console
     locator = {"experiment_id": "alpha", "workflow_id": "training-workflow", "run_id": "training-run",
                "job_id": "original-job", "attempt_sha256": "a" * 64, "native_request_sha256": "b" * 64}
     task = {"task_id": "full", "depends_on": [],
-            "source": {"kind": "training_full_result", "locator": locator},
+            "source": {"kind": kind, "locator": locator},
             "recipient": {"prompt": "hidden-prompt"}}
     readback = {"status": "available", "activity_id": "original-reader", "native_result_sha256": "c" * 64}
     completion = {"task_id": "full", "native_result_sha256": "c" * 64, "reader_cleanup_sha256": "d" * 64,
                   "local_gpu_lease": {"status": "unknown", "read_only": True}, "completed_event_id": 13}
+    scope = {}
+    if kind == "training_screen_result":
+        scope = {"source_kind": kind}
+        completion.update(**scope, native_result_state="SCREEN_REJECTED", decision="rejected",
+                          screen_result_sha256="f" * 64, full_execution_authorized=False)
     run = {"status": "succeeded", "execution_stopped": True, "result_sha256": "e" * 64, "returncode": 0}
     receipt = {"session_id": "original-session", "parent_run_id": "original-parent", "intent_id": "original-intent",
                "run_id": "native-run", "dispatch": "accepted"}
@@ -133,7 +139,7 @@ def test_campaign_training_timeline_keeps_the_original_result_and_native_disposi
                                       if workflow_observed else None)
     assert observed["readback_completion"] == completion
     assert observed["training_task"] == {
-        "task_id": "full", "depends_on": [], "locator": locator,
+        "task_id": "full", "depends_on": [], "locator": locator, **scope,
         "recipient": {"status": "observed", "reason": None, "wake_id": "original-wake", "history": activity,
                       "native_receipt": {**receipt, "start_status": "started", **run}},
     }

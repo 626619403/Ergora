@@ -334,16 +334,28 @@ def training_execution(project: dict, home: Path, operation: str, payload: dict,
 
 def training_full_result(project: dict, home: Path, locator: dict, *, deadline: float,
                          stop_requested, supervised_cleanup) -> dict:
-    """Read one full result from a dedicated single-reader supervisor."""
+    return _managed_training_observation(project, home, locator, 'managed-full-result', 'full-result',
+                                         deadline, stop_requested, supervised_cleanup)
+
+
+def training_screen_decision(project: dict, home: Path, locator: dict, *, deadline: float,
+                             stop_requested, supervised_cleanup) -> dict:
+    return _managed_training_observation(project, home, locator, 'managed-screen-decision', 'screen-decision',
+                                         deadline, stop_requested, supervised_cleanup)
+
+
+def _managed_training_observation(project, home, locator, operation, label, deadline, stop_requested,
+                                  supervised_cleanup):
+    """Observe one managed result from its dedicated single-reader supervisor."""
     from .materials import read_raw
 
     if sys.platform != 'linux':
-        raise ValueError('Supervised training full-result observation requires Linux')
+        raise ValueError(f'Supervised training {label} observation requires Linux')
     if (type(deadline) not in (int, float) or not math.isfinite(deadline)
             or not callable(stop_requested) or not callable(supervised_cleanup)):
-        raise ValueError('Training full-result observation requires its original reader deadline, STOP and cleanup owner')
+        raise ValueError(f'Training {label} observation requires its original reader deadline, STOP and cleanup owner')
     if project.get('_original_registration') is not None:
-        raise ValueError('Training full-result observation requires the selected current registration')
+        raise ValueError(f'Training {label} observation requires the selected current registration')
     deadline = min(deadline, time.monotonic() + 20)
 
     def stopped():
@@ -351,14 +363,14 @@ def training_full_result(project: dict, home: Path, locator: dict, *, deadline: 
 
     def check_window():
         if time.monotonic() >= deadline:
-            raise TimeoutError('Original training full-result read reached its deadline')
+            raise TimeoutError(f'Original training {label} read reached its deadline')
         if stop_requested():
-            raise ValueError('Original training full-result read was stopped')
+            raise ValueError(f'Original training {label} read was stopped')
 
     check_window()
     execution = project['registration']['definition']['execution']
     environment, raw = _training_reader_request(execution['state_directory'], execution['config_directory'],
-        {'operation': 'managed-full-result', 'project': project, 'control_home': str(home), 'locator': locator})
+        {'operation': operation, 'project': project, 'control_home': str(home), 'locator': locator})
     command = [sys.executable, '-P', '-S', '-c', 'from ergora.training.runtime.evidence import main;main()']
     owner = processes.identity(os.getpid())
     with TemporaryDirectory(prefix='ergora-training-result-') as temporary:
@@ -373,11 +385,11 @@ def training_full_result(project: dict, home: Path, locator: dict, *, deadline: 
                 or cleanup.get('owner') != owner or cleanup.get('model_waited') is not True
                 or not isinstance(cleanup.get('model'), dict) or cleanup.get('remaining_children') != []
                 or cleanup.get('returncode') != result['returncode']):
-            raise ValueError('Original training full-result reader cleanup is unconfirmed')
+            raise ValueError(f'Original training {label} reader cleanup is unconfirmed')
         supervised_cleanup(cleanup)
         check_window()
         if result['status'] == 'cancelled':
-            raise ValueError('Original training full-result read was stopped')
+            raise ValueError(f'Original training {label} read was stopped')
         observed = _training_reader_response(read_raw(output / 'stdout.txt', 8_388_608),
                                              read_raw(output / 'stderr.txt', 65_536), result['returncode'])
     check_window()

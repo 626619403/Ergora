@@ -29,8 +29,8 @@ class TrainingExecutionStatus:
 
 
 @dataclass(frozen=True)
-class TrainingFullResult:
-    """Select one current managed full verification by its original native Run and raw attempt."""
+class _ManagedTrainingLocator:
+    """Bind one managed result to the original native Run and raw attempt."""
 
     experiment_id: str
     workflow_id: str
@@ -40,15 +40,26 @@ class TrainingFullResult:
     attempt_sha256: str
 
     def __post_init__(self):
+        label = 'Training full-result' if type(self) is TrainingFullResult else 'Training screen-decision'
         if (not isinstance(self.experiment_id, str)
                 or re.fullmatch('[A-Za-z0-9][A-Za-z0-9_-]{0,79}', self.experiment_id) is None
                 or self.workflow_id != 'perf-experiment/' + self.experiment_id
                 or self.job_id != 'local-perf-' + self.experiment_id
                 or not isinstance(self.run_id, str) or not 1 <= len(self.run_id) <= 128):
-            raise ValueError('Training full-result observation requires the original experiment, workflow, Run and Job')
+            raise ValueError(f'{label} observation requires the original experiment, workflow, Run and Job')
         for digest in (self.native_request_sha256, self.attempt_sha256):
             if not isinstance(digest, str) or re.fullmatch('[a-f0-9]{64}', digest) is None:
-                raise ValueError('Training full-result observation requires the original raw request and attempt SHA256')
+                raise ValueError(f'{label} observation requires the original raw request and attempt SHA256')
+
+
+@dataclass(frozen=True)
+class TrainingFullResult(_ManagedTrainingLocator):
+    """Observe a verified full training result."""
+
+
+@dataclass(frozen=True)
+class TrainingScreenDecision(_ManagedTrainingLocator):
+    """Observe a complete screening decision under the original attempt."""
 
 
 def _require_identity(receipt, expected, description):
@@ -94,24 +105,27 @@ def _training_execution(action, project, home, *, deadline, stop_requested, supe
     return receipt
 
 
-def _training_full_result(action, project, home, *, deadline, stop_requested, supervised_cleanup):
-    from ergora.training.native import training_full_result
+def _managed_training_result(action, project, home, *, deadline, stop_requested, supervised_cleanup):
+    from ergora.training.native import training_full_result, training_screen_decision
 
+    full = type(action) is TrainingFullResult
+    reader = training_full_result if full else training_screen_decision
     locator = asdict(action)
-    receipt = training_full_result(project, home, locator, deadline=deadline, stop_requested=stop_requested,
-                                   supervised_cleanup=supervised_cleanup)
+    receipt = reader(project, home, locator, deadline=deadline, stop_requested=stop_requested,
+                     supervised_cleanup=supervised_cleanup)
     _require_identity(receipt, {'project': project['id'], 'project_revision': project['revision'],
                                 'registration_sha256': project['registration']['sha256'], 'locator': locator},
-                      'Training full-result receipt')
+                      'Training full-result receipt' if full else 'Training screen-decision receipt')
     return receipt
 
 
 _OBSERVERS = {FixedCheckStatus: _fixed_check, TrainingExecutionStatus: _training_execution,
-              TrainingFullResult: _training_full_result}
+              TrainingFullResult: _managed_training_result, TrainingScreenDecision: _managed_training_result}
 
 
-def observe(action: FixedCheckStatus | TrainingExecutionStatus | TrainingFullResult, project: dict, home: Path, *,
-            deadline: float | None = None, stop_requested=None, supervised_cleanup=None) -> dict:
+def observe(action: FixedCheckStatus | TrainingExecutionStatus | TrainingFullResult | TrainingScreenDecision,
+            project: dict, home: Path, *, deadline: float | None = None,
+            stop_requested=None, supervised_cleanup=None) -> dict:
     """Read the original owner receipt under an already selected project registration.
 
     Unknown action types fail before native invocation. The nominated reader retains

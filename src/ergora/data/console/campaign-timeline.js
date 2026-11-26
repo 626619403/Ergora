@@ -6,12 +6,13 @@ const facts = (rows) => node("dl", { className: "task-facts" },
 const record = (title, value) => value == null ? null :
   node("details", {}, node("summary", {}, title), pre(value));
 
-function trainingEvidence({ locator, recipient }, completion, conflict) {
+function trainingEvidence({ locator, recipient, source_kind }, completion, conflict) {
   const lease = completion?.local_gpu_lease;
   const history = recipient?.history;
   const native = recipient?.native_receipt;
+  const screen = source_kind === "training_screen_result";
   return [
-    panel("原训练结果", null,
+    panel(screen ? "原筛选决定" : "原训练结果", null,
       conflict,
       facts([
         ["原实验 ID", locator.experiment_id],
@@ -21,6 +22,11 @@ function trainingEvidence({ locator, recipient }, completion, conflict) {
         ["原训练尝试 SHA256", locator.attempt_sha256],
         ["原训练请求 SHA256", locator.native_request_sha256],
         ["原训练结果 SHA256", completion?.native_result_sha256],
+        ...(screen ? [
+          ["原筛选状态", completion?.native_result_state],
+          ["原筛选决定", completion?.decision],
+          ["筛选结果 SHA256", completion?.screen_result_sha256],
+        ] : []),
         ["训练执行回收记录 SHA256", completion?.reap_record_sha256],
         ["读取守卫清理 SHA256", completion?.reader_cleanup_sha256],
         ["训练读取 Activity 完成事件 ID", completion?.completed_event_id],

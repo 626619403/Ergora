@@ -917,7 +917,7 @@ async def run_worker(client, handle, opening, files, attempt, *, poller_identity
             from ergora.campaigns.readback import CampaignReadback
 
             reader = CampaignReadback(files, opening, attempt, handle.run_id)
-            activities.append(reader.read_training_result if training_result_task(task) else reader.read)
+            activities.append(reader.activity_for(task))
         if recipient_task(opening) is not None:
             from ergora.campaigns.recipient import CodexRecipient
 

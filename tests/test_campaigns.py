@@ -898,7 +898,8 @@ def test_campaign_readback_reaps_guard_after_repeated_cancellation(tmp_path, mon
 
         monkeypatch.setattr(asyncio, 'create_subprocess_exec', start_guard)
         env = ActivityEnvironment()
-        env.info = replace(env.info, workflow_id=opening['workflow_id'], workflow_run_id=run, activity_id=activity_id)
+        env.info = replace(env.info, activity_type=records.READBACK_ACTIVITY, workflow_id=opening['workflow_id'],
+                           workflow_run_id=run, activity_id=activity_id)
         env.on_heartbeat = lambda *_: heartbeat.set()
         activity = asyncio.create_task(env.run(read))
         try:
@@ -2172,6 +2173,68 @@ def test_training_result_source_only_accepts_its_guarded_full_result():
     assert tasks['fixed']['status'] == 'ready'
 
 
+@pytest.mark.parametrize(('state', 'performance', 'decision'), (
+    ('SCREEN_REJECTED', 'unavailable', 'rejected'),
+    ('SCREEN_COMPLETED', 'promising', 'promising'),
+    ('SCREEN_COMPLETED', 'no_gain', 'stop_direction'),
+    ('SCREEN_COMPLETED', 'unavailable', 'inconclusive'),
+))
+def test_training_screen_readback_preserves_its_exact_decision(state, performance, decision):
+    from ergora.campaigns.records import (
+        TRAINING_SCREEN_ACTIVITY, TRAINING_SCREEN_DIGESTS, checked_readback, readback_activity,
+        readback_grant, readback_id, readback_proof, readback_reference, readback_result, validate_tasks, wake_intent,
+    )
+
+    locator = {'experiment_id': 'alpha', 'workflow_id': 'perf-experiment/alpha',
+               'run_id': 'original-native-run', 'job_id': 'local-perf-alpha',
+               'native_request_sha256': 'a' * 64, 'attempt_sha256': 'b' * 64}
+    task = {'task_id': 'screen', 'depends_on': [], 'source': {'kind': 'training_screen_result', 'locator': locator},
+            'readback': {'due_at': 20, 'deadline_at': 30},
+            'recipient': {'session_id': 'session', 'parent_run_id': 'parent', 'intent_id': 'screen-notice',
+                          'prompt': 'Read the selected original screen decision.', 'timeout_seconds': 30}}
+    validate_tasks([task])
+    opening = {'project': 'demo', 'project_revision': 3, 'workflow_id': 'campaign',
+               'registration': {'sha256': 'c' * 64}, 'plan': {'tasks': [task], 'limits': {'expires_at': 60}}}
+    run_id = 'original-campaign-run'
+    grant = readback_grant(opening, run_id, task, None)
+    activity_id = readback_id(grant)
+    assert readback_activity(task) == TRAINING_SCREEN_ACTIVITY
+    assert activity_id.startswith('training-screen-result-readback:')
+    rejected = state == 'SCREEN_REJECTED'
+    check = {'id': 'finite', 'kind': 'finite', 'status': 'FAIL' if rejected else 'PASS', 'contract_sha256': 'd' * 64}
+    failure = {'path': 'screen-first-failure.json', 'sha256': 'e' * 64, 'bytes': 48} if rejected else None
+    diagnostics = {'checks': [check], 'checks_not_run': ['behavior'] if rejected else [],
+                   'first_failure_ref': failure, 'profile_receipt_ref': None}
+    lease = {'status': 'unknown', 'read_only': True, 'attempt_sha256': locator['attempt_sha256']}
+    observation = {'status': 'verified', 'project': 'demo', 'project_revision': 3, 'registration_sha256': 'c' * 64,
+                   'locator': locator, 'native_result_state': state, 'performance_state': performance, 'decision': decision,
+                   'verification_experiment_id': 'alpha-full', 'full_execution_authorized': False,
+                   'diagnostics': diagnostics, 'local_gpu_lease': lease,
+                   **dict.fromkeys(TRAINING_SCREEN_DIGESTS, 'e' * 64)}
+    raw = {'activity_id': activity_id, 'observation': observation, 'reader_cleanup_sha256': 'f' * 64}
+    evidence, job = readback_result(opening, task, activity_id, raw)
+    readback = {'status': 'available', 'activity_id': activity_id, **readback_reference(grant),
+                **readback_proof(evidence, job, raw)}
+    assert checked_readback(opening, run_id, None, readback) == readback
+    wake = wake_intent(opening, run_id, task, readback)
+    assert wake['source']['decision'] == decision and wake['source']['native_result_state'] == state
+    assert wake['source']['diagnostics'] == diagnostics and wake['source']['local_gpu_lease'] == lease
+    assert wake['source']['full_execution_authorized'] is False
+    for changes in ({'native_result_state': 'SUCCEEDED'}, {'native_result_state': 'FAILED'},
+                    {'native_result_state': 'CANCELLED'}, {'decision': 'approved'},
+                    {'verification_experiment_id': locator['experiment_id']}, {'full_execution_authorized': True},
+                    {'diagnostics': None}, {'screen_result_sha256': None},
+                    {'locator': {**locator, 'run_id': 'different-run'}},
+                    {'locator': {**locator, 'attempt_sha256': '1' * 64}},
+                    {'local_gpu_lease': {**lease, 'attempt_sha256': '1' * 64}}):
+        with pytest.raises(ValueError, match='exact verified original screen decision'):
+            readback_result(opening, task, activity_id, {**raw, 'observation': {**observation, **changes}})
+    with pytest.raises(ValueError, match='exact successful original full training result'):
+        readback_result(opening, {**task, 'source': {**task['source'], 'kind': 'training_full_result'}}, activity_id, raw)
+    with pytest.raises(ValueError, match='original evidence'):
+        checked_readback(opening, run_id, None, {**readback, 'full_execution_authorized': True})
+
+
 @pytest.mark.parametrize('phase', ('release', 'cutoff', 'stop_waiting', 'stop_acquired', 'stop_before_link', 'write_error'))
 def test_training_publication_waits_only_for_its_original_lock_and_window(monkeypatch, phase):
     from contextlib import contextmanager
@@ -2258,11 +2321,12 @@ def test_only_training_readback_projects_its_pending_local_stop_to_the_child(tra
 
 
 @pytest.mark.parametrize('history', ('absent', 'different', 'exact'))
-def test_training_recipient_binds_original_wake_history_before_reservation(monkeypatch, history):
+@pytest.mark.parametrize('kind', ('training_full_result', 'training_screen_result'))
+def test_training_recipient_binds_original_wake_history_before_reservation(monkeypatch, history, kind):
     pytest.importorskip('temporalio')
     from ergora.campaigns.recipient import CodexRecipient
 
-    task = {'source': {'kind': 'training_full_result'}, 'readback': {}, 'recipient': {}}
+    task = {'source': {'kind': kind}, 'readback': {}, 'recipient': {}}
     opening = {'plan': {'tasks': [task]}}
     intent = {'source': {'native_result_sha256': 'a'*64}, 'wake_id': 'original-wake'}
     delivered = []

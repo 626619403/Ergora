@@ -11,8 +11,9 @@ from temporalio import activity
 from temporalio.exceptions import ApplicationError
 
 from ergora.campaigns.records import (
-    READBACK_ACTIVITY, READBACK_CLEANUP_SECONDS, TRAINING_READBACK_ACTIVITY, CampaignFiles, check_receipt, identity,
-    readback_grant, readback_id, readback_task, require_check_project, training_result_task, verify_registration,
+    READBACK_ACTIVITY, READBACK_CLEANUP_SECONDS, TRAINING_READBACK_ACTIVITY, TRAINING_SCREEN_ACTIVITY,
+    CampaignFiles, check_receipt, identity, readback_activity, readback_grant, readback_id, readback_task,
+    require_check_project, training_readback_action, training_result_task, verify_registration,
 )
 from ergora.runtime import action_observations, processes
 from ergora.storage.state import State, file_lock
@@ -27,19 +28,28 @@ class CampaignReadback:
 
     @activity.defn(name=READBACK_ACTIVITY)
     async def read(self, grant: dict) -> dict:
-        return await self._read(grant, training=False)
+        return await self._read(grant)
 
     @activity.defn(name=TRAINING_READBACK_ACTIVITY)
     async def read_training_result(self, grant: dict) -> dict:
-        return await self._read(grant, training=True)
+        return await self._read(grant)
 
-    async def _read(self, grant, *, training):
+    @activity.defn(name=TRAINING_SCREEN_ACTIVITY)
+    async def read_training_screen(self, grant: dict) -> dict:
+        return await self._read(grant)
+
+    def activity_for(self, task):
+        return {READBACK_ACTIVITY: self.read, TRAINING_READBACK_ACTIVITY: self.read_training_result,
+                TRAINING_SCREEN_ACTIVITY: self.read_training_screen}[readback_activity(task)]
+
+    async def _read(self, grant):
         info = activity.info()
         task = readback_task(self.opening)
+        training = training_result_task(task)
         waiting = None if training else self.files.load_check(
             self.opening, self.start_attempt, self.run_id, task, waiting=True)
         if (info.attempt != 1 or info.workflow_id != self.opening['workflow_id'] or info.workflow_run_id != self.run_id
-                or training != training_result_task(task)
+                or info.activity_type != readback_activity(task)
                 or info.activity_id != readback_id(grant) or (waiting is None and not training)
                 or grant != readback_grant(self.opening, self.run_id, task, check_receipt(waiting) if waiting else None)
                 or not grant['due_at'] <= time.time() < grant['deadline_at'] - READBACK_CLEANUP_SECONDS):
@@ -149,7 +159,7 @@ def _guard(home, project, campaign):
 
     source = task['source']
     if training:
-        action = action_observations.TrainingFullResult(**source['locator'])
+        action = training_readback_action(task)
     else:
         action = action_observations.FixedCheckStatus(source['operation_id'], source['job_sha256'], verify_pending=True)
     status = action_observations.observe(action, selected, state.root, deadline=work_cutoff,

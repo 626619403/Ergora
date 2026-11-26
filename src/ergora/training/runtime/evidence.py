@@ -156,23 +156,29 @@ def _retained_archive(project, experiment):
             **archive}
 
 
+def _selected_managed_result(project, locator, label):
+    ident = project.core.slug(locator['experiment_id'])
+    chain = protocol.ExecutionRecords(project.project, ident, project.payload['control_home']).load()
+    request, attempt = (chain.records[key] for key in ('request', 'attempt'))
+    if request is None or attempt is None:
+        raise ValueError(f'Original {label} request or attempt has not been recorded')
+    actual = {key: request[key] for key in ('experiment_id', 'workflow_id', 'run_id', 'job_id', 'native_request_sha256')}
+    actual['attempt_sha256'] = hashlib.sha256(chain.originals[chain.folder / 'attempt.json']).hexdigest()
+    protocol._match(actual, locator, f'Selected {label} result')
+    if request['project_revision'] != project.project_revision:
+        raise ValueError(f'Original {label} result differs from the selected registration revision')
+    return chain, actual
+
+
 def _managed_full_result(payload):
     """Return a bounded original local full result and independently observed resource disposition."""
     from ergora.training.materials import confirm_file
     from ergora.training.runtime.context import _TrainingProject
 
     project = _TrainingProject(payload)
-    locator = payload['locator']
-    ident = project.core.slug(locator['experiment_id'])
-    chain = protocol.ExecutionRecords(project.project, ident, payload['control_home']).load()
-    request, attempt, stopped = (chain.records[key] for key in ('request', 'attempt', 'stopped'))
-    if request is None or attempt is None:
-        raise ValueError('Original full training request or attempt has not been recorded')
-    actual = {key: request[key] for key in ('experiment_id', 'workflow_id', 'run_id', 'job_id', 'native_request_sha256')}
-    actual['attempt_sha256'] = hashlib.sha256(chain.originals[chain.folder / 'attempt.json']).hexdigest()
-    protocol._match(actual, locator, 'Selected full training result')
-    if request['project_revision'] != project.project_revision:
-        raise ValueError('Original full training result differs from the selected registration revision')
+    chain, actual = _selected_managed_result(project, payload['locator'], 'full training')
+    request, stopped = (chain.records[key] for key in ('request', 'stopped'))
+    ident = chain.ident
     if not chain.requires_tracking_checkpoint() or protocol.managed_operation(chain.intent) != 'full-verify':
         raise ValueError('Original full verification requires its current managed tracking checkpoint')
     if stopped is None:
@@ -211,6 +217,73 @@ def _managed_full_result(payload):
             'terminal_output_sha256': hashlib.sha256(terminal_raw).hexdigest(),
             'gate_report_sha256': archive['gate_report_sha256'], 'evidence_sha256': archive['archive']['evidence_sha256'],
             'tracking_attempt_sha256': tracking['tracking_attempt_sha256'], 'local_gpu_lease': lease}
+
+
+def _managed_screen_decision(payload):
+    """Observe a complete original screen decision and its scoped diagnostics."""
+    from datetime import datetime
+    from ergora.training.materials import confirm_file
+    from ergora.training.runtime.context import _TrainingProject
+
+    project = _TrainingProject(payload)
+    chain, actual = _selected_managed_result(project, payload['locator'], 'training screen')
+    if protocol.managed_operation(chain.intent) != 'training-screen-v1':
+        raise ValueError('Selected managed attempt is outside the original screen operation')
+    stopped = chain.records['stopped']
+    if stopped is None:
+        raise ValueError('Original managed screen has no saved terminal executor')
+    process = stopped['process']
+    if process['status'] != 'succeeded' or process['returncode'] != 0:
+        raise ValueError('Original managed screen executor did not succeed')
+
+    job = {'job_id': actual['job_id'], 'binding': chain.native['experiment']['binding']}
+    bundle = _screen_result(project, chain.ident, chain.home, job)
+    if not bundle['complete']:
+        raise ValueError('Original managed screen cleanup is unconfirmed')
+    inventory = bundle['inventory']
+
+    def read(path, *, expected=None, limit=protocol.LIMIT):
+        return inventory.read(chain.root, path.relative_to(chain.root).as_posix(), 'execution',
+                              expected, limit, evidence=False)
+
+    # Bind the verified screen closure to the same original raw attempt we selected.
+    for path, raw in chain.originals.items():
+        read(path, expected=hashlib.sha256(raw).hexdigest(), limit=16 * protocol.LIMIT)
+    config = decode_record(read(chain.folder.parent / 'configuration-request.json', limit=16 * protocol.LIMIT))
+    context = config['context']
+    protocol.validate_owner_context(context, chain.owner)
+    authorization, policy = (context[name] for name in ('authorization', 'policy'))
+    clock, clock_sha = authorization['clock'], chain.records['launch']['clock_sha256']
+    if (authorization['sha256'] != chain.records['request']['authorization_sha256']
+            or chain.sha(clock) != clock_sha):
+        raise ValueError('Original managed screen clock or authorization changed')
+    budget_clock.validate(clock, policy['wall_seconds'])
+    started, reaped, deadline = map(datetime.fromisoformat,
+                                    (clock['authorized_at'], stopped['reaped_at'], clock['deadline_at']))
+    if not started <= reaped <= deadline:
+        raise ValueError('Original managed screen terminal falls outside its authorized clock')
+
+    result_path, terminal = chain.folder.parent / 'result.json', Path(process['output']) / 'stdout.txt'
+    result_raw, terminal_raw = read(result_path), read(terminal)
+    protocol._match(decode_record(terminal_raw), decode_record(result_raw), 'Original managed screen executor result')
+    confirm_file(result_path, result_raw, chain.root)
+    confirm_file(terminal, terminal_raw, chain.root)
+    lease = chain.observe_gpu_lease()
+    inventory.confirm()
+    report = bundle['result']
+    return {'status': 'verified', 'project': project.project['id'], 'project_revision': project.project_revision,
+            'registration_sha256': chain.records['request']['registration_sha256'], 'locator': actual,
+            'native_result_state': bundle['state'], 'native_result_sha256': hashlib.sha256(result_raw).hexdigest(),
+            'screen_result_sha256': bundle['sha256'], 'terminal_output_sha256': hashlib.sha256(terminal_raw).hexdigest(),
+            'reap_record_sha256': hashlib.sha256(chain.originals[chain.folder / 'stopped.json']).hexdigest(),
+            'clock_sha256': clock_sha, 'decision': report['decision'], 'performance_state': report['performance_state'],
+            'verification_experiment_id': config['execution']['plan']['verification_experiment_id'],
+            'full_execution_authorized': False,
+            'diagnostics': {'checks': [{key: check[key] for key in ('id', 'kind', 'status', 'contract_sha256')}
+                                       for check in report['checks']],
+                            'checks_not_run': report['checks_not_run'], 'first_failure_ref': report['first_failure_ref'],
+                            'profile_receipt_ref': bundle.get('diagnostics', {}).get('receipt_ref')},
+            'local_gpu_lease': lease}
 
 
 def _retained_tracking(chain, read, evidence_sha, gate_sha, output_sha):
@@ -1956,12 +2029,14 @@ def main() -> None:
             raise ValueError('capacity_exceeded: complete training reader request')
         payload = decode_record(raw)
         if payload['operation'] not in ('inspect', 'baseline-reference', 'native-poll', 'collect-screen',
-                                        'managed-full-result'):
+                                        'managed-full-result', 'managed-screen-decision'):
             raise ValueError('Unsupported training evidence operation')
         if payload['operation'] in ('native-poll', 'collect-screen'):
             result = _native_screen_read(payload)
         elif payload['operation'] == 'managed-full-result':
             result = _managed_full_result(payload)
+        elif payload['operation'] == 'managed-screen-decision':
+            result = _managed_screen_decision(payload)
         else:
             result = inspect(payload) if payload['operation'] == 'inspect' else baseline_reference(payload)
         sys.stdout.write(_native_bytes(result, 'Training evidence response', 8_388_608).decode('utf-8'))
