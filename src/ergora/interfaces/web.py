@@ -492,13 +492,17 @@ class DraftPayload(RevisionPayload):
     input: dict
 
 
-class CompositionPreviewPayload(Payload):
+class CompositionSelectionPayload(Payload):
     id: str
     version: str
     grant: dict
 
 
-class CompositionFreezePayload(CompositionPreviewPayload):
+class CompositionPreviewPayload(CompositionSelectionPayload):
+    admission: dict | None = None
+
+
+class CompositionFreezePayload(CompositionSelectionPayload):
     preview_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
 
 
@@ -622,7 +626,9 @@ def create_app(home: Path | None = None) -> FastAPI:
 
     @application.post("/api/composition/preview")
     def preview_composition(body: CompositionPreviewPayload):
-        return workflow_definitions.preview(state.root, body.id, body.version, body.grant)
+        from ergora.interfaces import composition_preview
+
+        return composition_preview.preview(state.root, body.id, body.version, body.grant, body.admission)
 
     @application.post("/api/composition/manifests")
     def freeze_composition(body: CompositionFreezePayload):

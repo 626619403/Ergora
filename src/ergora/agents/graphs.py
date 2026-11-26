@@ -20,6 +20,7 @@ from ergora.agents import backends, invocation, native_sources, runs
 from ergora.configuration import validation as contracts
 from ergora.definitions import agents, bundles, workflows
 from ergora.development import dags, native as development_native
+from ergora.development.route_errors import RouteBlocked
 from ergora.runtime import budget_clock
 from ergora.storage.assets import is_link, publish_directory
 from ergora.storage.state import State, file_lock, resolve_home
@@ -50,12 +51,15 @@ def _verify_sources(composition, inputs):
         parent = node['parent']
         while parent is not None:
             if 'input' not in binding:
-                raise ValueError(f'Verification evidence source must come from a workflow root input: {node["path"]}')
+                raise RouteBlocked(node['path'], 'Verification evidence source must come from a workflow root input')
             scope = nodes[parent]
             binding = scope['inputs'][binding['input']]
             parent = scope['parent']
         validate = validate_fixed_check_source if node['kind'] == 'verify-fixed-check' else validate_readback_source
-        sources[node['path']] = validate(inputs[binding['input']])
+        try:
+            sources[node['path']] = validate(inputs[binding['input']])
+        except ValueError as error:
+            raise RouteBlocked(node['path'], str(error)) from error
     return sources
 
 
@@ -67,10 +71,13 @@ def _fixed_review_context(composition, inputs, manifest_digest):
         return None
     _, leaf = selected
     task = inputs['task']
-    task_sha256 = task_identity(task)
-    packet_sha256 = task.get('source_sha256')
-    if not isinstance(packet_sha256, str) or re.fullmatch('[a-f0-9]{64}', packet_sha256) is None:
-        raise ValueError('Fixed-check review requires a source-bound task with its original packet digest')
+    try:
+        task_sha256 = task_identity(task)
+        packet_sha256 = task.get('source_sha256')
+        if not isinstance(packet_sha256, str) or re.fullmatch('[a-f0-9]{64}', packet_sha256) is None:
+            raise ValueError('Fixed-check review requires a source-bound task with its original packet digest')
+    except ValueError as error:
+        raise RouteBlocked(leaf['path'], str(error)) from error
     return {'manifest_digest': manifest_digest, 'instance': leaf['path'], 'task_sha256': task_sha256,
             'packet_sha256': packet_sha256}
 
@@ -834,25 +841,73 @@ class _GraphRun:
 
 
 def _graph_inputs(composition, inputs, max_prompt_bytes, *, recoverable=False):
+    bundles.check_document_tree(inputs, 'Workflow inputs')
     if not isinstance(inputs, dict) or inputs.keys() != composition['instances'][0]['inputs'].keys():
-        raise ValueError('Workflow inputs must supply exactly the declared root ports')
+        raise RouteBlocked(composition['instances'][0]['path'], 'Workflow inputs must supply exactly the declared root ports')
     encoded_inputs = _bounded_json(inputs, max_prompt_bytes)
     if recoverable:
-        kinds = {node['kind'] for node in composition['instances']}
-        if kinds - {'agent', 'workflow', 'join', 'choose-agent', 'verify-fixed-check'}:
-            raise ValueError('Recoverable graphs support only Agent, Workflow, all-join, choose-agent and the fixed-check review gate')
-        if 'verify-fixed-check' in kinds:
-            from ergora.development.verification import validate_fixed_check_source
-
+        allowed = {'agent', 'workflow', 'join', 'choose-agent', 'verify-fixed-check'}
+        unsupported = next((node for node in composition['instances'] if node['kind'] not in allowed), None)
+        if unsupported is not None:
+            raise RouteBlocked(unsupported['path'],
+                'Recoverable graphs support only Agent, Workflow, all-join, choose-agent and the fixed-check review gate')
+        if any(node['kind'] == 'verify-fixed-check' for node in composition['instances']):
             dags.fixed_check_review(composition)
-            validate_fixed_check_source(inputs['check'])
     for leaf in (item for item in composition['instances'] if item['kind'] == 'agent'):
         if any(leaf['permissions'][name] for name in ('write', 'shell', 'network')):
-            raise ValueError(f'Standalone workflow requires a read-only leaf: {leaf["path"]}')
+            raise RouteBlocked(leaf['path'], 'Standalone workflow requires a read-only leaf')
         tool = leaf['backend_request']['tool']
         if not backends.supports_mode(tool, 'text-only'):
-            raise ValueError(f'Standalone workflow requires text-only support at {leaf["path"]}: {tool}')
+            raise RouteBlocked(leaf['path'], f'Standalone workflow requires text-only support: {tool}')
     return encoded_inputs
+
+
+def graph_options(max_prompt_bytes, timeout, *, recoverable, codex_config):
+    contracts.validate(timeout, {'type': 'integer', 'minimum': 1, 'maximum': 3600}, 'Workflow timeout')
+    contracts.validate(max_prompt_bytes, contracts.COMPOSITION_INPUT['properties']['max_prompt_bytes'], 'Input byte limit')
+    if recoverable and codex_config is not None:
+        raise ValueError('Recoverable graphs do not support an explicit Codex configuration')
+
+
+def _root_task_port(leaf, nodes):
+    binding, parent = leaf['inputs']['task'], leaf['parent']
+    while 'input' in binding:
+        if parent == 'root':
+            return binding['input']
+        scope = nodes[parent]
+        binding = scope['inputs'][binding['input']]
+        parent = scope['parent']
+    return None
+
+
+def _preflight_leaves(composition, inputs, max_prompt_bytes, codex_config):
+    nodes = {node['path']: node for node in composition['instances']}
+    branches = [path for node in nodes.values() if node['kind'] == 'choose-agent' for path in node['branches']]
+    for path, leaf in nodes.items():
+        if leaf['kind'] != 'agent' or any(path == branch or path.startswith(branch + '/') for branch in branches):
+            continue
+        try:
+            runs.preflight_graph_leaf(leaf, codex_config)
+            port = _root_task_port(leaf, nodes)
+            if port is not None:
+                workflows.compile_input(composition, path, _bounded_json(inputs[port], max_prompt_bytes), max_prompt_bytes,
+                                        input_origin='workflow-port')
+        except (OSError, ValueError) as error:
+            raise RouteBlocked(path, str(error)) from error
+
+
+def preflight_graph(composition, inputs, max_prompt_bytes, *, manifest_digest=None, recoverable=False,
+                    pause_before_route=None, codex_config=None):
+    """Validate the same selected graph and declared port values before reserving a run."""
+    if pause_before_route is not None:
+        _check_route_pause(composition, pause_before_route, recoverable)
+    encoded = _graph_inputs(composition, inputs, max_prompt_bytes, recoverable=recoverable)
+    _verify_sources(composition, inputs)
+    fixed = None
+    if any(node['kind'] == 'verify-fixed-check' for node in composition['instances']):
+        fixed = _fixed_review_context(composition, json.loads(encoded), manifest_digest)
+    _preflight_leaves(composition, inputs, max_prompt_bytes, codex_config)
+    return encoded, fixed
 
 
 def _execute_graph(run, inputs, composition):
@@ -919,13 +974,10 @@ def run_graph(state: State, project_id: str, manifest: Path, manifest_digest: st
               max_prompt_bytes: int, timeout: int, *, codex_config: Path | None = None, stop_requested=None,
               recoverable=False, pause_before_route: str | None = None) -> dict:
     """Run a bounded, dependency-ready read-only graph with no resubmission through this entry."""
-    contracts.validate(timeout, {'type': 'integer', 'minimum': 1, 'maximum': 3600}, 'Workflow timeout')
-    contracts.validate(max_prompt_bytes, contracts.COMPOSITION_INPUT['properties']['max_prompt_bytes'], 'Input byte limit')
+    graph_options(max_prompt_bytes, timeout, recoverable=recoverable, codex_config=codex_config)
     deadline = time.monotonic() + timeout
     recovery = None
     if recoverable:
-        if codex_config is not None:
-            raise ValueError('Recoverable graphs do not support an explicit Codex configuration')
         deadline_ns = time.monotonic_ns() + timeout * 1_000_000_000
         recovery = {'schema_version': 2, 'clock': budget_clock.authorize(timeout), 'deadline_monotonic_ns': deadline_ns,
                     'result_limit': _RESULT_LIMIT}
@@ -935,15 +987,10 @@ def run_graph(state: State, project_id: str, manifest: Path, manifest_digest: st
     if checked['digest'] != manifest_digest:
         raise ValueError('Workflow manifest differs from the explicitly selected digest')
     composition = checked['composition']
-    if pause_before_route is not None:
-        _check_route_pause(composition, pause_before_route, recoverable)
-    encoded_inputs = _graph_inputs(composition, inputs, max_prompt_bytes, recoverable=recoverable)
-    fixed_review = None
-    if any(item['kind'] in _VERIFICATION_NODES for item in composition['instances']):
-        _verify_sources(composition, inputs)
-        if any(item['kind'] == 'verify-fixed-check' for item in composition['instances']):
-            inputs = json.loads(encoded_inputs)
-            fixed_review = _fixed_review_context(composition, inputs, manifest_digest)
+    encoded_inputs, fixed_review = preflight_graph(composition, inputs, max_prompt_bytes, manifest_digest=manifest_digest,
+        recoverable=recoverable, pause_before_route=pause_before_route, codex_config=codex_config)
+    if fixed_review is not None:
+        inputs = json.loads(encoded_inputs)
     directory = directory.expanduser().absolute()
     manifest = Path(checked['path'])
     if directory.exists() or directory.is_symlink():
@@ -1027,6 +1074,7 @@ def resume_graph(home: Path | None, project_id: str, directory: Path, manifest_d
         if 'pause_before_route' in receipt:
             _check_route_pause(composition, receipt['pause_before_route'], True)
         _graph_inputs(composition, inputs, receipt['max_prompt_bytes'], recoverable=True)
+        _verify_sources(composition, inputs)
         fixed_review = _fixed_review_context(composition, inputs, manifest_digest)
         run = _GraphRun(state, project, composition, directory, receipt, deadline, None, stop_requested, fixed_review,
                         recovery=recovery, lock_fd=original_lock.fileno())

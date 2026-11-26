@@ -8,6 +8,32 @@ Workflow packages compose exact versions of specialists or subworkflows into a b
 
 The Web console's “Agent and composition library” reuses the same version library, import and preview use cases without requiring project registration. Select an exact workflow version, inspect the static ceilings initialized from its root declaration, and explicitly preview it to see every instance's structural parent chain, predecessor dependencies, named ports, complete resource provenance and assembled prompt; see [page operations](#browse-and-preview-definitions-in-the-page). Static ceilings do not authorize a project, and backend fields are requests. Downloaded definition JSON and preview JSON support reading and comparison; share complete resources and exact dependencies through `export`, `prepare-manifest` below or [freeze the current preview](#freeze-the-current-preview-into-the-persistent-control-directory). [Explicitly revise](revisions.md#revise-workflows-on-the-page) the standard document on the page; see the [workflow guide](revisions.md#view-published-nested-relationships) for the nested canvas and formal handoff.
 
+## Inspect a selected execution route
+
+Use the optional **检查特定执行路线** field in the definition Console or pass `--admission execution.json` to the existing preview command. The file below selects a standalone graph and supplies the actual root port value and prompt capacity.
+
+```json
+{
+  "route": "standalone-graph",
+  "project": "my-project",
+  "inputs": {"task": "Review the original candidate"},
+  "max_prompt_bytes": 100000
+}
+```
+
+```bash
+ergora composition preview structure-review 1.0.0 \
+  --grant ./preview-grant.json --admission ./execution.json
+```
+
+For `standalone-graph`, use the same port values and limits intended for `run-graph`. Select both `manifest` and `manifest_digest` to check a particular frozen directory against the current preview. Optional `timeout`, `recoverable`, `pause_before_route` and `codex_config` select the corresponding graph options. The graph gate checks known backend configuration and compiles prompts whose leaf inputs are directly forwarded from the root. Producer-dependent and conditionally skipped leaves keep their execution-time admission checks. The report shows the exact static blocker and the requested backend and mode at admitted leaves. Output location, model authentication and live backend readiness belong to the actual execution path.
+
+For `formal-task`, supply `project`, its `revision`, and the complete task `definition` used by `task preview`. Use a manifest for the same graph inside the definition. The report checks the selected issue snapshot, Skills and memories using the formal task's original material checks. It displays the selected formal route or its exact blocked instance. Preparation, work after approval, integration, verification and review remain with the original formal executor.
+
+For `single-leaf`, supply `project`, the prepared input `directory`, and its verified `input_digest`. Optional `mode`, `backend`, `model`, `backend_reason` and `codex_config` use the existing `check-input` choices. The preview runs those local admission checks against that exact input.
+
+The response displays required bindings, the selected capability and `runtime_status` separately. A report can show `not_checked` with missing input fields. `not_queried` means the preview did not contact a running service or model. The `composition` object retains the exact previous graph and preview digest. Leaving the selection empty returns the original graph response directly.
+
 Import, preview and manifest freezing provide static graph artifacts. The [standalone graph command](#run-a-standalone-workflow-graph) explicitly runs supported read-only graphs. General Repeat and arbitrary mixed-node graph execution remain unimplemented. Registered design policies currently store requirements only and visibly refuse unsupported execution; the trusted human channel is unavailable. Inspection-only [source-journal records](../../development/design-and-approval.md#store-complete-design-sources-and-reported-answers) do not grant execution; finite training controllers require [explicit authorization](../../training/controllers.md#start-a-local-training-budget-and-recover-original-authorization). See the [current plan](../../PLAN.md), [design-policy execution guard](../../../src/ergora/development/design.py) and [training-controller guard](../../../src/ergora/training/cycles.py).
 
 ## Run a standalone workflow graph

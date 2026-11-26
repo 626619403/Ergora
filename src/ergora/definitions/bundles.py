@@ -28,7 +28,8 @@ def relative_path(value: str, label: str = "Definition") -> Path:
     return Path(*path.parts)
 
 
-def _check_document_tree(value, label: str) -> None:
+def check_document_tree(value, label: str) -> None:
+    """Apply the existing bound to a decoded document tree."""
     pending, values = [(value, 1)], 0
     while pending:
         item, depth = pending.pop()
@@ -60,7 +61,7 @@ def parse_json(text: str, label: str, *, finite: bool = False, bounded: bool = F
     value = json.loads(text, object_pairs_hook=unique, parse_float=number if finite else None,
                        parse_constant=number if finite else None)
     if bounded:
-        _check_document_tree(value, label)
+        check_document_tree(value, label)
     return value
 
 
@@ -118,7 +119,7 @@ def convert_document(text: str, format: str = "json") -> dict:
             raise ValueError(f"Unsupported definition document format: {format}")
         if not isinstance(definition, dict):
             raise ValueError("Definition document requires an object root")
-        _check_document_tree(definition, "Definition document")
+        check_document_tree(definition, "Definition document")
         encoded = json.dumps(definition, sort_keys=True, indent=2, ensure_ascii=False, allow_nan=False) + "\n"
         return {"definition": definition, "json": encoded,
                 "yaml": yaml.safe_dump(definition, sort_keys=True, allow_unicode=True)}

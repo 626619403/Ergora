@@ -166,14 +166,7 @@ def _admission(state, project_id, prepared, *, backend, model, reason, mode, cod
         else dict(leaf["backend_request"]))
     if model is not None:
         binding["model"] = model
-    agents.validate_binding(leaf["role"], binding, formal=True)
-    components.validate_agent_minimum(binding, definition["definition"].get("invocation_minimum"))
-    adapter = agent_backends.for_binding(binding, {"codex": {"config": codex_config}})
-    adapter.check_invocation()
-    adapter.check_mode(mode)
-    policy = adapter.composition_policy(mode)
-    if mode in ("task-mcp", "workspace-task-mcp"):
-        task_mcp.check_available()
+    policy = _composition_policy(leaf['role'], binding, definition['definition'].get('invocation_minimum'), mode, codex_config)
     chain = []
     path = leaf["path"]
     instances = {item["path"]: item for item in prepared["composition"]["instances"]}
@@ -196,6 +189,23 @@ def _admission(state, project_id, prepared, *, backend, model, reason, mode, cod
         "context": {"resources": [{key: value for key, value in resource.items() if key != "text"}
                                   for resource in leaf["resources"]]},
         "policy": policy, "formal_execution_authorized": False}
+
+
+def _composition_policy(role, binding, minimum, mode, codex_config):
+    agents.validate_binding(role, binding, formal=True)
+    components.validate_agent_minimum(binding, minimum)
+    adapter = agent_backends.for_binding(binding, {"codex": {"config": codex_config}})
+    adapter.check_invocation()
+    adapter.check_mode(mode)
+    policy = adapter.composition_policy(mode)
+    if mode in ("task-mcp", "workspace-task-mcp"):
+        task_mcp.check_available()
+    return policy
+
+
+def preflight_graph_leaf(leaf, codex_config):
+    """Check the known text-only backend binding through original leaf admission."""
+    _composition_policy(leaf['role'], leaf['backend_request'], leaf.get('invocation_minimum'), 'text-only', codex_config)
 
 
 def check_input(state: State, project_id: str, source: Path, *, backend: str | None = None,

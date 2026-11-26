@@ -521,6 +521,8 @@ def test_domain_reviews_keep_general_identities_and_frozen_ancestor_material(tmp
 @pytest.mark.skipif(sys.platform != 'linux', reason='Formal workspace calls require Linux/WSL2')
 @pytest.mark.parametrize('kind', ['repository-governance', 'large-change'])
 def test_development_preset_creates_original_unit_contract_without_starting(registration, tmp_path, kind):
+    from ergora.interfaces import composition_preview
+
     state, project = registration
     original = native_resources.template_details(kind)['input']
     project['allowed_paths'] = original['allowed_paths']
@@ -548,11 +550,27 @@ def test_development_preset_creates_original_unit_contract_without_starting(regi
                                   for path in assignments.values()},
             'diversity': {'policy': 'prefer-distinct', 'reason': 'Use the explicitly pinned model for independent review sessions.'}},
         'budget': {'wall_seconds': 120, 'cleanup_seconds': 5, 'model_invocations': 32}}
+    grant = {'schema_version': 1, 'permissions': root['permissions'], 'limits': root['limits']}
+    inspected = composition_preview.preview(state.root, root['id'], root['version'], grant,
+        {'route': 'formal-task', 'project': 'demo', 'revision': 1, 'definition': definition})
+    admission = inspected['route_admission']
+    assert inspected['composition'] == graph
+    assert admission['capability'] == tasks.preview(state, 'demo', definition, 1)['route_admission']
+    assert admission['capability']['status'] == 'admitted' and admission['manifest_digest'] == manifest['digest']
+    assert admission['executor_owned_steps'][2:4] == ['approval_before_work', 'work']
+    assert admission['runtime_status'] == 'not_queried'
+    assert tasks.preparation(state, 'demo', definition['task_id'])['status'] == 'not_recorded'
     prepared = tasks.prepare(state, 'demo', definition, 1)
     assert prepared['status'] == 'prepared'
     preview = tasks.preview(state, 'demo', definition, 1)
     frozen = preview['files']['task.spec.json']
     assert frozen['schema_version'] == 12
+    selected_composition = frozen['composition']
+    bound = {path: member for group in (selected_composition, selected_composition['preparation'], selected_composition['execution'])
+             for path, member in group['members'].items()}
+    assert {row['instance'] for row in admission['bindings']} == bound.keys()
+    assert all(row['mode'] == bound[row['instance']]['mode'] and row['tool'] == bound[row['instance']]['binding']['tool']
+               for row in admission['bindings'])
     preparing = frozen['composition']['preparation']['members']
     assert preparing['root/development/preparation/plan/coordinator']['binding'] == {
         'tool': 'codex', 'model': 'gpt-6.2-sol', 'reasoning_effort': 'max'}

@@ -169,6 +169,11 @@ class CodexBackend(AgentBackend):
             raise ValueError("current-container requires the trusted Linux container configuration; use the native Codex sandbox on Windows")
         self._options("native")
 
+    def check_mode(self, mode: str) -> None:
+        super().check_mode(mode)
+        if mode != 'native':
+            self._options(mode)
+
     def _options(self, mode: str, task_mcp: dict | None = None) -> list[str]:
         """Parse the same inference options for model-free admission and command construction."""
         options = list(self.options.get("arguments") or [])

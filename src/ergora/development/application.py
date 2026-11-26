@@ -5,6 +5,7 @@ import hashlib
 import json
 from pathlib import Path
 import re
+import tempfile
 
 import ergora.development.native as development_native
 import ergora.development.runtime.creation_process as creation_process
@@ -55,14 +56,18 @@ def _revision(project: dict, expected_revision: int) -> None:
         raise ValueError('Project revision changed; reload before the task operation')
 
 
+def _registered_template(project, task_type):
+    if task_type not in project['registration']['definition']['templates']:
+        raise ValueError('Task template is not registered for this project')
+
+
 def _definition(state: State, project: dict, definition: dict, *, working_directory: Path | None = None) -> dict:
     version = definition.get('schema_version') if isinstance(definition, dict) else None
     schema = _DEFINITIONS.get(version, _DEFINITIONS[1]) if type(version) is int else _DEFINITIONS[1]
     contracts.validate(definition, schema, 'Task definition')
     task_design.require_execution_support(project)
     fixed = verification.require_route(project, definition['schema_version'])
-    if definition['task_type'] not in project['registration']['definition']['templates']:
-        raise ValueError('Task template is not registered for this project')
+    _registered_template(project, definition['task_type'])
     if len(json.dumps(definition, ensure_ascii=False, allow_nan=False).encode('utf-8')) > 1_048_576:
         raise ValueError('Task definition exceeds 1 MiB')
     selection = bindings.development_snapshot(project, projects.effective_configuration(project))
@@ -221,25 +226,54 @@ def _composition(definition: dict, selection: dict) -> dict:
     return composition
 
 
-def _preview_native_shape(project: dict, definition: dict) -> dict:
+def _preview_native_shape(project: dict, definition: dict, *, selected_preview_sha256: str | None = None,
+                          selection_state: State | None = None) -> dict:
     option = definition['composition']
     checked = _composition_manifest(option, include_inventory=True)
     graph = checked['composition']
-    selection = bindings.development_snapshot(project, projects.effective_configuration(project))
+    if selected_preview_sha256 is not None and graph['preview_sha256'] != selected_preview_sha256:
+        raise RouteBlocked(graph['instances'][0]['path'], 'Selected formal task manifest differs from the definition preview')
+    selected_materials = selection_state is not None and ('context' in definition or 'source' in definition)
+    selection = None if selected_materials else bindings.development_snapshot(project, projects.effective_configuration(project))
     try:
-        composition = _composition_selection(graph, definition, selection)
+        if not selected_materials:
+            composition = _composition_selection(graph, definition, selection)
+            effective_graph, inventory = graph, checked['inventory']
+        else:
+            if 'context' in definition:
+                with tempfile.TemporaryDirectory(prefix='ergora-route-preview-') as directory:
+                    selected = _definition(selection_state, project, definition, working_directory=Path(directory))
+            else:
+                selected = _definition(selection_state, project, definition)
+            composition = selected['composition']
+            frozen = composition['manifest']
+            effective_graph, inventory = task_envelopes.manifest_graph(frozen), frozen['files']
         reference_budget.call_slots(composition, invocation_cap=definition['budget']['model_invocations'])
-        instances = {item['path']: item for item in graph['instances']}
-        task_envelopes.require_skill_attachment_mode(instances, composition, checked['inventory'].keys())
+        instances = {item['path']: item for item in effective_graph['instances']}
+        task_envelopes.require_skill_attachment_mode(instances, composition, inventory.keys())
     except ValueError as error:
         admission = task_envelopes.route_admission(option, error)
     else:
         admission = task_envelopes.route_admission(option)
-    return {'status': 'route-preview', 'project': project['id'], 'project_revision': project['revision'],
+    result = {'status': 'route-preview', 'project': project['id'], 'project_revision': project['revision'],
             'task_id': definition['task_id'], 'definition_sha256': identity(definition),
             'graph_preview_sha256': graph['preview_sha256'], 'manifest_digest': checked['digest'],
             'route_admission': admission, 'runtime_status': 'not_queried',
             'execution_started_by_operation': False}
+    if selected_preview_sha256 is not None and admission['status'] == 'admitted':
+        result['bindings'] = [{'instance': path, 'role': member['role'], 'mode': member['mode'],
+                               **{key: member['binding'][key] for key in ('tool', 'model') if key in member['binding']}}
+            for group in (composition.get('preparation', {}), composition.get('execution', {}), composition)
+            for path, member in group.get('members', {}).items()]
+    return result
+
+
+def preview_selected_route(state: State, project_id: str, definition: dict, expected_revision: int,
+                           preview_sha256: str) -> dict:
+    """Project the existing formal task admission onto a selected definition preview."""
+    project = _budget_project(state, project_id, definition, expected_revision)
+    _registered_template(project, definition['task_type'])
+    return _preview_native_shape(project, definition, selected_preview_sha256=preview_sha256, selection_state=state)
 
 
 def _digest(value: str, name: str) -> None:

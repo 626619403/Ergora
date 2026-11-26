@@ -78,6 +78,37 @@ def test_http_preview_preserves_full_ancestors_and_leaves_permission_failure_wit
     assert projects.list_projects(state) == []
 
 
+def test_http_preview_attaches_route_facts_outside_the_pinned_graph(library_console, tmp_path):
+    client, state = library_console
+    repository = tmp_path / 'repo'
+    repository.mkdir()
+    subprocess.run(['git', 'init', str(repository)], check=True, capture_output=True)
+    project = projects.create(state, 'demo', repository)
+    root = client.post('/api/composition/presets/large-change/install', json={}).json()['root']
+    definition = workflows.get(state, root['id'], root['version'])['definition']
+    grant = {'schema_version': 1, 'permissions': definition['permissions'], 'limits': definition['limits']}
+    payload = {'id': root['id'], 'version': root['version'], 'grant': grant}
+    original = client.post('/api/composition/preview', json=payload).json()
+    route = {'route': 'standalone-graph', 'project': 'demo', 'revision': project['revision']}
+    response = client.post('/api/composition/preview', json={**payload, 'admission': route})
+    assert response.status_code == 200, response.text
+    unchecked = response.json()['route_admission']
+    assert unchecked['capability']['status'] == 'not_checked'
+    assert unchecked['required_bindings']['missing_fields'] == ['inputs', 'max_prompt_bytes']
+    response = client.post('/api/composition/preview', json={**payload, 'admission': {
+        **route, 'inputs': {'task': 'Inspect the selected change'}, 'max_prompt_bytes': 50000}})
+    assert response.status_code == 200, response.text
+    report = response.json()
+    assert report['composition'] == original
+    admission = report['route_admission']
+    assert admission['preview_sha256'] == original['preview_sha256']
+    assert admission['runtime_status'] == 'not_queried' and admission['execution_started_by_operation'] is False
+    assert admission['capability']['status'] == 'blocked'
+    assert admission['capability']['instance'].startswith('root/development/work/')
+    assert admission['capability']['reason'] == 'Standalone workflow requires a read-only leaf'
+    assert not (state.root / 'runs').exists()
+
+
 def test_manifest_handoff_shares_cli_identity_and_reads_without_live_library(library_console, tmp_path, capsys, monkeypatch):
     client, state = library_console
     root = client.post('/api/composition/presets/repository-governance/install', json={}).json()['root']

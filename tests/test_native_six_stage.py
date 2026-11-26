@@ -43,6 +43,11 @@ def native_definition(budget_creation, budget_graph, tmp_path, request):
         document['nodes'].append({**document['nodes'][0], 'id': 'other'})
     elif variant == 'ignored-output':
         document['outputs'] = {'result': {'input': 'task'}}
+    elif variant == 'unsupported-formal-operation':
+        document['schema_version'] = 2
+        document['inputs'].append('evidence')
+        document['nodes'].append({'id': 'proof', 'operation': 'verify-evidence', 'depends_on': [],
+                                  'inputs': {'source': {'input': 'evidence'}}})
     (source / 'workflow.json').write_text(json.dumps(document))
     parent = workflows.import_bundle(library, source)
     position = 'root/development'
@@ -404,6 +409,58 @@ def test_native_route_preview_checks_known_inherited_skill_attachments(selected_
     stderr = (progress / 'process/stderr.txt').read_text()
     assert preview['route_admission']['reason'] in stderr and preview['route_admission']['instance'] in stderr
     assert not (root / 'tasks').exists()
+
+
+@pytest.mark.parametrize('native_definition', ['unsupported-formal-operation'], indirect=True)
+def test_definition_preview_locates_the_same_unsupported_formal_operation(native_definition):
+    from ergora.interfaces import composition_preview
+
+    state, registered, definition = native_definition
+    option = definition['composition']
+    manifest = Path(option['manifest'])
+    frozen = workflows.inspect_manifest(manifest, material=True)
+    for folder in ('agent-definitions', 'workflow-definitions'):
+        shutil.copytree(manifest / 'assets' / folder, state.root / folder)
+    root, grant = frozen['manifest']['root'], frozen['manifest']['grant']
+    inspection = composition_preview.preview(state.root, root['id'], root['version'], grant,
+        {'route': 'formal-task', 'project': 'demo', 'revision': 1, 'definition': definition})
+    expected = {'route': 'native-six-stage', 'status': 'blocked', 'graph_status': 'valid', 'instance': 'root/proof',
+                'reason': 'Candidate verification evidence reads require standalone graph execution'}
+    assert inspection['composition'] == frozen['composition']
+    assert inspection['route_admission']['capability'] == tasks.preview(state, 'demo', definition, 1)['route_admission'] == expected
+    directory = Path(registered['execution']['state_directory'])
+    assert not directory.exists()
+    prepared = tasks.prepare(state, 'demo', definition, 1)
+    assert prepared['status'] == 'failed' and prepared['outcome']['cleanup_confirmed']
+    output = directory / 'ergora/task-creations' / (definition['task_id'] + '.prepare-work/process/stderr.txt')
+    assert expected['reason'] in output.read_text() and expected['instance'] in output.read_text()
+    assert not (directory / 'tasks').exists()
+
+
+def test_definition_preview_uses_selected_context_and_keeps_the_base_identity(selected_context_task):
+    from ergora.interfaces import composition_preview
+
+    state, registered, definition = selected_context_task
+    option = definition['composition']
+    option['mode'] = 'text-only'
+    base = Path(option['manifest'])
+    frozen = workflows.inspect_manifest(base, material=True)
+    for folder in ('agent-definitions', 'workflow-definitions'):
+        shutil.copytree(base / 'assets' / folder, state.root / folder)
+    root, grant = frozen['manifest']['root'], frozen['manifest']['grant']
+    inspection = composition_preview.preview(state.root, root['id'], root['version'], grant,
+        {'route': 'formal-task', 'project': 'demo', 'revision': 1, 'definition': definition})
+    observed = inspection['route_admission']
+    assert inspection['composition'] == frozen['composition']
+    assert observed['manifest_digest'] == frozen['digest'] and observed['preview_sha256'] == frozen['manifest']['preview_sha256']
+    assert observed['capability'] == {'route': 'native-six-stage', 'status': 'blocked', 'graph_status': 'valid',
+        'instance': 'root/development/review/correctness/review', 'reason': 'Complete Skill attachments require task-mcp mode'}
+    directory = Path(registered['execution']['state_directory'])
+    assert not directory.exists()
+    prepared = tasks.prepare(state, 'demo', definition, 1)
+    assert prepared['status'] == 'failed' and prepared['outcome']['cleanup_confirmed']
+    stderr = (directory / 'ergora/task-creations' / (definition['task_id'] + '.prepare-work/process/stderr.txt')).read_text()
+    assert observed['capability']['instance'] in stderr and observed['capability']['reason'] in stderr
 
 
 def test_native_selection_cannot_claim_the_wrapper_or_another_stage(native_definition):

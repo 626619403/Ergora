@@ -119,6 +119,32 @@ def test_standalone_graph_executes_nested_ports_and_keeps_original_attempts(prep
     inputs, destination = tmp_path / 'inputs.json', tmp_path / 'graph-run'
     supplied = {'requirement': '保留依赖', 'fail': fail_first}
     inputs.write_text(json.dumps({'request': supplied}), encoding='utf-8')
+    if case == 'success':
+        grant_path, route_path = tmp_path / 'grant.json', tmp_path / 'admission.json'
+        grant_path.write_text(json.dumps(grant), encoding='utf-8')
+        route_path.write_text(json.dumps({'route': 'standalone-graph', 'project': 'demo', 'revision': 1,
+            'inputs': {'request': supplied}, 'max_prompt_bytes': 50000, 'timeout': 20,
+            'manifest': str(manifest), 'manifest_digest': selected['digest']}), encoding='utf-8')
+        invocation = ['--home', str(state.root), 'composition', 'preview', draft['id'], draft['version']]
+        compiled = []
+        compile_input = workflows.compile_input
+
+        def observe(comp, instance, *args, **kwargs):
+            compiled.append(instance)
+            return compile_input(comp, instance, *args, **kwargs)
+
+        with monkeypatch.context() as patch:
+            patch.setattr(workflows, 'compile_input', observe)
+            assert main([*invocation, '--grant', str(grant_path), '--admission', str(route_path)]) == 0
+        assert compiled == ['root/nested/review']
+        inspected = json.loads(capsys.readouterr().out)
+        assert inspected['composition'] == workflows.inspect_manifest(manifest, material=True)['composition']
+        admission = inspected['route_admission']
+        assert admission['capability'] == {'route': 'standalone-graph', 'status': 'admitted'}
+        assert admission['manifest_digest'] == selected['digest'] and admission['runtime_status'] == 'not_queried'
+        assert {row['instance'] for row in admission['bindings']} == {'root/nested/review', 'root/followup'}
+        assert all(row['mode'] == 'text-only' for row in admission['bindings'])
+        assert not destination.exists() and agent_runs.runs(state, 'demo') == []
     script, call_log = tmp_path / 'provider.py', tmp_path / 'calls.jsonl'
     script.write_text('''import json, sys
 from pathlib import Path
@@ -1076,14 +1102,103 @@ def test_inspect_graph_joins_original_attempts_after_a_lost_reply(parallel_graph
 
 def test_standalone_graph_rejects_writable_leaf_before_reserving_any_effect(prepared, tmp_path):
     from ergora.agents.graphs import run_graph
+    from ergora.development.route_errors import RouteBlocked
+    from ergora.interfaces import composition_preview
 
     state, _, _ = prepared(permission=('write', ['workspace']))
     definition = workflows.get(state, 'structure-review', '1.0.0')['definition']
     grant = {'schema_version': 1, 'permissions': definition['permissions'], 'limits': definition['limits']}
     manifest, destination = tmp_path/'manifest', tmp_path/'graph-run'
     selected = workflows.prepare_manifest(state.root, definition['id'], definition['version'], grant, manifest)
-    with pytest.raises(ValueError, match='requires a read-only leaf'):
+    inspection = composition_preview.preview(state.root, definition['id'], definition['version'], grant,
+        {'route': 'standalone-graph', 'project': 'demo', 'inputs': {'task': 'test'}, 'max_prompt_bytes': 50000})
+    with pytest.raises(RouteBlocked, match='requires a read-only leaf') as failure:
         run_graph(state, 'demo', manifest, selected['digest'], {'task': 'test'}, destination, 50_000, 20)
+    expected = failure.value
+    assert inspection['route_admission']['capability'] == {'route': 'standalone-graph', 'status': 'blocked',
+                                                           'instance': expected.instance, 'reason': expected.reason}
+    assert not destination.exists() and agent_runs.runs(state, 'demo') == []
+
+
+def test_leaf_route_preview_binds_the_same_prepared_input_and_policy(prepared):
+    from ergora.interfaces import composition_preview
+
+    state, _, bundle = prepared()
+    original = workflows.inspect_input(bundle, material=True)
+    request = original['request']
+    details = {'route': 'single-leaf', 'project': 'demo', 'directory': str(bundle), 'input_digest': original['digest']}
+    root = request['root']
+    report = composition_preview.preview(state.root, root['id'], root['version'], request['grant'], details)
+    admission = agent_runs.check_input(state, 'demo', bundle, input_digest=original['digest'])
+    assert report['composition'] == original['composition']
+    assert report['route_admission']['input_digest'] == admission['input_digest']
+    assert report['route_admission']['policy'] == admission['policy']
+    assert report['route_admission']['runtime_status'] == 'not_queried'
+    different = composition_preview.preview(state.root, root['id'], root['version'], request['grant'],
+                                            {**details, 'input_digest': '0' * 64})
+    assert different['route_admission']['capability']['status'] == 'blocked'
+    assert different['route_admission']['capability']['instance'] == request['instance']
+    assert agent_runs.runs(state, 'demo') == []
+
+
+@pytest.mark.parametrize('failure', ['leaf-prompt-capacity', 'codex-config', 'codex-provider-table'])
+def test_graph_preview_and_dispatch_share_known_leaf_blockers(prepared, tmp_path, failure):
+    from ergora.agents import graphs
+    from ergora.development.route_errors import RouteBlocked
+    from ergora.interfaces import composition_preview
+
+    state, _, _ = prepared()
+    definition = workflows.get(state, 'structure-review', '1.0.0')['definition']
+    grant = {'schema_version': 1, 'permissions': definition['permissions'], 'limits': definition['limits']}
+    manifest, destination = tmp_path / 'manifest', tmp_path / 'destination'
+    frozen = workflows.prepare_manifest(state.root, definition['id'], definition['version'], grant, manifest)
+    limit = 100 if failure == 'leaf-prompt-capacity' else 50000
+    config = tmp_path / 'bad.toml' if failure != 'leaf-prompt-capacity' else None
+    if config is not None:
+        content = 'invalid.toml-config = [' if failure == 'codex-config' else 'model_providers = "invalid"'
+        config.write_text(content, encoding='utf-8')
+    inputs = {'task': 'check'}
+    report = composition_preview.preview(state.root, definition['id'], definition['version'], grant, {
+        'route': 'standalone-graph', 'project': 'demo', 'inputs': inputs, 'max_prompt_bytes': limit,
+        'manifest': str(manifest), 'manifest_digest': frozen['digest'],
+        **({'codex_config': str(config)} if config is not None else {})})['route_admission']
+    with pytest.raises(RouteBlocked) as refused:
+        graphs.run_graph(state, 'demo', manifest, frozen['digest'], inputs, destination, limit, 20, codex_config=config)
+    assert report['capability'] == {'route': 'standalone-graph', 'status': 'blocked', 'instance': 'root/review',
+                                    'reason': refused.value.reason}
+    reasons = {'leaf-prompt-capacity': 'Complete composition prompt exceeds the input byte limit',
+               'codex-config': 'Invalid', 'codex-provider-table': 'Codex inference providers must be TOML tables'}
+    reason = reasons[failure]
+    assert reason in refused.value.reason
+    assert refused.value.instance == 'root/review'
+    assert not destination.exists() and agent_runs.runs(state, 'demo') == []
+
+
+def test_graph_route_preview_and_cli_dispatch_share_the_decoded_tree_bound(prepared, tmp_path, capsys):
+    state, _, _ = prepared()
+    root = workflows.get(state, 'structure-review', '1.0.0')['definition']
+    grant = {'schema_version': 1, 'permissions': root['permissions'], 'limits': root['limits']}
+    manifest, destination = tmp_path / 'manifest', tmp_path / 'destination'
+    frozen = workflows.prepare_manifest(state.root, root['id'], root['version'], grant, manifest)
+    task = 'leaf'
+    for _ in range(64):
+        task = [task]
+    inputs = {'task': task}
+    execution = {'route': 'standalone-graph', 'project': 'demo', 'manifest': str(manifest),
+                 'manifest_digest': frozen['digest'], 'inputs': inputs, 'max_prompt_bytes': 50000}
+    grant_path, execution_path, inputs_path = (tmp_path / name for name in ('grant.json', 'execution.json', 'inputs.json'))
+    for path, data in ((grant_path, grant), (execution_path, execution), (inputs_path, inputs)):
+        path.write_text(json.dumps(data), encoding='utf-8')
+    cli = ['--home', str(state.root), 'composition']
+    assert main([*cli, 'preview', root['id'], root['version'], '--grant', str(grant_path),
+                 '--admission', str(execution_path)]) == 0
+    admission = json.loads(capsys.readouterr().out)['route_admission']
+    assert admission['capability']['status'] == 'blocked'
+    reason = admission['capability']['reason']
+    assert reason == 'Workflow inputs exceeds 64 levels / 100000 values'
+    assert main([*cli, 'run-graph', 'demo', str(manifest), '--manifest-digest', frozen['digest'],
+                 '--inputs', str(inputs_path), '--directory', str(destination), '--max-prompt-bytes', '50000']) == 2
+    assert reason in capsys.readouterr().err
     assert not destination.exists() and agent_runs.runs(state, 'demo') == []
 
 

@@ -281,7 +281,9 @@ def parser() -> argparse.ArgumentParser:
             operation.add_argument("directory", type=Path)
         else:
             operation.add_argument("--grant", type=Path, required=True, help="Explicit JSON preview permissions and global limits")
-            if name == "prepare":
+            if name == "preview":
+                operation.add_argument("--admission", type=Path, help="Exact selected execution route and its input bindings JSON")
+            elif name == "prepare":
                 operation.add_argument("instance", help="Exact Agent leaf path from composition preview")
                 operation.add_argument("--task", type=Path, required=True, help="Operator-supplied UTF-8 task; does not execute workflow ports")
                 operation.add_argument("--directory", type=Path, required=True, help="New complete input bundle directory")
@@ -1582,8 +1584,11 @@ def main(argv: list[str] | None = None) -> int:
                 print(json.dumps(output, ensure_ascii=False, indent=2))
                 return 0 if output["impact"]["status"] == "checked" else 1
             elif args.operation == "preview":
-                output = workflow_definitions.preview(resolve_home(args.home), args.id, args.version,
-                                                       definition_bundles.read_json(args.grant))
+                from ergora.interfaces import composition_preview
+
+                selection = definition_bundles.read_json(args.admission) if args.admission is not None else None
+                output = composition_preview.preview(resolve_home(args.home), args.id, args.version,
+                    definition_bundles.read_json(args.grant), selection)
             elif args.operation == "prepare-manifest":
                 output = workflow_definitions.prepare_manifest(resolve_home(args.home), args.id, args.version,
                     definition_bundles.read_json(args.grant), args.directory)
@@ -1630,7 +1635,7 @@ def main(argv: list[str] | None = None) -> int:
                 try:
                     if args.operation == 'run-graph':
                         output = graphs.run_graph(State(args.home), args.project, args.manifest, args.manifest_digest,
-                            definition_bundles.parse_json(raw.decode('utf-8-sig'), 'Workflow inputs', finite=True, bounded=True),
+                            definition_bundles.parse_json(raw.decode('utf-8-sig'), 'Workflow inputs', finite=True),
                             args.directory, args.max_prompt_bytes, args.timeout, codex_config=args.codex_config,
                             stop_requested=lambda: stopped, recoverable=args.recoverable, pause_before_route=args.pause_before_route)
                     else:

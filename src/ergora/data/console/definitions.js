@@ -10,7 +10,7 @@ const library = {
   controlDirectory: null, started: false, loading: false, installing: null, installRequest: 0, error: "", message: "",
   agents: [], workflows: [], presets: [], request: 0,
   selection: null, detail: null, detailLoading: false, detailError: "", detailRequest: 0,
-  grant: "", preview: null, previewLoading: false, previewError: "", previewRequest: 0,
+  grant: "", routeInput: "", routeAdmission: null, preview: null, previewLoading: false, previewError: "", previewRequest: 0,
   comparisonTarget: "", comparison: null, manifest: null,
   restoreSelection: null,
 };
@@ -494,7 +494,7 @@ function synchronizeLibrary() {
   Object.assign(library, {
     controlDirectory: home, started: false, loading: false, installing: null, error: "", message: "",
     agents: [], workflows: [], presets: [], selection: null, detail: null, detailLoading: false, detailError: "",
-    grant: "", preview: null, previewLoading: false, previewError: "", comparisonTarget: "", comparison: null, manifest: null,
+    grant: "", routeInput: "", routeAdmission: null, preview: null, previewLoading: false, previewError: "", comparisonTarget: "", comparison: null, manifest: null,
     restoreSelection: selections.get(home) || null,
   });
 }
@@ -523,7 +523,7 @@ async function loadLibrary(render) {
     )) {
       library.detailRequest++;
       library.previewRequest++;
-      Object.assign(library, { selection: null, detail: null, preview: null, comparisonTarget: "", comparison: null,
+      Object.assign(library, { selection: null, detail: null, preview: null, routeInput: "", routeAdmission: null, comparisonTarget: "", comparison: null,
         detailLoading: false, previewLoading: false });
     }
     if (library.comparisonTarget && !workflows.some((item) => referenceText({ kind: "workflow", ...item }) === library.comparisonTarget)) {
@@ -556,7 +556,7 @@ async function openDefinition(kind, reference, render, starter = reference.start
   library.previewRequest++;
   Object.assign(library, {
     selection: { kind, id: reference.id, version: reference.version, ...(starter ? { starter } : {}) }, detail: null, detailLoading: true,
-    detailError: "", grant: "", preview: null, previewLoading: false, previewError: "", comparisonTarget: "", comparison: null,
+    detailError: "", grant: "", routeInput: "", routeAdmission: null, preview: null, previewLoading: false, previewError: "", comparisonTarget: "", comparison: null,
     restoreSelection: null,
   });
   selections.set(home, library.selection);
@@ -675,21 +675,28 @@ async function previewDefinition(render, target = null) {
   library.previewLoading = true;
   library.previewError = "";
   library.preview = null;
+  library.routeAdmission = null;
   library.comparison = null;
   library.manifest = null;
   redraw(render);
   try {
     const grant = JSON.parse(library.grant);
+    const admission = !target && library.routeInput.trim() ? JSON.parse(library.routeInput) : null;
     const references = target ? [selected, target] : [selected];
     const results = await Promise.all(references.map(async (reference) => {
-      const result = await api("/api/composition/preview", { id: reference.id, version: reference.version, grant });
-      if (referenceText(result.root) !== referenceText(reference))
+      const result = await api("/api/composition/preview", { id: reference.id, version: reference.version, grant,
+        ...(admission === null ? {} : { admission }) });
+      const composition = admission === null ? result : result.composition;
+      if (referenceText(composition.root) !== referenceText(reference))
         throw new Error("预览返回的精确根引用与所选版本不符；没有使用其他版本生成比较。");
-      return result;
+      if (admission !== null && result.route_admission?.preview_sha256 !== composition.preview_sha256)
+        throw new Error("路线结果与当前图的预览摘要不符。");
+      return { composition, routeAdmission: result.route_admission ?? null };
     }));
     if (currentLibrary(home) && request === library.previewRequest) {
-      library.preview = results[0];
-      library.comparison = results[1] || null;
+      library.preview = results[0].composition;
+      library.routeAdmission = results[0].routeAdmission;
+      library.comparison = results[1]?.composition ?? null;
     }
   } catch (error) {
     if (currentLibrary(home) && request === library.previewRequest) library.previewError = error.message;
@@ -1098,15 +1105,17 @@ function instancesView(preview, render) {
   previewGraph = compositionGraphView(preview, graphSessions.get(key), library.agents,
     (reference) => openDefinition(reference.kind, reference, render));
   const manifest = library.manifest?.preview === preview ? library.manifest : null;
-  const operationLabels = [...new Set(preview.instances.map((item) => standaloneOperations.get(item.kind)).filter(Boolean))];
-  const executionRoute = operationLabels.length
-    ? `${operationLabels.join("、")}节点通过独立图命令 ergora composition run-graph 执行。`
-    : "请在任务中选择执行路线并预览其准入。";
+  const admission = library.routeAdmission;
+  const stateLabels = { admitted: "通过静态准入", blocked: "路线不可用", not_checked: "等待运行输入" };
   return panel(
-    "仅图预览 · 已发布静态组合与祖先指令",
-    "图使用精确已发布版本。结构父链决定资源继承和权限上限，依赖决定先后，端口决定数据来源。" + executionRoute,
+    admission ? "已发布组合与执行准入" : "仅图预览 · 已发布静态组合与祖先指令",
+    "结构父链决定资源继承和权限上限，依赖决定先后，端口决定数据来源。",
     row(badge(`${preview.usage.instances} 个实例`), badge(`${preview.usage.material_bytes} 指令字节`)),
     pre({ root: preview.root, preview_sha256: preview.preview_sha256, pending: preview.pending }),
+    admission ? panel("所选执行路线", stateLabels[admission.capability.status],
+      pre(admission.capability), pre({ project: admission.project, project_revision: admission.project_revision,
+        required_bindings: admission.required_bindings, bindings: admission.bindings, runtime_status: admission.runtime_status,
+        ...(admission.executor_owned_steps ? { executor_owned_steps: admission.executor_owned_steps } : {}) })) : null,
     previewGraph.element,
     button("下载 composition-preview.json", () => download("composition-preview.json", JSON.stringify(preview, null, 2) + "\n")),
     panel("保存完整组合包", "保存当前已发布的图、定义和 Skill 附件，供独立查看或分享。正式任务另行校验执行路径。编辑缓冲和比较目标不包含在此包中。",
@@ -1149,6 +1158,9 @@ function detailView(render) {
   );
   const grant = node("textarea", { className: "workflow-json", value: library.grant,
     "aria-label": "静态预览上限 JSON", spellcheck: "false" });
+  const routeInput = node("textarea", { className: "workflow-json", value: library.routeInput,
+    "aria-label": "执行路线与输入 JSON", spellcheck: "false",
+    placeholder: '{"route":"standalone-graph","project":"…","inputs":{},"max_prompt_bytes":100000}' });
   const previewAction = button(library.previewLoading ? "正在预览…" : "预览完整组合", () => previewDefinition(render),
     "primary", { disabled: library.previewLoading });
   const comparisonChoice = select([["", "选择比较目标…"], ...library.workflows.map((item) =>
@@ -1164,21 +1176,25 @@ function detailView(render) {
   const compareAction = button(library.previewLoading ? "正在预览…" : "比较两个已发布版本",
     () => previewDefinition(render, JSON.parse(library.comparisonTarget)), "secondary",
     { disabled: library.previewLoading || !library.comparisonTarget });
-  grant.addEventListener("input", () => {
-    library.grant = grant.value;
+  function invalidatePreview() {
     library.previewRequest++;
-    Object.assign(library, { preview: null, comparison: null, previewLoading: false, previewError: "" });
+    Object.assign(library, { preview: null, routeAdmission: null, comparison: null, previewLoading: false, previewError: "" });
     previewAction.disabled = false;
     previewAction.textContent = "预览完整组合";
     compareAction.disabled = !library.comparisonTarget;
     compareAction.textContent = "比较两个已发布版本";
     disposeDefinitionGraph();
-    result.replaceChildren(empty("上限已修改；重新预览后查看当前结果。"));
-  });
+    result.replaceChildren(empty("输入已修改；重新预览后查看当前结果。"));
+  }
+  grant.addEventListener("input", () => { library.grant = grant.value; invalidatePreview(); });
+  routeInput.addEventListener("input", () => { library.routeInput = routeInput.value; invalidatePreview(); });
   contents.push(panel(
     "预览整个嵌套组合",
     "初始上限来自该根定义，可修改后显式预览。这是静态校验上限；正式任务仍需项目授权、冻结输入与后端能力准入。",
     node("label", {}, "静态预览上限 JSON", grant),
+    node("details", {}, node("summary", {}, "检查特定执行路线"),
+      node("label", {}, "执行路线与输入 JSON", routeInput),
+      node("p", {}, "使用 standalone-graph、formal-task 或 single-leaf。留空仅预览图。")),
     previewAction,
     node("label", {}, "比较目标（已发布精确版本）", comparisonChoice),
     node("p", {}, "以当前所选版本为比较前、目标为比较后；两者均按上方同一份显式上限重新预览。比较不会发布定义、应用草稿或切换编辑基准。"),

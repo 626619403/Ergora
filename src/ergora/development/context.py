@@ -54,7 +54,7 @@ def _sources(state: State, project_id: str, selection: dict) -> tuple[dict, list
 
 @contextmanager
 def selected_manifest(state: State, project_id: str, option: dict, selection: dict, working_directory: Path):
-    """Derive a new root only inside the supervised original preparation tree."""
+    """Derive the selected root in the caller's private preparation or inspection tree."""
     import ergora.definitions.workflows as workflow_definitions
 
     source = Path(option['manifest']).expanduser().absolute()
