@@ -1043,6 +1043,7 @@ def parser() -> argparse.ArgumentParser:
             operation.add_argument("--confirm", action="store_true")
         if name == "status":
             operation.add_argument("--online", action="store_true")
+            operation.add_argument("--task-id", help="Also read the exact original fixed-check evidence for this task")
         if name == "worker-service":
             operation.add_argument("action", choices=("start", "status", "stop"))
             operation.add_argument("--confirm", action="store_true")
@@ -1148,7 +1149,9 @@ def main(argv: list[str] | None = None) -> int:
                 operation = campaigns.create(state, args.project, args.id, args.plan, args.revision,
                                              args.plan_sha256, confirm=args.confirm)
             elif args.operation == "status":
-                operation = campaigns.status(state, args.project, args.id, online=args.online)
+                operation = campaigns.status(state, args.project, args.id, online=args.online, task_id=args.task_id)
+                if args.task_id is not None:
+                    operation = _campaign_check_observation(operation)
             elif args.operation == "stop":
                 operation = campaigns.stop(state, args.project, args.id, confirm=args.confirm)
             elif args.operation == "observe-check":
@@ -2001,6 +2004,10 @@ def main(argv: list[str] | None = None) -> int:
             if args.operation == "observe-check":
                 return 0 if output["status"] in ("observed", "waiting_job") else 1
             if output["remote_status"] in ("unavailable", "original_not_found"):
+                return 1
+            if (output.get("task_observation_history_status") == "contradictory"
+                    or output.get("task_evidence", {}).get("correlation") in (
+                        "unavailable", "contradictory", "different_observation")):
                 return 1
             if args.operation == "stop":
                 receipt = output["stop"]["receipt"]

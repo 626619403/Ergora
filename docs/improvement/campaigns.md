@@ -125,6 +125,16 @@ ergora campaign observe-check my-project fixed-check-plan verify-candidate --con
 
 When live task state is unavailable, `status --online` reports saved attempts in `task_observation_history` by task ID and stage (`waiting` or `terminal`). A `verified` entry includes the receipt and its matching accepted and completed Update event IDs on the original Run. A `failed` entry includes the two event IDs when the accepted Update completed with a failure. It carries no observation receipt. `unresolved` means readable History did not establish a completed outcome for that attempt. `unavailable` means the original History could not be read. Each entry retains its original Run and Update IDs. Use this view to recover a lost reply without submitting an observation. Task eligibility requires current Workflow state.
 
+To check the Update and the original Job together after a lost reply, select the frozen task explicitly.
+
+```bash
+ergora campaign status my-project fixed-check-plan --online --task-id verify-baseline
+```
+
+`task_observation_history` identifies the original Update and any verified completion. `task_evidence.native_job` carries the original Job status, result and cleanup fields on the saved registration. Its `native_observation_sha256` hashes the complete current payload. `correlation: matched` requires that digest to equal the verified terminal Update receipt's `observation_sha256`, with the original Job identity and terminal fields in agreement. `different_observation` means those fields agree and the complete payload digest differs. `pending` means the Job is readable and agreement is still unconfirmed. `unavailable` means the original Job evidence is missing or unknown. `contradictory` means the original owner rejected the exact Job digest or the original identity or terminal fields differ.
+
+If the original task History reader refuses an inconsistent event, `task_observation_history_status: contradictory` reports the failure and the saved Run and Update IDs remain visible. The command still reads the independently owned Job status. A contradictory History, or `unavailable`, `contradictory` or `different_observation` Job correlation, yields exit 1. Omitting `--online` reads the Job and saved local Update identities without consulting Temporal. Both forms are read-only and remain available after Campaign expiry or STOP while the original evidence is readable. Use the original owner for actual process liveness or resource release.
+
 ### Observe an original check that is still pending
 
 Before freezing the plan, read the already authorized Job with `task candidate-check-status` under the same project and protected control home. Use the source fields from the example above, set `source.pending` to `true` and omit `receipt_sha256` and `fixed_results_sha256`. Copy the other eight fields exactly. If you need to configure the campaign scheduler, do so before authorizing a Job that has yet to launch. Preserve the original Job's project revision through launch.

@@ -1423,8 +1423,9 @@ def test_frozen_tasks_observe_only_the_original_passing_fixed_check(tmp_path, mo
     read_state = runtime.runtime_status
     original_lookup = runtime.original
 
-    async def cli(args, code=0):
-        result = await asyncio.to_thread(subprocess.run, [sys.executable, '-m', 'ergora', *args],
+    async def cli(args, code=0, *, driver=None):
+        entry = ['-m', 'ergora'] if driver is None else ['-c', *driver]
+        result = await asyncio.to_thread(subprocess.run, [sys.executable, *entry, *args],
                                          capture_output=True, text=True, timeout=30)
         assert result.returncode == code, result.stderr or result.stdout
         return json.loads(result.stdout) if result.stdout else result.stderr
@@ -1485,10 +1486,70 @@ def test_frozen_tasks_observe_only_the_original_passing_fixed_check(tmp_path, mo
                 assert unknown['run_id'] == created['run_id'] and unknown['update_id'] == receipt['update_id']
                 assert receipt['observation_sha256'] == identity(evidence)
 
+                after = files(state.root)
+                timeline_args = campaign_args(state, 'status', campaign, '--online', '--task-id', 'original')
+                timeline = await cli(timeline_args)
+                terminal = timeline['task_observation_history']['original']['terminal']
+                assert terminal['status'] == 'verified' and terminal['receipt'] == receipt
+                assert (terminal['run_id'], terminal['update_id']) == (unknown['run_id'], unknown['update_id'])
+                assert terminal['accepted_event_id'] < terminal['completed_event_id']
+                assert timeline['task_evidence']['correlation'] == 'matched'
+                assert timeline['task_evidence']['native_job'] == evidence
+                assert timeline['task_evidence']['native_job']['cleanup_confirmed'] is True
+                assert timeline['task_evidence']['native_observation_sha256'] == receipt['observation_sha256']
+
+                drift_driver = '''
+import sys
+from ergora.interfaces.cli import main
+
+source, update_id = sys.argv[1:3]
+del sys.argv[1:3]
+if source == 'native':
+    from ergora.runtime import action_observations
+
+    original = action_observations.observe
+
+    def read(*args, **kwargs):
+        observed = original(*args, **kwargs)
+        return {**observed, 'detail': 'Controlled variance in a later native read'}
+
+    action_observations.observe = read
+else:
+    from temporalio.client import WorkflowHandle
+
+    original = WorkflowHandle.fetch_history_events
+
+    async def history(handle, *args, **kwargs):
+        async for event in original(handle, *args, **kwargs):
+            if event.HasField('workflow_execution_update_completed_event_attributes'):
+                completed = event.workflow_execution_update_completed_event_attributes
+                if completed.meta.update_id == update_id:
+                    completed.accepted_event_id += 1
+            yield event
+
+    WorkflowHandle.fetch_history_events = history
+raise SystemExit(main())
+'''
+                drifted = await cli(timeline_args, code=1, driver=[drift_driver, 'native', receipt['update_id']])
+                assert drifted['task_observation_history']['original']['terminal'] == terminal
+                native = drifted['task_evidence']
+                assert native['native_job'] == {**evidence, 'detail': 'Controlled variance in a later native read'}
+                assert native['native_observation_sha256'] == identity(native['native_job'])
+                assert native['native_observation_sha256'] != receipt['observation_sha256']
+                assert native['correlation'] == 'different_observation'
+
+                drifted = await cli(timeline_args, code=1, driver=[drift_driver, 'history', receipt['update_id']])
+                assert drifted['task_observation_history_status'] == 'contradictory'
+                assert 'completion does not bind its original accepted Update' in drifted['task_observation_history_error']
+                unverified = drifted['task_observation_history']['original']['terminal']
+                assert unverified == {'status': 'unavailable', 'receipt': None,
+                                      'run_id': unknown['run_id'], 'update_id': unknown['update_id']}
+                assert drifted['task_evidence']['native_job'] == evidence
+                assert drifted['task_evidence']['correlation'] == 'pending'
+
                 def no_reissue(*args, **kwargs):
                     raise AssertionError('Original observation may only reconcile its saved attempt')
 
-                after = files(state.root)
                 with monkeypatch.context() as patch:
                     patch.setattr(runtime, 'send_check', no_reissue)
                     patch.setattr(underlying, 'candidate_check_status', no_reissue)
@@ -1514,6 +1575,25 @@ def test_frozen_tasks_observe_only_the_original_passing_fixed_check(tmp_path, mo
                 view = await cli(campaign_args(state, 'status', campaign, '--online'))
                 assert view['tasks']['held']['attempt_status'] == 'unknown'
                 assert view['tasks']['held']['update_id'] == held['update_id'] and not view['tasks']['held']['eligible']
+                current = files(state.root)
+                pending = await cli(campaign_args(state, 'status', campaign, '--online', '--task-id', 'held'))
+                held_terminal = pending['task_observation_history']['held']['terminal']
+                assert held_terminal['status'] == 'unresolved' and held_terminal['update_id'] == held['update_id']
+                assert pending['task_evidence']['correlation'] == 'pending'
+                assert pending['task_evidence']['native_job'] == evidence
+                conflict = await cli(campaign_args(state, 'status', campaign, '--task-id', 'changed-receipt'), code=1)
+                assert conflict['task_evidence']['correlation'] == 'contradictory'
+                assert conflict['task_evidence']['different_fields'] == ['receipt_sha256']
+                assert conflict['task_evidence']['native_job'] == evidence
+                wrong_job = await cli(campaign_args(state, 'status', campaign, '--task-id', 'other-job'), code=1)
+                wrong = wrong_job['task_evidence']
+                assert wrong['correlation'] == 'contradictory' and wrong['different_fields'] == ['job_sha256']
+                assert wrong['source'] == tasks[2]['source'] and wrong['native_job'] is None
+                assert 'Select the exact original candidate check job' in wrong['native_read_error']
+                missing = await cli(campaign_args(state, 'status', campaign, '--task-id', 'missing'), code=1)
+                assert missing['task_evidence']['correlation'] == 'unavailable'
+                assert missing['task_evidence']['native_job'] is None
+                assert files(state.root) == current and files(private / 'runtime') == original
                 original_write = CampaignFiles.write
                 after_seal = False
 
@@ -1544,6 +1624,11 @@ def test_frozen_tasks_observe_only_the_original_passing_fixed_check(tmp_path, mo
                 closed = json.loads(output)
                 assert closed['workflow_state']['phase'] == 'stopped'
                 assert closed['tasks']['original']['receipt'] == receipt and not closed['tasks']['dependent']['eligible']
+                before_cold_read = files(state.root)
+                cold = await cli(timeline_args)
+                assert cold['task_observation_history']['original']['terminal'] == terminal
+                assert cold['task_evidence'] == timeline['task_evidence']
+                assert cold['workflow_state']['phase'] == 'stopped' and files(state.root) == before_cold_read
 
                 async def stale_query(*args, **kwargs):
                     return before_stop_query

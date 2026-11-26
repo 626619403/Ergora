@@ -7,8 +7,9 @@ import time
 from uuid import uuid4
 
 from ergora.campaigns.records import (
-    FIXED_TASK_UPDATE_PREFIX, PENDING_JOB_STATES, WORKFLOW_TYPE, CampaignFiles, attempt_document, check_intent,
-    check_record_name, fixed_tasks, identity, original_check_evidence, project_selection, read_plan,
+    FIXED_CHECK_TERMINAL, FIXED_TASK_LOCATOR, FIXED_TASK_UPDATE_PREFIX, PENDING_JOB_STATES, WORKFLOW_TYPE,
+    CampaignFiles, attempt_document, check_intent, check_record_name, fixed_tasks, identity,
+    original_check_evidence, project_selection, read_plan,
     recipient_task, require_check_project, result_document, sha256, stop_intent, update_attempt, uuid_text, verify_registration,
     worker_queue, workflow_id,
 )
@@ -117,7 +118,7 @@ async def _observe(runtime, output, client, handle, description, opening, stop_r
 
 
 async def _read_original(runtime, output, opening, attempt, run_id, *, client=None, read_state=False,
-                         stop_records=None, check_commands=()):
+                         stop_records=None, check_commands=(), include_task_history=False):
     try:
         async with asyncio.timeout(runtime.RPC_SECONDS):
             if client is None:
@@ -130,12 +131,18 @@ async def _read_original(runtime, output, opening, attempt, run_id, *, client=No
     except (TimeoutError, ConnectionError):
         return {**output, 'remote_status': 'unavailable', 'remote_error': 'connection_or_lookup'}
     observed = await _observe(runtime, output, client, handle, description, opening, stop_records, read_state)
-    if check_commands and (observed['workflow_state_status'] == 'unavailable' or recipient_task(opening) is not None):
+    if check_commands and (include_task_history or observed['workflow_state_status'] == 'unavailable'
+                           or recipient_task(opening) is not None):
         try:
             async with asyncio.timeout(runtime.RPC_SECONDS):
                 updates, completion = await runtime.read_task_history(client, handle, opening, check_commands)
         except (TimeoutError, ConnectionError, runtime.RPCError):
             return observed
+        except ValueError as error:
+            if not include_task_history:
+                raise
+            return {**observed, 'task_observation_history_status': 'contradictory',
+                    'task_observation_history_error': str(error)}
         observed['task_observation_history'] = _task_observation_history(check_commands, updates)
         if completion is not None:
             observed['readback_completion'] = completion
@@ -204,39 +211,98 @@ def _recipient_status(state, files, opening, attempt, result, output):
     return {**output, 'recipient': wake}
 
 
-async def status(state: State, project: str, campaign: str, *, online: bool = False) -> dict:
+async def status(state: State, project: str, campaign: str, *, online: bool = False, task_id: str | None = None) -> dict:
     """Read the saved evidence, optionally observing the verified original Workflow on the saved route."""
     files = CampaignFiles(state.root, project, campaign)
     opening, attempt, result = files.load()
     stop_records = (None, None, None)
-    if opening is not None:
-        verify_registration(state, opening)
+    registration = verify_registration(state, opening) if opening is not None else None
+    task = None
+    if task_id is not None:
+        task = fixed_tasks(opening).get(task_id) if opening is not None else None
+        if task is None:
+            raise ValueError('Campaign task is absent from the original frozen plan')
     if attempt is not None:
         # A concurrent writer may start and stop after a prepared-only snapshot.
         stop_records = files.load_stop(opening, attempt, result)
     recipient = opening is not None and recipient_task(opening) is not None
     output = {**_snapshot(files, opening, attempt, result), 'stop': _stop_snapshot(stop_records, recipient=recipient)}
-    if attempt is None:
-        return _recipient_status(state, files, opening, attempt, result, output)
-    run_id = stop_records[0]['run_id'] if stop_records[0] is not None else output['run_id']
-    run_id, check_commands = files.load_checks(opening, attempt, run_id)
-    if not online:
-        if check_commands:
+    if attempt is not None:
+        run_id = stop_records[0]['run_id'] if stop_records[0] is not None else output['run_id']
+        run_id, check_commands = files.load_checks(opening, attempt, run_id)
+        if online:
+            output = await _read_original(_temporal(), output, opening, attempt, run_id, read_state=True,
+                                          stop_records=stop_records, check_commands=check_commands,
+                                          include_task_history=task is not None)
+            if (check_commands and (task is not None or output['workflow_state_status'] != 'observed')
+                    and 'task_observation_history' not in output):
+                output['task_observation_history'] = _task_observation_history(check_commands)
+            for view in output.get('tasks', {}).values():
+                if view['receipt'] is None:
+                    command = files.load_check(opening, attempt, output['run_id'], view)
+                    if command is None and view['source'].get('pending') is True and view['waiting_receipt'] is None:
+                        command = files.load_check(opening, attempt, output['run_id'], view, waiting=True)
+                    if command is not None:
+                        view.update(eligible=False, attempt_status='unknown', update_id=command['attempt']['update_id'])
+        elif check_commands:
             output['task_observation_history'] = _task_observation_history(check_commands, unobserved='not_requested')
-        return _recipient_status(state, files, opening, attempt, result, output)
-    output = await _read_original(_temporal(), output, opening, attempt, run_id, read_state=True,
-                                  stop_records=stop_records, check_commands=check_commands)
-    if (check_commands and output['workflow_state_status'] != 'observed'
-            and 'task_observation_history' not in output):
-        output['task_observation_history'] = _task_observation_history(check_commands)
-    for task in output.get('tasks', {}).values():
-        if task['receipt'] is None:
-            command = files.load_check(opening, attempt, output['run_id'], task)
-            if command is None and task['source'].get('pending') is True and task['waiting_receipt'] is None:
-                command = files.load_check(opening, attempt, output['run_id'], task, waiting=True)
-            if command is not None:
-                task.update(eligible=False, attempt_status='unknown', update_id=command['attempt']['update_id'])
-    return _recipient_status(state, files, opening, attempt, result, output)
+    output = _recipient_status(state, files, opening, attempt, result, output)
+    if task is not None:
+        history = output.get('task_observation_history', {}).get(task_id, {})
+        output['task_evidence'] = await _task_evidence(registration, state.root, task, history.get('terminal'))
+    return output
+
+
+async def _task_evidence(registration, home, task, terminal):
+    """Join one original native read with the frozen task and verified Update outcome."""
+    from ergora.native.resources import validate_installation
+    from ergora.runtime.action_observations import FixedCheckJobIdentityError, FixedCheckStatus, observe
+
+    source = task['source']
+    action = FixedCheckStatus(source['operation_id'], source['job_sha256'])
+
+    def read(stopped):
+        installation = registration['registration']['definition']['execution']['installation']
+        validate_installation(Path(installation))
+        try:
+            return observe(action, registration, home, deadline=time.monotonic() + 20, stop_requested=stopped)
+        except KeyboardInterrupt:
+            raise ValueError('Original fixed-check status read was cancelled') from None
+
+    evidence = {'task_id': task['task_id'], 'depends_on': task['depends_on'], 'source': source,
+                'native_job': None, 'correlation': 'unavailable'}
+    try:
+        job = await _run_check_reader(read)
+    except FixedCheckJobIdentityError as error:
+        return {**evidence, 'correlation': 'contradictory', 'different_fields': ['job_sha256'],
+                'native_read_error': str(error)}
+    except (OSError, ValueError, TimeoutError) as error:
+        return {**evidence, 'native_read_error': str(error)}
+    evidence['native_job'] = job
+    evidence['native_observation_sha256'] = identity(job)
+
+    fields = FIXED_TASK_LOCATOR
+    if job['status'] == 'request_not_observed':
+        # The native owner has only the authorization when the request is missing.
+        fields = tuple(key for key in fields if key in job)
+    differences = [key for key in fields if job.get(key) != source[key]]
+    if differences:
+        return {**evidence, 'correlation': 'contradictory', 'different_fields': differences}
+    if job['status'] in ('request_not_observed', 'unknown'):
+        return evidence
+
+    receipt = terminal['receipt'] if terminal is not None and terminal['status'] == 'verified' else None
+    expected = receipt.get('job', source) if receipt is not None else source
+    if expected.get('pending') is not True:
+        expected_fields = {'status': 'succeeded', 'cleanup_confirmed': True, 'stop_requested': False,
+                           **{key: expected[key] for key in FIXED_CHECK_TERMINAL}}
+        differences = [key for key, value in expected_fields.items() if job.get(key) != value]
+        if differences:
+            return {**evidence, 'correlation': 'contradictory', 'different_fields': differences}
+    if receipt is None:
+        return {**evidence, 'correlation': 'pending'}
+    correlation = 'matched' if receipt['observation_sha256'] == evidence['native_observation_sha256'] else 'different_observation'
+    return {**evidence, 'correlation': correlation}
 
 
 async def create(state: State, project: str, campaign: str, path: Path, revision: int, plan_sha: str,
@@ -433,19 +499,22 @@ async def _read_original_check(state, project, source, expires_at, stop_requeste
     if remaining <= 0:
         raise ValueError('Campaign no longer admits original task observations')
     deadline = monotonic_start + remaining
-    cancelled = Event()
-
-    def read():
+    def read(stopped):
         try:
             return candidate_check_status(state, project, source['operation_id'], job_sha256=source['job_sha256'],
                 verify_pending=source.get('pending') is True, deadline=deadline,
-                stop_requested=lambda: cancelled.is_set() or stop_requested())
+                stop_requested=lambda: stopped() or stop_requested())
         except KeyboardInterrupt:
             raise ValueError('Original fixed-check observation was cancelled') from None
         except TimeoutError:
             raise ValueError('Original fixed-check observation reached its deadline') from None
 
-    reader = asyncio.create_task(asyncio.to_thread(read))
+    return await _run_check_reader(read)
+
+
+async def _run_check_reader(read):
+    cancelled = Event()
+    reader = asyncio.create_task(asyncio.to_thread(read, cancelled.is_set))
     try:
         return await asyncio.shield(reader)
     except asyncio.CancelledError:

@@ -5,6 +5,10 @@ from pathlib import Path
 import re
 
 
+class FixedCheckJobIdentityError(ValueError):
+    """The original native owner rejected the selected Job digest."""
+
+
 @dataclass(frozen=True)
 class FixedCheckStatus:
     operation_id: str
@@ -35,8 +39,14 @@ def _fixed_check(action, project, home, *, deadline, stop_requested, supervised_
     payload = {'operation_id': action.operation_id, 'job_sha256': action.job_sha256}
     if action.verify_pending:
         payload['verify_pending'] = True
-    receipt = task_fixed_candidate_check(project, home, 'status-fixed-check', payload, deadline=deadline,
-                                         stop_requested=stop_requested, supervised_cleanup=supervised_cleanup)
+    try:
+        receipt = task_fixed_candidate_check(project, home, 'status-fixed-check', payload, deadline=deadline,
+                                             stop_requested=stop_requested, supervised_cleanup=supervised_cleanup)
+    except ValueError as error:
+        # This exact refusal is emitted by the native Job digest selector.
+        if str(error) == 'BLOCKED: Select the exact original candidate check job':
+            raise FixedCheckJobIdentityError(str(error)) from error
+        raise
     identity = {'operation_id': action.operation_id}
     if action.job_sha256 is not None:
         identity['job_sha256'] = action.job_sha256
