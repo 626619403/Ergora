@@ -163,6 +163,19 @@ async def observe_controller_worker(handle, task_queue: str, *, timeout: float) 
             {'status': 'scheduled', 'scheduled_event_id': scheduled})
 
 
+async def observe_controller_queue_polling(client, task_queue: str, *, timeout: float) -> dict:
+    """Read the authenticated controller's Workflow Task Queue poller report."""
+    from temporalio.api.enums.v1 import TaskQueueType
+    from temporalio.api.taskqueue.v1 import TaskQueue
+    from temporalio.api.workflowservice.v1 import DescribeTaskQueueRequest
+
+    request = DescribeTaskQueueRequest(namespace=client.namespace, task_queue=TaskQueue(name=task_queue),
+                                       task_queue_type=TaskQueueType.TASK_QUEUE_TYPE_WORKFLOW)
+    response = await client.workflow_service.describe_task_queue(
+        request, retry=False, timeout=timedelta(seconds=timeout))
+    return {'status': 'observed', 'poller_count': len(response.pollers)}
+
+
 async def authenticate_round_collection(client, intent: dict, binding: dict, request: dict,
                                         context: dict, *, timeout: float):
     """Authenticate the single original collect command, consuming the full fixed history."""

@@ -61,6 +61,8 @@ For an unattended local handoff of one cycle authorized against the current runt
 
 Use `cycle-controller-reconcile` with the original authorization to read `worker_delivery` alongside the submission receipt. `scheduled` records a scheduled Workflow Task in the original history. `started` includes the scheduled and started event IDs that establish Worker receipt. A bounded read can return `unobserved` or `unconfirmed`. Candidate Job execution and resource release have their own records.
 
+When the original run is running and Worker delivery is `scheduled`, `queue_polling` reports the poller count returned for the original Workflow Task Queue in the bound namespace. The count describes the service's polling report, and actual pickup comes from the original History. A polling read failure leaves the scheduled evidence available.
+
 Current controller consent is schema5; the input explicitly freezes either the strong full-accepted chain or `bounded-screen-profile-skip`. There is one current workflow/worker interface and no `--program-version` selector. Manual schema1 remains a separate explicit mode. Old schema2/3/4 records retain read-only evidence scope; they are not upgraded, replayed or given a renewed clock. Preparation, queues, execution, reconciliation and cleanup share the original deadline. Status is read-only, lost replies inspect the same original identities, and a stop veto alone does not certify executor cleanup.
 
 ## Bounded CPU search and per-round diagnostics

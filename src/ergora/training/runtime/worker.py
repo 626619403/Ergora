@@ -1517,7 +1517,8 @@ async def _dispatch_controller(payload: dict, plan: dict, admission, active) -> 
     from temporalio.converter import WorkflowSerializationContext
     from temporalio.exceptions import ApplicationError, WorkflowAlreadyStartedError
     from temporalio.service import RPCError
-    from ergora.training.runtime.status import lookup_controller_submission, observe_controller_worker
+    from ergora.training.runtime.status import (lookup_controller_submission, observe_controller_queue_polling,
+                                                observe_controller_worker)
 
     state = State(Path(payload['identity']['control_home']))
     saved = admission.submission()
@@ -1590,6 +1591,7 @@ async def _dispatch_controller(payload: dict, plan: dict, admission, active) -> 
                 active()
                 facts = {'runtime_status': 'queried', 'temporal_status': description.status.name}
                 if payload['identity']['mode'] == 'reconcile-controller':
+                    field = 'worker_delivery'
                     try:
                         available = remaining()
                         # Leave the supervised process time to exit and deliver the original receipt.
@@ -1602,12 +1604,18 @@ async def _dispatch_controller(payload: dict, plan: dict, admission, active) -> 
                             async with asyncio.timeout(window):
                                 facts['worker_delivery'] = await observe_controller_worker(
                                     handle, intent['task_queue'], timeout=window)
+                                if facts['worker_delivery']['status'] == 'scheduled' and description.status.name == 'RUNNING':
+                                    field = 'queue_polling'
+                                    facts[field] = await observe_controller_queue_polling(
+                                        client, intent['task_queue'], timeout=window)
                     except (RPCError, TimeoutError, ValueError) as error:
-                        facts['worker_delivery'] = {
-                            'status': 'unconfirmed', 'reason': 'Original Worker delivery evidence could not be verified',
+                        reason = ('Original Worker delivery evidence could not be verified' if field == 'worker_delivery'
+                                  else 'Original Workflow Task Queue polling could not be observed')
+                        facts[field] = {
+                            'status': 'unconfirmed', 'reason': reason,
                         }
                         if isinstance(error, RPCError):
-                            facts['worker_delivery']['rpc_status'] = error.status.name
+                            facts[field]['rpc_status'] = error.status.name
                 return observation(current, **facts)
 
             if payload['identity']['mode'] in ('reconcile-controller', 'inspect-controller-activity') or saved['attempt_saved']:

@@ -1782,12 +1782,14 @@ def test_controller_final_admission_waits_for_an_original_ready_observer(control
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Controller dispatch uses the original Linux supervised operation')
-@pytest.mark.parametrize('delivery', ['scheduled', 'started', 'foreign-link', 'unavailable'])
+@pytest.mark.parametrize('delivery', ['scheduled', 'pollers-present', 'pollers-unavailable', 'started', 'foreign-link', 'unavailable'])
 def test_controller_reconciliation_observes_original_worker_delivery(controller_dispatch, monkeypatch, delivery):
     import asyncio
     from types import SimpleNamespace
+    from temporalio.api.enums.v1 import TaskQueueType
     from temporalio.api.history.v1 import HistoryEvent, WorkflowTaskScheduledEventAttributes, WorkflowTaskStartedEventAttributes
-    from temporalio.api.taskqueue.v1 import TaskQueue
+    from temporalio.api.taskqueue.v1 import PollerInfo, TaskQueue
+    from temporalio.api.workflowservice.v1 import DescribeTaskQueueResponse
     from temporalio.client import Client
     from temporalio.service import RPCError, RPCStatusCode
     from ergora.training import cycles
@@ -1801,8 +1803,20 @@ def test_controller_reconciliation_observes_original_worker_delivery(controller_
     records = [(path.read_bytes(), path.stat().st_ino) for path in record_paths]
     payload = operation(mode='reconcile-controller').payload
     plan, _, _ = cycles._load(state.root, 'demo', 'controller', admission.directory)
+    queue_reads = []
 
     class WorkerHistory(DispatchService):
+        async def describe_task_queue(self, request, **kwargs):
+            assert request.namespace == 'default'
+            assert request.task_queue.name == self.intent['task_queue']
+            assert request.task_queue_type == TaskQueueType.TASK_QUEUE_TYPE_WORKFLOW
+            assert kwargs['retry'] is False
+            queue_reads.append(request)
+            if delivery == 'pollers-unavailable':
+                raise RPCError('x' * 32768, RPCStatusCode.UNAVAILABLE, b'')
+            pollers = [PollerInfo(identity='controlled-worker')] if delivery == 'pollers-present' else []
+            return DescribeTaskQueueResponse(pollers=pollers)
+
         async def get_workflow_execution_history(self, request, **kwargs):
             result = await super().get_workflow_execution_history(request, **kwargs)
             if request.maximum_page_size == 1:
@@ -1827,11 +1841,20 @@ def test_controller_reconciliation_observes_original_worker_delivery(controller_
     outcome = asyncio.run(worker._dispatch_controller(payload, plan, admission, lambda: None))
     assert outcome['status'] == 'submitted' and outcome['run_id'] == original['run_id']
     observed = outcome['worker_delivery']
-    if delivery in ('scheduled', 'started'):
-        assert observed['status'] == delivery and observed['scheduled_event_id'] == 2
+    if delivery in ('scheduled', 'pollers-present', 'pollers-unavailable', 'started'):
+        assert observed['status'] == ('started' if delivery == 'started' else 'scheduled')
+        assert observed['scheduled_event_id'] == 2
         assert observed.get('started_event_id') == (3 if delivery == 'started' else None)
     else:
         assert observed['status'] == 'unconfirmed' and 'started_event_id' not in observed
+    if delivery in ('scheduled', 'pollers-present'):
+        assert outcome['queue_polling'] == {'status': 'observed', 'poller_count': int(delivery == 'pollers-present')}
+        assert len(queue_reads) == 1
+    elif delivery == 'pollers-unavailable':
+        assert outcome['queue_polling']['status'] == 'unconfirmed'
+        assert outcome['queue_polling']['rpc_status'] == 'UNAVAILABLE' and len(queue_reads) == 1
+    else:
+        assert 'queue_polling' not in outcome and not queue_reads
     assert [(path.read_bytes(), path.stat().st_ino) for path in record_paths] == records
     calls = (json.loads(path.read_bytes())['action'] for path in storage.glob('call-*.json'))
     assert sum(action == 'start' for action in calls) == 1
