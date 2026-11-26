@@ -212,4 +212,6 @@ A record-only plan can include one root task whose source is `{"kind":"training_
 
 The original Run arms the one guarded read from the confirmed plan. The exact successful native result and archive evidence make the root task observed. The readback records the result digest and the original resource owner's independent lease observation. A fixed-check task can depend on that result and still requires its own original authorization and confirmed observation.
 
-Use `campaign status PROJECT CAMPAIGN --online --task-id TASK` for the original verified result and Activity evidence, including after the Worker exits. The Campaign STOP and read cutoff bound this reader. The original training executor and resource owner keep control of their operations.
+To authorize one native continuation when this exact result is observed, add the existing `recipient` declaration to the training root task. The same registered project and revision supply the already stopped native Codex parent and its approved prompt. Result evidence and lease observation stay in the Campaign receipt. The original verified Activity result triggers that one continuation.
+
+Use `campaign status PROJECT CAMPAIGN --online --task-id TASK` for the original verified result, Activity and any recipient evidence, including after the Worker exits. The Campaign STOP and read cutoff bound this reader. The original training executor and resource owner keep control of their operations.

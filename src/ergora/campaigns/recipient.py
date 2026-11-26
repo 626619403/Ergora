@@ -5,7 +5,7 @@ import asyncio
 from temporalio import activity
 
 from ergora.agents import runs
-from ergora.campaigns.records import RECIPIENT_ACTIVITY, recipient_task
+from ergora.campaigns.records import RECIPIENT_ACTIVITY, recipient_task, training_result_task
 from ergora.campaigns.recipient_gate import (
     RecipientBlocked, RecipientGate, attempt_record, manual_commands, verify_wake_intent,
 )
@@ -59,12 +59,15 @@ class CodexRecipient:
         return {'status': 'observed', 'native_run_id': outcome['run_id']}
 
     async def _deliver_verified(self, intent):
-        if intent['source'].get('kind') == 'manual_update':
-            opening = self.opening
-            commands = manual_commands(self.files, opening, self.start, self.run_id, recipient_task(opening))
+        opening = self.opening
+        task = recipient_task(opening)
+        manual = intent['source'].get('kind') == 'manual_update'
+        if manual or training_result_task(task):
+            commands = manual_commands(self.files, opening, self.start, self.run_id, task) if manual else ()
             wake = await self.read_wake_history(commands)
             if wake is None or wake['intent'] != intent:
-                raise ValueError('Campaign manual delivery lacks its verified original Update and schedule')
+                raise ValueError('Campaign manual delivery lacks its verified original Update and schedule' if manual
+                                 else 'Campaign training delivery lacks its verified original result and schedule')
         return await asyncio.to_thread(self._deliver, intent)
 
     @activity.defn(name=RECIPIENT_ACTIVITY)

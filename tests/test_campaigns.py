@@ -2123,7 +2123,12 @@ def test_training_result_source_only_accepts_its_guarded_full_result():
     task = {'task_id': 'full', 'depends_on': [], 'source': {'kind': 'training_full_result', 'locator': locator},
             'readback': {'due_at': 20, 'deadline_at': 30}}
     validate_tasks([task])
-    for extra in ({'depends_on': ['full']}, {'recipient': {}}, {'wake_on_observe': True}):
+    recipient = {'session_id': 'session', 'parent_run_id': 'parent', 'intent_id': 'training-notice',
+                 'prompt': 'Acknowledge the readiness notice.', 'timeout_seconds': 30}
+    validate_tasks([{**task, 'recipient': recipient}])
+    with pytest.raises(ValueError, match='requires an exact session'):
+        validate_tasks([{**task, 'recipient': {}}])
+    for extra in ({'depends_on': ['full']}, {'wake_on_observe': True}):
         with pytest.raises(ValueError, match='requires one root task'):
             validate_tasks([{**task, **extra}])
     with pytest.raises(ValueError, match='complete original locator'):
@@ -2250,3 +2255,30 @@ def test_only_training_readback_projects_its_pending_local_stop_to_the_child(tra
     assert result['stop']['local_fence_saved'] is True and result['stop']['remote_status'] == 'not_found'
     assert result['tasks']['root']['status'] == 'observed'
     assert result['tasks']['fixed'] == {'status': 'ready', 'eligible': not training}
+
+
+@pytest.mark.parametrize('history', ('absent', 'different', 'exact'))
+def test_training_recipient_binds_original_wake_history_before_reservation(monkeypatch, history):
+    pytest.importorskip('temporalio')
+    from ergora.campaigns.recipient import CodexRecipient
+
+    task = {'source': {'kind': 'training_full_result'}, 'readback': {}, 'recipient': {}}
+    opening = {'plan': {'tasks': [task]}}
+    intent = {'source': {'native_result_sha256': 'a'*64}, 'wake_id': 'original-wake'}
+    delivered = []
+
+    async def history_read(commands):
+        assert commands == ()
+        if history == 'absent':
+            return None
+        return {'intent': intent if history == 'exact' else {**intent, 'wake_id': 'different-wake'}}
+
+    worker = CodexRecipient(None, opening, 'attempt', 'run', read_wake_history=history_read)
+    monkeypatch.setattr(worker, '_deliver', delivered.append)
+    if history == 'exact':
+        asyncio.run(worker._deliver_verified(intent))
+        assert delivered == [intent]
+    else:
+        with pytest.raises(ValueError, match='lacks its verified original result and schedule'):
+            asyncio.run(worker._deliver_verified(intent))
+        assert not delivered

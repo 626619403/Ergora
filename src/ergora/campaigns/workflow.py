@@ -554,9 +554,8 @@ async def read_task_history(client, handle, opening, commands):
         else:
             if completion is None:
                 raise ValueError('Campaign recipient History lacks its original passing readback')
-            keys = ('activity_id', 'waiting_receipt_sha256', 'observation_sha256', 'receipt_sha256',
-                    'fixed_results_sha256', 'reader_cleanup_sha256')
-            source = {'status': 'available', **{key: completion[key] for key in keys}}
+            source = {'status': 'available', **{key: value for key, value in completion.items()
+                      if key not in ('task_id', 'scheduled_event_id', 'completed_event_id')}}
             ready = next(event for event in activity_events if event.event_id == completion['completed_event_id'])
         intent = wake_intent(opening, handle.run_id, recipient, source)
         wake = await _read_recipient_history(converter, wake_events, opening, intent, ready)

@@ -144,7 +144,7 @@ def validate_tasks(tasks):
         if not isinstance(parents, list) or not all(safe_id(item) for item in parents) or len(set(parents)) != len(parents):
             raise ValueError('Campaign task dependencies require distinct safe IDs')
         if training_result_task(task):
-            if (parents or 'readback' not in task or 'recipient' in task or 'wake_on_observe' in task
+            if (parents or 'readback' not in task or 'wake_on_observe' in task
                     or source.keys() != {'kind', 'locator'} or not isinstance(source['locator'], dict)):
                 raise ValueError('Campaign training result requires one root task with a guarded readback and exact locator')
             from ergora.runtime.action_observations import TrainingFullResult

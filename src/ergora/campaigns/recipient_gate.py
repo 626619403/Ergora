@@ -10,8 +10,8 @@ import time
 
 from ergora.agents import native_sources
 from ergora.campaigns.records import (
-    CampaignFiles, check_receipt, identity, manual_wake_source, readback_grant, readback_id, readback_result,
-    recipient_task, require_check_project, sha256, wake_intent,
+    CampaignFiles, check_receipt, identity, manual_wake_source, readback_grant, readback_id, readback_proof,
+    readback_reference, readback_result, recipient_task, require_check_project, sha256, training_result_task, wake_intent,
 )
 from ergora.runtime import budget_clock, processes
 from ergora.storage.state import State, file_lock
@@ -33,10 +33,11 @@ def require_payload_support():
 
 
 def verified_source(files, opening, start, run_id, task):
-    waiting = files.load_check(opening, start, run_id, task, waiting=True)
-    if waiting is None:
+    training = training_result_task(task)
+    waiting = None if training else files.load_check(opening, start, run_id, task, waiting=True)
+    if waiting is None and not training:
         raise ValueError('Campaign recipient is missing its original waiting attempt')
-    grant = readback_grant(opening, run_id, task, check_receipt(waiting))
+    grant = readback_grant(opening, run_id, task, check_receipt(waiting) if waiting else None)
     activity = readback_id(grant)
     readback = files._read('readback-result')
     cleanup = files._read('readback-cleanup')
@@ -47,12 +48,16 @@ def verified_source(files, opening, start, run_id, task):
             or cleanup.get('receipt', {}).get('model_waited') is not True
             or cleanup['receipt'].get('remaining_children') != []):
         raise ValueError('Campaign recipient requires its exact original reader result and cleanup')
+    if training:
+        guard = files._read('readback-guard')
+        if (guard is None or guard.get('activity_id') != activity or guard.get('worker') != attempt.get('worker')
+                or not isinstance(guard.get('guard'), dict) or cleanup['receipt'].get('owner') != guard['guard']):
+            raise ValueError('Campaign training recipient requires cleanup by the original readback guard')
     evidence, job = readback_result(opening, task, activity, readback)
     if job['status'] != 'succeeded':
         raise ValueError('Campaign recipient requires a passing original fixed check')
-    return {'status': 'available', 'activity_id': activity, 'waiting_receipt_sha256': grant['waiting_receipt_sha256'],
-            'observation_sha256': evidence, 'receipt_sha256': job['receipt_sha256'],
-            'fixed_results_sha256': job['fixed_results_sha256'], 'reader_cleanup_sha256': identity(cleanup)}
+    return {'status': 'available', 'activity_id': activity,
+            **readback_reference(grant), **readback_proof(evidence, job, readback)}
 
 
 def manual_commands(files, opening, start, run_id, task):
