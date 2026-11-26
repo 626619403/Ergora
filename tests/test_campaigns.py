@@ -975,7 +975,8 @@ def test_campaign_one_pending_readback_window_is_frozen():
             validate_plan({**plan, 'tasks': [{**task, 'recipient': {**recipient, **change}}]})
 
 
-@pytest.mark.parametrize('kind', ['completed', 'lost', 'changed', 'duplicate'])
+@pytest.mark.parametrize('kind', ['completed', 'lost', 'changed', 'duplicate', 'untimed', 'skewed',
+                                 'unstarted', 'foreign-terminal', 'out-of-order', 'duplicate-terminal'])
 def test_recipient_history_retains_the_original_wake_and_unknown_delivery(kind):
     pytest.importorskip('temporalio')
     from temporalio.api.history.v1 import HistoryEvent
@@ -985,6 +986,7 @@ def test_recipient_history_retains_the_original_wake_and_unknown_delivery(kind):
     async def exercise():
         converter = DataConverter.default
         intent = {'wake_id': 'codex-recipient:fixed-controlled-intent'}
+        ready = HistoryEvent(event_id=18)
         schedule = HistoryEvent(event_id=22)
         attrs = schedule.activity_task_scheduled_event_attributes
         attrs.activity_id = intent['wake_id']
@@ -996,8 +998,21 @@ def test_recipient_history_retains_the_original_wake_and_unknown_delivery(kind):
         started.activity_task_started_event_attributes.scheduled_event_id = 22
         started.activity_task_started_event_attributes.attempt = 1
         ending = HistoryEvent(event_id=24)
-        if kind == 'lost':
-            ending.activity_task_timed_out_event_attributes.scheduled_event_id = 22
+        if kind != 'untimed':
+            ready.event_time.seconds = 4
+            ready.event_time.nanos = 90
+            schedule.event_time.seconds = 5
+            schedule.event_time.nanos = 100
+            started.event_time.seconds = 4 if kind == 'skewed' else 5
+            started.event_time.nanos = 120
+            ending.event_time.seconds = 6
+            ending.event_time.nanos = 140
+        unknown_delivery = kind in ('lost', 'unstarted', 'foreign-terminal', 'out-of-order', 'duplicate-terminal')
+        if unknown_delivery:
+            timed_out = ending.activity_task_timed_out_event_attributes
+            timed_out.scheduled_event_id = 22
+            timed_out.started_event_id = {
+                'lost': 23, 'unstarted': 0, 'foreign-terminal': 19, 'out-of-order': 23, 'duplicate-terminal': 0}[kind]
         elif kind == 'duplicate':
             ending.activity_task_scheduled_event_attributes.CopyFrom(attrs)
         else:
@@ -1005,14 +1020,30 @@ def test_recipient_history_retains_the_original_wake_and_unknown_delivery(kind):
             completed.scheduled_event_id = 22
             completed.started_event_id = 23
             completed.result.payloads.extend(await converter.encode([{'status': 'observed', 'native_run_id': 'original'}]))
-        args = (converter, [schedule, started, ending], {'task_queue': 'original-queue'}, intent, 18)
+        events = {
+            'unstarted': [schedule, ending], 'out-of-order': [schedule, ending, started],
+            'duplicate-terminal': [schedule, ending, ending],
+        }.get(kind, [schedule, started, ending])
+        args = (converter, events, {'task_queue': 'original-queue'}, intent, ready)
         if kind in ('changed', 'duplicate'):
             with pytest.raises(ValueError, match='original wake intent|second delivery'):
                 await _read_recipient_history(*args)
         else:
             result = await _read_recipient_history(*args)
             assert result['intent'] == intent and result['scheduled_event_id'] == 22 and result['completed_event_id'] == 24
-            assert result['status'] == ('observed' if kind == 'completed' else 'unknown')
+            assert result['status'] == ('unknown' if unknown_delivery else 'observed')
+            timing = result['timing']
+            assert timing['clock'] == 'temporal_history'
+            assert timing['intervals_ns']['scheduled_to_worker_started'] == (
+                None if kind in ('untimed', 'skewed', 'unstarted', 'duplicate-terminal') else 20)
+            assert timing['intervals_ns']['ready_to_scheduled'] == (None if kind == 'untimed' else 1_000_000_010)
+            if kind in ('unstarted', 'foreign-terminal', 'out-of-order', 'duplicate-terminal'):
+                assert timing['intervals_ns']['worker_started_to_delivery_terminal'] is None
+                assert ('delivery_terminal' in timing['events']) is (kind == 'unstarted')
+            if kind != 'untimed':
+                assert timing['events']['scheduled'] == {'event_id': 22, 'seconds': 5, 'nanos': 100}
+            else:
+                assert not timing['events']
 
     asyncio.run(exercise())
 

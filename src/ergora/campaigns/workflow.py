@@ -403,28 +403,49 @@ async def read_task_history(client, handle, opening, commands):
                        'fixed_results_sha256', 'reader_cleanup_sha256')
         source = {'status': 'available', **{key: completion[key] for key in source_keys}}
         intent = wake_intent(opening, handle.run_id, recipient, source)
-        completion['recipient'] = await _read_recipient_history(converter, wake_events, opening, intent,
-                                                                 completion['completed_event_id'])
+        ready = next(event for event in activity_events if event.event_id == completion['completed_event_id'])
+        completion['recipient'] = await _read_recipient_history(converter, wake_events, opening, intent, ready)
     return updates, completion
 
 
-async def _read_recipient_history(converter, events, opening, intent, readback_completed_id):
+def _recipient_timing(events):
+    observed = {}
+    stamps = {}
+    for name, event in events.items():
+        if event.HasField('event_time') and 0 <= event.event_time.nanos < 1_000_000_000:
+            seconds, nanos = event.event_time.seconds, event.event_time.nanos
+            observed[name] = {'event_id': event.event_id, 'seconds': seconds, 'nanos': nanos}
+            stamps[name] = seconds * 1_000_000_000 + nanos
+    intervals = {}
+    for before, after in (('ready', 'scheduled'), ('scheduled', 'worker_started'),
+                          ('worker_started', 'delivery_terminal')):
+        start, end = stamps.get(before), stamps.get(after)
+        intervals[f'{before}_to_{after}'] = (
+            end - start if start is not None and end is not None and end >= start else None)
+    return {'clock': 'temporal_history', 'events': observed, 'intervals_ns': intervals}
+
+
+async def _read_recipient_history(converter, events, opening, intent, readback_completed):
     event = events[0]
     scheduled = event.activity_task_scheduled_event_attributes
     values = await converter.decode(scheduled.input.payloads)
-    if (len(events) > 3 or event.event_id <= readback_completed_id or scheduled.activity_id != intent['wake_id']
+    if (len(events) > 3 or event.event_id <= readback_completed.event_id or scheduled.activity_id != intent['wake_id']
             or scheduled.task_queue.name != opening['task_queue'] or scheduled.retry_policy.maximum_attempts != 1
             or values != [intent]):
         raise ValueError('Campaign recipient History differs from the exact original wake intent')
     result = {'intent': intent, 'status': 'scheduled', 'scheduled_event_id': event.event_id}
+    timing_events = {'ready': readback_completed, 'scheduled': event}
     start_id = None
+    terminals = []
     for following in events[1:]:
         if following.HasField('activity_task_started_event_attributes'):
             if start_id is not None or following.activity_task_started_event_attributes.attempt != 1:
                 raise ValueError('Campaign recipient History has a different original attempt')
             start_id = following.event_id
             result.update(status='unknown', started_event_id=start_id)
-        elif following.HasField('activity_task_completed_event_attributes'):
+            timing_events['worker_started'] = following
+            continue
+        if following.HasField('activity_task_completed_event_attributes'):
             done = following.activity_task_completed_event_attributes
             if start_id is None or done.started_event_id != start_id:
                 raise ValueError('Campaign recipient completion lacks its original start')
@@ -437,6 +458,16 @@ async def _read_recipient_history(converter, events, opening, intent, readback_c
             raise ValueError('Campaign recipient History scheduled a second delivery')
         else:
             result.update(status='unknown', completed_event_id=following.event_id)
+        terminals.append((following, start_id))
+    if len(terminals) == 1:
+        terminal, original_start_id = terminals[0]
+        if original_start_id == start_id and terminal.event_id > (start_id or event.event_id):
+            for kind in ('completed', 'failed', 'timed_out', 'canceled'):
+                field = f'activity_task_{kind}_event_attributes'
+                if terminal.HasField(field) and getattr(terminal, field).started_event_id == (start_id or 0):
+                    timing_events['delivery_terminal'] = terminal
+                    break
+    result['timing'] = _recipient_timing(timing_events)
     return result
 
 
