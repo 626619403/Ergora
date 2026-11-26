@@ -11,7 +11,7 @@ import time
 from ergora.agents import native_sources
 from ergora.campaigns.records import (
     CampaignFiles, check_receipt, identity, manual_wake_source, readback_grant, readback_id, readback_proof,
-    readback_reference, readback_result, recipient_task, require_check_project, sha256, training_result_task, wake_intent,
+    readback_reference, readback_result, recipient_task, require_check_project, sha256, training_readback_task, wake_intent,
 )
 from ergora.runtime import budget_clock, processes
 from ergora.storage.state import State, file_lock
@@ -33,7 +33,7 @@ def require_payload_support():
 
 
 def verified_source(files, opening, start, run_id, task):
-    training = training_result_task(task)
+    training = training_readback_task(task)
     waiting = None if training else files.load_check(opening, start, run_id, task, waiting=True)
     if waiting is None and not training:
         raise ValueError('Campaign recipient is missing its original waiting attempt')

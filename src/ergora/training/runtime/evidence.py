@@ -286,6 +286,52 @@ def _managed_screen_decision(payload):
             'local_gpu_lease': lease}
 
 
+def _managed_gpu_release(payload):
+    """Wait only for the existing original lease under this reader's cutoff."""
+    import time
+
+    from ergora.training.runtime.context import _TrainingProject
+
+    project = _TrainingProject(payload)
+    locator, deadline = payload['locator'], payload['reader_deadline']
+    if type(deadline) not in (int, float) or not math.isfinite(deadline):
+        raise ValueError('Training GPU release requires the original reader deadline')
+    names = ('experiment_id', 'workflow_id', 'run_id', 'job_id', 'native_request_sha256', 'attempt_sha256')
+    protocol._exact(locator, (*names, 'session_id', 'lease_id'), 'Original training GPU lease locator')
+    chain, _ = _selected_managed_result(project, {name: locator[name] for name in names}, 'training GPU release')
+    lease_path = chain.folder / 'gpu-lease.json'
+    try:
+        raw_lease = protocol.read_raw(lease_path)
+    except FileNotFoundError as error:
+        raise ValueError('Original training GPU lease binding has not been observed') from error
+
+    while time.monotonic() < deadline:
+        observed = chain.observe_gpu_lease()
+        status = (observed or {}).get('status')
+        if status not in ('granted', 'consumed', 'released'):
+            reason = (observed or {}).get('reason') or status or 'no original lease'
+            raise ValueError('Original training GPU release is unavailable: ' + reason)
+        identity = ('session_id', 'lease_id', 'attempt_sha256')
+        protocol._match({key: observed[key] for key in identity}, {key: locator[key] for key in identity},
+                        'Selected original training GPU lease')
+        if protocol.read_raw(lease_path) != raw_lease:
+            raise ValueError('Original training GPU lease binding changed during observation')
+        if status == 'released':
+            if not isinstance(observed['release_ref'], dict):
+                raise ValueError('Original training GPU owner did not supply an accepted release proof')
+            for path, raw in chain.originals.items():
+                if path != chain.folder / 'stopped.json' and protocol.read_raw(path, 16 * protocol.LIMIT) != raw:
+                    raise ValueError('Original managed attempt changed during GPU release observation')
+            if time.monotonic() >= deadline:
+                break
+            return {'status': 'verified', 'project': project.project['id'],
+                    'project_revision': project.project_revision,
+                    'registration_sha256': chain.records['request']['registration_sha256'],
+                    'locator': locator, 'local_gpu_lease': observed}
+        time.sleep(max(0, min(.05, deadline - time.monotonic())))
+    raise TimeoutError('Original training GPU release read reached its deadline')
+
+
 def _retained_tracking(chain, read, evidence_sha, gate_sha, output_sha):
     path = chain.prefix + '/managed-execution/'
     attempt_raw = read(path + 'tracking-attempt.json', optional=True)
@@ -2029,7 +2075,7 @@ def main() -> None:
             raise ValueError('capacity_exceeded: complete training reader request')
         payload = decode_record(raw)
         if payload['operation'] not in ('inspect', 'baseline-reference', 'native-poll', 'collect-screen',
-                                        'managed-full-result', 'managed-screen-decision'):
+                                        'managed-full-result', 'managed-screen-decision', 'managed-gpu-release'):
             raise ValueError('Unsupported training evidence operation')
         if payload['operation'] in ('native-poll', 'collect-screen'):
             result = _native_screen_read(payload)
@@ -2037,6 +2083,8 @@ def main() -> None:
             result = _managed_full_result(payload)
         elif payload['operation'] == 'managed-screen-decision':
             result = _managed_screen_decision(payload)
+        elif payload['operation'] == 'managed-gpu-release':
+            result = _managed_gpu_release(payload)
         else:
             result = inspect(payload) if payload['operation'] == 'inspect' else baseline_reference(payload)
         sys.stdout.write(_native_bytes(result, 'Training evidence response', 8_388_608).decode('utf-8'))

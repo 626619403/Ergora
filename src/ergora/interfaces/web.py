@@ -17,7 +17,7 @@ import ergora.training.application as training
 import ergora.definitions.agents as agent_definitions
 import ergora.agents.runs as agent_runs
 import ergora.campaigns.application as campaigns
-from ergora.campaigns.records import tasks_by_id, training_result_task, training_screen_task
+from ergora.campaigns.records import tasks_by_id, training_gpu_release_task, training_readback_task, training_screen_task
 import ergora.definitions.bundles as definition_bundles
 import ergora.development.drafts as drafts
 import ergora.improvement.document_corrections as document_corrections
@@ -1029,10 +1029,10 @@ def create_app(home: Path | None = None) -> FastAPI:
         selected = tasks_by_id(observed)[task_id]
         task_state = observed.get("tasks", {}).get(task_id)
         training_task = {}
-        if training_result_task(selected):
+        if training_readback_task(selected):
             training_task = {"task_id": task_id, "depends_on": selected["depends_on"],
                              "locator": selected["source"]["locator"]}
-            if training_screen_task(selected):
+            if training_screen_task(selected) or training_gpu_release_task(selected):
                 training_task["source_kind"] = selected["source"]["kind"]
             if task_state is not None:
                 task_state = {key: task_state[key] for key in ("status", "eligible", "readback_observation")

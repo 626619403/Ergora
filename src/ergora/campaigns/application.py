@@ -12,7 +12,7 @@ from ergora.campaigns.records import (
     CampaignFiles, attempt_document, check_intent, check_record_name, identity, local_readback_stop,
     original_check_evidence, project_selection, read_plan, readback_task,
     recipient_task, require_check_project, result_document, rollover_intent, rollover_task, sha256, stop_intent,
-    tasks_by_id, training_result_task, update_attempt, uuid_text, verify_registration,
+    tasks_by_id, training_readback_task, update_attempt, uuid_text, verify_registration,
     worker_queue, workflow_id,
 )
 from ergora.storage.state import State, file_lock
@@ -120,7 +120,7 @@ async def _observe(runtime, output, client, handle, description, opening, stop_r
                 saved_stop = observed.get('stop', {}).get('receipt')
                 local_stop_fence = (stop_records is not None and stop_records[0] is not None
                                     and (rollover_task(opening) is not None
-                                         or training_result_task(readback_task(opening))))
+                                         or training_readback_task(readback_task(opening))))
                 if local_stop_fence or (saved_stop is not None and saved_stop['decision'] == 'accepted'):
                     for task in observed.get('tasks', {}).values():
                         task['eligible'] = False
@@ -169,7 +169,7 @@ async def _read_original(runtime, output, opening, attempt, run_id, *, client=No
             observed['rollover'] = {'status': 'unresolved', 'update_id': command['attempt']['update_id']}
             for task in observed.get('tasks', {}).values():
                 task['eligible'] = False
-    training = training_result_task(readback_task(opening))
+    training = training_readback_task(readback_task(opening))
     if training or (check_commands and (include_task_history or observed['workflow_state_status'] == 'unavailable'
                                         or recipient_task(opening) is not None)):
         try:
@@ -297,7 +297,7 @@ async def status(state: State, project: str, campaign: str, *, online: bool = Fa
                     and 'task_observation_history' not in output):
                 output['task_observation_history'] = _task_observation_history(check_commands)
             for view in output.get('tasks', {}).values():
-                if view['receipt'] is None and not training_result_task(view):
+                if view['receipt'] is None and not training_readback_task(view):
                     target = output.get('current_run_id', output['run_id'])
                     command = files.load_check(opening, attempt, target, view)
                     if command is None and view['source'].get('pending') is True and view['waiting_receipt'] is None:
@@ -310,7 +310,7 @@ async def status(state: State, project: str, campaign: str, *, online: bool = Fa
         elif check_commands:
             output['task_observation_history'] = _task_observation_history(check_commands, unobserved='not_requested')
     output = _recipient_status(state, files, opening, attempt, result, output)
-    if task is not None and not training_result_task(task):
+    if task is not None and not training_readback_task(task):
         history = output.get('task_observation_history', {}).get(task_id, {})
         readback = output.get('readback_completion') if task.get('wake_on_observe') is True else None
         output['task_evidence'] = await _task_evidence(registration, state.root, task, history.get('terminal'), readback)
@@ -700,7 +700,7 @@ async def observe_check(state: State, project: str, campaign: str, task_id: str,
     task = tasks_by_id(opening).get(task_id)
     if task is None:
         raise ValueError('Campaign task is absent from the original frozen plan')
-    if training_result_task(task):
+    if training_readback_task(task):
         raise ValueError('Read the original guarded training result with campaign status --online')
     runtime = _temporal()
     first_run_id = result['run_id'] if result is not None else None
@@ -733,7 +733,7 @@ async def observe_check(state: State, project: str, campaign: str, task_id: str,
     def stopped():
         stop_intent_saved, _, saved_stop = files.load_stop(opening, attempt, result)
         if (rollover_task(opening) is not None or task.get('wake_on_observe') is True
-                or training_result_task(readback_task(opening))):
+                or training_readback_task(readback_task(opening))):
             return stop_intent_saved is not None
         return saved_stop is not None and saved_stop['receipt']['decision'] == 'accepted'
 

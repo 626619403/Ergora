@@ -221,3 +221,9 @@ Use `campaign status PROJECT CAMPAIGN --online --task-id TASK` for the original 
 Use `{"kind":"training_screen_result","locator":{...}}` for a root task that reads an original managed screen. Supply the same six locator fields and the original `due_at` and `deadline_at` window. An optional `recipient` uses the existing frozen session, parent and prompt to wake one authorized expert.
 
 For the selected task, `campaign status PROJECT CAMPAIGN --online --task-id TASK` returns the original `SCREEN_COMPLETED` or `SCREEN_REJECTED` state, its literal decision, diagnostic references and a separate lease observation. A verified rejection is decision evidence and can wake the selected recipient. Any later full comparison uses its own prepared experiment and original execution grant.
+
+### Read one original managed GPU lease release
+
+Use `{"kind":"training_gpu_release","locator":{...}}` for a root task that observes the original managed training lease. Add the original pool `session_id` and `lease_id` to the six training locator fields and declare the existing `due_at` and `deadline_at` window. An optional `recipient` authorizes one continuation after the original resource owner confirms the matching release during that read window.
+
+Use `campaign status PROJECT CAMPAIGN --online --task-id TASK` for the independently verified release and guard references. The read keeps its original cleanup, deadline and STOP. The original training result stays with the training owner. Current capacity and any later resource-consuming execution still require the current pool and the successor's own original authorization.

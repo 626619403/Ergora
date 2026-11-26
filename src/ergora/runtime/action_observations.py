@@ -40,7 +40,8 @@ class _ManagedTrainingLocator:
     attempt_sha256: str
 
     def __post_init__(self):
-        label = 'Training full-result' if type(self) is TrainingFullResult else 'Training screen-decision'
+        label = {TrainingFullResult: 'Training full-result', TrainingScreenDecision: 'Training screen-decision',
+                 TrainingGpuRelease: 'Training GPU release'}[type(self)]
         if (not isinstance(self.experiment_id, str)
                 or re.fullmatch('[A-Za-z0-9][A-Za-z0-9_-]{0,79}', self.experiment_id) is None
                 or self.workflow_id != 'perf-experiment/' + self.experiment_id
@@ -60,6 +61,20 @@ class TrainingFullResult(_ManagedTrainingLocator):
 @dataclass(frozen=True)
 class TrainingScreenDecision(_ManagedTrainingLocator):
     """Observe a complete screening decision under the original attempt."""
+
+
+@dataclass(frozen=True)
+class TrainingGpuRelease(_ManagedTrainingLocator):
+    """Observe the accepted release of one selected original local GPU lease."""
+
+    session_id: str
+    lease_id: str
+
+    def __post_init__(self):
+        super().__post_init__()
+        if (not isinstance(self.session_id, str) or re.fullmatch('[a-f0-9]{32}', self.session_id) is None
+                or not isinstance(self.lease_id, str) or re.fullmatch('[a-f0-9]{64}', self.lease_id) is None):
+            raise ValueError('Training GPU release requires the exact original pool session and lease')
 
 
 def _require_identity(receipt, expected, description):
@@ -106,24 +121,28 @@ def _training_execution(action, project, home, *, deadline, stop_requested, supe
 
 
 def _managed_training_result(action, project, home, *, deadline, stop_requested, supervised_cleanup):
-    from ergora.training.native import training_full_result, training_screen_decision
+    from ergora.training.native import training_full_result, training_gpu_release, training_screen_decision
 
-    full = type(action) is TrainingFullResult
-    reader = training_full_result if full else training_screen_decision
+    reader, description = {
+        TrainingFullResult: (training_full_result, 'Training full-result receipt'),
+        TrainingScreenDecision: (training_screen_decision, 'Training screen-decision receipt'),
+        TrainingGpuRelease: (training_gpu_release, 'Training GPU release receipt'),
+    }[type(action)]
     locator = asdict(action)
     receipt = reader(project, home, locator, deadline=deadline, stop_requested=stop_requested,
                      supervised_cleanup=supervised_cleanup)
     _require_identity(receipt, {'project': project['id'], 'project_revision': project['revision'],
                                 'registration_sha256': project['registration']['sha256'], 'locator': locator},
-                      'Training full-result receipt' if full else 'Training screen-decision receipt')
+                      description)
     return receipt
 
 
 _OBSERVERS = {FixedCheckStatus: _fixed_check, TrainingExecutionStatus: _training_execution,
-              TrainingFullResult: _managed_training_result, TrainingScreenDecision: _managed_training_result}
+              TrainingFullResult: _managed_training_result, TrainingScreenDecision: _managed_training_result,
+              TrainingGpuRelease: _managed_training_result}
 
 
-def observe(action: FixedCheckStatus | TrainingExecutionStatus | TrainingFullResult | TrainingScreenDecision,
+def observe(action: FixedCheckStatus | TrainingExecutionStatus | TrainingFullResult | TrainingScreenDecision | TrainingGpuRelease,
             project: dict, home: Path, *, deadline: float | None = None,
             stop_requested=None, supervised_cleanup=None) -> dict:
     """Read the original owner receipt under an already selected project registration.

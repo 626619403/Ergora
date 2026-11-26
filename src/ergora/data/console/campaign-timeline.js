@@ -11,8 +11,9 @@ function trainingEvidence({ locator, recipient, source_kind }, completion, confl
   const history = recipient?.history;
   const native = recipient?.native_receipt;
   const screen = source_kind === "training_screen_result";
+  const gpuRelease = source_kind === "training_gpu_release";
   return [
-    panel(screen ? "原筛选决定" : "原训练结果", null,
+    panel(gpuRelease ? "原资源释放" : screen ? "原筛选决定" : "原训练结果", null,
       conflict,
       facts([
         ["原实验 ID", locator.experiment_id],
@@ -21,13 +22,20 @@ function trainingEvidence({ locator, recipient, source_kind }, completion, confl
         ["原训练 Run ID", locator.run_id],
         ["原训练尝试 SHA256", locator.attempt_sha256],
         ["原训练请求 SHA256", locator.native_request_sha256],
-        ["原训练结果 SHA256", completion?.native_result_sha256],
+        ...(gpuRelease ? [
+          ["原池会话 ID", locator.session_id],
+          ["原租约 ID", locator.lease_id],
+          ["原释放序号", lease?.release_ref?.sequence],
+          ["原 guard 停止证明 SHA256", lease?.release_ref?.proof_ref?.raw_sha256],
+        ] : [
+          ["原训练结果 SHA256", completion?.native_result_sha256],
+        ]),
         ...(screen ? [
           ["原筛选状态", completion?.native_result_state],
           ["原筛选决定", completion?.decision],
           ["筛选结果 SHA256", completion?.screen_result_sha256],
         ] : []),
-        ["训练执行回收记录 SHA256", completion?.reap_record_sha256],
+        ...(!gpuRelease ? [["训练执行回收记录 SHA256", completion?.reap_record_sha256]] : []),
         ["读取守卫清理 SHA256", completion?.reader_cleanup_sha256],
         ["训练读取 Activity 完成事件 ID", completion?.completed_event_id],
       ]),

@@ -5,7 +5,7 @@ import asyncio
 from temporalio import activity
 
 from ergora.agents import runs
-from ergora.campaigns.records import RECIPIENT_ACTIVITY, recipient_task, training_result_task
+from ergora.campaigns.records import RECIPIENT_ACTIVITY, recipient_task, training_readback_task
 from ergora.campaigns.recipient_gate import (
     RecipientBlocked, RecipientGate, attempt_record, manual_commands, verify_wake_intent,
 )
@@ -62,7 +62,7 @@ class CodexRecipient:
         opening = self.opening
         task = recipient_task(opening)
         manual = intent['source'].get('kind') == 'manual_update'
-        if manual or training_result_task(task):
+        if manual or training_readback_task(task):
             commands = manual_commands(self.files, opening, self.start, self.run_id, task) if manual else ()
             wake = await self.read_wake_history(commands)
             if wake is None or wake['intent'] != intent:

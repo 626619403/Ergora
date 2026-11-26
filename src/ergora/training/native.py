@@ -344,6 +344,12 @@ def training_screen_decision(project: dict, home: Path, locator: dict, *, deadli
                                          deadline, stop_requested, supervised_cleanup)
 
 
+def training_gpu_release(project: dict, home: Path, locator: dict, *, deadline: float,
+                         stop_requested, supervised_cleanup) -> dict:
+    return _managed_training_observation(project, home, locator, 'managed-gpu-release', 'GPU release',
+                                         deadline, stop_requested, supervised_cleanup)
+
+
 def _managed_training_observation(project, home, locator, operation, label, deadline, stop_requested,
                                   supervised_cleanup):
     """Observe one managed result from its dedicated single-reader supervisor."""
@@ -356,7 +362,8 @@ def _managed_training_observation(project, home, locator, operation, label, dead
         raise ValueError(f'Training {label} observation requires its original reader deadline, STOP and cleanup owner')
     if project.get('_original_registration') is not None:
         raise ValueError(f'Training {label} observation requires the selected current registration')
-    deadline = min(deadline, time.monotonic() + 20)
+    if operation != 'managed-gpu-release':
+        deadline = min(deadline, time.monotonic() + 20)
 
     def stopped():
         return time.monotonic() >= deadline or stop_requested()
@@ -369,8 +376,10 @@ def _managed_training_observation(project, home, locator, operation, label, dead
 
     check_window()
     execution = project['registration']['definition']['execution']
-    environment, raw = _training_reader_request(execution['state_directory'], execution['config_directory'],
-        {'operation': operation, 'project': project, 'control_home': str(home), 'locator': locator})
+    payload = {'operation': operation, 'project': project, 'control_home': str(home), 'locator': locator}
+    if operation == 'managed-gpu-release':
+        payload['reader_deadline'] = deadline
+    environment, raw = _training_reader_request(execution['state_directory'], execution['config_directory'], payload)
     command = [sys.executable, '-P', '-S', '-c', 'from ergora.training.runtime.evidence import main;main()']
     owner = processes.identity(os.getpid())
     with TemporaryDirectory(prefix='ergora-training-result-') as temporary:

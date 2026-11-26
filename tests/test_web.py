@@ -92,7 +92,7 @@ def test_campaign_timeline_reads_and_exposes_only_the_selected_original_task(con
 
 
 @pytest.mark.parametrize("workflow_observed", [True, False])
-@pytest.mark.parametrize("kind", ["training_full_result", "training_screen_result"])
+@pytest.mark.parametrize("kind", ["training_full_result", "training_screen_result", "training_gpu_release"])
 def test_campaign_training_timeline_keeps_the_original_result_and_native_dispositions(console, monkeypatch,
                                                                                      workflow_observed, kind):
     from ergora.campaigns import application
@@ -111,6 +111,12 @@ def test_campaign_training_timeline_keeps_the_original_result_and_native_disposi
         scope = {"source_kind": kind}
         completion.update(**scope, native_result_state="SCREEN_REJECTED", decision="rejected",
                           screen_result_sha256="f" * 64, full_execution_authorized=False)
+    elif kind == "training_gpu_release":
+        scope = {"source_kind": kind}
+        locator.update(session_id="a" * 32, lease_id="b" * 64)
+        del completion["native_result_sha256"]
+        completion.update(**scope, local_gpu_lease={"status": "released", "read_only": True,
+                                                    "release_ref": {"sequence": 5}})
     run = {"status": "succeeded", "execution_stopped": True, "result_sha256": "e" * 64, "returncode": 0}
     receipt = {"session_id": "original-session", "parent_run_id": "original-parent", "intent_id": "original-intent",
                "run_id": "native-run", "dispatch": "accepted"}

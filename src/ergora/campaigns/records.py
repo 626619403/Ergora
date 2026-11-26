@@ -40,6 +40,8 @@ TRAINING_SCREEN_DIGESTS = ('native_result_sha256', 'screen_result_sha256', 'term
                            'reap_record_sha256', 'clock_sha256')
 TRAINING_SCREEN_PROOF = ('native_result_state', 'decision', 'performance_state', 'verification_experiment_id',
                          'full_execution_authorized', 'diagnostics')
+TRAINING_GPU_RELEASE_ACTIVITY = 'ergora_campaign_training_gpu_release_readback'
+TRAINING_GPU_RELEASE_SOURCE = 'training_gpu_release'
 READBACK_ALREADY_ADMITTED = 'readback_already_admitted'
 RECIPIENT_ACTIVITY = 'ergora_campaign_codex_recipient'
 # Last whole UTC second supported by both Python datetime and protobuf Timestamp.
@@ -76,7 +78,7 @@ def project_selection(state, project, revision, *, plan=None):
 
     if project['revision'] != revision:
         raise ValueError('Project revision changed; use the original approved revision before dispatch')
-    if (plan is not None and training_result_task(readback_task({'plan': plan}))
+    if (plan is not None and training_readback_task(readback_task({'plan': plan}))
             and 'training-optimization' not in project.get('registration', {}).get('definition', {}).get('templates', ())):
         raise ValueError('Campaign training result requires the selected registered training project')
     config = projects.effective_configuration(project)
@@ -149,7 +151,7 @@ def validate_tasks(tasks):
             raise ValueError('Campaign task requires a unique safe ID')
         if not isinstance(parents, list) or not all(safe_id(item) for item in parents) or len(set(parents)) != len(parents):
             raise ValueError('Campaign task dependencies require distinct safe IDs')
-        if training_result_task(task):
+        if training_readback_task(task):
             if (parents or 'readback' not in task or 'wake_on_observe' in task
                     or source.keys() != {'kind', 'locator'} or not isinstance(source['locator'], dict)):
                 raise ValueError('Campaign training result requires one root task with a guarded readback and exact locator')
@@ -197,16 +199,24 @@ def tasks_by_id(opening):
     return {task['task_id']: task for task in opening['plan'].get('tasks', ())}
 
 
-def training_result_task(task):
+def training_readback_task(task):
     return task is not None and isinstance(task['source'], dict) and task['source'].get('kind') in (
-        TRAINING_RESULT_SOURCE, TRAINING_SCREEN_SOURCE)
+        TRAINING_RESULT_SOURCE, TRAINING_SCREEN_SOURCE, TRAINING_GPU_RELEASE_SOURCE)
 
 
 def training_screen_task(task):
-    return training_result_task(task) and task['source']['kind'] == TRAINING_SCREEN_SOURCE
+    return training_readback_task(task) and task['source']['kind'] == TRAINING_SCREEN_SOURCE
+
+
+def training_gpu_release_task(task):
+    return training_readback_task(task) and task['source']['kind'] == TRAINING_GPU_RELEASE_SOURCE
 
 
 def training_readback_action(task):
+    if training_gpu_release_task(task):
+        from ergora.runtime.action_observations import TrainingGpuRelease
+
+        return TrainingGpuRelease(**task['source']['locator'])
     if training_screen_task(task):
         from ergora.runtime.action_observations import TrainingScreenDecision
 
@@ -235,13 +245,15 @@ def readback_task(opening):
 
 
 def readback_activity(task):
+    if training_gpu_release_task(task):
+        return TRAINING_GPU_RELEASE_ACTIVITY
     if training_screen_task(task):
         return TRAINING_SCREEN_ACTIVITY
-    return TRAINING_READBACK_ACTIVITY if training_result_task(task) else READBACK_ACTIVITY
+    return TRAINING_READBACK_ACTIVITY if training_readback_task(task) else READBACK_ACTIVITY
 
 
 def local_readback_stop(opening):
-    return recipient_task(opening) is not None or training_result_task(readback_task(opening))
+    return recipient_task(opening) is not None or training_readback_task(readback_task(opening))
 
 
 def validate_recipient(recipient):
@@ -289,7 +301,7 @@ def manual_wake_source(task, waiting, receipt):
 
 
 def readback_ready_tasks(task, readback):
-    if (task is not None and (task.get('wake_on_observe') is True or training_result_task(task))
+    if (task is not None and (task.get('wake_on_observe') is True or training_readback_task(task))
             and readback.get('status') == 'available'):
         return {task['task_id']}
     return set()
@@ -301,24 +313,27 @@ def same_check_observation(first, second):
 
 def readback_grant(opening, run_id, task, waiting):
     common = {'opening_sha256': identity(opening), 'run_id': run_id, 'task_id': task['task_id']}
-    if training_result_task(task):
-        if training_screen_task(task):
-            common['source_kind'] = TRAINING_SCREEN_SOURCE
+    if training_readback_task(task):
+        if task['source']['kind'] != TRAINING_RESULT_SOURCE:
+            common['source_kind'] = task['source']['kind']
         return {**common, 'source_sha256': identity(task['source']), **task['readback']}
     return {**common, 'waiting_receipt_sha256': identity(waiting), **task['readback']}
 
 
 def readback_id(grant):
-    if grant.get('source_kind') == TRAINING_SCREEN_SOURCE:
-        return 'training-screen-result-readback:' + identity(grant)
+    match grant.get('source_kind'):
+        case 'training_gpu_release':
+            return 'training-gpu-release-readback:' + identity(grant)
+        case 'training_screen_result':
+            return 'training-screen-result-readback:' + identity(grant)
     prefix = 'training-full-result-readback:' if 'source_sha256' in grant else 'fixed-check-readback:'
     return prefix + identity(grant)
 
 
 def readback_reference(grant):
     field = 'source_sha256' if 'source_sha256' in grant else 'waiting_receipt_sha256'
-    if grant.get('source_kind') == TRAINING_SCREEN_SOURCE:
-        return {field: grant[field], 'source_kind': TRAINING_SCREEN_SOURCE}
+    if 'source_kind' in grant:
+        return {field: grant[field], 'source_kind': grant['source_kind']}
     return {field: grant[field]}
 
 
@@ -336,6 +351,20 @@ def _training_lease_matches(observation, attempt_sha256):
                 and safe_id(lease.get('session_id'))
                 and all(sha256(lease.get(key)) for key in ('lease_id', 'request_id', 'request_sha256')))
     return True
+
+
+def _training_gpu_release_matches(observation, locator):
+    lease = observation.get('local_gpu_lease')
+    if not isinstance(lease, dict) or lease.get('status') != 'released':
+        return False
+    if (not _training_lease_matches(observation, locator['attempt_sha256'])
+            or any(lease.get(key) != locator[key] for key in ('session_id', 'lease_id'))):
+        return False
+    release = lease['release_ref']
+    proof = release.get('proof_ref')
+    return (type(release.get('sequence')) is int and release['sequence'] > 0
+            and isinstance(proof, dict) and sha256(proof.get('raw_sha256'))
+            and proof.get('relative_path') == f'proofs/{locator["lease_id"]}/stopped.json')
 
 
 def _screen_diagnostic_ref(ref):
@@ -373,24 +402,33 @@ def _screen_decision_matches(observation, locator):
 
 def readback_result(opening, task, activity_id, result):
     if result['activity_id'] != activity_id or not sha256(result['reader_cleanup_sha256']):
-        raise ValueError('Original training readback result identity differs' if training_result_task(task) else
+        raise ValueError('Original training readback result identity differs' if training_readback_task(task) else
                          'Original fixed-check readback result identity differs')
     observation = result['observation']
-    if not training_result_task(task):
+    if not training_readback_task(task):
         return original_check_evidence(opening, task, observation)
     locator = task['source']['locator']
     screen = training_screen_task(task)
-    digests = TRAINING_SCREEN_DIGESTS if screen else TRAINING_RESULT_DIGESTS
+    release = training_gpu_release_task(task)
+    error = ('Campaign readback requires the exact accepted original GPU release' if release else
+             'Campaign readback requires the exact verified original screen decision' if screen else
+             'Campaign readback requires the exact successful original full training result')
     if (not isinstance(observation, dict) or observation.get('status') != 'verified'
             or observation.get('project') != opening['project']
             or type(observation.get('project_revision')) is not int
             or observation['project_revision'] != opening['project_revision']
             or observation.get('registration_sha256') != opening['registration']['sha256']
-            or observation.get('locator') != locator or not all(sha256(observation.get(key)) for key in digests)
+            or observation.get('locator') != locator):
+        raise ValueError(error)
+    if release:
+        if not _training_gpu_release_matches(observation, locator):
+            raise ValueError(error)
+        return identity(observation), {'status': 'succeeded', 'local_gpu_lease': observation['local_gpu_lease']}
+    digests = TRAINING_SCREEN_DIGESTS if screen else TRAINING_RESULT_DIGESTS
+    if (not all(sha256(observation.get(key)) for key in digests)
             or (not _screen_decision_matches(observation, locator) if screen else observation.get('native_result_state') != 'SUCCEEDED')
             or not _training_lease_matches(observation, locator['attempt_sha256'])):
-        raise ValueError('Campaign readback requires the exact verified original screen decision' if screen else
-                         'Campaign readback requires the exact successful original full training result')
+        raise ValueError(error)
     fields = (*digests, *TRAINING_SCREEN_PROOF) if screen else digests
     proof = {key: observation[key] for key in (*fields, 'local_gpu_lease')}
     return identity(observation), {'status': 'succeeded', **proof}
@@ -409,8 +447,9 @@ def checked_readback(opening, run_id, waits, observation):
     if observation == {'status': 'not_armed'}:
         return observation
     waiting = None if waits is None else waits.get(task['task_id'])
-    training = training_result_task(task)
+    training = training_readback_task(task)
     screen = training_screen_task(task)
+    release = training_gpu_release_task(task)
     grant = readback_grant(opening, run_id, task, waiting)
     reference = readback_reference(grant)
     fields = {'status', 'activity_id', *reference}
@@ -419,7 +458,7 @@ def checked_readback(opening, run_id, waits, observation):
         raise ValueError('Campaign readback differs from its original training grant and window' if training else
                          'Campaign readback differs from its original wait and window')
     if status == 'available':
-        source_digests = (TRAINING_SCREEN_DIGESTS if screen else
+        source_digests = (() if release else TRAINING_SCREEN_DIGESTS if screen else
                           TRAINING_RESULT_DIGESTS if training else FIXED_CHECK_TERMINAL)
         digests = {*source_digests, 'observation_sha256', 'reader_cleanup_sha256'}
         proof = digests | {'local_gpu_lease'} if training else digests
@@ -427,7 +466,8 @@ def checked_readback(opening, run_id, waits, observation):
             proof = proof.union(TRAINING_SCREEN_PROOF)
         if (observation.keys() == fields | proof and all(sha256(observation[key]) for key in digests)
                 and (not screen or _screen_decision_matches(observation, task['source']['locator']))
-                and (not training or _training_lease_matches(observation, task['source']['locator']['attempt_sha256']))):
+                and (not release or _training_gpu_release_matches(observation, task['source']['locator']))
+                and (not training or release or _training_lease_matches(observation, task['source']['locator']['attempt_sha256']))):
             return observation
     elif status == 'unknown':
         if observation.keys() == fields | {'reason'} and observation['reason'] in (
@@ -808,7 +848,7 @@ def validate_check_command(opening, start_attempt_sha256, run_id, command):
     if not safe_id(task_id) or task_id not in tasks_by_id(opening) or not sha256(evidence):
         raise ValueError('Campaign check intent does not bind the original opening, task and first Run')
     task = tasks_by_id(opening)[task_id]
-    if training_result_task(task):
+    if training_readback_task(task):
         raise ValueError('Campaign training result admits only its guarded readback')
     _validate_check_job(task, job)
     if identity(intent) != identity(check_intent(opening, start_attempt_sha256, run_id, task_id, evidence, job=job)):
@@ -845,7 +885,7 @@ def fixed_task_state(opening, start_attempt_sha256, run_id, observations, waits=
     ready = observations.keys() | automatic
     for task_id in automatic:
         if (not set(tasks[task_id]['depends_on']) <= ready
-                or (task_id not in waits and not training_result_task(tasks[task_id]))):
+                or (task_id not in waits and not training_readback_task(tasks[task_id]))):
             raise ValueError('Campaign guarded result lacks its original wait or ready dependencies')
     for expected, receipts in (('observed', observations), ('waiting_job', waits)):
         if not isinstance(receipts, dict) or set(receipts) - set(tasks):
@@ -872,7 +912,7 @@ def fixed_task_state(opening, start_attempt_sha256, run_id, observations, waits=
     views = {}
     for task_id, task in tasks.items():
         status = ('observed' if task_id in ready else 'waiting_job'
-                  if task_id in waits or training_result_task(task) else
+                  if task_id in waits or training_readback_task(task) else
                   'ready' if set(task['depends_on']) <= ready else 'waiting_dependencies')
         view = {**task, 'status': status, 'receipt': observations.get(task_id)}
         if task['source'].get('pending') is True:

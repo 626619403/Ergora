@@ -27,7 +27,7 @@ with workflow.unsafe.imports_passed_through():
         RECIPIENT_ACTIVITY, WORKFLOW_TYPE,
         check_receipt, checked_readback, fixed_task_state, has_pending_checks, identity, manual_wake_source,
         readback_activity, readback_grant, readback_id, readback_proof, readback_ready_tasks, readback_reference,
-        readback_result, readback_task, recipient_task, tasks_by_id, training_result_task,
+        readback_result, readback_task, recipient_task, tasks_by_id, training_readback_task,
         require_check_receipt, require_rollover_receipt, require_stop_receipt, restore_rollover, rollover_checkpoint,
         rollover_task, same_check_observation,
         sha256, stop_intent, update_receipt, validate_check_command, validate_rollover_command,
@@ -114,7 +114,7 @@ class Campaign:
 
     async def _one_readback(self, task):
         task_id = task['task_id']
-        training = training_result_task(task)
+        training = training_readback_task(task)
         if not training:
             await workflow.wait_condition(lambda: task_id in self.check_waits or task_id in self.check_receipts)
         shared = task.get('wake_on_observe') is True
@@ -473,7 +473,7 @@ async def read_task_history(client, handle, opening, commands):
     timer_wait = next((command for command in commands if task is not None
                        and command['intent']['task_id'] == task['task_id']
                        and command['intent']['operation'] == 'wait_check'), None)
-    training = training_result_task(task)
+    training = training_readback_task(task)
     grant = None
     if training or timer_wait is not None:
         waiting = check_receipt(timer_wait) if timer_wait is not None else None
@@ -879,7 +879,7 @@ def _observed_state(observed, expected, opening, start_attempt_sha256, temporal_
                       and (stop is None or stop['decision'] != 'accepted'))
         if selected is not None:
             tasks[selected['task_id']]['readback_observation'] = readback
-        extra['tasks'] = {task_id: {**task, 'eligible': active and not training_result_task(task) and task['status'] in ('ready', 'waiting_job')}
+        extra['tasks'] = {task_id: {**task, 'eligible': active and not training_readback_task(task) and task['status'] in ('ready', 'waiting_job')}
                           for task_id, task in tasks.items()}
     elif 'tasks' in opening['plan']:
         return {'temporal_status': temporal_status.name, 'workflow_state_status': 'unavailable'}

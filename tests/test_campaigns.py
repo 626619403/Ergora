@@ -2235,6 +2235,56 @@ def test_training_screen_readback_preserves_its_exact_decision(state, performanc
         checked_readback(opening, run_id, None, {**readback, 'full_execution_authorized': True})
 
 
+def test_training_gpu_release_requires_an_exact_accepted_original_lease():
+    from ergora.campaigns.records import (
+        TRAINING_GPU_RELEASE_ACTIVITY, checked_readback, readback_activity, readback_grant, readback_id,
+        readback_proof, readback_reference, readback_result, validate_tasks, wake_intent,
+    )
+
+    locator = {'experiment_id': 'alpha', 'workflow_id': 'perf-experiment/alpha',
+               'run_id': 'original-native-run', 'job_id': 'local-perf-alpha',
+               'native_request_sha256': 'a' * 64, 'attempt_sha256': 'b' * 64,
+               'session_id': 'c' * 32, 'lease_id': 'd' * 64}
+    recipient = {'session_id': 'session', 'parent_run_id': 'parent', 'intent_id': 'release-notice',
+                 'prompt': 'Read the selected original resource release.', 'timeout_seconds': 30}
+    task = {'task_id': 'release', 'depends_on': [], 'source': {'kind': 'training_gpu_release', 'locator': locator},
+            'readback': {'due_at': 20, 'deadline_at': 30}, 'recipient': recipient}
+    validate_tasks([task])
+    with pytest.raises(ValueError, match='complete original locator'):
+        validate_tasks([{**task, 'source': {**task['source'], 'locator': {
+            key: value for key, value in locator.items() if key != 'lease_id'}}}])
+    opening = {'project': 'demo', 'project_revision': 3, 'workflow_id': 'campaign',
+               'registration': {'sha256': 'e' * 64}, 'plan': {'tasks': [task], 'limits': {'expires_at': 45}}}
+    run_id = 'original-campaign-run'
+    grant = readback_grant(opening, run_id, task, None)
+    activity_id = readback_id(grant)
+    assert readback_activity(task) == TRAINING_GPU_RELEASE_ACTIVITY
+    assert activity_id.startswith('training-gpu-release-readback:')
+    release = {'sequence': 5, 'proof_ref': {'relative_path': f'proofs/{locator["lease_id"]}/stopped.json',
+                                           'raw_sha256': 'f' * 64}}
+    lease = {'status': 'released', 'read_only': True, 'release_ref': release, 'request_id': '1' * 64,
+             'request_sha256': '2' * 64, **{key: locator[key] for key in ('session_id', 'lease_id', 'attempt_sha256')}}
+    observation = {'status': 'verified', 'project': 'demo', 'project_revision': 3, 'registration_sha256': 'e' * 64,
+                   'locator': locator, 'local_gpu_lease': lease}
+    raw = {'activity_id': activity_id, 'observation': observation, 'reader_cleanup_sha256': '3' * 64}
+    digest, accepted = readback_result(opening, task, activity_id, raw)
+    readback = {'status': 'available', 'activity_id': activity_id, **readback_reference(grant),
+                **readback_proof(digest, accepted, raw)}
+    assert checked_readback(opening, run_id, None, readback) == readback
+    wake = wake_intent(opening, run_id, task, readback)
+    assert wake['source']['source_kind'] == 'training_gpu_release'
+    assert wake['source']['local_gpu_lease'] == lease
+    assert 'native_result_state' not in wake['source'] and 'native_result_sha256' not in wake['source']
+
+    for bad in (None, {**lease, 'status': 'consumed', 'release_ref': None}, {**lease, 'status': 'unknown'},
+                {**lease, 'attempt_sha256': '4' * 64}, {**lease, 'lease_id': '5' * 64},
+                {**lease, 'session_id': '1' * 32}, {**lease, 'release_ref': {**release, 'proof_ref': None}}):
+        with pytest.raises(ValueError, match='exact accepted original GPU release'):
+            readback_result(opening, task, activity_id, {**raw, 'observation': {**observation, 'local_gpu_lease': bad}})
+        with pytest.raises(ValueError, match='original evidence'):
+            checked_readback(opening, run_id, None, {**readback, 'local_gpu_lease': bad})
+
+
 @pytest.mark.parametrize('phase', ('release', 'cutoff', 'stop_waiting', 'stop_acquired', 'stop_before_link', 'write_error'))
 def test_training_publication_waits_only_for_its_original_lock_and_window(monkeypatch, phase):
     from contextlib import contextmanager
@@ -2321,7 +2371,7 @@ def test_only_training_readback_projects_its_pending_local_stop_to_the_child(tra
 
 
 @pytest.mark.parametrize('history', ('absent', 'different', 'exact'))
-@pytest.mark.parametrize('kind', ('training_full_result', 'training_screen_result'))
+@pytest.mark.parametrize('kind', ('training_full_result', 'training_screen_result', 'training_gpu_release'))
 def test_training_recipient_binds_original_wake_history_before_reservation(monkeypatch, history, kind):
     pytest.importorskip('temporalio')
     from ergora.campaigns.recipient import CodexRecipient

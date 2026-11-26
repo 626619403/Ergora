@@ -11,9 +11,10 @@ from temporalio import activity
 from temporalio.exceptions import ApplicationError
 
 from ergora.campaigns.records import (
-    READBACK_ACTIVITY, READBACK_CLEANUP_SECONDS, TRAINING_READBACK_ACTIVITY, TRAINING_SCREEN_ACTIVITY,
+    READBACK_ACTIVITY, READBACK_CLEANUP_SECONDS, TRAINING_GPU_RELEASE_ACTIVITY, TRAINING_READBACK_ACTIVITY,
+    TRAINING_SCREEN_ACTIVITY,
     CampaignFiles, check_receipt, identity, readback_activity, readback_grant, readback_id, readback_task,
-    require_check_project, training_readback_action, training_result_task, verify_registration,
+    require_check_project, training_readback_action, training_readback_task, verify_registration,
 )
 from ergora.runtime import action_observations, processes
 from ergora.storage.state import State, file_lock
@@ -38,14 +39,19 @@ class CampaignReadback:
     async def read_training_screen(self, grant: dict) -> dict:
         return await self._read(grant)
 
+    @activity.defn(name=TRAINING_GPU_RELEASE_ACTIVITY)
+    async def read_training_gpu_release(self, grant: dict) -> dict:
+        return await self._read(grant)
+
     def activity_for(self, task):
         return {READBACK_ACTIVITY: self.read, TRAINING_READBACK_ACTIVITY: self.read_training_result,
-                TRAINING_SCREEN_ACTIVITY: self.read_training_screen}[readback_activity(task)]
+                TRAINING_SCREEN_ACTIVITY: self.read_training_screen,
+                TRAINING_GPU_RELEASE_ACTIVITY: self.read_training_gpu_release}[readback_activity(task)]
 
     async def _read(self, grant):
         info = activity.info()
         task = readback_task(self.opening)
-        training = training_result_task(task)
+        training = training_readback_task(task)
         waiting = None if training else self.files.load_check(
             self.opening, self.start_attempt, self.run_id, task, waiting=True)
         if (info.attempt != 1 or info.workflow_id != self.opening['workflow_id'] or info.workflow_run_id != self.run_id
@@ -128,7 +134,7 @@ def _guard(home, project, campaign):
     run_id = grant['run_id']
     if result is not None and result['run_id'] != run_id:
         raise ValueError('Readback guard does not bind the original start')
-    training = training_result_task(task)
+    training = training_readback_task(task)
     waiting = None if training else files.load_check(opening, attempt, run_id, task, waiting=True)
     if ((waiting is None and not training) or (training and result is None)
             or grant != readback_grant(opening, run_id, task, check_receipt(waiting) if waiting else None)
