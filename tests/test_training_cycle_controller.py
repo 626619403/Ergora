@@ -1592,6 +1592,176 @@ def test_controller_cli_reconciles_only_its_original_lost_reply(controller_dispa
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Controller dispatch uses the original Linux supervised operation')
+@pytest.mark.parametrize('notice', ['ready', 'stop'])
+def test_controller_cli_waits_for_original_ready_handoff(
+        controller_dispatch, cycle_operation_fault, monkeypatch, notice, capsys):
+    from ergora.interfaces.cli import main
+    from ergora.training import cycles
+
+    state, admission, storage, _ = controller_dispatch
+    auth = admission.authorization['sha256']
+    arguments = ['--home', str(state.root), 'training', 'cycle-controller-submit',
+                 'demo', 'controller', '--authorization-sha256', auth, '--wait-ready']
+    ready_path = admission.directory / 'ready.json'
+    ready = json.loads(ready_path.read_bytes())
+    ready_path.unlink()
+    (admission.folder / 'intent.json').unlink()
+    authorization = (admission.directory / 'authorization.json').read_bytes()
+    waits = []
+
+    def publish_original_notice(delay):
+        assert not waits
+        assert 0 < delay <= 1
+        assert not admission.submission()['attempt_saved']
+        assert not list(storage.glob('call-*.json'))
+        waits.append(delay)
+        if notice == 'ready':
+            cycles._record(ready_path, ready)
+        else:
+            cycles.stop_controller(state, 'demo', 'controller', auth, reason='Original stop during readiness wait')
+
+    monkeypatch.setattr(cycles, 'sleep', publish_original_notice, raising=False)
+    cycle_operation_fault('lost-reply')
+    assert main(arguments) == 0
+    first = json.loads(capsys.readouterr().out)
+    assert len(waits) == 1
+    if notice == 'stop':
+        assert first['status'] == 'stopped' and first['runtime_status'] == 'not_queried'
+        assert not admission.submission()['attempt_saved'] and admission.controller_intent() is None
+        assert not list(storage.glob('call-*.json'))
+    else:
+        assert first['status'] == 'unknown' and first['attempt_saved'] is True
+        attempt = admission.folder / 'attempt.json'
+        original = attempt.read_bytes(), attempt.stat().st_ino
+        cycle_operation_fault('accepted')
+        assert main(arguments) == 0
+        observed = json.loads(capsys.readouterr().out)
+        assert observed['status'] == 'submitted' and observed['intent_sha256'] == first['intent_sha256']
+        assert (attempt.read_bytes(), attempt.stat().st_ino) == original
+        calls = (json.loads(path.read_bytes()) for path in storage.glob('call-*.json'))
+        assert sum(call['action'] == 'start' for call in calls) == 1
+    assert (admission.directory / 'authorization.json').read_bytes() == authorization
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Controller dispatch uses the original Linux supervised operation')
+@pytest.mark.parametrize('boundary', ['lock', 'stop', 'exhausted'])
+def test_controller_cli_observes_readiness_again_during_preparation(
+        controller_dispatch, cycle_operation_fault, monkeypatch, boundary, capsys):
+    from contextlib import ExitStack
+    from ergora.interfaces.cli import main
+    from ergora.storage.state import file_lock
+    from ergora.training import cycles
+
+    state, admission, storage, _ = controller_dispatch
+    auth = admission.authorization['sha256']
+    (admission.folder / 'intent.json').unlink()
+    original_status, original_record = cycles.status, cycles._record
+    first = True
+    waits = []
+
+    def expire_after_intent(path, value, **kwargs):
+        original_record(path, value, **kwargs)
+        if path == admission.folder / 'intent.json':
+            monkeypatch.setattr(cycles.budget_clock, 'remaining',
+                                lambda _clock, _wall, reserve_seconds=0: 1 - reserve_seconds)
+
+    with ExitStack() as lease:
+        def change_after_ready(*args, **kwargs):
+            nonlocal first
+            observed = original_status(*args, **kwargs)
+            if first:
+                first = False
+                assert observed['status'] == 'ready'
+                if boundary == 'lock':
+                    lease.enter_context(file_lock(admission.directory.parent / '.controller.lock'))
+                elif boundary == 'stop':
+                    result = cycles.stop_controller(state, 'demo', 'controller', auth, reason='Stop before preparation')
+                    assert result['stop_durable']
+            return observed
+
+        def release_lock(delay):
+            waits.append(delay)
+            assert boundary == 'lock' and len(waits) == 1
+            lease.close()
+
+        monkeypatch.setattr(cycles, 'status', change_after_ready)
+        monkeypatch.setattr(cycles, 'sleep', release_lock)
+        if boundary == 'exhausted':
+            monkeypatch.setattr(cycles, '_record', expire_after_intent)
+        cycle_operation_fault('accepted')
+        assert main(['--home', str(state.root), 'training', 'cycle-controller-submit',
+                     'demo', 'controller', '--authorization-sha256', auth, '--wait-ready']) == 0
+    outcome = json.loads(capsys.readouterr().out)
+    if boundary == 'lock':
+        assert outcome['status'] == 'submitted' and len(waits) == 1
+        calls = (json.loads(path.read_bytes()) for path in storage.glob('call-*.json'))
+        assert sum(call['action'] == 'start' for call in calls) == 1
+    else:
+        assert outcome['status'] == ('stopped' if boundary == 'stop' else 'exhausted')
+        assert outcome['authorization_sha256'] == auth and outcome['runtime_status'] == 'not_queried'
+        assert not admission.submission()['attempt_saved'] and not list(storage.glob('call-*.json'))
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Controller dispatch uses the original Linux supervised operation')
+@pytest.mark.parametrize('stop', [False, True], ids=['release-lock', 'stop-while-waiting'])
+def test_controller_final_admission_waits_for_an_original_ready_observer(controller_dispatch, monkeypatch, stop):
+    import asyncio
+    from contextlib import ExitStack
+    from types import SimpleNamespace
+    from temporalio.client import Client
+    from ergora.storage.state import file_lock
+    from ergora.training import cycles
+    from ergora.training.runtime import worker
+    from fixtures.training_controller_service import DispatchService
+
+    state, admission, storage, operation = controller_dispatch
+    payload = operation().payload
+    plan, _, _ = cycles._load(state.root, 'demo', 'controller', admission.directory)
+    service = DispatchService(payload, 'accepted')
+    original_claim, original_ready = cycles._claim_controller, cycles._controller_ready
+    observed_pending = []
+
+    async def connect():
+        return Client(service)
+
+    with ExitStack() as observer:
+        def claim(*args):
+            won = original_claim(*args)
+            if won:
+                observer.enter_context(file_lock(admission.directory.parent / '.controller.lock'))
+            return won
+
+        def release():
+            observer.close()
+            if stop:
+                cycles.stop_controller(state, 'demo', 'controller', admission.authorization['sha256'],
+                                       reason='Original stop during temporary readiness contention')
+
+        def observe_ready(*args):
+            try:
+                return original_ready(*args)
+            except cycles._ControllerNotReady as error:
+                if error.publication_pending:
+                    assert admission.submission()['attempt_saved']
+                    assert not observed_pending
+                    observed_pending.append(error.observed['status'])
+                    asyncio.get_running_loop().call_soon(release)
+                raise
+
+        monkeypatch.setattr(worker, '_select_cycle_project', lambda *_: SimpleNamespace(registration=lambda: None))
+        monkeypatch.setitem(sys.modules, 'perf_temporal.connection', SimpleNamespace(connect=connect))
+        monkeypatch.setattr(cycles, '_claim_controller', claim)
+        monkeypatch.setattr(cycles, '_controller_ready', observe_ready)
+        outcome = asyncio.run(worker._dispatch_controller(payload, plan, admission, lambda: None))
+    assert observed_pending == ['pending'] and outcome['attempt_saved']
+    assert outcome['status'] == ('unknown' if stop else 'submitted')
+    calls = (json.loads(path.read_bytes())['action'] for path in storage.glob('call-*.json'))
+    assert sum(action == 'start' for action in calls) == (0 if stop else 1)
+    if stop:
+        assert 'stop' in outcome['reason']
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Controller dispatch uses the original Linux supervised operation')
 @pytest.mark.parametrize('case', ['accepted', 'lost-reply', 'not-found', 'closed', 'continued', 'retry', 'reset'])
 def test_cycle_controller_recovers_only_its_single_original_attempt(controller_dispatch, case):
     import asyncio

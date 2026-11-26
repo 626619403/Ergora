@@ -14,6 +14,7 @@ import stat
 import shutil
 from copy import deepcopy
 import tempfile
+from time import sleep
 
 import ergora.native.registration as native_registration
 import ergora.training.application as training
@@ -33,6 +34,7 @@ MAX_PLAN_BYTES = 10_000_000
 MAX_RECORD_BYTES = 1_048_576
 _SCHEMA = json.loads((PACKAGE_ROOT / 'data/schemas/training-cycle-v2.json').read_text(encoding='utf-8'))
 _COMMON = training_execution_protocol.ROUND_COMMON
+_READY_PUBLICATION_PENDING = 'Original admission checks or durable publication are still in progress'
 _COVERAGE = {'records': 'saved-local-admission', 'runtime_status': 'not_queried',
              'origin_authenticated': False, 'execution_authorized': False, 'budget_started': False}
 
@@ -891,7 +893,7 @@ def status(state: State, project_id: str, cycle_id: str, *, authorization_sha256
         # A visible ready link is not completion while its publisher is still fsyncing.
         observed = _status(state, plan, authorization, None)
         if observed['status'] == 'pending':
-            observed['reason'] = 'Original admission checks or durable publication are still in progress'
+            observed['reason'] = _READY_PUBLICATION_PENDING
         return observed
 
 
@@ -909,6 +911,16 @@ def start(state: State, project_id: str, cycle_id: str, experiment_id: str,
     return training.start(state, project_id, experiment_id, expected_revision, selected['manifest_sha256'],
                           timeout=plan['definition']['budget']['control_timeout_seconds'],
                           budget={'cycle_id': cycle_id, 'authorization_sha256': authorization_sha256})
+
+
+class _ControllerNotReady(ValueError):
+    def __init__(self, observed: dict, reason: str):
+        super().__init__(observed['reason'] or reason)
+        self.observed = observed
+
+    @property
+    def publication_pending(self) -> bool:
+        return self.observed['status'] == 'pending' and self.observed['reason'] == _READY_PUBLICATION_PENDING
 
 
 def prepare_controller(state: State, project_id: str, cycle_id: str,
@@ -934,7 +946,7 @@ def prepare_controller(state: State, project_id: str, cycle_id: str,
         _live_materials(state, plan, directory)
         admission = training_execution_protocol.CycleAdmission(directory, observed['authorization'])
         if observed['status'] != 'ready':
-            raise ValueError(observed['reason'] or 'Controller preparation requires the original durable ready record')
+            raise _ControllerNotReady(observed, 'Controller preparation requires the original durable ready record')
         with admission.permission():
             _require_current_measurement_sources(observed['authorization'])
             training_execution_protocol.admit_cycle_capacity(plan, str(state.root), project_id, cycle_id,
@@ -958,7 +970,7 @@ def _controller_ready(state: State, admission) -> None:
     _require_current_measurement_sources(original)
     observed = status(state, original['project'], original['cycle_id'], authorization_sha256=original['sha256'])
     if observed['status'] != 'ready':
-        raise ValueError(observed['reason'] or 'Controller dispatch requires its original durable ready record')
+        raise _ControllerNotReady(observed, 'Controller dispatch requires its original durable ready record')
     admission.check()
 
 
@@ -1160,10 +1172,13 @@ def stop_controller(state: State, project_id: str, cycle_id: str, authorization_
 
 
 def controller(state: State, project_id: str, cycle_id: str, authorization_sha256: str, action: str, *,
-               expected_revision: int | None = None, reason: str | None = None) -> dict:
+               expected_revision: int | None = None, reason: str | None = None,
+               wait_ready: bool = False) -> dict:
     """Control the original parent through its existing local and S/H owners."""
     if action not in ('status', 'prepare', 'submit', 'reconcile', 'stop'):
         raise ValueError('Unsupported training controller action')
+    if wait_ready and action != 'submit':
+        raise ValueError('Waiting for readiness requires controller submission')
     directory = _directory(state.root, project_id, cycle_id)
     plan, authorization, _ = _load(state.root, project_id, cycle_id, directory)
     if authorization['sha256'] != authorization_sha256:
@@ -1186,6 +1201,41 @@ def controller(state: State, project_id: str, cycle_id: str, authorization_sha25
         return prepare_controller(state, project_id, cycle_id, authorization_sha256, expected_revision)
     if action == 'stop':
         return stop_controller(state, project_id, cycle_id, authorization_sha256, reason=reason)
+    if wait_ready:
+        while True:
+            saved = admission.submission()
+            if saved['attempt_saved'] or saved['status'] == 'rejected':
+                action = 'reconcile'
+                break
+            observed = status(state, project_id, cycle_id, authorization_sha256=authorization_sha256)
+            if observed['status'] == 'ready':
+                try:
+                    prepared = prepare_controller(state, project_id, cycle_id, authorization_sha256,
+                                                  authorization['project_revision'])
+                except _ControllerNotReady as error:
+                    observed = error.observed
+                except BlockingIOError:
+                    observed = status(state, project_id, cycle_id, authorization_sha256=authorization_sha256)
+                except ValueError:
+                    observed = status(state, project_id, cycle_id, authorization_sha256=authorization_sha256)
+                    if observed['status'] in ('ready', 'pending'):
+                        raise
+                else:
+                    observed = prepared['cycle']
+                    if observed['status'] == 'ready':
+                        break
+            if observed['status'] not in ('ready', 'pending'):
+                saved = admission.submission()
+                if saved['attempt_saved'] or saved['status'] == 'rejected':
+                    action = 'reconcile'
+                    break
+                result = {key: value for key, value in saved.items() if key != 'intent'}
+                result.update(status=observed['status'], reason=observed['reason'],
+                              authorization_sha256=authorization_sha256, runtime_status='not_queried')
+                if observed['status'] == 'stopped':
+                    result['stop'] = observed['controller']['stop']
+                return result
+            sleep(min(1, observed['work_remaining_seconds']))
     mode = 'submit-controller' if action == 'submit' else 'reconcile-controller'
     operation = training_execution_protocol._CycleOperation(state.root, project_id, cycle_id, authorization_sha256, mode,
         snapshot=training_execution_protocol._cycle_snapshot(directory, plan, authorization),

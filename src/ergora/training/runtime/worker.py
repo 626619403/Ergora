@@ -1546,6 +1546,16 @@ async def _dispatch_controller(payload: dict, plan: dict, admission, active) -> 
         active()
         return protocol.cycle_operation_remaining(payload)
 
+    async def check_ready(check):
+        while True:
+            remaining()
+            try:
+                return check(state, admission)
+            except training_cycles._ControllerNotReady as error:
+                if not error.publication_pending:
+                    raise
+                await asyncio.sleep(min(.05, remaining(), error.observed['work_remaining_seconds']))
+
     try:
         async with asyncio.timeout(remaining()):
             client = await connect()
@@ -1583,7 +1593,7 @@ async def _dispatch_controller(payload: dict, plan: dict, admission, active) -> 
             if payload['identity']['mode'] in ('reconcile-controller', 'inspect-controller-activity') or saved['attempt_saved']:
                 return await reconcile()
             with admission.permission():
-                training_cycles._controller_ready(state, admission)
+                await check_ready(training_cycles._controller_ready)
                 try:
                     found = await lookup_controller_submission(client, intent, run_id=None, timeout=remaining())
                 except ValueError:
@@ -1596,7 +1606,7 @@ async def _dispatch_controller(payload: dict, plan: dict, admission, active) -> 
                         current, runtime_status='queried')
                 await capacity()
                 remaining()
-                if not training_cycles._claim_controller(state, admission):
+                if not await check_ready(training_cycles._claim_controller):
                     return await reconcile()
                 # Claim/fsync, source reads and the original ready observation all consume this same window.
                 native_resources.validate_installation(installation, training=True)
@@ -1607,7 +1617,7 @@ async def _dispatch_controller(payload: dict, plan: dict, admission, active) -> 
                 if not current['attempt_saved']:
                     raise ValueError('Original controller start attempt disappeared; do not dispatch again')
                 await capacity()
-                training_cycles._controller_ready(state, admission)
+                await check_ready(training_cycles._controller_ready)
                 timeout = remaining()
                 try:
                     handle = await client.start_workflow(protocol.cycle_workflow_type(intent['protocol']), intent['workflow_input'],

@@ -804,6 +804,9 @@ def parser() -> argparse.ArgumentParser:
         cycle.add_argument('--authorization-sha256', required=True)
         if action == 'prepare':
             cycle.add_argument('--revision', type=int, required=True)
+        elif action == 'submit':
+            cycle.add_argument('--wait-ready', action='store_true',
+                               help='Wait for original readiness, prepare and submit within the original budget')
         elif action == 'stop':
             cycle.add_argument('--reason', required=True)
     cycle = operations.add_parser("cycle-status", help="Read the original local authorization and deadline; never re-admit or dispatch")
@@ -1762,6 +1765,8 @@ def main(argv: list[str] | None = None) -> int:
                 action = args.operation.removeprefix('cycle-controller-')
                 selected = ({'expected_revision': args.revision} if action == 'prepare' else
                             {'reason': args.reason} if action == 'stop' else {})
+                if action == 'submit' and args.wait_ready:
+                    selected['wait_ready'] = True
                 output = training_cycles.controller(State(args.home), args.project, args.cycle_id,
                     args.authorization_sha256, action, **selected)
             elif args.operation == "cycle-status":
