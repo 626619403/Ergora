@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 
 import ergora.agents.backends as agent_backends
+from ergora.agents import native_sources
 from ergora.configuration import catalog as components
 from ergora.configuration import validation as contracts
 from ergora.runtime import processes
@@ -93,7 +94,8 @@ def invoke(binding: dict, role: str, prompt: str, cwd: Path, output: Path, timeo
                              **({"stop_requested": stop_requested} if stop_requested is not None else {}),
                              **({'record_lifecycle': True} if record_lifecycle else {}),
                              **({"lock_fd": lock_fd} if lock_fd is not None else {}))
-    if document["status"] == "succeeded" and schema:
+    process_succeeded = document["status"] == "succeeded"
+    if process_succeeded and schema:
         try:
             if stop_requested is not None and stop_requested():
                 raise ValueError('Parent stopped before structured result synchronization')
@@ -120,4 +122,11 @@ def invoke(binding: dict, role: str, prompt: str, cwd: Path, output: Path, timeo
             document['native_observation_error'] = str(error)
             if document['status'] == 'succeeded':
                 document.update(status='failed', error=f'Invalid native session result: {error}')
+    if process_succeeded:
+        try:
+            usage = backend.native_usage(protocol, mode)
+        except (OSError, ValueError, RecursionError) as error:
+            usage = {"available": False, **native_sources.observation_failure(error)}
+        if usage is not None:
+            document["native_usage"] = usage
     return document

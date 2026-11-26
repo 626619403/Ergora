@@ -732,7 +732,8 @@ def inspect_run(state: State, project_id: str, run_id: str, *, max_result_bytes:
     if document.get("kind") != "composition-agent-run":
         raise ValueError("Select an original composition agent run")
     storage = state.root / "runs"
-    run = {name: value for name, value in document.items() if name not in _PROCESS_START_FIELDS}
+    run = {name: value for name, value in document.items()
+           if name not in _PROCESS_START_FIELDS and name != "native_usage"}
     observed = {"schema_version": 1, "kind": "composition-run-observation", "run": run,
                 "formal_execution_authorized": False}
     request = document.get("input_request")
@@ -775,6 +776,22 @@ def inspect_run(state: State, project_id: str, run_id: str, *, max_result_bytes:
                                   "document": parse_json(raw.decode("utf-8"), "Agent result", finite=True, bounded=True)}
         except (OSError, ValueError, RecursionError) as error:
             observed["result"] = {"available": False, **native_sources.observation_failure(error)}
+    if "native_usage" in document:
+        usage = document["native_usage"]
+        try:
+            if not isinstance(usage, dict) or type(usage.get("available")) is not bool:
+                raise ValueError("Invalid original native usage observation")
+            if "source_sha256" in usage:
+                adapter = agent_backends.for_binding(document["binding"])
+                current = adapter.native_usage(storage / (run_id + ".protocol"), document["policy"]["mode"],
+                                               expected_sha256=usage["source_sha256"])
+                if native_sources.encode(current) != native_sources.encode(usage):
+                    raise native_sources.ArtifactIdentityError("Native usage differs from the original recorded observation")
+            elif usage["available"] or "sdk_tokens" in usage:
+                raise ValueError("Original native usage has no source identity")
+        except (OSError, ValueError, KeyError, TypeError, RecursionError) as error:
+            usage = {"available": False, **native_sources.observation_failure(error)}
+        observed["native_usage"] = usage
     return observed
 
 

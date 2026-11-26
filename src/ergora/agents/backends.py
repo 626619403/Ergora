@@ -13,8 +13,10 @@ import tomllib
 import uuid
 from urllib.parse import unquote
 
+from ergora.agents import native_sources
 from ergora.configuration import catalog as components
 from ergora.configuration import validation as contracts
+from ergora.definitions.bundles import parse_json
 from ergora.runtime import processes
 from ergora.data.drivers.deepseek import native_history_page
 from ergora._paths import DATA_ROOT
@@ -107,6 +109,10 @@ class AgentBackend(ABC):
 
     def read_result(self, output: Path, request: Invocation) -> dict:
         return json.loads((output / "stdout.txt").read_text(encoding="utf-8"))
+
+    def native_usage(self, protocol: Path, mode: str, *, expected_sha256: str | None = None) -> dict | None:
+        """Observe supported usage from the original invocation artifacts."""
+        return None
 
     def archived_history(self, protocol: Path, *, cwd: Path, offset: int,
                          limit: int, revision: str | None) -> dict:
@@ -597,6 +603,44 @@ class DeepSeekHarnessBackend(AgentBackend):
                for event in native["events"]):
             raise ValueError("DeepSeek Harness reported a tool error; see native-events.jsonl")
         return json.loads(native["final_response"])
+
+    def native_usage(self, protocol: Path, mode: str, *, expected_sha256: str | None = None) -> dict | None:
+        if mode != "text-only" or self.binding.get("api", "openai-completions") != "openai-completions":
+            return None
+        raw = native_sources.artifact(protocol, "native-result.json", 8_388_608)
+        digest = hashlib.sha256(raw).hexdigest()
+        if expected_sha256 is not None and digest != expected_sha256:
+            raise native_sources.ArtifactIdentityError("DeepSeek Harness native result differs from its recorded SHA256")
+        try:
+            native = parse_json(raw.decode("utf-8"), "DeepSeek Harness native result", finite=True, bounded=True)
+        except (ValueError, RecursionError):
+            return {"available": False, "state": "invalid", "source_sha256": digest,
+                    "error": "Malformed DeepSeek Harness native result JSON"}
+        if (not isinstance(native, dict) or not isinstance(native.get("finish_reason"), str)
+                or not isinstance(native.get("events"), list)):
+            raise ValueError("Invalid DeepSeek Harness native result for usage observation")
+        if native["finish_reason"] != "completed":
+            return {"available": False, "state": "incomplete", "source_sha256": digest}
+        assistant_events = [(index, event) for index, event in enumerate(native["events"])
+                            if isinstance(event, dict) and event.get("type") == "assistant/message"]
+        if len(assistant_events) != 1 or not isinstance(assistant_events[0][1].get("data"), dict):
+            raise ValueError("DeepSeek Harness usage requires one completed native assistant message")
+        index, event = assistant_events[0]
+        source = {"source_sha256": digest, "event_index": index}
+        usage = event["data"].get("usage")
+        if usage is None:
+            return {"available": False, "state": "unreported", **source}
+        required = ("inputTokens", "outputTokens", "totalTokens")
+        optional = ("cacheReadTokens", "cacheWriteTokens")
+        if not isinstance(usage, dict) or not set(required) <= usage.keys():
+            raise ValueError("DeepSeek Harness native usage lacks required token counters")
+        tokens = {field: usage[field] for field in (*required, *optional) if field in usage}
+        if any(type(value) is not int or value < 0 for value in tokens.values()):
+            raise ValueError("DeepSeek Harness native usage has invalid token counters")
+        if not any(tokens.values()):
+            # This SDK emits the same all-zero counters when the provider omitted usage.
+            return {"available": False, "state": "zero_or_unreported", **source}
+        return {"available": True, "state": "observed", **source, "sdk_tokens": tokens}
 
     def archived_history(self, protocol: Path, *, cwd: Path, offset: int,
                          limit: int, revision: str | None) -> dict:

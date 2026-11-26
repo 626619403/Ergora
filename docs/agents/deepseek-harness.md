@@ -47,6 +47,8 @@ Default calls use a fresh native home/session, fixed minimal profile and generat
 
 Check completion status, strict JSON/original result schema and the original MCP connection receipt together. Any native tool error fails the call, without implicit retry or session continuation. Upstream may return completed after plugin failure/disconnection, so final text alone is not success. On failure or an unknown result, inspect evidence by original run ID before proceeding. Do not create another call as purported recovery. Formal six-stage execution, persistent sessions and other platforms require their own supported backend contract and acceptance.
 
+For completed SDK calls in `text-only` mode using Chat Completions, `ergora composition inspect-run my-project RUN_ID` verifies `native_usage` against the original native result's SHA256 and zero-based assistant event index. `sdk_tokens` preserves SDK field names and values, including separate `cacheReadTokens` and `inputTokens` when the SDK supplies both. The SDK emits identical all-zero counters when the endpoint omits usage or reports zero, so both appear as `zero_or_unreported`. Historical runs without an original usage observation omit the field. Billing and total workflow cost require separate evidence.
+
 ### Read saved native history
 
 On Linux/WSL2, select “Read native history” on the original invocation record and page through saved inputs, tool results and model replies. Reading accesses only that run's archive, without starting the SDK, invoking models or restoring a session. Other backends report unsupported. Original stdout/stderr viewing remains available.

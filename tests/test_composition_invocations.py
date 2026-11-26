@@ -2456,6 +2456,54 @@ def test_exact_run_inspection_survives_history_limit_and_relocation_without_curr
         assert list(db.iterdump()) == before
 
 
+@pytest.mark.skipif(sys.platform != "linux", reason="DeepSeek Harness adapter requires Linux/WSL2")
+@pytest.mark.parametrize("malformed", [False, True], ids=["valid", "duplicate-surrogate-key"])
+def test_original_deepseek_usage_is_bound_to_its_run_artifact(prepared, tmp_path, monkeypatch, capsys, malformed):
+    state, _, source = prepared()
+    binding = {"tool": "deepseek-harness", "python": str(tmp_path / "unavailable-python"), "model": "test",
+               "base_url": "http://127.0.0.1:1/v1", "api_key_env": "FIXTURE_MODEL_KEY"}
+    result = {"summary": "Review complete", "artifacts": {"response": "Verified"}, "decision": "approve"}
+    tokens = {"inputTokens": 30, "outputTokens": 11, "totalTokens": 48, "cacheReadTokens": 7}
+    native = {"finish_reason": "completed", "final_response": json.dumps(result),
+              "events": [{"type": "assistant/message", "data": {"usage": tokens}}]}
+    raw = json.dumps(native).encode()
+    if malformed:
+        raw = raw.replace(b'"cacheReadTokens": 7}', rb'"cacheReadTokens": 7, "\ud800": 1, "\ud800": 2}', 1)
+
+    def finish(argv, cwd, output, *args, **kwargs):
+        output.mkdir()
+        Path(argv[-1]).with_name("native-result.json").write_bytes(raw)
+        return {"status": "succeeded", "returncode": 0, "output": str(output)}
+
+    monkeypatch.setattr(processes, "run", finish)
+    run = agent_runs.run_input(state, "demo", source, binding_override=binding)
+    assert run["status"] == "succeeded"
+    monkeypatch.setattr(processes, "run", lambda *args, **kwargs: pytest.fail("Usage inspection must not invoke a backend"))
+    moved = tmp_path / "relocated"
+    state.root.rename(moved)
+    assert main(["--home", str(moved), "composition", "inspect-run", "demo", run["id"]]) == 0
+    observed = json.loads(capsys.readouterr().out)
+    assert observed["native_usage"] == run["native_usage"] and observed["result"]["document"] == result
+    usage = observed["native_usage"]
+    assert usage["source_sha256"] == hashlib.sha256(raw).hexdigest()
+    if malformed:
+        assert usage["state"] == "invalid" and usage["available"] is False and "sdk_tokens" not in usage
+        assert usage["error"] == "Malformed DeepSeek Harness native result JSON"
+    else:
+        assert usage["available"] is True and usage["sdk_tokens"] == tokens
+
+    artifact = moved / "runs" / (run["id"] + ".protocol") / "native-result.json"
+    assert artifact.read_bytes() == raw
+    artifact.write_bytes(raw + b"\n")
+    changed = agent_runs.inspect_run(State(moved), "demo", run["id"])
+    assert changed["native_usage"]["state"] == "mismatch" and changed["native_usage"]["available"] is False
+    assert changed["result"] == observed["result"]
+    artifact.unlink()
+    missing = agent_runs.inspect_run(State(moved), "demo", run["id"])
+    assert missing["native_usage"]["state"] == "missing" and missing["native_usage"]["available"] is False
+    assert missing["result"] == observed["result"]
+
+
 @pytest.mark.parametrize("changed", ["input", "recursive-input", "prompt", "result", "recursive-result", "nonfinite-result", "overflow-result",
                                      "missing-result", "unrecorded-result", "capacity"])
 def test_run_inspection_retains_original_state_and_other_material_when_one_artifact_is_unverifiable(recorded_run, changed):

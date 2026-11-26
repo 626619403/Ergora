@@ -2,6 +2,7 @@
 
 import json
 import os
+from hashlib import sha256
 from pathlib import Path
 import shutil
 import subprocess
@@ -29,18 +30,28 @@ def binding():
 
 
 @pytest.mark.skipif(sys.platform != "linux", reason="Read-only SDK adapter currently admits Linux/WSL2")
-@pytest.mark.parametrize("case", ["complete", "unfinished", "tool-error", "fenced-json", "wrong-schema"])
+@pytest.mark.parametrize("case", ["complete", "unfinished", "tool-error", "fenced-json", "wrong-schema",
+                                  "zero-usage", "absent-usage", "invalid-usage"])
 def test_native_completion_and_result_are_independent_acceptance_checks(tmp_path, monkeypatch, case):
     expected = {"summary": "Supplied evidence reviewed", "artifacts": {"response": "Coverage"}, "decision": "approve"}
-    native = {"session_id": "fixed-session", "finish_reason": "completed", "events": [], "final_response": json.dumps(expected)}
+    sdk_tokens = {"inputTokens": 30, "outputTokens": 11, "totalTokens": 48, "cacheReadTokens": 7}
+    assistant = {"type": "assistant/message", "data": {"usage": sdk_tokens}}
+    native = {"session_id": "fixed-session", "finish_reason": "completed", "events": [assistant],
+              "final_response": json.dumps(expected)}
     if case == "unfinished":
         native["finish_reason"] = "max_tokens"
     elif case == "tool-error":
-        native["events"] = [{"type": "tool/result", "data": {"message": {"isError": True}}}]
+        native["events"].append({"type": "tool/result", "data": {"message": {"isError": True}}})
     elif case == "fenced-json":
         native["final_response"] = "```json\n" + native["final_response"] + "\n```"
     elif case == "wrong-schema":
         native["final_response"] = json.dumps({**expected, "decision": "accept"})
+    elif case == "zero-usage":
+        assistant["data"]["usage"] = {"inputTokens": 0, "outputTokens": 0, "totalTokens": 0}
+    elif case == "absent-usage":
+        assistant["data"].clear()
+    elif case == "invalid-usage":
+        assistant["data"]["usage"] = {**sdk_tokens, "totalTokens": True}
 
     def run(argv, cwd, output, timeout, stdin, env, **kwargs):
         assert argv[:2] == [sys.executable, "-I"]
@@ -57,11 +68,25 @@ def test_native_completion_and_result_are_independent_acceptance_checks(tmp_path
     monkeypatch.setattr(processes, "run", run)
     result = agents.invoke(binding(), "reviewer", "Review supplied material", tmp_path, tmp_path / "output", 12,
                            agents.result_schema(["response"], True), mode="text-only")
-    if case == "complete":
+    if case in ("complete", "zero-usage", "absent-usage", "invalid-usage"):
         assert result["status"] == "succeeded" and json.loads(Path(result["result"]).read_text()) == expected
     else:
         assert result["status"] == "failed" and "Invalid structured agent result" in result["error"]
         assert not (tmp_path / "output/result.json").exists()
+    usage = result["native_usage"]
+    source = tmp_path / "output.protocol/native-result.json"
+    if case == "invalid-usage":
+        assert usage["available"] is False and usage["state"] == "invalid"
+    elif case == "unfinished":
+        assert usage == {"available": False, "state": "incomplete",
+                         "source_sha256": sha256(source.read_bytes()).hexdigest()}
+    else:
+        assert usage["source_sha256"] == sha256(source.read_bytes()).hexdigest() and usage["event_index"] == 0
+        if case in ("zero-usage", "absent-usage"):
+            assert usage["available"] is False and "sdk_tokens" not in usage
+            assert usage["state"] == ("zero_or_unreported" if case == "zero-usage" else "unreported")
+        else:
+            assert usage["available"] is True and usage["sdk_tokens"] == sdk_tokens
 
 
 @pytest.mark.skipif(sys.platform != "linux", reason="Read-only SDK adapter currently admits Linux/WSL2")

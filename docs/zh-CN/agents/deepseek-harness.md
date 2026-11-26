@@ -45,6 +45,8 @@ ergora agent output my-project RUN_ID
 
 必须同时核对完成状态、严格JSON／原结果schema和原MCP连接回执；任一原生工具错误使本次调用失败，不隐式重试或续接会话。上游可能在插件失败或断连后仍返回completed，因此最终文本本身不能代表成功。失败或结果不明先按原run ID查看证据，不创建另一次调用冒充恢复。正式六阶段、持久会话和其他平台须分别满足对应后端合同与验收。
 
+对使用 Chat Completions 的 `text-only` 调用，SDK 完成后，`ergora composition inspect-run my-project RUN_ID` 可按原生结果的 SHA256 和从零开始的 assistant 事件索引核对 `native_usage`。`sdk_tokens` 保留 SDK 字段名与数值，例如 SDK 可能分别记录 `cacheReadTokens` 和 `inputTokens`。端点省略用量或显式报告零时，SDK 会生成同样的全零计数，读取结果均显示 `zero_or_unreported`。缺少原始用量见证的运行省略该字段。账单和工作流总成本需另有证据。
+
 ## 查看已保存的原生历史
 
 Linux／WSL2 可在原调用记录页点击“读取原生历史”，然后逐页查看保存的输入、工具结果和模型回复。读取只访问原 run 的归档，不启动 SDK、不调用模型，也不恢复会话；其他后端会显示不支持。原 stdout／stderr 查看方式保持。
