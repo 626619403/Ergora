@@ -96,6 +96,16 @@ Compute expiry or explicit original cancel notifies the execution subtree to sto
 
 `execution` uses a bundled independent stdlib reader, needing no Temporal SDK/service, GPU or continued existence of the selected native installation. It only reads existing original chains and confirms durability of the same originals; it creates no records or changes to file contents. Sync failure remains unknown; the same originals can be observed again later. Current-source checks have independent limits; installation loss or upgrade drift is displayed separately. This reader neither selects nor executes candidates. Finite controllers require [separate explicit authorization](controllers.md#start-a-local-training-budget-and-recover-original-authorization). Real training quality and performance still need the original evidence flow; kernel experts remain in the proposal path.
 
+### Read an original local GPU release after pool closure
+
+Use the original pool configuration, session ID and lease ID to read a release after the pool closes and relinquishes its sentinel. The command checks the accepted release, the exact stopped proof and the assigned device observations. You can also read it when a successor session uses the same coordination directory and sentinel path with a different set of devices.
+
+```bash
+ergora gpu-pool inspect --config POOL_CONFIG --session-id ORIGINAL_SESSION_ID --lease-id ORIGINAL_LEASE_ID
+```
+
+The response includes the original attempt digest and release reference. Use the current resource owner for present device availability and new admission. Read experiment outcomes through the training evidence commands.
+
 ### Explicitly fence a local experiment without a run ID
 
 When original start remains `prepared`/`unknown` without a complete cancellable run ID, or an experiment is prepared but not submitted, confirm its original local fence. This requires Linux/WSL2, the `temporal` extra and undrifted original registration. It requires no running Temporal service, reads no keys and starts no runner:

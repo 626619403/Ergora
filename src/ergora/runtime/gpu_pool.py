@@ -519,28 +519,32 @@ def _subreaper_observation():
         raise OSError(ctypes.get_errno(), 'Cannot inspect Linux subreaper capability')
 
 
-def _descriptor(value, configuration, session_id):
+def _descriptor(value, session_id):
     _fields(value, {'schema_version', 'kind', 'session_id', 'pool_id', 'config_sha256',
                     'ordered_device_uuids', 'created_at', 'initial_owner'}, 'session descriptor')
     _version(value, 'ergora-local-gpu-session')
     _process_identity(value['initial_owner'])
-    if (value['session_id'] != session_id or value['pool_id'] != configuration['pool_id']
-            or value['config_sha256'] != _sha(configuration)
-            or value['ordered_device_uuids'] != configuration['device_uuids']):
+    _digest(value['config_sha256'])
+    _devices(value['ordered_device_uuids'])
+    if (value['session_id'] != session_id or not isinstance(value['pool_id'], str) or not value['pool_id']):
         raise ValueError('GPU pool immutable descriptor binding differs')
     _timestamp(value['created_at'])
 
 
-def _closed_session_without_sentinel(configuration, session_id):
-    """Recognize only an original, fully closed session for finishing directory sync.
+def _match_configuration(session, configuration):
+    if session['config_sha256'] != _sha(configuration):
+        raise ValueError('GPU pool configuration differs from its original session')
+    if (session['pool_id'] != configuration['pool_id']
+            or session['ordered_device_uuids'] != configuration['device_uuids']):
+        raise ValueError('GPU pool immutable descriptor binding differs')
 
-    This path cannot create a sentinel or admit work. It handles a crash after
-    closed was durably committed and unlink succeeded but its fsync/reply did not.
-    """
+
+def _archived_session_records(configuration, session_id):
     directory = Path(configuration['coordination_directory']) / 'sessions' / _session_id(session_id)
     descriptor_raw = _read(directory / 'session-descriptor.json')
     descriptor = _decode(descriptor_raw)
-    _descriptor(descriptor, configuration, session_id)
+    _descriptor(descriptor, session_id)
+    _match_configuration(descriptor, configuration)
     session_raw = _read(directory / 'session.json')
     session_record = _decode(session_raw)
     _fields(session_record, {*descriptor, 'legacy_sentinel_binding'}, 'immutable closed session')
@@ -558,12 +562,48 @@ def _closed_session_without_sentinel(configuration, session_id):
     sentinel_raw = _encode(sentinel_record) + b'\n'
     if hashlib.sha256(sentinel_raw).hexdigest() != binding['raw_sha256']:
         raise ValueError('Original closed session sentinel raw identity differs')
+    return directory, session_record, session_raw, descriptor_raw, sentinel_raw
+
+
+def _closed_session_without_sentinel(configuration, session_id):
+    """Recognize the original closed session when finishing directory sync."""
+    records = _archived_session_records(configuration, session_id)
+    directory, session_record = records[:2]
     original = _journal(_read(directory / 'journal.json'), session_record)
     if original['mode'] != 'closed' or any(item['state'] not in _TERMINAL for item in original['requests']):
         raise PoolUnavailable('Missing sentinel does not prove an open or unknown session closed')
     if Path(configuration['legacy_sentinel']).exists() or Path(configuration['legacy_sentinel']).is_symlink():
         raise PoolUnavailable('A legacy sentinel appeared during original closed-session observation')
-    return directory, session_record, session_raw, descriptor_raw, sentinel_raw
+    return records
+
+
+def _session_from_sentinel(coordination, raw, binding, expected_id=None):
+    record = _decode(raw)
+    _fields(record, {'schema_version', 'kind', 'session_id', 'config_sha256', 'boot_id',
+                     'initial_owner', 'session_record_sha256'}, 'session sentinel')
+    _version(record, 'ergora-local-gpu-session')
+    identity = _session_id(record['session_id'])
+    if expected_id is not None and identity != expected_id:
+        raise ValueError('Original GPU pool session identity differs')
+    _digest(record['config_sha256'])
+    _process_identity(record['initial_owner'])
+    if record['boot_id'] != record['initial_owner']['boot_id']:
+        raise ValueError('GPU pool sentinel boot identity differs')
+    directory = Path(coordination) / 'sessions' / identity
+    descriptor_raw, _ = _read_bound(directory / 'session-descriptor.json')
+    if hashlib.sha256(descriptor_raw).hexdigest() != record['session_record_sha256']:
+        raise ValueError('GPU pool immutable descriptor differs from its sentinel')
+    descriptor = _decode(descriptor_raw)
+    _descriptor(descriptor, identity)
+    if (descriptor['initial_owner'] != record['initial_owner']
+            or descriptor['config_sha256'] != record['config_sha256']):
+        raise ValueError('GPU pool immutable descriptor binding differs')
+    session_raw, _ = _read_bound(directory / 'session.json')
+    session_record = _decode(session_raw)
+    _fields(session_record, {*descriptor, 'legacy_sentinel_binding'}, 'immutable session')
+    if session_record != dict(descriptor, legacy_sentinel_binding=binding):
+        raise ValueError('GPU pool sentinel inode or raw contents differ')
+    return directory, session_record, session_raw, descriptor_raw, raw
 
 
 def _load_session(configuration, expected_id=None, *, closed_missing=False):
@@ -574,32 +614,9 @@ def _load_session(configuration, expected_id=None, *, closed_missing=False):
         if not closed_missing or expected_id is None:
             raise
         return _closed_session_without_sentinel(configuration, expected_id)
-    record = _decode(raw)
-    _fields(record, {'schema_version', 'kind', 'session_id', 'config_sha256', 'boot_id',
-                     'initial_owner', 'session_record_sha256'}, 'session sentinel')
-    _version(record, 'ergora-local-gpu-session')
-    identity = _session_id(record['session_id'])
-    if expected_id is not None and identity != expected_id:
-        raise ValueError('Original GPU pool session identity differs')
-    if record['config_sha256'] != _sha(configuration):
-        raise ValueError('GPU pool configuration differs from its original session')
-    _process_identity(record['initial_owner'])
-    if record['boot_id'] != record['initial_owner']['boot_id']:
-        raise ValueError('GPU pool sentinel boot identity differs')
-    directory = Path(configuration['coordination_directory']) / 'sessions' / identity
-    descriptor_raw, _ = _read_bound(directory / 'session-descriptor.json')
-    if hashlib.sha256(descriptor_raw).hexdigest() != record['session_record_sha256']:
-        raise ValueError('GPU pool immutable descriptor differs from its sentinel')
-    descriptor = _decode(descriptor_raw)
-    _descriptor(descriptor, configuration, identity)
-    if descriptor['initial_owner'] != record['initial_owner']:
-        raise ValueError('GPU pool immutable descriptor binding differs')
-    session_raw, _ = _read_bound(directory / 'session.json')
-    session_record = _decode(session_raw)
-    _fields(session_record, {*descriptor, 'legacy_sentinel_binding'}, 'immutable session')
-    if session_record != dict(descriptor, legacy_sentinel_binding=binding):
-        raise ValueError('GPU pool sentinel inode or raw contents differ')
-    return directory, session_record, session_raw, descriptor_raw, raw
+    original = _session_from_sentinel(configuration['coordination_directory'], raw, binding, expected_id)
+    _match_configuration(original[1], configuration)
+    return original
 
 
 def _journal(raw, session_record):
@@ -675,6 +692,85 @@ def _proof_reference(value, lease_id, name):
     _digest(value['raw_sha256'])
     if value['relative_path'] != 'proofs/' + lease_id + '/' + name + '.json':
         raise ValueError('Guard proof must use its fixed original session/lease path')
+
+
+def _read_proof(directory, reference, lease_id, name):
+    _proof_reference(reference, lease_id, name)
+    raw, binding = _read_bound(directory / reference['relative_path'], FRAME_LIMIT)
+    if binding['raw_sha256'] != reference['raw_sha256']:
+        raise ValueError('Original GPU guard proof raw identity changed')
+    return _decode(raw), binding
+
+
+def _stopped_proof(directory, reference, session_id, request, guard_identity):
+    proof, binding = _read_proof(directory, reference, request['lease_id'], 'stopped')
+    _fields(proof, _STOPPED_FIELDS, 'GPU guard stopped proof')
+    _version(proof, STOPPED_KIND)
+    _timestamp(proof['reaped_at'])
+    result = proof['process_result']
+    _fields(result, {'status', 'returncode', 'output'}, 'original process result')
+    if (result['status'] not in {'succeeded', 'failed', 'timed_out', 'cancelled'}
+            or result['returncode'] is not None and type(result['returncode']) is not int
+            or not isinstance(result['output'], str)):
+        raise ValueError('Unsupported original process result')
+    consume = request['consume_binding']
+    if (proof['session_id'] != session_id or proof['lease_id'] != request['lease_id']
+            or proof['request_sha256'] != request['request_sha256']
+            or proof['consume_binding_sha256'] != (_sha(consume) if consume is not None else None)
+            or proof['guard_identity'] != guard_identity or proof['origin_sha256'] != _sha(request['origin'])
+            or proof['spawn_closed'] is not True):
+        raise ValueError('Stopped proof differs from the original guard/consume/origin')
+    return binding
+
+
+def observe_closed_release(configuration, session_id, lease_id):
+    """Read one original release from a closed journal without a current owner."""
+    validate_configuration(configuration)
+    _digest(lease_id)
+    records = _archived_session_records(configuration, session_id)
+    directory, session_record = records[:2]
+    journal_path = directory / 'journal.json'
+    raw, binding = _read_bound(journal_path)
+    journal = _journal(raw, session_record)
+    if journal['mode'] != 'closed' or any(item['state'] not in _TERMINAL for item in journal['requests']):
+        raise PoolUnavailable('Original GPU resource journal is not closed')
+    request = next((item for item in journal['requests'] if item['lease_id'] == lease_id), None)
+    if request is None:
+        raise ValueError('Unknown original GPU resource lease')
+    if request['state'] != 'released':
+        raise PoolUnavailable('Original GPU resource lease has no accepted release')
+
+    release = request['release_ref']
+    consume = request['consume_binding']
+    if (release['sequence'] <= request['enqueue_sequence'] or consume is not None and
+            (release['sequence'] <= consume['sequence'] or release['guard_identity'] != consume['guard_identity'])):
+        raise ValueError('Accepted GPU release differs from its original lease order or guard')
+    rows = release['nvml_observation']
+    try:
+        _validate_inventory(rows)
+    except (TypeError, KeyError) as error:
+        raise ValueError('Accepted GPU release has invalid original device observations') from error
+    if ([row['uuid'] for row in rows] != request['ordered_device_uuids']
+            or any(row['compute_pids'] or row['graphics_pids'] for row in rows)):
+        raise ValueError('Accepted GPU release lacks empty observations for its assigned devices')
+    proof_binding = _stopped_proof(directory, release['proof_ref'], session_id, request, release['guard_identity'])
+    try:
+        current_raw, current_binding = _read_bound(configuration['legacy_sentinel'], FRAME_LIMIT)
+    except FileNotFoundError:
+        pass
+    else:
+        _, current, *_ = _session_from_sentinel(configuration['coordination_directory'], current_raw, current_binding)
+        if current['session_id'] == session_id:
+            raise PoolUnavailable('Original GPU resource session still owns the original sentinel')
+    if _archived_session_records(configuration, session_id) != records:
+        raise ValueError('Original closed GPU session changed during observation')
+    if _read_proof(directory, release['proof_ref'], lease_id, 'stopped')[1] != proof_binding:
+        raise ValueError('Original stopped proof inode changed during observation')
+    if _read_bound(journal_path) != (raw, binding):
+        raise ValueError('Original closed GPU journal changed during observation')
+    return {'status': 'released', 'mode': 'closed', 'session_id': session_id, 'lease_id': lease_id,
+            'request_id': request['request_id'], 'request_sha256': request['request_sha256'],
+            'attempt_sha256': request['origin']['attempt_ref']['raw_sha256'], 'release_ref': release}
 
 
 class LocalGpuPool:
@@ -965,18 +1061,9 @@ class _Session:
                 return request
         raise ValueError('Unknown original GPU resource request or lease')
 
-    def _proof(self, reference, lease_id, name):
-        _proof_reference(reference, lease_id, name)
-        path = self.directory / reference['relative_path']
-        raw, binding = _read_bound(path, FRAME_LIMIT)
-        if binding['raw_sha256'] != reference['raw_sha256']:
-            raise ValueError('Original GPU guard proof raw identity changed')
-        value = _decode(raw)
-        return value, binding
-
     def _ready(self, request_id, reference, peer):
         lease_id = _lease_id(request_id)
-        proof, binding = self._proof(reference, lease_id, 'ready')
+        proof, binding = _read_proof(self.directory, reference, lease_id, 'ready')
         _fields(proof, _READY_FIELDS, 'GPU guard ready proof')
         _version(proof, READY_KIND)
         for key in ('input_sha256', 'origin_sha256', 'command_sha256', 'guard_source_sha256'):
@@ -1019,7 +1106,7 @@ class _Session:
             raise ValueError('Original live GPU guard channel is unavailable')
         if _peer(guard.socket) != guard.peer or processes.identity(guard.peer['pid']) != guard.peer:
             raise ValueError('Original live GPU guard peer identity changed')
-        proof, binding = self._proof(request['guard_ready_ref'], request['lease_id'], 'ready')
+        proof, binding = _read_proof(self.directory, request['guard_ready_ref'], request['lease_id'], 'ready')
         if (binding != guard.ready_binding or proof != guard.ready
                 or proof['origin_sha256'] != _sha(request['origin'])
                 or proof['owner_identity'] != request['origin']['owner_identity']
@@ -1209,21 +1296,7 @@ class _Session:
         guard = self._bound_guard(request, connection)
         if guard.stopped_ref != body['proof_ref']:
             raise ValueError('Release requires stopped notification on the original live guard channel')
-        proof, proof_binding = self._proof(body['proof_ref'], request['lease_id'], 'stopped')
-        _fields(proof, _STOPPED_FIELDS, 'GPU guard stopped proof')
-        _version(proof, STOPPED_KIND)
-        _timestamp(proof['reaped_at'])
-        _fields(proof['process_result'], {'status', 'returncode', 'output'}, 'original process result')
-        if (proof['process_result']['status'] not in {'succeeded', 'failed', 'timed_out', 'cancelled'}
-                or proof['process_result']['returncode'] is not None and type(proof['process_result']['returncode']) is not int
-                or not isinstance(proof['process_result']['output'], str)):
-            raise ValueError('Unsupported original process result')
-        if (proof['session_id'] != self.session['session_id'] or proof['lease_id'] != request['lease_id']
-                or proof['request_sha256'] != request['request_sha256']
-                or proof['consume_binding_sha256'] != (_sha(request['consume_binding']) if request['consume_binding'] is not None else None)
-                or proof['guard_identity'] != guard.peer or proof['origin_sha256'] != _sha(request['origin'])
-                or proof['spawn_closed'] is not True):
-            raise ValueError('Stopped proof differs from the original guard/consume/origin')
+        proof_binding = _stopped_proof(self.directory, body['proof_ref'], self.session['session_id'], request, guard.peer)
         if _children(guard.peer):
             raise ValueError('Original GPU guard still has kernel children')
         observation = self._inventory()
@@ -1239,7 +1312,7 @@ class _Session:
         self._bound_guard(request, guard)
         if _children(guard.peer):
             raise ValueError('Original GPU guard gained children during release observation')
-        if self._proof(body['proof_ref'], request['lease_id'], 'stopped')[1] != proof_binding:
+        if _read_proof(self.directory, body['proof_ref'], request['lease_id'], 'stopped')[1] != proof_binding:
             raise ValueError('Stopped proof inode/raw changed during release observation')
         updated = _decode(_encode(self.journal))
         target = next(item for item in updated['requests'] if item['request_id'] == request['request_id'])

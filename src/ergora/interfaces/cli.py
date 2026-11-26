@@ -1065,13 +1065,15 @@ def parser() -> argparse.ArgumentParser:
     for name in ("inspect", "request", "cancel", "release", "reconcile", "close"):
         operation = pool_operations.add_parser(name)
         operation.add_argument("--config", required=True)
+        if name == "inspect":
+            operation.add_argument("--session-id", help="Inspect a lease in this original closed session")
         if name == "request":
             operation.add_argument("--request", required=True)
         if name == "cancel":
             operation.add_argument("--request-id", required=True)
             operation.add_argument("--origin", required=True)
-        if name in ("release", "reconcile"):
-            operation.add_argument("--lease-id", required=True)
+        if name in ("inspect", "release", "reconcile"):
+            operation.add_argument("--lease-id", required=name != "inspect")
         if name == "release":
             operation.add_argument("--proof", required=True)
     return result
@@ -1154,17 +1156,23 @@ def main(argv: list[str] | None = None) -> int:
             def document(path):
                 return local_gpu_pool._decode(local_gpu_pool._read(Path(path), local_gpu_pool.FRAME_LIMIT))
 
-            pool = local_gpu_pool.LocalGpuPool.connect(document(args.config))
-            if args.operation == "request":
-                output = pool.request(document(args.request))
-            elif args.operation == "cancel":
-                output = pool.cancel(args.request_id, document(args.origin))
-            elif args.operation == "release":
-                output = pool.release(args.lease_id, document(args.proof))
-            elif args.operation == "reconcile":
-                output = pool.reconcile(args.lease_id)
+            configuration = document(args.config)
+            if args.operation == "inspect" and (args.session_id is not None or args.lease_id is not None):
+                if args.session_id is None or args.lease_id is None:
+                    raise ValueError("Closed release inspection requires both --session-id and --lease-id")
+                output = local_gpu_pool.observe_closed_release(configuration, args.session_id, args.lease_id)
             else:
-                output = getattr(pool, args.operation)()
+                pool = local_gpu_pool.LocalGpuPool.connect(configuration)
+                if args.operation == "request":
+                    output = pool.request(document(args.request))
+                elif args.operation == "cancel":
+                    output = pool.cancel(args.request_id, document(args.origin))
+                elif args.operation == "release":
+                    output = pool.release(args.lease_id, document(args.proof))
+                elif args.operation == "reconcile":
+                    output = pool.reconcile(args.lease_id)
+                else:
+                    output = getattr(pool, args.operation)()
         elif args.command == "review":
             import ergora.development.review.packets as review_packets
 

@@ -17,7 +17,7 @@ from ergora.runtime import budget_clock
 from ergora.runtime import gpu_guard as local_gpu_guard
 from ergora.runtime import gpu_pool as local_gpu_pool
 from ergora.runtime import processes
-from test_local_gpu_pool import fake_pool, _after_record_read, _ready, _start_session, _stop_session
+from test_local_gpu_pool import fake_pool, _after_record_read, _inventory, _ready, _start_session, _stop_session
 
 
 pytestmark = pytest.mark.skipif(sys.platform != 'linux', reason='Dedicated Linux local resource guardians')
@@ -331,6 +331,80 @@ def test_dynamic_disjoint_join_and_older_full_pool_barrier(tmp_path):
                         assert _result(last)['resource']['status'] == 'released'
         assert (late.parent / 'started').exists()
         assert all(item['state'] == 'released' for item in pool.inspect()['requests'])
+
+
+def test_read_original_closed_release_with_a_successor_pool(tmp_path, capsys, monkeypatch):
+    from ergora.interfaces import cli
+
+    directory = tmp_path / 'pool'
+    arm = tmp_path / 'fail-close-sync'
+    inject = f'''
+original_sync=local_gpu_pool._sync
+def fail_closed_sync(directory):
+    if (Path({str(arm)!r}).exists() and directory.parent.name == "sessions"
+            and json.loads((directory / "journal.json").read_text())["mode"] == "closed"):
+        raise OSError("injected closed journal sync failure")
+    return original_sync(directory)
+local_gpu_pool._sync=fail_closed_sync
+'''
+    with fake_pool(directory, count=1, _setup=inject) as (pool, config, original_owner):
+        setup, original = _setup(tmp_path / 'task', config, config['device_uuids'], 'print("complete")')
+        with _owner(setup) as child:
+            release = _result(child)['resource']
+        assert release['status'] == 'released'
+        original_config = tmp_path / 'original-config.json'
+        original_config.write_bytes((directory / 'config.json').read_bytes())
+        command = ['gpu-pool', 'inspect', '--config', str(original_config),
+                   '--session-id', release['session_id'], '--lease-id', release['lease_id']]
+
+        assert cli.main(command) == 2
+        assert 'closed' in capsys.readouterr().err
+        arm.touch()
+        assert pool.close()['status'] == 'unavailable'
+        assert json.loads((pool.directory / 'journal.json').read_text())['mode'] == 'closed'
+        assert Path(config['legacy_sentinel']).is_file()
+        assert cli.main(command) == 2
+        assert 'original sentinel' in capsys.readouterr().err
+        _stop_session(original_owner)
+        arm.unlink()
+        recovering = _start_session(directory, config, recover=release['session_id'])
+        try:
+            stdout, stderr = recovering.communicate(timeout=5)
+            assert recovering.returncode == 0, stderr
+            assert json.loads(stdout)['status'] == 'released'
+        finally:
+            _stop_session(recovering)
+
+        proof = pool.directory / release['release_ref']['proof_ref']['relative_path']
+        archived = [pool.directory / name for name in ('session-descriptor.json', 'session.json', 'journal.json')]
+        archived.append(proof)
+        fingerprints = [(path.read_bytes(), path.stat().st_ino) for path in archived]
+        assert cli.main(command) == 0
+        receipt = json.loads(capsys.readouterr().out)
+        assert receipt['status'] == 'released' and receipt['mode'] == 'closed'
+        for name in ('session_id', 'lease_id', 'request_id', 'request_sha256', 'release_ref'):
+            assert receipt[name] == release[name]
+        assert receipt['attempt_sha256'] == original['origin']['attempt_ref']['raw_sha256']
+
+        next_config = dict(config, device_uuids=[*config['device_uuids'], 'GPU-successor-extra'])
+        (directory / 'fake-inventory.json').write_text(json.dumps(_inventory(next_config)), encoding='utf-8')
+        successor_owner = _start_session(directory, next_config)
+        successor_pool = None
+        try:
+            successor_pool = _ready(next_config, successor_owner)
+            current = successor_pool.inspect()['session_id']
+            assert current != receipt['session_id']
+            assert cli.main(command) == 0 and json.loads(capsys.readouterr().out) == receipt
+            assert cli.main(command[:-1] + ['0' * 64]) == 2
+            assert 'Unknown original GPU resource lease' in capsys.readouterr().err
+            assert successor_pool.inspect()['session_id'] == current
+            assert [(path.read_bytes(), path.stat().st_ino) for path in archived] == fingerprints
+            with _after_record_read(monkeypatch, Path(config['legacy_sentinel']),
+                                    lambda _: proof.write_bytes(fingerprints[-1][0] + b' ')):
+                assert cli.main(command) == 2
+            assert 'proof raw identity changed' in capsys.readouterr().err
+        finally:
+            _stop_session(successor_owner, successor_pool)
 
 
 def test_pending_conflict_waits_for_release_while_later_disjoint_work_runs(tmp_path):
