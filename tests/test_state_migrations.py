@@ -12,6 +12,7 @@ import sys
 import pytest
 
 import ergora.operations.backups as state_backups
+from ergora.configuration import projects
 from ergora.storage import state as storage
 from ergora.storage.state import State
 
@@ -374,4 +375,7 @@ else: print("saved")
                 child.communicate(timeout=5)
     current = State(root).project("demo")
     assert current["revision"] == document["revision"] + 1
+    assert current["bindings"].keys() == document["bindings"].keys()
+    assert projects.native_authority_revision(current, "reviewer") == current["revision"]
+    assert projects.native_authority_revision(current, "implementer") == document["revision"]
     assert len(list((root / "backups").glob("*.sqlite3"))) == 1

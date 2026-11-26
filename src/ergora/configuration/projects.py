@@ -77,6 +77,12 @@ def native_authority_revision(project: dict, role: str) -> int:
     return revision
 
 
+def _configured_native_roles(project: dict) -> dict:
+    bindings = project["bindings"]
+    return {role: components.resolve_binding(project, role)["binding"]
+            for role in components.ROLE_CAPABILITIES if role in bindings or "implementer" in bindings}
+
+
 def bind(state: State, project_id: str, layer: str, binding: dict, expected_revision: int) -> dict:
     validate_binding(layer, binding)
     with state.connect() as db:
@@ -90,12 +96,13 @@ def bind(state: State, project_id: str, layer: str, binding: dict, expected_revi
         if document.get("registration", {}).get("status") == "pending":
             raise ValueError("Project registration is pending; resume it before changing bindings")
         roles = components.ROLE_CAPABILITIES
-        before = {role: components.resolve_binding(document, role)["binding"] for role in roles}
+        before = _configured_native_roles(document)
         revisions = {role: native_authority_revision(document, role) for role in roles}
         document["bindings"][layer] = binding
         document["revision"] += 1
+        after = _configured_native_roles(document)
         document["native_authority_revisions"] = {
-            role: document["revision"] if before[role] != components.resolve_binding(document, role)["binding"]
+            role: document["revision"] if before.get(role) != after.get(role)
             else revisions[role] for role in roles
         }
         db.execute("UPDATE projects SET document=? WHERE id=?", (json.dumps(document), project_id))
