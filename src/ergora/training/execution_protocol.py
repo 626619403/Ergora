@@ -28,6 +28,7 @@ _REQUEST_RETENTION_PROTOCOL = 'ergora-training-cycle-request-retention-v1'
 
 
 PROTOCOL = 'ergora-training-execution-v1'
+FULL_TRACKING_CHECKPOINT = 'training-full-tracking-checkpoint-v1'
 BUDGET_TASK_QUEUE = 'ergora-training-budget-v1'
 CYCLE_MEMO_KEY = 'ergora.training_cycle_sha256'
 CYCLE_MEASUREMENT_MODES = ('collect-round', 'reconcile-round')
@@ -2692,6 +2693,10 @@ class CycleAdmission:
         return self.observe(synchronize=True, drain=True)
 
 
+def managed_operation(intent):
+    return intent['observation']['experiment']['manifest'].get('execution', {}).get('operation')
+
+
 def managed_attempt(request, launch, supervisor, executor, sha):
     return {'schema_version': 1, 'kind': 'training-execution-attempt', 'protocol': PROTOCOL,
             'launch_sha256': sha(launch), 'request_sha256': sha(request), 'owner_sha256': request['owner_sha256'],
@@ -2814,8 +2819,12 @@ class ExecutionRecords:
             {'intent_sha256': self.sha(intent), 'authorization_sha256': request['authorization_sha256']}, 'Owner authorization')
         launch, attempt, ack, stopped = (self.records[name] for name in ('launch', 'attempt', 'ack', 'stopped'))
         if launch is not None:
+            checkpoint = ({'evidence_checkpoint': FULL_TRACKING_CHECKPOINT}
+                          if 'evidence_checkpoint' in launch else {})
+            if checkpoint and managed_operation(intent) != 'full-verify':
+                raise ValueError('Full tracking checkpoint requires its original full verification operation')
             _exact(launch, (*common, 'request_sha256', 'owner_sha256', 'authorization_sha256', 'clock_sha256',
-                'launch_id', 'execution_phase_id'), 'Execution launch')
+                'launch_id', 'execution_phase_id', *checkpoint), 'Execution launch')
             for name in ('launch_id', 'execution_phase_id'):
                 if not isinstance(launch[name], str) or re.fullmatch('[a-f0-9]{32}', launch[name]) is None:
                     raise ValueError('Execution launch has an invalid observation identity')
@@ -2823,7 +2832,8 @@ class ExecutionRecords:
             _match(launch, {'schema_version': 1, 'kind': 'training-execution-launch', 'protocol': PROTOCOL,
                 'request_sha256': self.sha(request), 'owner_sha256': self.sha(self.owner),
                 'authorization_sha256': request['authorization_sha256'], 'clock_sha256': launch['clock_sha256'],
-                'launch_id': launch['launch_id'], 'execution_phase_id': launch['execution_phase_id']}, 'Execution launch')
+                'launch_id': launch['launch_id'], 'execution_phase_id': launch['execution_phase_id'],
+                **checkpoint}, 'Execution launch')
         if attempt is not None:
             if launch is None:
                 raise ValueError('Execution attempt has no consumed launch')
@@ -2900,6 +2910,20 @@ class ExecutionRecords:
                 'attempt_sha256': hashlib.sha256(self.originals[self.folder / 'attempt.json']).hexdigest(),
                 'session_id': selection['session_id'], 'request_id': request_id,
                 'request_sha256': request_sha256, 'lease_id': lease_id, 'guard_identity': guard_identity}
+
+    def requires_tracking_checkpoint(self):
+        return (self.records['launch'] or {}).get('evidence_checkpoint') == FULL_TRACKING_CHECKPOINT
+
+    def tracking_checkpoint(self, evidence_sha256, gate_report_sha256, archive_output_sha256):
+        if self.records['ack'] is None or not self.requires_tracking_checkpoint():
+            raise ValueError('Tracking checkpoint requires its original committed full verification launch and attempt')
+        for digest in (evidence_sha256, gate_report_sha256, archive_output_sha256):
+            _digest(digest)
+        return {'schema_version': 1, 'kind': 'training-full-tracking-attempt',
+                'attempt_sha256': hashlib.sha256(self.originals[self.folder / 'attempt.json']).hexdigest(),
+                'clock_sha256': self.records['launch']['clock_sha256'],
+                'evidence_sha256': evidence_sha256, 'gate_report_sha256': gate_report_sha256,
+                'archive_output_sha256': archive_output_sha256}
 
     def read_gpu_lease(self, raw):
         if self.records['ack'] is None:

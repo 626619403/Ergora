@@ -3,6 +3,7 @@
 import asyncio
 from contextlib import ExitStack
 import getpass
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -130,6 +131,8 @@ class Execution:
                         'authorization_sha256': chain.owner['authorization_sha256'],
                         'clock_sha256': chain.sha(context['authorization']['clock']),
                         'launch_id': uuid.uuid4().hex, 'execution_phase_id': uuid.uuid4().hex}
+                    if protocol.managed_operation(context['intent']) == 'full-verify':
+                        launch['evidence_checkpoint'] = protocol.FULL_TRACKING_CHECKPOINT
                     protocol.publish(chain.folder / 'launch.json', launch, chain.root)
                     self.current(context, chain)
                     return {'status': 'admitted', 'request': request, 'launch': launch}
@@ -238,7 +241,7 @@ def native_main(installation: str) -> None:
             or core.STATE != Path(intent['execution']['state_directory'])
             or core.CONFIG != Path(intent['execution']['config_directory'])):
         raise ValueError('Managed native interpreter or registered core paths differ')
-    from agent_platform.training_executor import process
+    from agent_platform import training_executor
 
     def admit(folder, record):
         nonlocal parent, active
@@ -263,6 +266,8 @@ def native_main(installation: str) -> None:
                 or request['actor_id'] != actor):
             raise ValueError('Native callback differs from its original supervisor, actor or clock')
         protocol._match(record, chain.native, 'Native locked request')
+        if protocol.managed_operation(intent) == 'full-verify' and not chain.requires_tracking_checkpoint():
+            raise ValueError('Full verification requires its original committed tracking checkpoint')
         supervisor, executor = protocol.processes.identity(os.getppid()), protocol.processes.identity(os.getpid())
         protocol._match(phase['owner'], {key: chain.owner[key] for key in ('pid', 'start_ticks', 'boot_id')}, 'Supervisor owner')
         parent_fields = Path('/proc/' + str(supervisor['pid']) + '/stat').read_text().rsplit(')', 1)[1].split()
@@ -321,6 +326,60 @@ def native_main(installation: str) -> None:
         active()
         return values, active
 
+    def track_full(record, folder, manifest, gate, archive_output_raw):
+        if active is None:
+            raise ValueError('Tracking requires its original managed admission')
+        active()
+        if not gate['passed']:
+            return training_executor.track(record, folder, manifest, gate)
+        selected = protocol.ExecutionRecords(project, intent['experiment_id'], intent['control_home']).load()
+        gate_path = folder / 'gate-report.json'
+        output_path = folder / 'archive-output/execution.log'
+
+        def original_digest(path, *, durable=False):
+            with os.fdopen(protocol._fd(path), 'rb') as stream:
+                digest = hashlib.file_digest(stream, 'sha256').hexdigest()
+                if durable:
+                    os.fsync(stream.fileno())
+                return digest
+
+        with os.fdopen(protocol._fd(gate_path), 'rb') as stream:
+            gate_raw = stream.read()
+            os.fsync(stream.fileno())
+        protocol._match(protocol.decode_record(gate_raw), gate, 'Tracking gate report')
+        gate_sha = hashlib.sha256(gate_raw).hexdigest()
+        output_sha = hashlib.sha256(archive_output_raw).hexdigest()
+        if original_digest(output_path, durable=True) != output_sha:
+            raise ValueError('Original archive output changed after the passing local gate')
+        protocol.sync_directories(output_path.parent, selected.root)
+        checkpoint = selected.tracking_checkpoint(gate['evidence_sha256'], gate_sha, output_sha)
+        checkpoint_path = selected.folder / 'tracking-attempt.json'
+        outcome_path = selected.folder / 'tracking-outcome.json'
+        protocol.publish(checkpoint_path, checkpoint, selected.root)
+        checkpoint_raw = protocol.read_raw(checkpoint_path)
+        protocol._match(protocol.decode_record(checkpoint_raw), checkpoint, 'Tracking checkpoint readback')
+        outcome = {'schema_version': 1, 'kind': 'training-tracking-outcome',
+                   'tracking_attempt_sha256': hashlib.sha256(checkpoint_raw).hexdigest()}
+        if original_digest(gate_path) != gate_sha or original_digest(output_path) != output_sha:
+            raise ValueError('Original tracking gate or archive output changed before export')
+        active()
+
+        def retain_outcome(fields):
+            try:
+                protocol.publish(outcome_path, {**outcome, **fields}, selected.root)
+            except (OSError, ValueError, RuntimeError) as error:
+                return type(error).__name__
+            return None
+
+        try:
+            run_id = training_executor.track(record, folder, manifest, gate)
+        except Exception as error:
+            if problem := retain_outcome({'status': 'raised', 'error_type': type(error).__name__}):
+                error.add_note('Original tracking outcome publication failed: ' + problem)
+            raise
+        retain_outcome({'status': 'returned', 'run_id': run_id})
+        return run_id
+
     chain = protocol.ExecutionRecords(project, intent['experiment_id'], intent['control_home'])
     parent, active = None, None
     with ExitStack() as admissions:
@@ -330,5 +389,6 @@ def native_main(installation: str) -> None:
         if context['authorization']['schema_version'] == 5 and not (chain.folder.parent / 'result.json').exists():
             parent = execution_evidence.validate_context(context, chain.load())
             admissions.enter_context(parent.permission())
-        print(json.dumps(process(chain.folder.parent, admit=admit, before_runner=before_runner),
+        print(json.dumps(training_executor.process(chain.folder.parent, admit=admit,
+                         before_runner=before_runner, track_full=track_full),
                          ensure_ascii=False, allow_nan=False))

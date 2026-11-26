@@ -55,7 +55,8 @@ def track(record: dict, folder: Path, manifest: dict, gate: dict | None, screen:
 
 
 def process(folder: Path, *, admit: Callable[[Path, dict], None] | None = None,
-            before_runner: Callable[[Path, dict, dict, dict], tuple[dict, Callable[[], None]]] | None = None) -> dict:
+            before_runner: Callable[[Path, dict, dict, dict], tuple[dict, Callable[[], None]]] | None = None,
+            track_full: Callable[[dict, Path, dict, dict, bytes], str] | None = None) -> dict:
     with (folder / 'executor.lock').open('a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         if (folder / 'result.json').exists(): return read(folder / 'result.json')
@@ -146,25 +147,60 @@ def process(folder: Path, *, admit: Callable[[Path, dict], None] | None = None,
                 evidence = output / 'evidence.json'
                 archive_output = folder / 'archive-output'
                 archive_report = None
+                archive_output_raw = None
+                negative_gate = None
                 failure = None
                 if not evidence.is_file():
+                    require(track_full is None, 'Managed archive requires original evidence.json before tracking')
                     failure = 'Runner did not produce evidence.json; no numerical/performance claims can pass'
                 else:
                     command = [str(PYTHON), str(UPSTREAM / 'perfctl.py'), '--root', str(perf_root(record['runner']['project'])),
                                'archive', ident, '--bundle', str(evidence)]
+                    managed = track_full is not None
+                    if managed:
+                        from perfctl import ARCHIVE_DURABILITY_EXIT, ARCHIVE_EVALUATED_NEGATIVE_EXIT
+
+                        command.append('--durable-primary')
                     code = Sandbox().run('af-perf-' + ident + '-archive', checkouts['candidate'], archive_output,
                         command, writable=False, fence=fence, timeout=600)
-                    if code:
+                    if managed:
+                        require(code != ARCHIVE_DURABILITY_EXIT,
+                                f'Primary archive durability unconfirmed; inspect {archive_output}/execution.log')
+                        require(type(code) is int and code in (0, ARCHIVE_EVALUATED_NEGATIVE_EXIT),
+                                f'Managed archive has no verified gate (exit {code}); inspect {archive_output}/execution.log')
+                    if code and not managed:
                         failure = f'Evidence archive/gate exited {code}; inspect {archive_output}/execution.log'
                     else:
-                        archive_report, _ = json.JSONDecoder().raw_decode((archive_output / 'execution.log').read_text().lstrip())
-                        require(archive_report['status'] == 'ELIGIBLE_FOR_HUMAN_REVIEW' and
-                            archive_report['experiment_id'] == ident and archive_report['candidate_commit'] == binding.candidate_sha and
-                            archive_report['manifest_sha256'] == binding.manifest_sha, 'Evidence archive result binding mismatch')
+                        archive_output_raw = (archive_output / 'execution.log').read_bytes()
+                        report, _ = json.JSONDecoder().raw_decode(archive_output_raw.decode('utf-8').lstrip())
+                        require(isinstance(report, dict) and report.get('experiment_id') == ident
+                                and report.get('candidate_commit') == binding.candidate_sha
+                                and report.get('manifest_sha256') == binding.manifest_sha, 'Evidence archive result binding mismatch')
+                        if code == 0:
+                            require(report.get('status') == 'ELIGIBLE_FOR_HUMAN_REVIEW', 'Evidence archive has no passing report')
+                            archive_report = report
+                        else:
+                            performance = report.get('performance')
+                            with evidence.open('rb') as original_evidence:
+                                evidence_sha256 = hashlib.file_digest(original_evidence, 'sha256').hexdigest()
+                            require(report.get('status') == 'EVALUATED_NEGATIVE_GATE'
+                                    and report.get('baseline_id') == manifest['baseline_id']
+                                    and report.get('evidence_sha256') == evidence_sha256
+                                    and isinstance(performance, dict)
+                                    and performance.get('experiment_id') == ident
+                                    and performance.get('manifest_sha256') == binding.manifest_sha
+                                    and performance.get('status') in ('FAIL', 'INCONCLUSIVE'),
+                                    'Managed archive has no matching evaluated negative gate')
+                            failure = 'Performance evidence is ' + performance['status']
+                            negative_gate = {'report': report,
+                                             'archive_output_sha256': hashlib.sha256(archive_output_raw).hexdigest()}
                 if failure:
                     failure_path = folder / 'failure-evidence.json'
-                    write(failure_path, {'binding': asdict(binding), 'status': 'FAIL', 'reason': failure,
-                                        'run_log_sha256': hashlib.sha256((output / 'execution.log').read_bytes()).hexdigest()})
+                    negative_evidence = {'binding': asdict(binding), 'status': 'FAIL', 'reason': failure,
+                                         'run_log_sha256': hashlib.sha256((output / 'execution.log').read_bytes()).hexdigest()}
+                    if negative_gate is not None:
+                        negative_evidence['evaluated_negative_gate'] = negative_gate
+                    write(failure_path, negative_evidence)
                     evidence_sha = hashlib.sha256(failure_path.read_bytes()).hexdigest()
                     summary = failure
                 else:
@@ -174,7 +210,10 @@ def process(folder: Path, *, admit: Callable[[Path, dict], None] | None = None,
                         'evidence_sha256': evidence_sha, 'summary': summary, 'archive_report': archive_report}
                 gate_path = folder / 'gate-report.json'
                 write(gate_path, gate)
-                run_id = track(record, folder, manifest, gate)
+                if track_full is not None:
+                    run_id = track_full(record, folder, manifest, gate, archive_output_raw)
+                else:
+                    run_id = track(record, folder, manifest, gate)
                 gate_reference = {'report': str(gate_path), 'report_sha256': hashlib.sha256(gate_path.read_bytes()).hexdigest(),
                                   'mlflow_run_id': run_id}
                 state, detail = 'SUCCEEDED', summary

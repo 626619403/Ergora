@@ -1100,7 +1100,8 @@ def configuration_execution(configuration_project, cycle_selection, service, tmp
     """Original preparation/start/admission with actual Git configs and CPU evidence."""
     item = configuration_project
     state, definition, runtime, prefix, write, selection = cycle_selection
-    options = getattr(request, 'param', {})
+    options = dict(getattr(request, 'param', {}))
+    minimum_saving = options.pop('test_minimum_saving', .001)
     config = json.loads(item['candidate_raw'])
     config.update(options)
     item['configuration'].write_text(json.dumps(config) + '\n')
@@ -1125,7 +1126,7 @@ def configuration_execution(configuration_project, cycle_selection, service, tmp
                  allowed_changes=['CPU fixture batch grouping and redundant arithmetic removal'],
                  performance_policy={'normalization_source_samples': 48,
                      'statistics': {'min_pairs': 4, 'bootstrap_resamples': 1000, 'confidence': .95, 'seed': 73},
-                     'thresholds': {'min_saved_seconds_at_normalization': 0.001,
+                     'thresholds': {'min_saved_seconds_at_normalization': minimum_saving,
                                     'min_speedup_percent': None, 'mode': 'all'}})
     for path in (runtime / 'training/manifests/alpha.json', runtime / 'training/specs/alpha.json',
                  prefix / 'experiments/alpha/manifest.json'):
@@ -1226,6 +1227,8 @@ def test_configuration_driver_runs_actual_cpu_work_and_original_managed_archive(
     job = item['job']
     result = json.loads((job / 'result.json').read_bytes())
     assert result['state'] == 'SUCCEEDED', result
+    tracking = json.loads((job / 'managed-execution/tracking-outcome.json').read_bytes())
+    assert tracking['status'] == 'returned' and tracking['run_id'] == result['gate']['mlflow_run_id']
     gate = json.loads((job / 'gate-report.json').read_bytes())
     assert gate['passed'] is True, gate
     receipt = json.loads((job / 'run-output/configuration-receipt.json').read_bytes())
@@ -1258,10 +1261,83 @@ def test_configuration_driver_runs_actual_cpu_work_and_original_managed_archive(
 
 
 @pytest.mark.parametrize('installation', ['managed'], indirect=True)
-@pytest.mark.parametrize('failure, native_state, executor_returncode',
-                         [('missing-module', None, 1), ('service', 'FAILED', 0)])
+@pytest.mark.parametrize('sync_mode', ['complete', 'artifact', 'parent', 'timeout', 'signal', 'monitor'])
+def test_managed_archive_is_durable_before_tracking(configuration_execution, monkeypatch, sync_mode):
+    item = configuration_execution
+    monkeypatch.setenv('ERGORA_TEST_PRIMARY_SYNC', sync_mode)
+    execution = run_configuration_execution(item)
+    job = item['job']
+    assert execution['executor_stop_confirmed'] is True
+    events = [json.loads(line) for line in (job / 'test-primary-sync.jsonl').read_text().splitlines()]
+    result = json.loads((job / 'result.json').read_bytes())
+    destinations = [Path(event['path']) for event in events if event['operation'] == 'rename']
+    if sync_mode == 'complete':
+        destination, = destinations
+        renamed = next(index for index, event in enumerate(events) if event['operation'] == 'rename')
+        tracking = next(index for index, event in enumerate(events) if event['operation'] == 'tracking')
+        synced = [Path(event['path']) for event in events[:renamed] if event['operation'] == 'sync']
+        staging, = {path for path in synced if path.name.startswith('.archive-')}
+        for path in destination.rglob('*'):
+            assert staging / path.relative_to(destination) in synced
+        assert any(event == {'operation': 'sync', 'path': str(destination.parent)}
+                   for event in events[renamed + 1:tracking])
+        assert result['state'] == 'SUCCEEDED' and result['gate'] is not None
+        assert (job / 'managed-execution/tracking-attempt.json').is_file()
+    else:
+        assert bool(destinations) == (sync_mode != 'artifact')
+        assert not any(event['operation'] == 'tracking' for event in events)
+        assert result['state'] == 'FAILED' and result['gate'] is None
+        if sync_mode in ('artifact', 'parent'):
+            failed, = [event for event in events if event['operation'] == 'sync-failed']
+            assert 'Primary archive durability unconfirmed' in result['detail']
+            assert failed['path'] in (job / 'archive-output/execution.log').read_text()
+        elif sync_mode in ('timeout', 'signal'):
+            held, = [event for event in events if event['operation'] == 'sync-held']
+            assert held['path'] == str(destinations[0].parent)
+            expected_exit = '124' if sync_mode == 'timeout' else '-15'
+            assert f'Managed archive has no verified gate (exit {expected_exit})' in result['detail']
+        else:
+            assert 'Original process started without a confirmed terminal' in result['detail']
+        assert not (job / 'gate-report.json').exists()
+        assert not (job / 'managed-execution/tracking-attempt.json').exists()
+    assert len((item['markers'] / 'first-work.jsonl').read_text().splitlines()) == 1
+
+
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('configuration_execution', [{'test_minimum_saving': 10_000}], indirect=True)
+def test_managed_archive_retains_an_exact_evaluated_negative_gate(configuration_execution, monkeypatch):
+    item = configuration_execution
+    monkeypatch.setenv('ERGORA_TEST_PRIMARY_SYNC', 'complete')
+    execution = run_configuration_execution(item)
+    job = item['job']
+    assert execution['executor_stop_confirmed'] is True
+    result = json.loads((job / 'result.json').read_bytes())
+    assert result['state'] == 'SUCCEEDED' and result['gate'] is not None
+    gate = json.loads((job / 'gate-report.json').read_bytes())
+    assert gate['passed'] is False and gate['archive_report'] is None
+    failure_raw = (job / 'failure-evidence.json').read_bytes()
+    assert gate['evidence_sha256'] == hashlib.sha256(failure_raw).hexdigest()
+    observed = json.loads(failure_raw)['evaluated_negative_gate']
+    archive_output = (job / 'archive-output/execution.log').read_bytes()
+    assert observed['archive_output_sha256'] == hashlib.sha256(archive_output).hexdigest()
+    assert observed['report'] == json.loads(archive_output)
+    assert observed['report']['status'] == 'EVALUATED_NEGATIVE_GATE'
+    assert observed['report']['performance']['status'] == 'FAIL'
+    events = [json.loads(line) for line in (job / 'test-primary-sync.jsonl').read_text().splitlines()]
+    assert events == [{'operation': 'tracking', 'path': None}]
+    assert not (job / 'managed-execution/tracking-attempt.json').exists()
+    assert training.evidence(item['state'], 'demo', 'alpha')['archive_status'] == 'no_accepted_archive'
+    assert len((item['markers'] / 'first-work.jsonl').read_text().splitlines()) == 1
+
+
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('failure, native_state, executor_returncode, tracking_status, error_type', [
+    ('missing-module', None, 1, 'raised', 'ModuleNotFoundError'),
+    ('service', 'FAILED', 0, 'raised', 'RuntimeError'),
+    ('lost-after-send', None, 79, 'unknown', None),
+])
 def test_training_evidence_verifies_retained_archive_after_tracking_failure(
-        configuration_execution, monkeypatch, failure, native_state, executor_returncode):
+        configuration_execution, monkeypatch, failure, native_state, executor_returncode, tracking_status, error_type):
     item = configuration_execution
     monkeypatch.setenv('ERGORA_TEST_TRAINING_TRACKING_FAILURE', failure)
     execution = run_configuration_execution(item)
@@ -1293,8 +1369,36 @@ def test_training_evidence_verifies_retained_archive_after_tracking_failure(
     assert retained['reap_record_sha256'] == execution['record_sha256']['stopped']
     assert retained['archive']['evidence_sha256'] == gate['evidence_sha256']
     assert retained['archive']['artifact_content_status'] == 'verified'
+    checkpoint = job / 'managed-execution/tracking-attempt.json'
+    tracking = retained['tracking']
+    assert tracking['status'] == tracking_status and tracking.get('error_type') == error_type
+    assert tracking['tracking_attempt_sha256'] == hashlib.sha256(checkpoint.read_bytes()).hexdigest()
+    original_attempt = job / 'managed-execution/attempt.json'
+    expected = json.loads(checkpoint.read_bytes())
+    assert expected['attempt_sha256'] == hashlib.sha256(original_attempt.read_bytes()).hexdigest()
+    assert expected['clock_sha256'] == execution['records']['launch']['clock_sha256']
+    assert expected['gate_report_sha256'] == retained['gate_report_sha256']
+    assert expected['archive_output_sha256'] == retained['archive_output_sha256']
+    provider_send = job / 'test-tracking-send'
+    if failure == 'lost-after-send':
+        assert provider_send.read_text() == gate['manifest_sha256']
+        assert not (job / 'managed-execution/tracking-outcome.json').exists()
+    else:
+        assert not provider_send.exists()
+        outcome = job / 'managed-execution/tracking-outcome.json'
+        try:
+            donor = json.loads(originals[outcome])
+            outcome.write_text(json.dumps({**donor, 'tracking_attempt_sha256': '0' * 64}))
+            observation = training.evidence(state, 'demo', 'alpha', retained_archive=True)['retained_archive']
+            assert observation['status'] == 'verified' and observation['tracking']['status'] == 'unavailable'
+            assert 'differs from its complete original identity' in observation['tracking']['reason']
+        finally:
+            outcome.write_bytes(originals[outcome])
     with pytest.raises(ValueError):
         training.baseline_reference(state, 'demo', 'alpha', evidence_sha256=gate['evidence_sha256'])
+    with pytest.raises(ValueError):
+        training.execute(state, 'demo', 'alpha', 1, item['submission']['intent_sha256'],
+            item['submission']['run_id'], item['native_sha256'], confirm=True)
 
     stopped_path.unlink()
     try:
@@ -1315,6 +1419,7 @@ def test_training_evidence_verifies_retained_archive_after_tracking_failure(
         artifact.write_bytes(originals[artifact])
     assert all(path.read_bytes() == raw for path, raw in originals.items())
     assert terminal.exists() == (native_state is not None)
+    assert len((item['markers'] / 'first-work.jsonl').read_text().splitlines()) == 1
     assert json.loads(item['service'][1].read_bytes())['starts'] == 1
 
 
@@ -1326,6 +1431,11 @@ def test_retained_archive_requires_the_original_archive_output(configuration_exe
     state, job = item['state'], item['job']
     gate_path = job / 'gate-report.json'
     output_path = job / 'archive-output/execution.log'
+    attempts = job / 'managed-execution'
+    tracking_paths = [attempts / 'tracking-attempt.json', attempts / 'tracking-outcome.json']
+    tracking_originals = {path: path.read_bytes() for path in tracking_paths}
+    launch = attempts / 'launch.json'
+    original_launch = launch.read_bytes()
     original_gate = gate_path.read_bytes()
     original_output = output_path.read_bytes()
     gate = json.loads(original_gate)
@@ -1347,7 +1457,23 @@ def test_retained_archive_requires_the_original_archive_output(configuration_exe
         assert output_path.read_bytes() == original_output
         assert observation['status'] == 'unavailable' and 'archive output differs' in observation['reason']
         assert 'archive' not in observation
+        output_path.write_bytes(proc.stdout.encode('utf-8'))
+        observation = training.evidence(state, 'demo', 'alpha', retained_archive=True)['retained_archive']
+        assert observation['status'] == 'unavailable' and 'tracking checkpoint differs' in observation['reason']
+        for path in tracking_paths:
+            path.unlink()
+        observation = training.evidence(state, 'demo', 'alpha', retained_archive=True)['retained_archive']
+        assert observation['status'] == 'unavailable' and 'Required original full tracking checkpoint' in observation['reason']
+        donor_launch = json.loads(original_launch)
+        donor_launch.pop('evidence_checkpoint')
+        launch.write_text(json.dumps(donor_launch))
+        observation = training.evidence(state, 'demo', 'alpha', retained_archive=True)['retained_archive']
+        assert observation['status'] == 'unavailable' and 'Execution attempt differs' in observation['reason']
     finally:
+        launch.write_bytes(original_launch)
+        for path, raw in tracking_originals.items():
+            path.write_bytes(raw)
+        output_path.write_bytes(original_output)
         gate_path.write_bytes(original_gate)
 
     output_path.unlink()

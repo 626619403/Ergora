@@ -135,6 +135,9 @@ def _retained_archive(project, experiment, files):
         archive, artifacts = _accepted_archive(project, ident, binding, experiment['baseline_id'], gate, read, max_artifacts=256)
         for name, artifact in artifacts.items():
             inventory.read(archive['path'], name, 'archive', artifact['sha256'], 16 * 1_048_576, evidence=False)
+        gate_sha = hashlib.sha256(gate_raw).hexdigest()
+        output_sha = hashlib.sha256(archive_output).hexdigest()
+        tracking = _retained_tracking(chain, read, archive['evidence_sha256'], gate_sha, output_sha)
         inventory.confirm()
     except (OSError, KeyError, TypeError, ValueError, project.core.Blocked) as error:
         return {**unavailable, 'reason': str(error)}
@@ -142,9 +145,43 @@ def _retained_archive(project, experiment, files):
             'run_id': request['run_id'], 'attempt_sha256': chain.sha(chain.records['attempt']),
             'reap_record_sha256': chain.sha(stopped),
             'executor_process': {key: process[key] for key in ('status', 'returncode')},
-            'gate_report_sha256': hashlib.sha256(gate_raw).hexdigest(),
-            'archive_output_sha256': hashlib.sha256(archive_output).hexdigest(),
+            'gate_report_sha256': gate_sha, 'archive_output_sha256': output_sha, 'tracking': tracking,
             'archive': {**archive, 'artifact_content_status': 'verified'}}
+
+
+def _retained_tracking(chain, read, evidence_sha, gate_sha, output_sha):
+    path = chain.prefix + '/managed-execution/'
+    attempt_raw = read(path + 'tracking-attempt.json', optional=True)
+    if attempt_raw is None:
+        if chain.requires_tracking_checkpoint():
+            raise ValueError('Required original full tracking checkpoint is missing')
+        if read(path + 'tracking-outcome.json', optional=True) is not None:
+            raise ValueError('Tracking outcome has no original attempt checkpoint')
+        return {'status': 'not_recorded'}
+    attempt = decode_record(attempt_raw)
+    protocol._match(attempt, chain.tracking_checkpoint(evidence_sha, gate_sha, output_sha),
+                    'Original tracking checkpoint')
+    attempt_sha = hashlib.sha256(attempt_raw).hexdigest()
+    result = {'status': 'unknown', 'tracking_attempt_sha256': attempt_sha}
+    try:
+        outcome_raw = read(path + 'tracking-outcome.json', optional=True)
+        if outcome_raw is None:
+            return result
+        outcome = decode_record(outcome_raw)
+        status = outcome.get('status')
+        if status not in ('raised', 'returned'):
+            raise ValueError('Original tracking outcome has an invalid status')
+        key = 'error_type' if status == 'raised' else 'run_id'
+        value = outcome.get(key)
+        if not isinstance(value, str) or not 1 <= len(value) <= 128:
+            raise ValueError('Original tracking outcome has an invalid ' + key)
+        protocol._match(outcome, {'schema_version': 1, 'kind': 'training-tracking-outcome',
+                        'tracking_attempt_sha256': attempt_sha, 'status': status, key: value},
+                        'Original tracking outcome')
+    except (OSError, ValueError) as error:
+        return {**result, 'status': 'unavailable', 'reason': str(error)}
+    return {**result, 'status': status, key: value,
+            'tracking_outcome_sha256': hashlib.sha256(outcome_raw).hexdigest()}
 
 
 def inspect(payload: dict) -> dict:

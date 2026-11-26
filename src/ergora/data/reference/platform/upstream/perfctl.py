@@ -8,11 +8,24 @@ import os
 from pathlib import Path
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
 
 class Invalid(ValueError): pass
+class PrimaryArchiveDurabilityError(Invalid): pass
+
+
+ARCHIVE_DURABILITY_EXIT = 3
+ARCHIVE_EVALUATED_NEGATIVE_EXIT = 4
+
+
+class EvaluatedNegativeGate(Invalid):
+    def __init__(self, report):
+        super().__init__('Performance evidence is ' + report['performance']['status'])
+        self.report = {**report, 'status': 'EVALUATED_NEGATIVE_GATE'}
+
 def fail(message): raise Invalid(message)
 def read(path):
     try: return json.loads(Path(path).read_text())
@@ -90,6 +103,90 @@ def snapshot_bundle(source,target):
         require(name not in seen,'Duplicate artifact path');seen.add(name)
         dst=target/name;dst.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(p,dst)
     return target/'evidence.json'
+
+
+def sync_archive_directory(path):
+    require(path.resolve(strict=True) == path, 'Archive directory uses a linked path')
+    fd = os.open(path, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+
+
+def sync_primary_archive(archive, report, comparison_sha256):
+    """Sync the verified index and required metadata, including all nested entries."""
+    evidence_path = archive / 'evidence.json'
+    saved_gate = archive / 'gate-result.json'
+    require(read(saved_gate) == report, 'Original archive gate changed before durability confirmation')
+    expected = {item['path']: item['sha256'] for item in read(evidence_path)['artifacts']}
+    expected.update({'evidence.json': report['evidence_sha256'], 'gate-result.json': digest(saved_gate),
+                     '_archive_meta/manifest.json': report['manifest_sha256'],
+                     '_archive_meta/baseline.json': report['baseline_snapshot_sha256'],
+                     '_archive_meta/compare_runs.py': comparison_sha256})
+    directories = {archive}
+    for name, checksum in expected.items():
+        path = archive / name
+        require(path.is_relative_to(archive) and path.resolve(strict=True) == path,
+                'Primary archive verification requires an original unlinked file: ' + name)
+        flags = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK
+        with os.fdopen(os.open(path, flags), 'rb') as stream:
+            before = os.fstat(stream.fileno())
+            require(stat.S_ISREG(before.st_mode), 'Primary archive evidence must be a regular file: ' + name)
+            remaining = before.st_size
+            checksum_actual = hashlib.sha256()
+            while remaining:
+                block = stream.read(min(1_048_576, remaining))
+                require(bool(block), 'Primary archive evidence became shorter: ' + name)
+                remaining -= len(block)
+                checksum_actual.update(block)
+            require(checksum_actual.hexdigest() == checksum, 'Primary archive evidence changed: ' + name)
+            os.fsync(stream.fileno())
+            after = path.stat(follow_symlinks=False)
+            identity = ('st_dev', 'st_ino', 'st_mode', 'st_size', 'st_mtime_ns', 'st_ctime_ns')
+            require(all(getattr(after, field) == getattr(before, field) for field in identity),
+                    'Primary archive path changed during confirmation: ' + name)
+        for directory in path.parents:
+            if directory == archive:
+                break
+            directories.add(directory)
+    for directory in sorted(directories, key=lambda path: (len(path.parts), str(path)), reverse=True):
+        sync_archive_directory(directory)
+
+
+def publish_archive(root, staging, report, compare_tool, durable):
+    parent = staging.parent
+    experiment = parent.parent
+    destination = parent / report['evidence_sha256']
+    comparison_sha = read(experiment / 'manifest.json')['comparison_tool_sha256']
+    existing = destination.exists()
+    if existing:
+        require(digest(destination / 'evidence.json') == destination.name, 'Archive content address mismatch')
+        prior = gate(root, report['experiment_id'], destination / 'evidence.json', compare_tool)
+        require(read(destination / 'gate-result.json') == prior, 'Archive gate-result mismatch')
+        require(digest(destination / '_archive_meta/manifest.json') == report['manifest_sha256'], 'Archive manifest mismatch')
+        require(digest(destination / '_archive_meta/baseline.json') == prior['baseline_snapshot_sha256'], 'Archive baseline snapshot mismatch')
+        require(digest(destination / '_archive_meta/compare_runs.py') == comparison_sha, 'Archive comparator mismatch')
+    else:
+        metadata = staging / '_archive_meta'
+        metadata.mkdir()
+        shutil.copyfile(experiment / 'manifest.json', metadata / 'manifest.json')
+        shutil.copyfile(root / 'baseline.json', metadata / 'baseline.json')
+        shutil.copyfile(compare_tool, metadata / 'compare_runs.py')
+        write(staging / 'gate-result.json', report)
+    if durable:
+        sync_primary_archive(destination if existing else staging, report, comparison_sha)
+    if not existing:
+        os.rename(staging, destination)
+    if durable:
+        # Publish the rename and the accepted-evidence directory entry before a caller sees PASS.
+        for directory in (parent, *parent.parents):
+            sync_archive_directory(directory)
+            if directory == root:
+                break
+    return destination
+
+
 def gate(root,expid,bundle,compare_tool):
     exp=root/'experiments'/ident(expid);m=validate(read(exp/'manifest.json'))
     baseline_ok(m,read(root/'baseline.json'))
@@ -157,8 +254,11 @@ def gate(root,expid,bundle,compare_tool):
         require(result.returncode==0 and out.is_file(),'Comparison tool failed: '+result.stderr[-600:])
         fresh=read(out);stored=read(reported)
     require(fresh==stored,'Stored comparison differs from recomputed result')
+    report = {'status':'ELIGIBLE_FOR_HUMAN_REVIEW','experiment_id':expid,'baseline_id':m['baseline_id'],'baseline_snapshot_sha256':digest(root/'baseline.json'),'candidate_commit':m['candidate_commit'],'manifest_sha256':e['manifest_sha256'],'evidence_sha256':digest(bundle),'track':m['track'],'performance':fresh,'limitation':'Checksums and records do not authenticate authors or prove training quality. Platform permissions and independent review remain required.'}
+    if fresh.get('status') in ('FAIL', 'INCONCLUSIVE'):
+        raise EvaluatedNegativeGate(report)
     require(fresh.get('status')=='PASS','Performance evidence is '+str(fresh.get('status')))
-    return {'status':'ELIGIBLE_FOR_HUMAN_REVIEW','experiment_id':expid,'baseline_id':m['baseline_id'],'baseline_snapshot_sha256':digest(root/'baseline.json'),'candidate_commit':m['candidate_commit'],'manifest_sha256':e['manifest_sha256'],'evidence_sha256':digest(bundle),'track':m['track'],'performance':fresh,'limitation':'Checksums and records do not authenticate authors or prove training quality. Platform permissions and independent review remain required.'}
+    return report
 def main(argv=None):
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--root',type=Path,default=Path('.perf-state'))
     sub=p.add_subparsers(dest='cmd',required=True)
@@ -167,6 +267,7 @@ def main(argv=None):
     q=sub.add_parser('register');q.add_argument('manifest',type=Path)
     q=sub.add_parser('gate');q.add_argument('experiment_id');q.add_argument('--bundle',required=True,type=Path)
     q=sub.add_parser('archive');q.add_argument('experiment_id');q.add_argument('--bundle',required=True,type=Path)
+    q.add_argument('--durable-primary', action='store_true', help='verify and synchronize the indexed archive before reporting success')
     sub.add_parser('status')
     a=p.parse_args(argv);root=a.root.resolve();compare_tool=Path(__file__).with_name('compare_runs.py')
     if a.cmd=='validate':validate(read(a.manifest));print('VALID');return 0
@@ -187,30 +288,33 @@ def main(argv=None):
                 print('ALREADY_REGISTERED')
             else:write_raw(dst,raw);print('REGISTERED')
         elif a.cmd in ['gate','archive']:
+            durable = a.cmd == 'archive' and a.durable_primary
             parent=root/'experiments'/ident(a.experiment_id)/'accepted-evidence'
-            parent.mkdir(parents=True,exist_ok=True)
-            staging=Path(tempfile.mkdtemp(prefix='.archive-',dir=parent))
             try:
-                snapshot=snapshot_bundle(a.bundle,staging)
-                report=gate(root,a.experiment_id,snapshot,compare_tool)
-                if a.cmd=='archive':
-                    dst=parent/report['evidence_sha256']
-                    if dst.exists():
-                        require(digest(dst/'evidence.json')==report['evidence_sha256']==dst.name,'Archive content address mismatch')
-                        prior=gate(root,a.experiment_id,dst/'evidence.json',compare_tool)
-                        require(read(dst/'gate-result.json')==prior,'Archive gate-result mismatch')
-                        require(digest(dst/'_archive_meta'/'manifest.json')==report['manifest_sha256'],'Archive manifest mismatch')
-                        require(digest(dst/'_archive_meta'/'baseline.json')==prior['baseline_snapshot_sha256'],'Archive baseline snapshot mismatch')
-                        require(digest(dst/'_archive_meta'/'compare_runs.py')==read(root/'experiments'/a.experiment_id/'manifest.json')['comparison_tool_sha256'],'Archive comparator mismatch')
-                    else:
-                        meta=staging/'_archive_meta';meta.mkdir()
-                        shutil.copyfile(root/'experiments'/a.experiment_id/'manifest.json',meta/'manifest.json')
-                        shutil.copyfile(root/'baseline.json',meta/'baseline.json')
-                        shutil.copyfile(compare_tool,meta/'compare_runs.py')
-                        write(staging/'gate-result.json',report);os.rename(staging,dst)
-                    report['archive_path']=str(dst)
-            finally:
-                if staging.exists():shutil.rmtree(staging)
+                parent.mkdir(parents=True,exist_ok=True)
+                staging=Path(tempfile.mkdtemp(prefix='.archive-',dir=parent))
+                try:
+                    snapshot=snapshot_bundle(a.bundle,staging)
+                    try:
+                        report = gate(root, a.experiment_id, snapshot, compare_tool)
+                    except EvaluatedNegativeGate as error:
+                        if not durable:
+                            raise
+                        print(json.dumps(error.report, ensure_ascii=False, indent=2))
+                        return ARCHIVE_EVALUATED_NEGATIVE_EXIT
+                    if a.cmd=='archive':
+                        try:
+                            report['archive_path'] = str(publish_archive(root, staging, report, compare_tool, durable))
+                        except Invalid as error:
+                            if durable:
+                                raise PrimaryArchiveDurabilityError(str(error)) from error
+                            raise
+                finally:
+                    if staging.exists():shutil.rmtree(staging)
+            except OSError as error:
+                if durable:
+                    raise PrimaryArchiveDurabilityError(str(error)) from error
+                raise
             print(json.dumps(report,ensure_ascii=False,indent=2))
         elif a.cmd=='status':
             b=read(root/'baseline.json');rows=[]
@@ -220,4 +324,5 @@ def main(argv=None):
     return 0
 if __name__=='__main__':
     try:sys.exit(main())
+    except PrimaryArchiveDurabilityError as e:print('PRIMARY ARCHIVE DURABILITY UNCONFIRMED: '+str(e),file=sys.stderr);sys.exit(ARCHIVE_DURABILITY_EXIT)
     except (Invalid,OSError,KeyError,TypeError) as e:print('BLOCKED: '+str(e),file=sys.stderr);sys.exit(2)
