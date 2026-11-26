@@ -1036,6 +1036,9 @@ def test_source_idempotence_parent_and_schema1_namespaces_preserve_originals(nat
         {'task_id': data['task']['task_id'], 'decision_id': 'old-approval', **run}, timeout=20)
     assert approved['created'] is True and approved['approval']['status'] == 'prepared'
     before = source_state_snapshot(data)
+    listed = tasks.approval_records(data['state'], 'demo', data['task']['task_id'], run_id=run['run_id'])
+    assert listed['records'] == [approved['approval']]
+    assert source_state_snapshot(data) == before
     with pytest.raises(ValueError, match='another task approval|schema1 approval'):
         publish_source(data, operation_id='old-approval', body=body)
     assert source_state_snapshot(data) == before

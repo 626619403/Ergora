@@ -223,14 +223,29 @@ def test_cli_and_api_use_the_same_explicit_decision_and_recovery(approval_task,a
     state=approval_task[0]
     client=TestClient(create_app(state.root),base_url='http://127.0.0.1')
     uri='/api/projects/demo/tasks/new-task/approvals/owner-one'
+    lookup='/api/projects/demo/tasks/new-task/approvals'
     headers={'X-Ergora-Request':'1','Origin':'http://127.0.0.1'}
     body={'revision':1,'run_id':'original-run','plan_sha256':'a'*64,'confirm':True}
+    assert client.get(lookup, params={'run_id': 'original-run'}).json()['records'] == []
+    assert client.get(lookup, params={'run_id': 'different-run'}).status_code == 400
+    assert client.get(lookup, params={'run_id': 'original-run'}, headers={'Origin': 'https://other.test'}).status_code == 403
     assert client.post(uri,json=body).status_code==403
     for invalid in ({'revision':True},{'confirm':1},{'timeout':True},{'timeout':61}):
         assert client.post(uri,json={**body,**invalid},headers=headers).status_code==422
     monkeypatch.setenv('ERGORA_TEST_APPROVAL_SCENARIO','lost-ack')
     assert client.post(uri,json=body,headers=headers).status_code==400
+    client.close()
+    # A new operator client only knows the selected task and its submitted run.
+    client=TestClient(create_app(state.root),base_url='http://127.0.0.1')
+    submission=client.get('/api/projects/demo/tasks/new-task/submission').json()
+    before=_files(_root(approval_task))
+    listed=client.get(lookup, params={'run_id': submission['run_id']})
+    assert listed.status_code == 200
+    found=listed.json()
+    assert found['run_id']==submission['run_id'] and found['runtime_status']=='not_queried'
     current=client.get(uri).json()
+    assert found['records']==[current]
+    assert _files(_root(approval_task))==before
     assert current['status']=='unknown'
     args=['--home',str(state.root),'task']
     assert cli.main([*args,'approve','demo','new-task','--decision-id','owner-one','--revision','1',
@@ -241,4 +256,5 @@ def test_cli_and_api_use_the_same_explicit_decision_and_recovery(approval_task,a
     assert cli.main([*args,'resume-approve','demo','new-task','owner-one','--revision','1',
                      '--intent-sha256',current['intent_sha256'],'--confirm'])==0
     assert client.get(uri).json()==status(approval_task)
+    assert client.get(lookup, params={'run_id': submission['run_id']}).json()['records']==[status(approval_task)]
     assert _calls(approval_task).count('approval-signal')==1

@@ -463,11 +463,11 @@ def _source_read_bodies(creation, material, limits, *, pending=False, repairing=
     return missing
 
 
-def _source_scan(submission, repair_id=None):
-    creation = submission.creation
+def _approval_journal(creation):
+    """Read the bounded task directory shared by owner and source receipts."""
     directory = creation.path('ergora/task-approvals/' + creation.task_id)
     if not directory.exists():
-        return None
+        return {}
     groups, scanned = {}, 0
     with os.scandir(directory) as entries:
         for index, entry in enumerate(entries):
@@ -484,6 +484,12 @@ def _source_scan(submission, repair_id=None):
             if scanned > _SOURCE_LIMITS['journal_bytes']:
                 raise ValueError('Task approval journal exceeds its bounded raw-byte scan')
             groups.setdefault(match[1], {})[match[2]] = (value, path.stat().st_size)
+    return groups
+
+
+def _source_scan(submission, repair_id=None):
+    creation = submission.creation
+    groups = _approval_journal(creation)
     operations = []
     for operation_id, files in groups.items():
         if 'intent' not in files:
@@ -776,7 +782,11 @@ class _Approval:
         self.submission = _Submission(payload)
         self.creation = self.submission.creation
         self.core, self.sha = self.creation.core, self.creation.sha
-        self.decision_id = self.core.slug(payload['decision_id'])
+        if payload['operation'] != 'list':
+            self.select_decision(payload['decision_id'])
+
+    def select_decision(self, decision_id: str) -> None:
+        self.decision_id = self.core.slug(decision_id)
         prefix = 'ergora/task-approvals/' + self.creation.task_id + '/' + self.decision_id
         self.intent_path = self.creation.path(prefix + '.intent.json')
         self.attempt_path = self.creation.path(prefix + '.attempt.json')
@@ -872,6 +882,33 @@ class _Approval:
                 'attempt_saved': attempt is not None, 'result_saved': receipt is not None,
                 'signal_delivery': receipt['delivery'] if receipt is not None else None}
 
+    def list_records(self) -> dict:
+        self.prepare()
+        if self.payload['run_id'] != self.run_id:
+            raise ValueError('Approval lookup must pin the original submitted run ID')
+        records = []
+        for decision_id, files in sorted(_approval_journal(self.creation).items()):
+            self.select_decision(decision_id)
+            if 'intent' in files:
+                intent = files['intent'][0]
+            else:
+                # A concurrent publication can appear partway through scandir.
+                intent = self.creation.optional(self.intent_path, _SOURCE_LIMITS['intent_bytes'])
+                if intent is None:
+                    raise ValueError('Task approval journal has no original intent: ' + decision_id)
+            if (intent.get('schema_version') == 2 and intent.get('kind') == 'task-design-source-operation'
+                    and 'attempt' not in files):
+                continue
+            if intent.get('schema_version') != 1 or intent.get('operation') != 'approve':
+                raise ValueError('Unrecognized task approval intent: ' + decision_id)
+            intent = self.load()
+            if intent is None:
+                raise ValueError('Original approval intent disappeared during lookup: ' + decision_id)
+            records.append(self.status(intent))
+        return {'project': self.creation.project['id'], 'task_id': self.creation.task_id,
+                'workflow_id': self.start_intent['workflow_id'], 'run_id': self.run_id,
+                'runtime_status': 'not_queried', 'records': records}
+
     async def dispatch(self, intent: dict) -> dict:
         from dev_platform.adapter import publish
         from dev_platform.workflow import DevelopmentWorkflow
@@ -906,6 +943,8 @@ class _Approval:
 
     async def run(self) -> dict:
         operation = self.payload['operation']
+        if operation == 'list':
+            return self.list_records()
         if operation == 'status':
             self.prepare()
             return self.status(self.load())
@@ -956,7 +995,7 @@ def main() -> None:
         payload = json.load(sys.stdin)
         source = payload['operation'].startswith('source-')
         inspecting = payload['operation'] == 'inspect-plan' or source
-        if not source and payload['operation'] not in ('status', 'prepare', 'prepare-resume'):
+        if not source and payload['operation'] not in ('list', 'status', 'prepare', 'prepare-resume'):
             os.environ.update(environment())
         operation = (_source_operation(payload) if source else
                      _plan(payload) if inspecting else _Approval(payload).run())

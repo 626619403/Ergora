@@ -983,6 +983,7 @@ export function tasksView(data, base, { sourceSnapshot = "" } = {}) {
         });
       const decisionInput = decisionField.querySelector("input");
       const materials = node("div", {}, pending ? empty("正在读取完整计划材料…") : null);
+      const foundDecisions = node("div", { "aria-live": "polite" });
       const result = node("div", { "aria-live": "polite" });
       let plan = null;
       let readingSequence = 0;
@@ -990,9 +991,11 @@ export function tasksView(data, base, { sourceSnapshot = "" } = {}) {
       const reader = form([decisionField], "读取批准记录", read);
       const readButton = reader.querySelector('button[type="submit"]');
       readButton.disabled = Boolean(pending);
+      const lookupButton = !pending && saved?.status === "submitted"
+        ? button("查找此运行的原批准记录", lookup) : null;
       const content = node("div", {},
         node("p", {}, "请保留本次决策 ID。先读取原记录，再明确批准或恢复；关闭页面不会撤销已发出的操作，未知结果不能直接重发。"),
-        materials, reader, result,
+        materials, lookupButton, foundDecisions, reader, result,
       );
       const active = () => view.isConnected && sequence === detailSequence &&
         content.isConnected && $("#dialog").open && (!pending || selectedRunSequence === runSequence);
@@ -1080,6 +1083,31 @@ export function tasksView(data, base, { sourceSnapshot = "" } = {}) {
             node("p", {}, `原决策 ID：${decisionId}。记录未读成功，不提供批准或恢复确认。`),
             button("重新读取原批准记录", read),
           ));
+        }
+      }
+
+      async function lookup() {
+        if (!active() || writing || lookupButton.disabled) return;
+        lookupButton.disabled = true;
+        foundDecisions.replaceChildren(empty("正在查找此运行的原批准记录…"));
+        try {
+          const records = await api(`${path}/approvals?${new URLSearchParams({ run_id: saved.run_id })}`);
+          if (!active()) return;
+          if (records.project !== data.project.id || records.task_id !== taskId || records.run_id !== saved.run_id)
+            throw new Error("批准记录与原任务或运行不匹配。");
+          foundDecisions.replaceChildren(records.records.length
+            ? table(["原决策 ID", "记录状态", "查看"], records.records.map((record) => [
+              record.decision_id, record.status, button(`读取 ${record.decision_id}`, () => {
+                if (!active() || writing) return;
+                decisionInput.value = record.decision_id;
+                read();
+              }),
+            ]))
+            : empty("此运行没有已保存的原批准记录。"));
+        } catch (error) {
+          if (active()) foundDecisions.replaceChildren(panel("原批准记录查找失败", error.message));
+        } finally {
+          if (active()) lookupButton.disabled = false;
         }
       }
 

@@ -1042,6 +1042,11 @@ def create_app(home: Path | None = None) -> FastAPI:
     def resume_formal_task_start(project_id: str, task_id: str, body: TaskResumeStartPayload):
         return tasks.resume_start(state, project_id, task_id, body.revision, body.intent_sha256, timeout=body.timeout)
 
+    @application.get("/api/projects/{project_id}/tasks/{task_id}/approvals")
+    def formal_task_approval_records(project_id: str, task_id: str,
+                                     run_id: Annotated[str, Query(min_length=1, max_length=128)]):
+        return tasks.approval_records(state, project_id, task_id, run_id=run_id)
+
     @application.get("/api/projects/{project_id}/tasks/{task_id}/approvals/{decision_id}")
     def formal_task_approval(project_id: str, task_id: str, decision_id: str):
         return tasks.approval(state, project_id, task_id, decision_id)

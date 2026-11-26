@@ -659,6 +659,14 @@ def approval(state: State, project_id: str, task_id: str, decision_id: str) -> d
                                    {'task_id': task_id, 'decision_id': decision_id}, timeout=20)
 
 
+def approval_records(state: State, project_id: str, task_id: str, *, run_id: str) -> dict:
+    """Find saved owner decisions for the original submitted run."""
+    _run_id(run_id)
+    project = _project(state, project_id)
+    return development_native.task_approval(project, state.root, 'list',
+                                            {'task_id': task_id, 'run_id': run_id}, timeout=20)
+
+
 def plan(state: State, project_id: str, task_id: str, *, run_id: str, plan_sha256: str,
          timeout: int = 20, methods: dict | None = None) -> dict:
     """Read bounded review materials for the original run's exact pending plan."""
