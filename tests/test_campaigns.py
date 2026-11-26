@@ -1751,3 +1751,204 @@ raise SystemExit(main())
         assert str(database) not in ps.stdout
 
     asyncio.run(exercise())
+
+
+@pytest.mark.skipif(not os.environ.get('ERGORA_TEST_TEMPORAL_BIN'), reason='Requires the optional local Temporal CLI')
+def test_rollover_keeps_the_original_wait_and_fences_unverified_successor(registration, tmp_path, monkeypatch):
+    pytest.importorskip('temporalio')
+    from temporalio.client import WorkflowHandle
+    from temporalio.service import RPCError, RPCStatusCode
+    from temporalio.testing import WorkflowEnvironment
+
+    from ergora.campaigns import records, workflow as runtime
+
+    state, definition = registration
+    registrations.register(state, definition, 0)
+    campaign = 'rollover'
+    plan = tmp_path / 'rollover.json'
+    original_fetch = WorkflowHandle.fetch_history_events
+    send_rollover = runtime.send_rollover
+    sent = []
+    observations = []
+    outcome = {'status': 'queued', 'stop_requested': False, 'cleanup_confirmed': None,
+               'receipt_sha256': None, 'fixed_results_sha256': None}
+
+    async def observe_native(selected, project, source, expires_at, stopped):
+        assert selected.root == state.root and project == 'demo' and not stopped()
+        observations.append(source)
+        return {**source, **outcome, 'project': 'demo'}
+
+    async def lose_committed_reply(client, command, *, expires_at):
+        sent.append(command)
+        assert (await send_rollover(client, command, expires_at=expires_at))['decision'] == 'committed'
+        raise RPCError('Lost original rollover acknowledgement', RPCStatusCode.UNAVAILABLE, b'')
+
+    async def worker_until_ready(client, opening, run_id):
+        child = await asyncio.create_subprocess_exec(sys.executable, '-m', 'ergora',
+            *campaign_args(state, 'worker', campaign), stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+        handle = client.get_workflow_handle(opening['workflow_id'], run_id=run_id)
+        try:
+            async with asyncio.timeout(14):
+                while True:
+                    assert child.returncode is None
+                    if await runtime.stop_supported(handle, opening):
+                        return child
+                    await asyncio.sleep(.05)
+        except BaseException:
+            await reap(child)
+            raise
+
+    async def reap(child, *, interrupted=True):
+        if interrupted and child.returncode is None:
+            child.terminate()
+        try:
+            async with asyncio.timeout(12):
+                output, error = await child.communicate()
+        finally:
+            if child.returncode is None:
+                child.kill()
+                await child.wait()
+        assert child.returncode == 0, error.decode()
+        return json.loads(output)
+
+    async def exercise():
+        async with await WorkflowEnvironment.start_local(
+            ip='127.0.0.1', ui=False, dev_server_existing_path=os.environ['ERGORA_TEST_TEMPORAL_BIN'],
+            dev_server_database_filename=str(tmp_path / 'rollover.sqlite'),
+        ) as service:
+            client = service.client
+            scheduler = {'tool': 'temporal', 'address': client.service_client.config.target_host,
+                         'namespace': client.namespace, 'task_queue': 'rollover-proof'}
+            revised = projects.bind(state, 'demo', 'scheduler', scheduler, state.project('demo')['revision'])
+            source = {'operation_id': 'native', 'request_file_sha256': 'a' * 64,
+                      'job_sha256': 'b' * 64, 'candidate_sha': 'c' * 40, 'project_revision': revised['revision'],
+                      'job_id': 'check-' + 'd' * 40 + '-' + 'e' * 24, 'authorization_sha256': 'f' * 64,
+                      'verification_sha256': '1' * 64, 'pending': True}
+            task = {'task_id': 'wait', 'depends_on': [], 'source': source}
+            cutoff = int(time.time()) + 100
+            digest = plan_file(plan, cutoff, tasks=[task], rollover=True)
+            created = await application.create(state, 'demo', campaign, plan, revised['revision'], digest, confirm=True)
+            first = created['run_id']
+            saved = records.CampaignFiles(state.root, 'demo', campaign)
+            opening, attempt, original = saved.load()
+            first_worker = await worker_until_ready(client, opening, first)
+            try:
+                waiting = await application.observe_check(state, 'demo', campaign, 'wait', confirm=True)
+                assert waiting['status'] == 'waiting_job' and waiting['run_id'] == first
+
+                async def unsupported(*args):
+                    return False
+
+                with monkeypatch.context() as patch:
+                    patch.setattr(runtime, 'rollover_supported', unsupported)
+                    with pytest.raises(ValueError, match='Worker does not support rollover'):
+                        await application.rollover(state, 'demo', campaign, confirm=True)
+                assert not (saved.directory / 'rollover-command.json').exists()
+                with monkeypatch.context() as patch:
+                    patch.setattr(runtime, 'send_rollover', lose_committed_reply)
+                    result = await application.rollover(state, 'demo', campaign, confirm=True)
+                async with asyncio.timeout(8):
+                    while (result['rollover']['status'] != 'verified'
+                           or result['workflow_state_status'] != 'observed'):
+                        result = await application.rollover(state, 'demo', campaign, confirm=True)
+                        await asyncio.sleep(.05)
+                current = result['current_run_id']
+                assert current != first and result['run_id'] == first and saved.load()[2] == original
+                assert result['workflow_state']['expires_at'] == cutoff
+                assert result['tasks']['wait']['waiting_receipt'] == waiting['receipt']
+                assert len(sent) == 1
+                yes = result['rollover']
+
+                first_handle = client.get_workflow_handle(opening['workflow_id'], run_id=first)
+                current_handle = client.get_workflow_handle(opening['workflow_id'], run_id=current)
+                before = (await current_handle.fetch_history()).events
+
+                async def altered(handle, *args, **kwargs):
+                    async for event in original_fetch(handle, *args, **kwargs):
+                        if (handle.run_id == first and event.HasField('workflow_execution_update_completed_event_attributes')
+                                and event.workflow_execution_update_completed_event_attributes.meta.update_id == waiting['update_id']):
+                            event.workflow_execution_update_completed_event_attributes.accepted_event_id += 1
+                        yield event
+
+                command = saved.directory / 'rollover-command.json'
+                missing = command.with_suffix('.held')
+                command.rename(missing)
+                try:
+                    with pytest.raises(ValueError, match='lacks its saved'):
+                        await application.stop(state, 'demo', campaign, confirm=True)
+                finally:
+                    missing.rename(command)
+                with monkeypatch.context() as patch:
+                    patch.setattr(WorkflowHandle, 'fetch_history_events', altered)
+                    with pytest.raises(ValueError, match='original accepted Update'):
+                        await application.observe_check(state, 'demo', campaign, 'wait', confirm=True)
+                assert (await current_handle.fetch_history()).events == before
+                assert len(observations) == 1
+                assert not (saved.directory / 'stop-attempt.json').exists()
+                assert not (saved.directory / 'check-wait.json').exists()
+            finally:
+                await reap(first_worker)
+            replacement = await worker_until_ready(client, opening, current)
+            try:
+                outcome.update(status='succeeded', cleanup_confirmed=True, receipt_sha256='2' * 64,
+                               fixed_results_sha256='3' * 64)
+                terminal = await application.observe_check(state, 'demo', campaign, 'wait', confirm=True)
+                assert terminal['status'] == 'observed' and terminal['run_id'] == current
+                assert terminal['receipt']['job']['waiting_receipt_sha256'] == records.identity(waiting['receipt'])
+                # The fixture's typed evidence reader runs only on the write path. The saved decision can be read alone.
+                monkeypatch.setattr(application, '_task_evidence', _no_native_timeline)
+                stop = await application.stop(state, 'demo', campaign, confirm=True)
+                assert stop['stop']['receipt']['decision'] == 'accepted' and stop['stop']['receipt']['run_id'] == current
+                view = await application.status(state, 'demo', campaign, online=True, task_id='wait')
+                assert view['rollover'] == yes and view['workflow_state']['phase'] == 'stopped'
+                stages = view['task_observation_history']['wait']
+                assert stages['waiting']['receipt'] == waiting['receipt']
+                assert stages['terminal']['receipt'] == terminal['receipt']
+                assert len((await first_handle.fetch_history()).events) > 10
+            finally:
+                await reap(replacement, interrupted=False)
+
+            from temporalio.worker import Worker
+
+            outcome.update(status='queued', cleanup_confirmed=None, receipt_sha256=None, fixed_results_sha256=None)
+            for selected, action in (('held-stop', 'stop'), ('held-rollover', 'rollover')):
+                new = await application.create(state, 'demo', selected, plan, revised['revision'], digest, confirm=True)
+                handle = client.get_workflow_handle(new['workflow_id'], run_id=new['run_id'])
+                child_records = records.CampaignFiles(state.root, 'demo', selected)
+                async with Worker(client, task_queue=new['task_queue'], workflows=[runtime.Campaign]):
+                    await runtime.stop_supported(handle, child_records.load()[0])
+                    assert (await application.observe_check(state, 'demo', selected, 'wait',
+                                                           confirm=True))['status'] == 'waiting_job'
+                    calls = []
+
+                    async def before_send(*args, **options):
+                        calls.append((args, options))
+                        raise RPCError('Controlled loss before first native send', RPCStatusCode.UNAVAILABLE, b'')
+
+                    operation = getattr(application, action)
+                    with monkeypatch.context() as patch:
+                        patch.setattr(runtime, 'send_' + action, before_send)
+                        await operation(state, 'demo', selected, confirm=True)
+                        await operation(state, 'demo', selected, confirm=True)
+                    assert len(calls) == 1
+                    if action == 'stop':
+                        with pytest.raises(ValueError, match='original STOP'):
+                            await application.rollover(state, 'demo', selected, confirm=True)
+                        assert not (child_records.directory / 'rollover-command.json').exists()
+                    else:
+                        with pytest.raises(ValueError, match='rollover attempt is unresolved'):
+                            await application.stop(state, 'demo', selected, confirm=True)
+                        assert not (child_records.directory / 'stop-attempt.json').exists()
+                        observed = await application.status(state, 'demo', selected, online=True)
+                        offline = await application.status(state, 'demo', selected)
+                        assert observed['rollover']['status'] == 'unresolved'
+                        assert not observed['tasks']['wait']['eligible']
+                        assert offline['rollover'] == {**observed['rollover'], 'status': 'not_requested'}
+                    assert (await handle.describe()).status.name == 'RUNNING'
+                    await handle.terminate('Owned isolated unresolved-attempt fixture cleanup')
+
+    async def _no_native_timeline(*args):
+        return None
+
+    monkeypatch.setattr(application, '_read_original_check', observe_native)
+    asyncio.run(exercise())

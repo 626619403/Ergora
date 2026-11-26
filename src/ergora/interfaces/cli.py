@@ -1031,6 +1031,7 @@ def parser() -> argparse.ArgumentParser:
         ("create", "Confirm an exact plan and start it once, or recover its original start"),
         ("status", "Read the original local record, optionally checking Temporal"),
         ("observe-check", "Observe the exact original fixed check for a frozen task"),
+        ("rollover", "Confirm one opted-in rollover while the original fixed check is pending"),
         ("stop", "Confirm one stop request against the original campaign run"),
         ("worker", "Run a foreground Worker on the original campaign queue"),
         ("worker-service", "Manage one supervised Worker and observe the original queue"),
@@ -1044,7 +1045,7 @@ def parser() -> argparse.ArgumentParser:
             operation.add_argument("--plan-sha256", required=True)
         if name == "observe-check":
             operation.add_argument("task_id")
-        if name in ("create", "stop", "observe-check"):
+        if name in ("create", "stop", "observe-check", "rollover"):
             operation.add_argument("--confirm", action="store_true")
         if name == "status":
             operation.add_argument("--online", action="store_true")
@@ -1157,6 +1158,8 @@ def main(argv: list[str] | None = None) -> int:
                 operation = campaigns.status(state, args.project, args.id, online=args.online, task_id=args.task_id)
                 if args.task_id is not None:
                     operation = _campaign_check_observation(operation)
+            elif args.operation == "rollover":
+                operation = campaigns.rollover(state, args.project, args.id, confirm=args.confirm)
             elif args.operation == "stop":
                 operation = campaigns.stop(state, args.project, args.id, confirm=args.confirm)
             elif args.operation == "observe-check":
@@ -2008,6 +2011,8 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "campaign":
             if args.operation == "worker-service":
                 return 0 if output["outcome"] in ("confirmed", "observed") else 1
+            if args.operation == "rollover":
+                return 0 if output.get("rollover", {}).get("status") == "verified" else 1
             if args.operation == "observe-check":
                 return 0 if output["status"] in ("observed", "waiting_job") else 1
             if output["remote_status"] in ("unavailable", "original_not_found"):

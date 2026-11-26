@@ -7,7 +7,7 @@ import time
 
 from temporalio import workflow
 from temporalio.api.common.v1 import WorkflowExecution, WorkflowType
-from temporalio.api.enums.v1 import UpdateWorkflowExecutionLifecycleStage
+from temporalio.api.enums.v1 import ContinueAsNewInitiator, UpdateWorkflowExecutionLifecycleStage
 from temporalio.api.taskqueue.v1 import TaskQueue
 from temporalio.api.update.v1 import Input, Meta, Request, WaitPolicy
 from temporalio.api.workflowservice.v1 import StartWorkflowExecutionRequest, UpdateWorkflowExecutionRequest
@@ -26,8 +26,9 @@ with workflow.unsafe.imports_passed_through():
         ATTEMPT_MEMO, OPENING_MEMO, READBACK_ACTIVITY, READBACK_CLEANUP_SECONDS, RECIPIENT_ACTIVITY, WORKFLOW_TYPE,
         check_receipt, checked_readback, fixed_task_state, fixed_tasks, has_pending_checks, identity,
         readback_grant, readback_id, readback_result, readback_task, recipient_task, require_check_receipt,
-        require_stop_receipt, sha256, stop_intent, update_receipt, validate_check_command,
-        validate_stop_attempt, wake_intent,
+        require_rollover_receipt, require_stop_receipt, restore_rollover, rollover_checkpoint, rollover_task,
+        sha256, stop_intent, update_receipt, validate_check_command, validate_rollover_command,
+        validate_stop_attempt, uuid_text, wake_intent,
     )
 
 
@@ -35,6 +36,7 @@ RPC_SECONDS = 10
 RPC_TIMEOUT = timedelta(seconds=RPC_SECONDS)
 STOP_UPDATE = 'ergora_campaign_stop'
 CHECK_UPDATE = 'ergora_campaign_observe_check'
+ROLLOVER_UPDATE = 'ergora_campaign_rollover'
 UPDATE_COMPLETED = UpdateWorkflowExecutionLifecycleStage.UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_COMPLETED
 
 
@@ -46,32 +48,42 @@ def record_state(opening, run_id, phase):
 @workflow.defn(name=WORKFLOW_TYPE)
 class Campaign:
     @workflow.init
-    def __init__(self, opening: dict):
+    def __init__(self, opening: dict, checkpoint: dict | None = None):
         self.opening = opening
         self.stop_decision = None
+        self.rollover_command = None
         self.expiry_timer = None
         self.check_receipts = {}
         self.check_waits = {}
         self.readback = {'status': 'not_armed'} if readback_task(opening) is not None else None
         info = workflow.info()
-        if (info.workflow_id != opening['workflow_id'] or info.run_id != info.first_execution_run_id
-                or info.namespace != opening['scheduler']['namespace']
-                or workflow.memo_value(OPENING_MEMO, default=None) != identity(opening)
-                or not sha256(workflow.memo_value(ATTEMPT_MEMO, default=None))):
+        start_sha = workflow.memo_value(ATTEMPT_MEMO, default=None)
+        if (info.workflow_id != opening['workflow_id'] or info.namespace != opening['scheduler']['namespace']
+                or workflow.memo_value(OPENING_MEMO, default=None) != identity(opening) or not sha256(start_sha)):
             raise ApplicationError('Campaign worker input does not match the original start', non_retryable=True)
+        if info.run_id == info.first_execution_run_id:
+            if checkpoint is not None:
+                raise ApplicationError('Campaign original first Run cannot restore a rollover checkpoint', non_retryable=True)
+        else:
+            if info.continued_run_id != info.first_execution_run_id:
+                raise ApplicationError('Campaign successor does not continue its original first Run', non_retryable=True)
+            try:
+                self.check_waits = restore_rollover(opening, start_sha, info.first_execution_run_id, checkpoint)
+            except (ValueError, TypeError, KeyError) as error:
+                raise ApplicationError(str(error), non_retryable=True) from error
 
     @workflow.run
-    async def run(self, opening: dict) -> dict:
+    async def run(self, opening: dict, checkpoint: dict | None = None) -> dict:
         task = readback_task(opening)
         readback = asyncio.create_task(self._one_readback(task)) if task is not None else None
         try:
             remaining = opening['plan']['limits']['expires_at'] - workflow.time()
-            if remaining > 0 and self.stop_decision is None:
+            if remaining > 0 and self.stop_decision is None and self.rollover_command is None:
                 self.expiry_timer = asyncio.create_task(workflow.sleep(remaining))
                 try:
                     await self.expiry_timer
                 except asyncio.CancelledError:
-                    if self.stop_decision is None:
+                    if self.stop_decision is None and self.rollover_command is None:
                         raise
         finally:
             if readback is not None:
@@ -79,6 +91,14 @@ class Campaign:
                 await asyncio.gather(readback, return_exceptions=True)
                 if self.readback['status'] in ('armed', 'scheduled'):
                     self._readback_unknown('campaign_closed')
+        if self.rollover_command is not None:
+            await workflow.wait_condition(workflow.all_handlers_finished)
+            task = rollover_task(opening)
+            start_sha = workflow.memo_value(ATTEMPT_MEMO)
+            handoff = rollover_checkpoint(opening, start_sha, workflow.info().run_id,
+                                          self.check_waits[task['task_id']], self.rollover_command)
+            workflow.continue_as_new(args=[opening, handoff],
+                                     memo={OPENING_MEMO: identity(opening), ATTEMPT_MEMO: start_sha})
         if self.stop_decision is not None:
             await workflow.wait_condition(workflow.all_handlers_finished)
             return {**self._state('stopped'), 'stop_receipt_sha256': identity(self.stop_decision)}
@@ -174,7 +194,8 @@ class Campaign:
                 raise ApplicationError('Campaign task already has different original evidence', non_retryable=True)
             return previous
         task = fixed_tasks(self.opening)[receipt['task_id']]
-        if self.stop_decision is not None or workflow.time() >= self.opening['plan']['limits']['expires_at']:
+        if (self.stop_decision is not None or self.rollover_command is not None
+                or workflow.time() >= self.opening['plan']['limits']['expires_at']):
             raise ApplicationError('Campaign no longer admits new task observations', non_retryable=True)
         if not set(task['depends_on']) <= self.check_receipts.keys():
             raise ApplicationError('Campaign task dependencies lack an original observation', non_retryable=True)
@@ -193,6 +214,32 @@ class Campaign:
             validate_check_command(self.opening, workflow.memo_value(ATTEMPT_MEMO), workflow.info().run_id, command)
             if workflow.current_update_info().id != command['attempt']['update_id']:
                 raise ValueError('Campaign check does not bind its original Update ID')
+        except ValueError as error:
+            raise ApplicationError(str(error), non_retryable=True) from error
+
+    @workflow.update(name=ROLLOVER_UPDATE)
+    def rollover(self, command: dict) -> dict:
+        intent, attempt = command['intent'], command['attempt']
+        if self.rollover_command is None:
+            self.rollover_command = command
+            if self.expiry_timer is not None:
+                self.expiry_timer.cancel()
+        return update_receipt(intent, attempt, 'committed')
+
+    @rollover.validator
+    def validate_rollover(self, command: dict):
+        info = workflow.info()
+        try:
+            validate_rollover_command(self.opening, workflow.memo_value(ATTEMPT_MEMO), info.run_id, command)
+            if (info.run_id != info.first_execution_run_id or self.stop_decision is not None
+                    or workflow.time() >= self.opening['plan']['limits']['expires_at']
+                    or self.check_receipts or workflow.current_update_info().id != command['attempt']['update_id']
+                    or (self.rollover_command is not None and self.rollover_command != command)):
+                raise ValueError('Campaign rollover no longer admits a new decision')
+            task = rollover_task(self.opening)
+            wait = self.check_waits.get(task['task_id'])
+            if wait is None or identity(wait) != command['intent']['waiting_receipt_sha256']:
+                raise ValueError('Campaign rollover requires its exact original waiting receipt')
         except ValueError as error:
             raise ApplicationError(str(error), non_retryable=True) from error
 
@@ -215,6 +262,8 @@ class Campaign:
         info = workflow.info()
         expected = stop_intent(self.opening, workflow.memo_value(ATTEMPT_MEMO), info.run_id)
         try:
+            if self.rollover_command is not None:
+                raise ValueError('Campaign first Run is closing for its original rollover')
             if (not isinstance(command, dict) or command.keys() != {'intent', 'attempt'}
                     or identity(command['intent']) != identity(expected) or not isinstance(command['attempt'], dict)):
                 raise ValueError('Campaign stop does not bind its original opening and first Run')
@@ -230,12 +279,16 @@ class Campaign:
     def state(self) -> dict:
         result = self._state('waiting_for_expiry')
         if 'tasks' in self.opening['plan']:
-            result['check_admission_open'] = self.stop_decision is None
+            result['check_admission_open'] = self.stop_decision is None and self.rollover_command is None
         return result
 
     @workflow.query(name='ergora_campaign_stop_capability')
     def stop_capability(self) -> dict:
         return record_state(self.opening, workflow.info().run_id, 'stop_supported')
+
+    @workflow.query(name='ergora_campaign_rollover_capability')
+    def rollover_capability(self) -> dict:
+        return record_state(self.opening, workflow.info().run_id, 'rollover_supported')
 
 
 async def connect(opening):
@@ -272,32 +325,44 @@ async def start(client, opening, attempt):
     return None
 
 
-async def stop_supported(handle, opening):
-    """Check a current Worker on the pinned original run before sealing a stop attempt."""
+async def _supports_update(handle, opening, query, phase):
     try:
         async with asyncio.timeout(2):
-            observed = await handle.query(Campaign.stop_capability, reject_condition=QueryRejectCondition.NOT_OPEN,
+            observed = await handle.query(query, reject_condition=QueryRejectCondition.NOT_OPEN,
                                           rpc_timeout=timedelta(seconds=2))
     except (RPCError, TimeoutError, WorkflowQueryFailedError, WorkflowQueryRejectedError):
         return False
-    require_state(observed, opening, handle.run_id, 'stop_supported')
+    require_state(observed, opening, handle.run_id, phase)
     return True
 
 
-async def send_stop(client, command):
-    return await _send_update(client, command, STOP_UPDATE, require_stop_receipt)
+async def stop_supported(handle, opening):
+    return await _supports_update(handle, opening, Campaign.stop_capability, 'stop_supported')
 
 
-async def send_check(client, command, *, expires_at):
-    return await _send_update(client, command, CHECK_UPDATE, require_check_receipt, expires_at=expires_at)
+async def rollover_supported(handle, opening):
+    return await _supports_update(handle, opening, Campaign.rollover_capability, 'rollover_supported')
 
 
-async def _send_update(client, command, update_name, require_receipt, *, expires_at=None):
+async def send_stop(client, command, *, first_run_id=None):
+    return await _send_update(client, command, STOP_UPDATE, require_stop_receipt, first_run_id=first_run_id)
+
+
+async def send_check(client, command, *, expires_at, first_run_id=None):
+    return await _send_update(client, command, CHECK_UPDATE, require_check_receipt, expires_at=expires_at,
+                              first_run_id=first_run_id)
+
+
+async def send_rollover(client, command, *, expires_at):
+    return await _send_update(client, command, ROLLOVER_UPDATE, require_rollover_receipt, expires_at=expires_at)
+
+
+async def _send_update(client, command, update_name, require_receipt, *, expires_at=None, first_run_id=None):
     intent, attempt = command['intent'], command['attempt']
     run = WorkflowExecution(workflow_id=intent['workflow_id'], run_id=intent['run_id'])
     converter = client.data_converter.with_context(WorkflowSerializationContext(client.namespace, run.workflow_id))
     request = UpdateWorkflowExecutionRequest(
-        namespace=client.namespace, workflow_execution=run, first_execution_run_id=run.run_id,
+        namespace=client.namespace, workflow_execution=run, first_execution_run_id=first_run_id or run.run_id,
         wait_policy=WaitPolicy(lifecycle_stage=UPDATE_COMPLETED),
         request=Request(meta=Meta(update_id=attempt['update_id'], identity=client.identity),
                         input=Input(name=update_name)),
@@ -588,13 +653,88 @@ async def original(client, opening, attempt, run_id):
     raise ValueError('Campaign original start History is missing its first event')
 
 
+async def current(client, files, opening, attempt, first_run_id):
+    handle, description = await original(client, opening, attempt, first_run_id)
+    task = rollover_task(opening)
+    if task is None or description.status != WorkflowExecutionStatus.CONTINUED_AS_NEW:
+        return handle, description, None
+    command = files.load_rollover(opening, attempt, handle.run_id)
+    waiting = files.load_check(opening, attempt, handle.run_id, task, waiting=True)
+    return await rollover_successor(client, handle, opening, attempt, waiting, command)
+
+
+async def rollover_successor(client, first, opening, attempt, waiting_command, rollover_command):
+    if waiting_command is None or rollover_command is None:
+        raise ValueError('Campaign predecessor lacks its saved waiting or rollover command')
+    start_sha = identity(attempt)
+    validate_rollover_command(opening, start_sha, first.run_id, rollover_command)
+    converter = client.data_converter.with_context(WorkflowSerializationContext(client.namespace, first.id))
+    commands = {CHECK_UPDATE: (waiting_command, require_check_receipt),
+                ROLLOVER_UPDATE: (rollover_command, require_rollover_receipt)}
+    entries = {name: {command['attempt']['update_id']: _update_entry(first, command)}
+               for name, (command, _) in commands.items()}
+    last = None
+    async for event in first.fetch_history_events(rpc_timeout=RPC_TIMEOUT):
+        if event.HasField('workflow_execution_update_accepted_event_attributes'):
+            accepted = event.workflow_execution_update_accepted_event_attributes
+            name = accepted.accepted_request.input.name
+            if name in (CHECK_UPDATE, STOP_UPDATE, ROLLOVER_UPDATE) and (
+                    name not in entries or accepted.protocol_instance_id not in entries[name]):
+                raise ValueError('Campaign predecessor contains another accepted task or control command')
+        for name, (_, require_receipt) in commands.items():
+            await _read_update_event(converter, event, entries[name], name, require_receipt)
+        last = event
+    if last is None or not last.HasField('workflow_execution_continued_as_new_event_attributes'):
+        raise ValueError('Campaign predecessor lacks its native rollover close event')
+    waiting, = entries[CHECK_UPDATE].values()
+    committed, = entries[ROLLOVER_UPDATE].values()
+    if (waiting.get('receipt') is None or committed.get('receipt') is None
+            or not waiting['accepted_event_id'] < waiting['completed_event_id'] < committed['accepted_event_id']
+            < committed['completed_event_id'] < last.event_id):
+        raise ValueError('Campaign rollover lacks its exact ordered predecessor Update decisions')
+    close = last.workflow_execution_continued_as_new_event_attributes
+    successor_id = close.new_execution_run_id
+    if (not uuid_text(successor_id) or successor_id == first.run_id or close.workflow_type.name != WORKFLOW_TYPE
+            or close.task_queue.name != opening['task_queue']
+            or close.initiator not in (ContinueAsNewInitiator.CONTINUE_AS_NEW_INITIATOR_UNSPECIFIED,
+                                       ContinueAsNewInitiator.CONTINUE_AS_NEW_INITIATOR_WORKFLOW)):
+        raise ValueError('Campaign predecessor rollover link differs from its original route')
+    checkpoint = rollover_checkpoint(opening, start_sha, first.run_id, waiting['receipt'], rollover_command)
+    restore_rollover(opening, start_sha, first.run_id, checkpoint)
+    if identity(await converter.decode(close.input.payloads)) != identity([opening, checkpoint]):
+        raise ValueError('Campaign predecessor rollover carried a different checkpoint')
+    for key, digest in memo(opening, attempt).items():
+        if key not in close.memo.fields or await converter.decode([close.memo.fields[key]]) != [digest]:
+            raise ValueError('Campaign predecessor rollover dispatch memo differs')
+    if set(close.memo.fields) != set(memo(opening, attempt)):
+        raise ValueError('Campaign predecessor rollover has unexpected dispatch memo fields')
+    current = client.get_workflow_handle(first.id, run_id=successor_id)
+    description = await current.describe(rpc_timeout=RPC_TIMEOUT)
+    if (description.run_id != successor_id or description.id != first.id
+            or description.raw_description.workflow_execution_info.first_run_id != first.run_id
+            or description.status == WorkflowExecutionStatus.CONTINUED_AS_NEW):
+        raise ValueError('Campaign observation did not select its one original rollover successor')
+    first_event = await anext(current.fetch_history_events(page_size=1, rpc_timeout=RPC_TIMEOUT), None)
+    if (first_event is None or first_event.event_id != 1
+            or not first_event.HasField('workflow_execution_started_event_attributes')):
+        raise ValueError('Campaign rollover successor lacks its native start event')
+    started = first_event.workflow_execution_started_event_attributes
+    if (started.workflow_id != first.id or started.continued_execution_run_id != first.run_id
+            or started.first_execution_run_id != first.run_id or started.original_execution_run_id != successor_id
+            or started.attempt != 1 or started.initiator != ContinueAsNewInitiator.CONTINUE_AS_NEW_INITIATOR_WORKFLOW
+            or started.workflow_type.name != WORKFLOW_TYPE or started.task_queue.name != opening['task_queue']
+            or started.memo != close.memo or started.input != close.input):
+        raise ValueError('Campaign rollover successor start differs from its verified predecessor')
+    return current, description, checkpoint
+
+
 def require_state(observed, opening, run_id, phase):
     if identity(observed) != identity(record_state(opening, run_id, phase)):
         raise ValueError('Campaign Workflow state differs from the original plan or run')
     return observed
 
 
-async def runtime_status(handle, description, opening, stop=None, *, start_attempt_sha256=None):
+async def runtime_status(handle, description, opening, stop=None, *, start_attempt_sha256=None, rollover=None):
     temporal_status = description.status
     if temporal_status == WorkflowExecutionStatus.RUNNING:
         try:
@@ -605,7 +745,7 @@ async def runtime_status(handle, description, opening, stop=None, *, start_attem
         if 'tasks' in opening['plan'] and (not isinstance(observed, dict) or 'check_receipts' not in observed):
             return {'temporal_status': temporal_status.name, 'workflow_state_status': 'unavailable'}
         expected = record_state(opening, description.run_id, 'waiting_for_expiry')
-        return _observed_state(observed, expected, opening, start_attempt_sha256, temporal_status, stop=stop)
+        return _observed_state(observed, expected, opening, start_attempt_sha256, temporal_status, stop=stop, rollover=rollover)
     if temporal_status == WorkflowExecutionStatus.COMPLETED:
         observed = await handle.result(follow_runs=False, rpc_timeout=RPC_TIMEOUT)
         if isinstance(observed, dict) and observed.get('phase') == 'stopped':
@@ -618,18 +758,25 @@ async def runtime_status(handle, description, opening, stop=None, *, start_attem
             if description.close_time is None or description.close_time.timestamp() < opening['plan']['limits']['expires_at']:
                 raise ValueError('Campaign Workflow completion preceded its original expiry')
             expected = record_state(opening, description.run_id, 'expired')
-        return _observed_state(observed, expected, opening, start_attempt_sha256, temporal_status)
+        return _observed_state(observed, expected, opening, start_attempt_sha256, temporal_status, rollover=rollover)
     return {'temporal_status': temporal_status.name, 'workflow_state_status': 'unavailable'}
 
 
-def _observed_state(observed, expected, opening, start_attempt_sha256, temporal_status, *, stop=None):
+def _observed_state(observed, expected, opening, start_attempt_sha256, temporal_status, *, stop=None, rollover=None):
     extra = {}
     if 'tasks' in opening['plan'] and isinstance(observed, dict) and 'check_receipts' in observed:
         observed = dict(observed)
         if has_pending_checks(opening) and not isinstance(observed.get('check_waits'), dict):
             return {'temporal_status': temporal_status.name, 'workflow_state_status': 'unavailable'}
         waits = observed.pop('check_waits') if has_pending_checks(opening) else None
-        tasks = fixed_task_state(opening, start_attempt_sha256, expected['run_id'], observed.pop('check_receipts'), waits)
+        waiting_run = None
+        if rollover is not None:
+            waiting = rollover['waiting_receipt']
+            if waits != {waiting['task_id']: waiting}:
+                raise ValueError('Campaign successor state differs from its verified predecessor wait')
+            waiting_run = rollover['predecessor_run_id']
+        tasks = fixed_task_state(opening, start_attempt_sha256, expected['run_id'], observed.pop('check_receipts'),
+                                 waits, waiting_run=waiting_run)
         active = False
         if temporal_status == WorkflowExecutionStatus.RUNNING:
             admitting = observed.pop('check_admission_open', None)
@@ -650,7 +797,7 @@ def _observed_state(observed, expected, opening, start_attempt_sha256, temporal_
     return {'temporal_status': temporal_status.name, 'workflow_state_status': 'observed', 'workflow_state': observed, **extra}
 
 
-async def run_worker(client, handle, opening, files, attempt, *, poller_identity=None):
+async def run_worker(client, handle, opening, files, attempt, *, poller_identity=None, next_run=None):
     """Poll only the saved queue until the original run closes, or the foreground worker stops."""
     stopped = asyncio.Event()
     loop = asyncio.get_running_loop()
@@ -661,8 +808,16 @@ async def run_worker(client, handle, opening, files, attempt, *, poller_identity
     async def wait_for_completion():
         # Only a bounded final poll is needed if the operator starts a worker after expiry.
         after_expiry = max(0, opening['plan']['limits']['expires_at'] - time.time())
+        selected = handle
         async with asyncio.timeout(after_expiry + RPC_SECONDS):
-            return await handle.result(follow_runs=False)
+            while True:
+                try:
+                    return await selected.result(follow_runs=False)
+                except WorkflowContinuedAsNewError:
+                    if next_run is None or selected.run_id != handle.run_id:
+                        raise
+                    selected = await next_run(selected)
+
 
     try:
         activities = []

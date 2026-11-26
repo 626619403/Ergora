@@ -4,7 +4,7 @@ English · [Documentation](../README.md)
 
 The local Unix operator can record the goal, acceptance criteria, baseline commit, evidence format and absolute expiry of a campaign. The original Temporal workflow records the passage of that deadline. Ordinary plans are record-only. An explicit Codex recipient on the timed-readback task can authorize one continuation of an existing native session.
 
-Use an existing published project and explicitly bind its scheduler to the selected trusted Temporal service. Install the existing `ergora[temporal]` extra for `create`, `worker`, `stop`, `observe-check` and online `status`. The operation uses the protected control home's owner and the CLI process's effective UID. This is local-process assurance. The current scheduler uses the configured address and namespace and relies on the selected service's access controls. [Project registration](../projects/registration.md) · [Configure Temporal](research-and-schedules.md)
+Use an existing published project and explicitly bind its scheduler to the selected trusted Temporal service. Install the existing `ergora[temporal]` extra for `create`, `worker`, `stop`, `observe-check`, `rollover` and online `status`. The operation uses the protected control home's owner and the CLI process's effective UID. This is local-process assurance. The current scheduler uses the configured address and namespace and relies on the selected service's access controls. [Project registration](../projects/registration.md) · [Configure Temporal](research-and-schedules.md)
 
 Save a UTF-8 JSON file with these fields. Set `baseline_commit` to the full Git object ID you intend to use and replace `expires_at` with a future integer UTC Unix second.
 
@@ -28,7 +28,7 @@ ergora campaign create my-project first-plan campaign.json \
 ergora campaign worker my-project first-plan
 ```
 
-The worker runs in the foreground on the campaign's dedicated queue and exits after the original run closes. If you interrupt it, run the worker command again to process the original workflow. When Temporal accepts the start before a worker is ready, the first worker processes the original deadline. It can also close an original run after the deadline has passed.
+The worker runs in the foreground on the campaign's dedicated queue. It follows a verified opted-in rollover on that queue and exits when the Campaign closes. If you interrupt it, run the worker command again to process the original workflow. When Temporal accepts the start before a worker is ready, the first worker processes the original deadline. It can also close an original run after the deadline has passed.
 
 ```bash
 ergora campaign status my-project first-plan
@@ -59,9 +59,26 @@ Maintenance keeps the Worker while the original Campaign command holds its lock 
 
 Service control uses a 1–60 second wait after preflight. `control_outcome` reports the local effect and a confirmed start also requires original queue readiness. A concurrent start or stop that encounters the original control lock reports `worker_control_busy` with an unconfirmed outcome. Read the original service status before retrying. The original Campaign owner checks closure and saved STOP again before starting the Worker. The Campaign's deadline keeps running. The managed Unix socket and logs are under `campaigns/PROJECT/CAMPAIGN/svc` in the control home. Keep this path within the Unix socket limit.
 
+## Continue one Campaign with a pending fixed check
+
+Before creation, set `"rollover": true` in a record-only plan with exactly one pending fixed-check task. Use manual `observe-check` for this task. Plans that configure a timed readback or recipient cannot opt in. Use the [pending fixed-check instructions](#observe-an-original-check-that-is-still-pending) to freeze the original Job and record its waiting receipt. The Job's own executor and authorization continue to govern it.
+
+While the Campaign is open, the same local operator can commit a single Continue-As-New on the original queue.
+
+```bash
+ergora campaign rollover my-project first-plan --confirm
+ergora campaign status my-project first-plan --online --task-id verify-candidate
+```
+
+The rollover keeps the original goal, absolute deadline, waiting receipt and native Job locator. Online status retains the immutable first `run_id`. It exposes `current_run_id` and `rollover.status: verified` after checking both Temporal Run histories and the original waiting and rollover Update decisions. A verified continuation can be observed while the Worker is unavailable. Restart the foreground Worker or its existing service owner to continue processing the same queue.
+
+If the rollover reply is lost, repeat the same command to reconcile its saved Update ID. An unresolved rollover fences new Campaign observations and STOP until the original attempt can be verified. Missing or conflicting predecessor evidence prevents new effects. An earlier saved STOP or a saved terminal task attempt also prevents new rollover. The original Job stays with its executor during all of these reads.
+
+After verification, use `observe-check` again to record the same Job's terminal receipt, and the usual `stop --confirm` to stop the current Campaign Run. The task timeline reports the original Run ID for each accepted Update. The waiting Update remains in the first Run, and the new terminal observation and STOP bind to the verified successor.
+
 ## Stop the original campaign plan
 
-Use the same local Unix operator and control home. The confirmed stop binds one request to the saved scheduler and original first Run.
+Use the same local Unix operator and control home. The confirmed stop binds one request to the saved scheduler and original first Run or its verified opted-in successor.
 
 Run the current `ergora campaign worker` on the original campaign queue to deliver STOP to Temporal. If an older worker lacks the STOP handler, shut it down normally before starting the current worker. With an authorized Codex recipient and a pinned first Run, the confirmed operation also saves the local native STOP fence even when Temporal or its Worker cannot receive the Update.
 

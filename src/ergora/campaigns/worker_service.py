@@ -61,16 +61,16 @@ def polling_owner(files, opening, attempt, result, registration):
         yield None
 
 
-async def _original_run_status(runtime, opening, attempt, run_id):
+async def _original_run_status(runtime, files, opening, attempt, run_id):
     async with asyncio.timeout(runtime.RPC_SECONDS):
         client = await runtime.connect(opening)
-        _, run = await runtime.original(client, opening, attempt, run_id)
+        _, run, _ = await runtime.current(client, files, opening, attempt, run_id)
     return run.status
 
 
-async def _require_open(runtime, opening, attempt, run_id):
+async def _require_open(runtime, files, opening, attempt, run_id):
     try:
-        status = await _original_run_status(runtime, opening, attempt, run_id)
+        status = await _original_run_status(runtime, files, opening, attempt, run_id)
     except (runtime.RPCError, TimeoutError, ConnectionError) as error:
         raise ValueError('Cannot verify the original Campaign before starting its managed Worker') from error
     if status != runtime.WorkflowExecutionStatus.RUNNING:
@@ -84,7 +84,7 @@ def _admit_start(files, opening, attempt, result, runtime):
             owner.enter_context(file_lock(files.lock, blocking=False))
         except BlockingIOError as error:
             raise ValueError('Reconcile the current original Campaign operation before starting its managed Worker') from error
-        asyncio.run(_require_open(runtime, opening, attempt, result['run_id']))
+        asyncio.run(_require_open(runtime, files, opening, attempt, result['run_id']))
         _, stop_attempt, stop_result = files.load_stop(opening, attempt, result)
         if stop_result is not None:
             raise ValueError('The original Campaign STOP closed Worker start admission')
@@ -103,7 +103,7 @@ def _stop_requires_worker(files, opening, attempt, result, temporal):
     except ValueError:
         return True
     try:
-        status = asyncio.run(_original_run_status(runtime, opening, attempt, result['run_id']))
+        status = asyncio.run(_original_run_status(runtime, files, opening, attempt, result['run_id']))
     except (runtime.RPCError, TimeoutError, ConnectionError):
         return True
     execution = runtime.WorkflowExecutionStatus
@@ -155,7 +155,7 @@ def _generation(worker):
     return 'live', identity
 
 
-async def _original_queue(runtime, opening, attempt, run_id, live_poller):
+async def _original_queue(runtime, files, opening, attempt, run_id, live_poller):
     from datetime import timedelta
     from temporalio.api.enums.v1 import TaskQueueType
     from temporalio.api.taskqueue.v1 import TaskQueue
@@ -163,7 +163,7 @@ async def _original_queue(runtime, opening, attempt, run_id, live_poller):
 
     async with asyncio.timeout(runtime.RPC_SECONDS):
         client = await runtime.connect(opening)
-        handle, run = await runtime.original(client, opening, attempt, run_id)
+        handle, run, successor = await runtime.current(client, files, opening, attempt, run_id)
         observed = await client.workflow_service.describe_task_queue(DescribeTaskQueueRequest(
             namespace=client.namespace, task_queue=TaskQueue(name=opening['task_queue']),
             task_queue_type=TaskQueueType.TASK_QUEUE_TYPE_WORKFLOW),
@@ -171,7 +171,7 @@ async def _original_queue(runtime, opening, attempt, run_id, live_poller):
         pollers = [poller.identity for poller in observed.pollers]
         responsive = (run.status == runtime.WorkflowExecutionStatus.RUNNING and live_poller in pollers
                       and await runtime.stop_supported(handle, opening))
-    return run.status, pollers, responsive
+    return run.status, pollers, responsive, handle.run_id if successor is not None else None
 
 
 async def _health(files, folder, binding, opening, attempt, result, temporal):
@@ -187,7 +187,7 @@ async def _health(files, folder, binding, opening, attempt, result, temporal):
         observation = None
     else:
         try:
-            observation = await _original_queue(runtime, opening, attempt, result['run_id'],
+            observation = await _original_queue(runtime, files, opening, attempt, result['run_id'],
                                                 expected if before_state == 'live' else None)
         except (runtime.RPCError, TimeoutError, ConnectionError):
             observation = None
@@ -199,7 +199,9 @@ async def _health(files, folder, binding, opening, attempt, result, temporal):
     if queue['process_state'] in ('suspended', 'unknown'):
         queue['managed_polling'] = queue['process_state']
     if observation is not None:
-        run_status, pollers, responsive = observation
+        run_status, pollers, responsive, current_run_id = observation
+        if current_run_id is not None:
+            queue['current_run_id'] = current_run_id
         queue.update(status='observed', temporal_status=run_status.name, poller_count=len(pollers))
         same_generation = before is not None and after == before
         if same_generation:

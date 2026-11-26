@@ -7,10 +7,12 @@ import time
 from uuid import uuid4
 
 from ergora.campaigns.records import (
-    FIXED_CHECK_TERMINAL, FIXED_TASK_LOCATOR, FIXED_TASK_UPDATE_PREFIX, PENDING_JOB_STATES, WORKFLOW_TYPE,
+    FIXED_CHECK_TERMINAL, FIXED_TASK_LOCATOR, FIXED_TASK_UPDATE_PREFIX, PENDING_JOB_STATES, ROLLOVER_UPDATE_PREFIX,
+    WORKFLOW_TYPE,
     CampaignFiles, attempt_document, check_intent, check_record_name, fixed_tasks, identity,
     original_check_evidence, project_selection, read_plan,
-    recipient_task, require_check_project, result_document, sha256, stop_intent, update_attempt, uuid_text, verify_registration,
+    recipient_task, require_check_project, result_document, rollover_intent, rollover_task, sha256, stop_intent,
+    update_attempt, uuid_text, verify_registration,
     worker_queue, workflow_id,
 )
 from ergora.storage.state import State, file_lock
@@ -82,14 +84,20 @@ def _stop_snapshot(records, *, recipient=False):
     return snapshot
 
 
-async def _observe(runtime, output, client, handle, description, opening, stop_records, read_state):
+async def _observe(runtime, output, client, handle, description, opening, stop_records, read_state, *, successor=None):
     observed = {**output, 'status': 'observed', 'run_id': description.run_id, 'remote_status': 'original_observed',
                 'temporal_status': description.status.name}
+    if successor is not None:
+        observed.update(run_id=successor['predecessor_run_id'], current_run_id=handle.run_id,
+                        rollover={'status': 'verified',
+                                  'update_id': successor['rollover_command']['attempt']['update_id']})
     stop_receipt = None
     if stop_records is not None:
         intent, attempt, _ = stop_records
         if attempt is not None:
             command = {'intent': intent, 'attempt': attempt}
+            if intent['run_id'] != handle.run_id:
+                raise ValueError('Campaign STOP is saved for a Run outside its current verified authority')
             try:
                 async with asyncio.timeout(runtime.RPC_SECONDS):
                     stop_receipt = await runtime.read_stop(client, handle, command)
@@ -106,10 +114,13 @@ async def _observe(runtime, output, client, handle, description, opening, stop_r
     if read_state:
         try:
             async with asyncio.timeout(runtime.RPC_SECONDS):
+                scope = {'rollover': successor} if successor is not None else {}
                 observed.update(await runtime.runtime_status(handle, description, opening, stop_receipt,
-                                                           start_attempt_sha256=output['attempt_sha256']))
+                                                           start_attempt_sha256=output['attempt_sha256'], **scope))
                 saved_stop = observed.get('stop', {}).get('receipt')
-                if saved_stop is not None and saved_stop['decision'] == 'accepted':
+                local_stop_fence = (rollover_task(opening) is not None and stop_records is not None
+                                    and stop_records[0] is not None)
+                if local_stop_fence or (saved_stop is not None and saved_stop['decision'] == 'accepted'):
                     for task in observed.get('tasks', {}).values():
                         task['eligible'] = False
         except (TimeoutError, runtime.RPCError):
@@ -117,25 +128,61 @@ async def _observe(runtime, output, client, handle, description, opening, stop_r
     return observed
 
 
+def _require_no_pending_rollover(files, opening, attempt, handle, successor):
+    if (rollover_task(opening) is not None and successor is None
+            and files.load_rollover(opening, attempt, handle.run_id) is not None):
+        raise ValueError('Campaign original rollover attempt is unresolved')
+
+
+def _command_handle(client, handle, successor, command):
+    run_id = command['intent']['run_id']
+    if run_id == handle.run_id:
+        return handle
+    if successor is not None and run_id == successor['predecessor_run_id']:
+        return client.get_workflow_handle(handle.id, run_id=run_id)
+    raise ValueError('Campaign saved Update names a Run outside the verified rollover')
+
+
 async def _read_original(runtime, output, opening, attempt, run_id, *, client=None, read_state=False,
-                         stop_records=None, check_commands=(), include_task_history=False):
+                         stop_records=None, check_commands=(), include_task_history=False, files=None):
     try:
         async with asyncio.timeout(runtime.RPC_SECONDS):
             if client is None:
                 client = await runtime.connect(opening)
-            handle, description = await runtime.original(client, opening, attempt, run_id)
+            successor = None
+            if files is not None:
+                handle, description, successor = await runtime.current(client, files, opening, attempt, run_id)
+            else:
+                handle, description = await runtime.original(client, opening, attempt, run_id)
     except runtime.RPCError as error:
         if error.status == runtime.RPCStatusCode.NOT_FOUND:
             return {**output, 'remote_status': 'original_not_found'}
         return {**output, 'remote_status': 'unavailable', 'remote_error': error.status.name}
     except (TimeoutError, ConnectionError):
         return {**output, 'remote_status': 'unavailable', 'remote_error': 'connection_or_lookup'}
-    observed = await _observe(runtime, output, client, handle, description, opening, stop_records, read_state)
+    observed = await _observe(runtime, output, client, handle, description, opening, stop_records, read_state,
+                              successor=successor)
+    if files is not None and rollover_task(opening) is not None and successor is None:
+        command = files.load_rollover(opening, attempt, handle.run_id)
+        if command is not None:
+            observed['rollover'] = {'status': 'unresolved', 'update_id': command['attempt']['update_id']}
+            for task in observed.get('tasks', {}).values():
+                task['eligible'] = False
     if check_commands and (include_task_history or observed['workflow_state_status'] == 'unavailable'
                            or recipient_task(opening) is not None):
         try:
             async with asyncio.timeout(runtime.RPC_SECONDS):
-                updates, completion = await runtime.read_task_history(client, handle, opening, check_commands)
+                if successor is None:
+                    updates, completion = await runtime.read_task_history(client, handle, opening, check_commands)
+                else:
+                    by_run = {}
+                    for command in check_commands:
+                        target = _command_handle(client, handle, successor, command)
+                        by_run.setdefault(target.run_id, (target, []))[1].append(command)
+                    updates, completion = {}, None
+                    for target, commands in by_run.values():
+                        decisions, _ = await runtime.read_task_history(client, target, opening, commands)
+                        updates.update(decisions)
         except (TimeoutError, ConnectionError, runtime.RPCError):
             return observed
         except ValueError as error:
@@ -228,18 +275,26 @@ async def status(state: State, project: str, campaign: str, *, online: bool = Fa
     recipient = opening is not None and recipient_task(opening) is not None
     output = {**_snapshot(files, opening, attempt, result), 'stop': _stop_snapshot(stop_records, recipient=recipient)}
     if attempt is not None:
-        run_id = stop_records[0]['run_id'] if stop_records[0] is not None else output['run_id']
+        run_id = output['run_id']
+        if run_id is None and stop_records[0] is not None:
+            run_id = stop_records[0]['run_id']
         run_id, check_commands = files.load_checks(opening, attempt, run_id)
+        if rollover_task(opening) is not None:
+            command = files.load_rollover(opening, attempt, run_id)
+            if command is not None:
+                output['rollover'] = {'status': 'unavailable' if online else 'not_requested',
+                                      'update_id': command['attempt']['update_id']}
         if online:
             output = await _read_original(_temporal(), output, opening, attempt, run_id, read_state=True,
                                           stop_records=stop_records, check_commands=check_commands,
-                                          include_task_history=task is not None)
+                                          include_task_history=task is not None, files=files)
             if (check_commands and (task is not None or output['workflow_state_status'] != 'observed')
                     and 'task_observation_history' not in output):
                 output['task_observation_history'] = _task_observation_history(check_commands)
             for view in output.get('tasks', {}).values():
                 if view['receipt'] is None:
-                    command = files.load_check(opening, attempt, output['run_id'], view)
+                    target = output.get('current_run_id', output['run_id'])
+                    command = files.load_check(opening, attempt, target, view)
                     if command is None and view['source'].get('pending') is True and view['waiting_receipt'] is None:
                         command = files.load_check(opening, attempt, output['run_id'], view, waiting=True)
                     if command is not None:
@@ -374,6 +429,53 @@ async def create(state: State, project: str, campaign: str, path: Path, revision
                 'result_saved': True}
 
 
+async def rollover(state: State, project: str, campaign: str, *, confirm: bool) -> dict:
+    if confirm is not True:
+        raise ValueError('Campaign rollover requires explicit --confirm')
+    files = CampaignFiles(state.root, project, campaign)
+    opening, attempt, result = files.load()
+    if result is None:
+        raise ValueError('Campaign rollover requires a saved original first Run')
+    task = rollover_task(opening)
+    if task is None:
+        raise ValueError('The original Campaign plan did not opt in to one manual fixed-check rollover')
+    runtime = _temporal()
+    first_run = result['run_id']
+    with file_lock(files.lock, blocking=False):
+        command = files.load_rollover(opening, attempt, first_run)
+        if command is None:
+            require_check_project(state, opening)
+            if any(files.load_stop(opening, attempt, result)):
+                raise ValueError('Campaign rollover is fenced by its original STOP')
+            expires_at = opening['plan']['limits']['expires_at']
+            _require_check_window(expires_at)
+            client, handle, description, _ = await _check_run(runtime, files, opening, attempt, first_run)
+            waiting = files.load_check(opening, attempt, first_run, task, waiting=True)
+            if (waiting is None or files.load_check(opening, attempt, first_run, task) is not None
+                    or description.status != runtime.WorkflowExecutionStatus.RUNNING):
+                raise ValueError('Campaign rollover requires one unresolved original Job wait')
+            receipt = await _read_check(runtime, client, handle, waiting)
+            if receipt is None:
+                raise ValueError('Campaign rollover requires its verified original waiting decision')
+            selected = await _require_ready_check(runtime, handle, description, opening, attempt, task['task_id'])
+            if selected['status'] != 'waiting_job' or selected['waiting_receipt'] != receipt:
+                raise ValueError('Campaign rollover requires its exact original waiting receipt')
+            if not await runtime.rollover_supported(handle, opening):
+                raise ValueError('The current Campaign Worker does not support rollover')
+            intent = rollover_intent(opening, identity(attempt), first_run, identity(receipt))
+            command = {'intent': intent, 'attempt': update_attempt(intent, ROLLOVER_UPDATE_PREFIX + str(uuid4()))}
+            with State(state.root).connect() as db:
+                db.execute('BEGIN IMMEDIATE')
+                require_check_project(state, opening)
+                _require_check_window(expires_at)
+                files.write('rollover-command', command, before_publish=lambda: _require_check_window(expires_at))
+            try:
+                await runtime.send_rollover(client, command, expires_at=expires_at)
+            except (TimeoutError, ConnectionError, runtime.RPCError):
+                pass
+    return await status(state, project, campaign, online=True)
+
+
 async def stop(state: State, project: str, campaign: str, *, confirm: bool) -> dict:
     """Request one stop on the original Run. A saved attempt only permits readback."""
     if confirm is not True:
@@ -397,21 +499,25 @@ async def stop(state: State, project: str, campaign: str, *, confirm: bool) -> d
                 files.write('stop-intent', intent)
                 records = (intent, attempt, result)
         output = {**_snapshot(files, opening, start_attempt, start_result), 'stop': _stop_snapshot(records, recipient=recipient)}
-        run_id = intent['run_id'] if intent else output['run_id']
+        run_id = output['run_id'] or (intent['run_id'] if intent else None)
         runtime = _temporal()
         try:
             async with asyncio.timeout(runtime.RPC_SECONDS):
                 client = await runtime.connect(opening)
-                handle, description = await runtime.original(client, opening, start_attempt, run_id)
+                handle, description, successor = await runtime.current(client, files, opening, start_attempt, run_id)
         except runtime.RPCError as error:
             remote_status = 'original_not_found' if error.status == runtime.RPCStatusCode.NOT_FOUND else 'unavailable'
             return {**output, 'remote_status': remote_status, 'remote_error': error.status.name}
         except (TimeoutError, ConnectionError):
             return {**output, 'remote_status': 'unavailable', 'remote_error': 'connection_or_lookup'}
+        if attempt is None:
+            _require_no_pending_rollover(files, opening, start_attempt, handle, successor)
+        if intent is not None and intent['run_id'] != handle.run_id:
+            raise ValueError('Campaign STOP is saved for a Run outside its current verified authority')
         if attempt is None and description.status == runtime.WorkflowExecutionStatus.RUNNING:
             if not await runtime.stop_supported(handle, opening):
                 output['stop'].update(remote_status='worker_unavailable', retryable=True)
-                return await _observe(runtime, output, client, handle, description, opening, records, False)
+                return await _observe(runtime, output, client, handle, description, opening, records, False, successor=successor)
             if intent is None:
                 intent = stop_intent(opening, identity(start_attempt), description.run_id)
                 files.write('stop-intent', intent)
@@ -420,7 +526,8 @@ async def stop(state: State, project: str, campaign: str, *, confirm: bool) -> d
             command = {'intent': intent, 'attempt': attempt}
             try:
                 async with asyncio.timeout(runtime.RPC_SECONDS):
-                    receipt = await runtime.send_stop(client, command)
+                    scope = {'first_run_id': run_id} if successor is not None else {}
+                    receipt = await runtime.send_stop(client, command, **scope)
             except (TimeoutError, ConnectionError, runtime.RPCError):
                 receipt = None
             if receipt is not None:
@@ -428,27 +535,27 @@ async def stop(state: State, project: str, campaign: str, *, confirm: bool) -> d
                 files.write('stop-result', result)
             records = (intent, attempt, result)
             output['stop'] = _stop_snapshot(records, recipient=recipient)
-            observed = await _read_original(runtime, output, opening, start_attempt, description.run_id, client=client,
-                                            read_state=True, stop_records=records)
+            observed = await _read_original(runtime, output, opening, start_attempt, run_id, client=client,
+                                            read_state=True, stop_records=records, files=files)
         else:
-            observed = await _observe(runtime, output, client, handle, description, opening, records, True)
+            observed = await _observe(runtime, output, client, handle, description, opening, records, True, successor=successor)
         if result is None and observed['stop']['receipt'] is not None:
             files.write('stop-result', {'receipt': observed['stop']['receipt']})
             observed['stop']['result_saved'] = True
         return observed
 
 
-async def _check_run(runtime, opening, attempt, run_id, client=None):
+async def _check_run(runtime, files, opening, attempt, run_id, client=None):
     try:
         async with asyncio.timeout(runtime.RPC_SECONDS):
             if client is None:
                 client = await runtime.connect(opening)
-            handle, description = await runtime.original(client, opening, attempt, run_id)
+            handle, description, successor = await runtime.current(client, files, opening, attempt, run_id)
     except runtime.RPCError as error:
         raise ValueError(f'Cannot verify original campaign for task observation: {error.status.name}') from error
     except (TimeoutError, ConnectionError) as error:
         raise ValueError('Cannot connect to or verify the original campaign for task observation') from error
-    return client, handle, description
+    return client, handle, description, successor
 
 
 def _require_check_window(expires_at):
@@ -456,12 +563,13 @@ def _require_check_window(expires_at):
         raise ValueError('Campaign no longer admits original task observations')
 
 
-async def _require_ready_check(runtime, handle, description, opening, attempt, task_id):
+async def _require_ready_check(runtime, handle, description, opening, attempt, task_id, *, successor=None):
     expires_at = opening['plan']['limits']['expires_at']
     if description.status != runtime.WorkflowExecutionStatus.RUNNING:
         raise ValueError('Campaign no longer admits original task observations')
     _require_check_window(expires_at)
-    view = await runtime.runtime_status(handle, description, opening, start_attempt_sha256=identity(attempt))
+    scope = {'rollover': successor} if successor is not None else {}
+    view = await runtime.runtime_status(handle, description, opening, start_attempt_sha256=identity(attempt), **scope)
     _require_check_window(expires_at)
     if 'tasks' not in view:
         raise ValueError('Original campaign task Worker is unavailable')
@@ -541,30 +649,38 @@ async def observe_check(state: State, project: str, campaign: str, task_id: str,
     if task is None:
         raise ValueError('Campaign task is absent from the original frozen plan')
     runtime = _temporal()
-    client, handle, description = await _check_run(runtime, opening, attempt, result['run_id'] if result else None)
-    run_id = description.run_id
-    command = files.load_check(opening, attempt, run_id, task)
+    first_run_id = result['run_id'] if result is not None else None
+    client, handle, description, successor = await _check_run(runtime, files, opening, attempt, first_run_id)
+    if first_run_id is None:
+        first_run_id = handle.run_id
+    command = files.load_check(opening, attempt, handle.run_id, task)
     if command is not None:
         return _check_response(opening, task, command, await _read_check(runtime, client, handle, command))
     source = task['source']
     pending = source.get('pending') is True
-    waiting_command = files.load_check(opening, attempt, run_id, task, waiting=True) if pending else None
+    waiting_command = files.load_check(opening, attempt, first_run_id, task, waiting=True) if pending else None
     waiting_receipt = None
     expires_at = opening['plan']['limits']['expires_at']
     if waiting_command is not None:
-        waiting_receipt = await _read_check(runtime, client, handle, waiting_command)
+        waiting_handle = _command_handle(client, handle, successor, waiting_command)
+        waiting_receipt = await _read_check(runtime, client, waiting_handle, waiting_command)
         if (waiting_receipt is None or description.status != runtime.WorkflowExecutionStatus.RUNNING
                 or time.time() >= expires_at):
             return _check_response(opening, task, waiting_command, waiting_receipt)
 
+    _require_no_pending_rollover(files, opening, attempt, handle, successor)
     require_check_project(state, opening)
-    view = await _require_ready_check(runtime, handle, description, opening, attempt, task_id)
+    view = await _require_ready_check(runtime, handle, description, opening, attempt, task_id, successor=successor)
     if waiting_command is None and view.get('waiting_receipt') is not None:
         raise ValueError('Campaign original waiting task attempt is missing')
     def stopped():
-        _, _, saved_stop = files.load_stop(opening, attempt, result)
+        stop_intent_saved, _, saved_stop = files.load_stop(opening, attempt, result)
+        if rollover_task(opening) is not None:
+            return stop_intent_saved is not None
         return saved_stop is not None and saved_stop['receipt']['decision'] == 'accepted'
 
+    if stopped():
+        raise ValueError('Campaign no longer admits original task observations')
     status = await _read_original_check(state, project, source, expires_at, stopped)
     evidence_sha256, job = original_check_evidence(opening, task, status)
     waiting = job is not None and job['status'] in PENDING_JOB_STATES
@@ -573,23 +689,25 @@ async def observe_check(state: State, project: str, campaign: str, task_id: str,
 
     files.ensure_directory()
     with file_lock(files.lock, blocking=False):
-        client, handle, description = await _check_run(runtime, opening, attempt, run_id, client)
-        command = files.load_check(opening, attempt, run_id, task)
+        client, handle, description, successor = await _check_run(runtime, files, opening, attempt, first_run_id, client)
+        command = files.load_check(opening, attempt, handle.run_id, task)
         if command is not None:
             return _check_response(opening, task, command, await _read_check(runtime, client, handle, command))
-        current_wait = files.load_check(opening, attempt, run_id, task, waiting=True) if pending else None
+        current_wait = files.load_check(opening, attempt, first_run_id, task, waiting=True) if pending else None
         if waiting_command is not None and current_wait != waiting_command:
             raise ValueError('Campaign original waiting task attempt changed')
         if current_wait is not None and waiting_command is None:
-            waiting_receipt = await _read_check(runtime, client, handle, current_wait)
+            wait_target = _command_handle(client, handle, successor, current_wait)
+            waiting_receipt = await _read_check(runtime, client, wait_target, current_wait)
         if current_wait is not None and (waiting_receipt is None or waiting):
             return _check_response(opening, task, current_wait, waiting_receipt)
-        view = await _require_ready_check(runtime, handle, description, opening, attempt, task_id)
+        _require_no_pending_rollover(files, opening, attempt, handle, successor)
+        view = await _require_ready_check(runtime, handle, description, opening, attempt, task_id, successor=successor)
         if current_wait is None and view.get('waiting_receipt') is not None:
             raise ValueError('Campaign original waiting task attempt is missing')
         if waiting_receipt is not None:
             job = {**job, 'waiting_receipt_sha256': identity(waiting_receipt)}
-        intent = check_intent(opening, identity(attempt), run_id, task_id, evidence_sha256, job=job)
+        intent = check_intent(opening, identity(attempt), handle.run_id, task_id, evidence_sha256, job=job)
         command = {'intent': intent, 'attempt': update_attempt(intent, FIXED_TASK_UPDATE_PREFIX + str(uuid4()))}
         with State(state.root).connect() as db:
             db.execute('BEGIN IMMEDIATE')
@@ -604,7 +722,8 @@ async def observe_check(state: State, project: str, campaign: str, task_id: str,
         if remaining > 0:
             try:
                 async with asyncio.timeout(min(runtime.RPC_SECONDS, remaining)):
-                    receipt = await runtime.send_check(client, command, expires_at=expires_at)
+                    scope = {'first_run_id': first_run_id} if successor is not None else {}
+                    receipt = await runtime.send_check(client, command, expires_at=expires_at, **scope)
             except (TimeoutError, ConnectionError, runtime.RPCError):
                 pass
         if receipt is None:
@@ -642,29 +761,40 @@ async def _run_worker(files, opening, attempt, result, poller_identity):
     recipient = recipient_task(opening) is not None
     stop_records = files.load_stop(opening, attempt, result)
     output = {**_snapshot(files, opening, attempt, result), 'stop': _stop_snapshot(stop_records, recipient=recipient)}
-    run_id = stop_records[0]['run_id'] if stop_records[0] is not None else output['run_id']
+    first_run = output['run_id'] or (stop_records[0]['run_id'] if stop_records[0] is not None else None)
     try:
         async with asyncio.timeout(runtime.RPC_SECONDS):
             client = await runtime.connect(opening)
-            handle, description = await runtime.original(client, opening, attempt, run_id)
+            handle, description, successor = await runtime.current(client, files, opening, attempt, first_run)
     except runtime.RPCError as error:
         raise ValueError(f'Cannot verify original campaign for worker: {error.status.name}') from error
     except (TimeoutError, ConnectionError) as error:
         raise ValueError('Cannot connect to or verify the original campaign for worker') from error
-    observed = {**output, 'status': 'observed', 'run_id': description.run_id, 'remote_status': 'original_observed'}
+    first_run = first_run or (successor['predecessor_run_id'] if successor is not None else handle.run_id)
+    observed = {**output, 'status': 'observed', 'run_id': first_run, 'remote_status': 'original_observed'}
+    if successor is not None:
+        observed['current_run_id'] = handle.run_id
     if description.status != runtime.WorkflowExecutionStatus.RUNNING:
         # A concurrent stop can close the run during the first remote observation.
         stop_records = files.load_stop(opening, attempt, result)
         output['stop'] = _stop_snapshot(stop_records, recipient=recipient)
-        return {**await _observe(runtime, output, client, handle, description, opening, stop_records, True),
+        return {**await _observe(runtime, output, client, handle, description, opening, stop_records, True,
+                                successor=successor),
                 'worker_status': 'already_closed'}
+    async def next_run(predecessor):
+        selected, _, proof = await runtime.current(client, files, opening, attempt, first_run)
+        if proof is None or predecessor.run_id != proof['predecessor_run_id']:
+            raise ValueError('Campaign Worker cannot verify its original rollover successor')
+        return selected
+
+    scope = {'next_run': next_run} if rollover_task(opening) is not None and successor is None else {}
     try:
-        worker_status = await runtime.run_worker(client, handle, opening, files, attempt, poller_identity=poller_identity)
+        worker_status = await runtime.run_worker(client, handle, opening, files, attempt,
+                                                 poller_identity=poller_identity, **scope)
     except (TimeoutError, runtime.RPCError) as error:
         raise ValueError('Campaign worker exited without observing original closure') from error
     if worker_status == 'closed':
         stop_records = files.load_stop(opening, attempt, result)
-        observed['stop'] = _stop_snapshot(stop_records, recipient=recipient)
-        return {**await _read_original(runtime, observed, opening, attempt, description.run_id, client=client,
-                                       read_state=True, stop_records=stop_records), 'worker_status': worker_status}
+        observed = await _read_original(runtime, observed, opening, attempt, first_run, client=client,
+                                        read_state=True, stop_records=stop_records, files=files)
     return {**observed, 'worker_status': worker_status}

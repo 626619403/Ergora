@@ -22,6 +22,7 @@ MAX_PLAN_BYTES = 65_536
 MAX_RECORD_BYTES = 2 * MAX_PLAN_BYTES
 MAX_FIXED_TASKS = 8
 FIXED_TASK_UPDATE_PREFIX = 'ergora-campaign-check:'
+ROLLOVER_UPDATE_PREFIX = 'ergora-campaign-rollover:'
 FIXED_CHECK_LOCATOR = ('operation_id', 'request_file_sha256', 'job_sha256', 'candidate_sha')
 FIXED_CHECK_TERMINAL = ('receipt_sha256', 'fixed_results_sha256')
 FIXED_TASK_LOCATOR = (*FIXED_CHECK_LOCATOR, 'project_revision', 'job_id', 'authorization_sha256', 'verification_sha256')
@@ -97,7 +98,7 @@ def require_check_project(state, opening):
 
 def validate_plan(plan):
     required = {'schema_version', 'goal', 'acceptance', 'baseline_commit', 'evidence_format', 'limits'}
-    if (not isinstance(plan, dict) or set(plan) - {'tasks'} != required
+    if (not isinstance(plan, dict) or set(plan) - {'tasks', 'rollover'} != required
             or type(plan['schema_version']) is not int or plan['schema_version'] != 1):
         raise ValueError('Campaign plan requires schema_version 1 and the complete record-only fields')
     for name in ('goal', 'acceptance', 'evidence_format'):
@@ -115,6 +116,8 @@ def validate_plan(plan):
         task = readback_task({'plan': plan})
         if task is not None and task['readback']['deadline_at'] > limits['expires_at']:
             raise ValueError('Campaign readback window exceeds the original expiry')
+    if 'rollover' in plan and (plan['rollover'] is not True or rollover_task({'plan': plan}) is None):
+        raise ValueError('Campaign rollover requires one manually observed pending fixed check')
     # Also rejects unpaired Unicode surrogates before an intent can be saved.
     identity(plan)
 
@@ -170,6 +173,16 @@ def fixed_tasks(opening):
 
 def has_pending_checks(opening):
     return any(task['source'].get('pending') is True for task in fixed_tasks(opening).values())
+
+
+def rollover_task(opening):
+    plan = opening['plan']
+    tasks = plan.get('tasks', ())
+    if plan.get('rollover') is True and len(tasks) == 1:
+        task = tasks[0]
+        if task['source'].get('pending') is True and 'readback' not in task and 'recipient' not in task:
+            return task
+    return None
 
 
 def readback_task(opening):
@@ -399,7 +412,7 @@ class CampaignFiles:
             return None, None, None
         run_id = intent.get('run_id')
         if (opening is None or start_attempt is None or not uuid_text(run_id)
-                or (start_result is not None and start_result['run_id'] != run_id)
+                or (start_result is not None and start_result['run_id'] != run_id and rollover_task(opening) is None)
                 or identity(intent) != identity(stop_intent(opening, identity(start_attempt), run_id))):
             raise ValueError('Campaign stop intent differs from the original start or first Run')
         if attempt is not None:
@@ -425,22 +438,30 @@ class CampaignFiles:
         return command
 
     def load_checks(self, opening, start_attempt, run_id):
-        """Read saved attempts and keep them all pinned to the same candidate first Run."""
+        """Read saved attempts locally. The online owner verifies any successor authority."""
         commands = []
         update_ids = set()
         for task in fixed_tasks(opening).values():
             stages = (False, True) if task['source'].get('pending') is True else (False,)
             for waiting in stages:
-                command = self.load_check(opening, start_attempt, run_id, task, waiting=waiting)
+                selected_run = run_id if waiting or rollover_task(opening) is None else None
+                command = self.load_check(opening, start_attempt, selected_run, task, waiting=waiting)
                 if command is None:
                     continue
                 update_id = command['attempt']['update_id']
                 if update_id in update_ids:
                     raise ValueError('Saved campaign task attempts share an original Update ID')
                 update_ids.add(update_id)
-                run_id = command['intent']['run_id']
+                if run_id is None or rollover_task(opening) is None:
+                    run_id = command['intent']['run_id']
                 commands.append(command)
         return run_id, commands
+
+    def load_rollover(self, opening, start_attempt, first_run_id):
+        command = self._read('rollover-command')
+        if command is not None:
+            validate_rollover_command(opening, identity(start_attempt), first_run_id, command)
+        return command
 
     def _validate_opening(self, opening):
         fields = {'schema_version', 'mode', 'control_home', 'project', 'project_revision', 'registration',
@@ -524,6 +545,55 @@ def require_stop_receipt(intent, attempt, receipt):
     return receipt
 
 
+def rollover_intent(opening, start_attempt_sha256, run_id, waiting_sha256):
+    return {**_update_intent(opening, start_attempt_sha256, run_id, 'rollover'),
+            'waiting_receipt_sha256': waiting_sha256}
+
+
+def validate_rollover_command(opening, start_attempt_sha256, run_id, command):
+    if (rollover_task(opening) is None or not uuid_text(run_id) or not isinstance(command, dict)
+            or command.keys() != {'intent', 'attempt'}):
+        raise ValueError('Campaign rollover requires the saved original first Run and waiting task')
+    intent, attempt = command['intent'], command['attempt']
+    if not isinstance(intent, dict) or not isinstance(attempt, dict):
+        raise ValueError('Campaign rollover requires the complete original command')
+    waiting_sha = intent.get('waiting_receipt_sha256')
+    update_id = attempt.get('update_id')
+    if (not sha256(waiting_sha)
+            or identity(intent) != identity(rollover_intent(opening, start_attempt_sha256, run_id, waiting_sha))
+            or not isinstance(update_id, str) or not update_id.startswith(ROLLOVER_UPDATE_PREFIX)
+            or not uuid_text(update_id[len(ROLLOVER_UPDATE_PREFIX):])
+            or identity(attempt) != identity(update_attempt(intent, update_id))):
+        raise ValueError('Campaign rollover command differs from its original Run, wait or Update attempt')
+
+
+def require_rollover_receipt(intent, attempt, receipt):
+    if identity(receipt) != identity(update_receipt(intent, attempt, 'committed')):
+        raise ValueError('Campaign rollover receipt differs from its exact original Update')
+    return receipt
+
+
+def rollover_checkpoint(opening, start_attempt_sha256, first_run_id, waiting, command):
+    return {'schema_version': 1, 'opening_sha256': identity(opening), 'start_attempt_sha256': start_attempt_sha256,
+            'predecessor_run_id': first_run_id, 'waiting_receipt': waiting, 'rollover_command': command}
+
+
+def restore_rollover(opening, start_attempt_sha256, first_run_id, checkpoint):
+    task = rollover_task(opening)
+    if (task is None or not isinstance(checkpoint, dict)
+            or checkpoint.keys() != {'schema_version', 'opening_sha256', 'start_attempt_sha256',
+                                     'predecessor_run_id', 'waiting_receipt', 'rollover_command'}):
+        raise ValueError('Campaign successor lacks its original rollover checkpoint')
+    waiting, command = checkpoint['waiting_receipt'], checkpoint['rollover_command']
+    validate_rollover_command(opening, start_attempt_sha256, first_run_id, command)
+    fixed_task_state(opening, start_attempt_sha256, first_run_id, {}, {task['task_id']: waiting})
+    exact = rollover_checkpoint(opening, start_attempt_sha256, first_run_id, waiting, command)
+    if (identity(checkpoint) != identity(exact)
+            or identity(waiting) != command['intent']['waiting_receipt_sha256']):
+        raise ValueError('Campaign rollover checkpoint differs from its original grant or waiting receipt')
+    return {task['task_id']: waiting}
+
+
 def check_record_name(task_id, *, waiting):
     return ('wait-check-' if waiting else 'check-') + task_id
 
@@ -583,7 +653,7 @@ def require_check_receipt(intent, attempt, receipt):
     return receipt
 
 
-def fixed_task_state(opening, start_attempt_sha256, run_id, observations, waits=None):
+def fixed_task_state(opening, start_attempt_sha256, run_id, observations, waits=None, *, waiting_run=None):
     tasks = fixed_tasks(opening)
     waits = {} if waits is None else waits
     for expected, receipts in (('observed', observations), ('waiting_job', waits)):
@@ -599,10 +669,11 @@ def fixed_task_state(opening, start_attempt_sha256, run_id, observations, waits=
                 wait = waits.get(task_id)
                 if job.get('waiting_receipt_sha256') != (identity(wait) if wait is not None else None):
                     raise ValueError('Campaign terminal check differs from its original waiting receipt')
-            intent = check_intent(opening, start_attempt_sha256, run_id, task_id,
+            receipt_run = waiting_run if waiting_run is not None and expected == 'waiting_job' else run_id
+            intent = check_intent(opening, start_attempt_sha256, receipt_run, task_id,
                                   receipt.get('observation_sha256'), job=job)
             attempt = update_attempt(intent, receipt.get('update_id'))
-            validate_check_command(opening, start_attempt_sha256, run_id, {'intent': intent, 'attempt': attempt})
+            validate_check_command(opening, start_attempt_sha256, receipt_run, {'intent': intent, 'attempt': attempt})
             require_check_receipt(intent, attempt, receipt)
     views = {}
     for task_id, task in tasks.items():
