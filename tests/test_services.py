@@ -1,9 +1,12 @@
+import asyncio
 import configparser
+import hashlib
 import http.client
 import json
 import os
 from pathlib import Path
 import shutil
+import signal
 import socket
 import subprocess
 import sys
@@ -122,6 +125,158 @@ def test_selected_start_is_idempotent_and_does_not_autostart_other_programs(stac
     assert stopped["outcome"] == "confirmed"
     assert next(p for p in stopped["services"] if p["name"] == "temporal")["statename"] == "STOPPED"
     assert services.control(state, "demo", "shutdown", [], 1, confirm=True, timeout=5)["outcome"] == "confirmed"
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Linux process evidence for the managed Campaign Worker')
+def test_campaign_worker_reports_a_real_unreaped_process_exit():
+    from ergora.campaigns.worker_service import _generation
+
+    with subprocess.Popen([sys.executable, '-c', 'pass']) as process:
+        os.waitid(os.P_PID, process.pid, os.WEXITED | os.WNOWAIT)
+        state, generation = _generation({'statename': 'RUNNING', 'pid': process.pid})
+        assert state == 'exited' and generation['pid'] == process.pid
+
+
+@pytest.mark.skipif(not os.environ.get('ERGORA_TEST_TEMPORAL_BIN'), reason='Requires the pinned local Temporal CLI')
+def test_managed_campaign_worker_uses_original_run_and_drains(stack, monkeypatch):
+    pytest.importorskip('temporalio')
+    from temporalio.testing import WorkflowEnvironment
+
+    from ergora.campaigns import application
+    from ergora.configuration import projects
+    from ergora.runtime import processes
+    from ergora.storage.state import file_lock
+
+    state, runtime, _ = stack
+    directory = state.root / 'campaigns/demo/one'
+    folder = directory / 'svc'
+    command = [sys.executable, '-m', 'ergora', '--home', str(state.root), 'campaign']
+
+    async def cli(operation, *arguments, code=0):
+        result = await asyncio.to_thread(subprocess.run, [*command, operation, 'demo', 'one', *map(str, arguments)],
+                                         timeout=35, capture_output=True, text=True)
+        expected = (code,) if isinstance(code, int) else code
+        assert result.returncode in expected, result.stderr or result.stdout
+        return json.loads(result.stdout) if result.stdout else result.stderr
+
+    async def until(condition):
+        deadline = time.monotonic() + 15
+        while time.monotonic() < deadline:
+            result = await cli('worker-service', 'status')
+            if condition(result):
+                return result
+            await asyncio.sleep(.1)
+        pytest.fail(f'The original Campaign Worker state did not arrive: {result}')
+
+    def ready(view):
+        return view['queue']['managed_polling'] == 'observed'
+
+    async def race_start(action):
+        entered, released = threading.Event(), threading.Event()
+        control = services.control_campaign_worker
+
+        def park(*args, **kwargs):
+            entered.set()
+            assert released.wait(15)
+            return control(*args, **kwargs)
+
+        with monkeypatch.context() as patch:
+            patch.setattr(services, 'control_campaign_worker', park)
+            start = asyncio.create_task(application.manage_worker(state, 'demo', 'one', 'start'))
+            try:
+                assert await asyncio.to_thread(entered.wait, 10)
+                await action()
+            finally:
+                released.set()
+                await asyncio.gather(start, return_exceptions=True)
+            return start.result()
+
+    async def reject_overtaking_stop():
+        stop = await cli('worker-service', 'stop', '--confirm', code=1)
+        assert stop['outcome'] == 'unconfirmed' and stop['control_reason'] == 'worker_control_busy'
+        assert stop['daemon'] == 'not_running'
+
+    async def exercise():
+        async with await WorkflowEnvironment.start_local(
+            ip='127.0.0.1', ui=False, dev_server_existing_path=os.environ['ERGORA_TEST_TEMPORAL_BIN'],
+            dev_server_database_filename=str(runtime / 'campaign-temporal.sqlite'),
+        ) as env:
+            scheduler = {'tool': 'temporal', 'address': env.client.service_client.config.target_host,
+                         'namespace': env.client.namespace, 'task_queue': 'original-scheduler'}
+            projects.bind(state, 'demo', 'scheduler', scheduler, 1)
+            baseline = subprocess.check_output(['git', '-C', state.project('demo')['repo'], 'rev-parse', 'HEAD'],
+                                               text=True).strip()
+            plan = runtime / 'plan.json'
+            plan.write_text(json.dumps({'schema_version': 1, 'goal': 'Read the original Worker',
+                'acceptance': 'Observe a single original Run', 'evidence_format': 'Original History',
+                'baseline_commit': baseline, 'limits': {'expires_at': int(time.time()) + 120}}))
+            created = await cli('create', plan, '--revision', 2, '--plan-sha256', hashlib.sha256(plan.read_bytes()).hexdigest(),
+                                '--confirm')
+            projects.bind(state, 'demo', 'scheduler', {**scheduler, 'task_queue': 'different-current-queue'}, 2)
+            start_evidence = {path: path.read_bytes() for path in directory.glob('start-*.json')}
+            stopped = await cli('worker-service', 'status')
+            assert stopped['queue']['poller_count'] == 0 and stopped['queue']['managed_polling'] == 'unavailable'
+            try:
+                started = await cli('worker-service', 'start', code=(0, 1))
+                assert started['control_outcome'] == 'confirmed'
+                first = await until(ready)
+                assert first['queue']['scheduler'] == scheduler and first['queue']['task_queue'] == created['task_queue']
+                duplicate = await cli('worker-service', 'start')
+                assert duplicate['worker']['pid'] == first['worker']['pid']
+                assert 'managed service owns the original' in await cli('worker', code=2)
+                with file_lock(directory / '.start.lock', blocking=False):
+                    busy = await cli('worker-service', 'stop', '--confirm', code=1)
+                assert busy['outcome'] == 'unconfirmed' and busy['control_reason'] == 'campaign_control_busy'
+                assert busy['worker']['pid'] == first['worker']['pid']
+                daemon = (folder / 'supervisord.pid').read_bytes()
+                original_worker = processes.identity(first['worker']['pid'])
+                processes.notify_identity(original_worker, signal.SIGSTOP)
+                try:
+                    paused = await until(lambda view: view['queue']['managed_polling'] == 'suspended')
+                    assert paused['worker']['statename'] == 'RUNNING'
+                    assert paused['queue']['managed_poller_report'] == 'reported'
+                finally:
+                    processes.notify_identity(original_worker, signal.SIGCONT)
+                await until(ready)
+                processes.notify_identity(original_worker, signal.SIGKILL)
+                new = await until(lambda view: ready(view) and view['worker']['pid'] != first['worker']['pid'])
+                assert new['run_id'] == created['run_id'] and new['start_attempt_id'] == first['start_attempt_id']
+                assert (folder / 'supervisord.pid').read_bytes() == daemon
+                assert 'requires explicit --confirm' in await cli('worker-service', 'stop', code=2)
+                stopped = await cli('worker-service', 'stop', '--confirm')
+                assert stopped['daemon'] == 'not_running' and stopped['queue']['managed_polling'] == 'unavailable'
+                assert stopped['queue']['temporal_status'] == 'RUNNING' and not (directory / 'stop-attempt.json').exists()
+
+                assert (await race_start(reject_overtaking_stop))['control_outcome'] == 'confirmed'
+                await until(ready)
+                logs = folder / 'supervisord.log'
+                before = None
+
+                async def close_original():
+                    nonlocal before
+                    decision = await cli('stop', '--confirm')
+                    assert decision['run_id'] == created['run_id'] and decision['stop']['receipt']['decision'] == 'accepted'
+                    await until(lambda view: view['queue']['temporal_status'] == 'COMPLETED'
+                                and view['worker']['statename'] == 'EXITED')
+                    before = logs.read_bytes()
+
+                with pytest.raises(ValueError, match='original Campaign Run has closed'):
+                    await race_start(close_original)
+                assert before is not None and logs.read_bytes() == before
+                drained = await until(lambda view: view['queue']['temporal_status'] == 'COMPLETED'
+                                      and view['worker']['statename'] == 'EXITED')
+                assert drained['queue']['managed_polling'] == 'closed'
+                assert 'original Campaign Run has closed' in await cli('worker-service', 'start', code=2)
+                history = await env.client.get_workflow_handle(created['workflow_id'], run_id=created['run_id']).fetch_history()
+                assert sum(event.HasField('workflow_execution_started_event_attributes') for event in history.events) == 1
+                assert sum(event.HasField('workflow_execution_update_accepted_event_attributes') for event in history.events) == 1
+                assert not any(event.HasField('activity_task_scheduled_event_attributes') for event in history.events)
+                assert all(path.read_bytes() == raw for path, raw in start_evidence.items())
+            finally:
+                final = await cli('worker-service', 'stop', '--confirm')
+                assert final['daemon'] == 'not_running'
+
+    asyncio.run(exercise())
 
 
 def test_cycle_configuration_reuses_training_owner_without_autostart(stack):

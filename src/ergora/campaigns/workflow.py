@@ -650,7 +650,7 @@ def _observed_state(observed, expected, opening, start_attempt_sha256, temporal_
     return {'temporal_status': temporal_status.name, 'workflow_state_status': 'observed', 'workflow_state': observed, **extra}
 
 
-async def run_worker(client, handle, opening, files, attempt):
+async def run_worker(client, handle, opening, files, attempt, *, poller_identity=None):
     """Poll only the saved queue until the original run closes, or the foreground worker stops."""
     stopped = asyncio.Event()
     loop = asyncio.get_running_loop()
@@ -675,6 +675,7 @@ async def run_worker(client, handle, opening, files, attempt):
 
             activities.append(CodexRecipient(files, opening, attempt, handle.run_id).deliver)
         worker = Worker(client, task_queue=opening['task_queue'], workflows=[Campaign], activities=activities,
+                        identity=poller_identity,
                         graceful_shutdown_timeout=timedelta(seconds=READBACK_CLEANUP_SECONDS if activities else 0))
         async with worker:
             closing = asyncio.create_task(wait_for_completion())

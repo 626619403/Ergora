@@ -39,6 +39,26 @@ Offline status reads the saved start, stop and task attempts without the SDK. Sa
 
 After an uncertain start, read `status --online` and repeat `create` with the same project, campaign, exact plan bytes, revision and digest to save the verified original start. Once the dispatch attempt is saved, repeated `create` observes the same original start even if the current project scheduler changed. An unavailable service or missing original History leaves that attempt uncertain.
 
+## Manage one Campaign Worker
+
+On Linux/WSL2, use the Supervisor from the Campaign's original registered reference installation. After `campaign create` saves and verifies the original Run, manage its Worker through the same control home.
+
+```bash
+ergora campaign worker-service my-project first-plan start
+ergora campaign worker-service my-project first-plan status
+ergora campaign worker-service my-project first-plan stop --confirm
+```
+
+The service owns one Worker on the saved Campaign queue. It remains active after the launcher exits. Supervisor replaces a Worker that exits unexpectedly after successful startup. The same Campaign and process ownership checks govern each replacement. A competing foreground call is refused while the managed daemon owns this queue.
+
+`worker` reports Supervisor's process state. `queue` reads the original Workflow Task Queue from the original scheduler. Temporal can retain recently exited pollers. `queue.managed_poller_report` matches the cached report to the observed managed generation. `queue.managed_polling: observed` also requires a bounded query of the original Run and the same live process generation across the read. A suspended process can have a reported poller while its readiness is `suspended`. The queue also reports unavailable or unknown evidence and a verified original closure.
+
+`worker-service stop --confirm` shuts down that Campaign's Supervisor and drains its local Worker. A later explicit start can resume polling an open original Run. To finish the Campaign, deliver the original [Campaign STOP](#stop-the-original-campaign-plan) while its Worker is available. Workflow closure lets the Worker exit. Use `worker-service stop` to release the remaining service owner. View the original Workflow, native execution and resource receipts for their respective outcomes.
+
+Maintenance keeps the Worker while the original Campaign command holds its lock or a saved STOP still needs the Worker. An unconfirmed stop reports `campaign_control_busy` or `campaign_stop_unresolved`. Read the original STOP and Run again, then retry maintenance after closure. After a lost Campaign STOP reply, the original command reconciles the same Update ID. If the entire managed service disappears during an unresolved STOP, reconcile the original owner and History before restoring polling. An unresolved Update keeps its original attempt identity.
+
+Service control uses a 1–60 second wait after preflight. `control_outcome` reports the local effect and a confirmed start also requires original queue readiness. A concurrent start or stop that encounters the original control lock reports `worker_control_busy` with an unconfirmed outcome. Read the original service status before retrying. The original Campaign owner checks closure and saved STOP again before starting the Worker. The Campaign's deadline keeps running. The managed Unix socket and logs are under `campaigns/PROJECT/CAMPAIGN/svc` in the control home. Keep this path within the Unix socket limit.
+
 ## Stop the original campaign plan
 
 Use the same local Unix operator and control home. The confirmed stop binds one request to the saved scheduler and original first Run.

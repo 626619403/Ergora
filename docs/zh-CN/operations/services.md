@@ -52,6 +52,8 @@ ergora services shutdown my-project --revision 1 --confirm --timeout 30
 
 `training-cycle-worker`的普通／stop queue各有独立活动槽；它与budget服务使用不同PID，提供四个活动消费者。集成范围、显式启动和70秒停止观察见[训练手册](../../training/controllers.md#integration-entry-point-for-the-independent-cycle-service)；同一worker承载有限V2／V3候选控制器；使用[显式控制器授权与提交命令](../../training/controllers.md#start-a-local-training-budget-and-recover-original-authorization)，启动服务本身不授执行权。
 
+单个 Campaign 的 Worker 由对应任务的专用服务管理。服务状态分别报告本机进程和原注册队列的轮询证据。[管理一个 Campaign Worker](../../improvement/campaigns.md#manage-one-campaign-worker)
+
 日志默认原生字节窗口为 8192，可设 4–65536（至少容纳一个 UTF-8 字符）；使用返回的 `next_offset` 作为下次 `--offset`。`overflow` 表示中间内容超过窗口，`rotated` 表示当前文件长度小于游标、窗口已重置，需结合原生日志核对。通过 Supervisor 查询实际日志路径后，只对普通文件进行有界读取，不完整加载大文件。`limit` 限制原始读取字节数，文本/JSON响应大小可能因替换字符或转义而增加。合法 UTF-8 边界会保留；不完整后缀的 `pending_bytes` 尚不计入 `next_offset`，后续追加后用原游标继续；非法字节显示替换字符。
 
 同源 API：`GET /api/projects/ID/services`；`POST` 同路径，正文 `{"action":"start","names":["temporal"],"revision":1,"timeout":30}`；停止加 `"confirm":true`，shutdown 的 names 为空。写请求沿用 `X-Ergora-Request: 1`。`GET /api/projects/ID/services/NAME/logs?limit=8192&offset=0&stderr=false` 返回有界文本与游标。Windows 原生支持控制台，但本地 Supervisor 管理需要 WSL2/Linux。

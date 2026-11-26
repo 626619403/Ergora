@@ -1028,6 +1028,7 @@ def parser() -> argparse.ArgumentParser:
         ("observe-check", "Observe the exact original fixed check for a frozen task"),
         ("stop", "Confirm one stop request against the original campaign run"),
         ("worker", "Run a foreground Worker on the original campaign queue"),
+        ("worker-service", "Manage one supervised Worker and observe the original queue"),
     ):
         operation = operations.add_parser(name, help=help_text)
         operation.add_argument("project")
@@ -1042,6 +1043,10 @@ def parser() -> argparse.ArgumentParser:
             operation.add_argument("--confirm", action="store_true")
         if name == "status":
             operation.add_argument("--online", action="store_true")
+        if name == "worker-service":
+            operation.add_argument("action", choices=("start", "status", "stop"))
+            operation.add_argument("--confirm", action="store_true")
+            operation.add_argument("--timeout", type=int, default=30)
     sources = commands.add_parser("research", help="Bounded source snapshots and optional Temporal schedules")
     operations = sources.add_subparsers(dest="operation", required=True)
     for name in ("run", "list", "show", "cancel", "proposal", "review", "schedule", "worker"):
@@ -1149,6 +1154,9 @@ def main(argv: list[str] | None = None) -> int:
             elif args.operation == "observe-check":
                 operation = _campaign_check_observation(
                     campaigns.observe_check(state, args.project, args.id, args.task_id, confirm=args.confirm))
+            elif args.operation == "worker-service":
+                operation = campaigns.manage_worker(state, args.project, args.id, args.action,
+                                                    confirm=args.confirm, timeout=args.timeout)
             else:
                 operation = campaigns.worker(state, args.project, args.id)
             try:
@@ -1967,6 +1975,8 @@ def main(argv: list[str] | None = None) -> int:
             return native_compiler.workflow(args.arguments)
         print(json.dumps(output, ensure_ascii=False, indent=2))
         if args.command == "campaign":
+            if args.operation == "worker-service":
+                return 0 if output["outcome"] in ("confirmed", "observed") else 1
             if args.operation == "observe-check":
                 return 0 if output["status"] in ("observed", "waiting_job") else 1
             if output["remote_status"] in ("unavailable", "original_not_found"):

@@ -543,13 +543,32 @@ async def observe_check(state: State, project: str, campaign: str, task_id: str,
         return _check_response(opening, task, command, receipt)
 
 
+async def manage_worker(state: State, project: str, campaign: str, action: str, *, confirm=False, timeout=30) -> dict:
+    from ergora.campaigns.worker_service import manage
+
+    files = CampaignFiles(state.root, project, campaign)
+    opening, attempt, result = files.load()
+    if result is None:
+        raise ValueError('Managed Campaign Worker requires the verified original start result')
+    registration = verify_registration(state, opening)
+    return await manage(files, opening, attempt, result, registration, action,
+                        confirm=confirm, timeout=timeout, temporal=_temporal)
+
+
 async def worker(state: State, project: str, campaign: str) -> dict:
     """Run a foreground worker for an already verified original campaign."""
     files = CampaignFiles(state.root, project, campaign)
     opening, attempt, result = files.load()
     if attempt is None:
         raise ValueError('Campaign worker requires a saved original start attempt')
-    verify_registration(state, opening)
+    registration = verify_registration(state, opening)
+    from ergora.campaigns.worker_service import polling_owner
+
+    with polling_owner(files, opening, attempt, result, registration) as poller_identity:
+        return await _run_worker(files, opening, attempt, result, poller_identity)
+
+
+async def _run_worker(files, opening, attempt, result, poller_identity):
     runtime = _temporal()
     recipient = recipient_task(opening) is not None
     stop_records = files.load_stop(opening, attempt, result)
@@ -571,7 +590,7 @@ async def worker(state: State, project: str, campaign: str) -> dict:
         return {**await _observe(runtime, output, client, handle, description, opening, stop_records, True),
                 'worker_status': 'already_closed'}
     try:
-        worker_status = await runtime.run_worker(client, handle, opening, files, attempt)
+        worker_status = await runtime.run_worker(client, handle, opening, files, attempt, poller_identity=poller_identity)
     except (TimeoutError, runtime.RPCError) as error:
         raise ValueError('Campaign worker exited without observing original closure') from error
     if worker_status == 'closed':

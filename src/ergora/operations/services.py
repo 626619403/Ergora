@@ -2,6 +2,7 @@
 
 import codecs
 import configparser
+from contextlib import nullcontext
 import glob
 import http.client
 import importlib.util
@@ -22,9 +23,11 @@ from xml.parsers.expat import ExpatError
 import ergora.native.commands as native_commands
 import ergora.native.resources as native_resources
 import ergora.configuration.registrations as registrations
+from ergora._paths import IMPORT_ROOT
 from ergora.storage.state import State, file_lock
 
 
+CAMPAIGN_WORKER = "campaign-worker"
 NAMES = ("temporal", "mlflow", "worker", "executor", "a2a", "training-worker", "training-budget-worker", "training-cycle-worker")
 _COMMUNICATION_ERRORS = (OSError, http.client.HTTPException, xmlrpc.client.ProtocolError, xmlrpc.client.ResponseError, ExpatError)
 _STOPPED = {"STOPPED", "EXITED", "FATAL"}
@@ -80,7 +83,7 @@ def _snapshot(folder: Path) -> dict:
         processes = _rpc(path, "getAllProcessInfo")
         return {"daemon": "running", "services": [
             {key: item[key] for key in ("name", "statename", "pid", "exitstatus", "start", "stop")}
-            for item in processes if item["name"] in NAMES]}
+            for item in processes if item["name"] in (*NAMES, CAMPAIGN_WORKER)]}
     except xmlrpc.client.Fault as error:
         return {"daemon": "stopping" if error.faultCode == 6 else "unconfirmed", "services": []}
     except _COMMUNICATION_ERRORS:
@@ -108,8 +111,21 @@ def _write(path: Path, content: str) -> None:
         Path(temporary).unlink(missing_ok=True)
 
 
+def _save_config(folder: Path, configuration, identity: dict) -> Path:
+    serialized = io.StringIO()
+    configuration.write(serialized)
+    _write(folder / "supervisord.ini", serialized.getvalue())
+    _write(folder / "owner.json", json.dumps(identity, ensure_ascii=False, indent=2) + "\n")
+    return folder / "supervisord.ini"
+
+
+def _launch(installation, configuration, environment, timeout):
+    executable = Path(installation) / ".venv/bin/supervisord"
+    return subprocess.run([str(executable), "-c", str(configuration)], env=environment,
+                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=timeout)
+
+
 def _prepare(state: State, execution: dict, folder: Path, identity: dict) -> Path:
-    owner = folder / "owner.json"
     path = folder / "s.sock"
     if len(os.fsencode(path)) > 107:
         raise ValueError("Supervisor Unix socket path is too long; use a shorter persistent execution state_directory")
@@ -155,11 +171,7 @@ def _prepare(state: State, execution: dict, folder: Path, identity: dict) -> Pat
             output[section]["stopwaitsecs"] = "70"
         output[section]["command"] = shlex.join(command).replace("%", "%%")
         output[section]["directory"] = execution["installation"]
-    content = io.StringIO()
-    output.write(content)
-    _write(folder / "supervisord.ini", content.getvalue())
-    _write(owner, json.dumps(identity, ensure_ascii=False, indent=2) + "\n")
-    return folder / "supervisord.ini"
+    return _save_config(folder, output, identity)
 
 
 def control(state: State, project_id: str, action: str, names: list[str], revision: int,
@@ -188,68 +200,127 @@ def control(state: State, project_id: str, action: str, names: list[str], revisi
         if (Path(execution["state_directory"]) / "supervisor.sock").exists():
             raise ValueError("An original Supervisor socket exists. Stop and reconcile that stack with its original agentflow services stop before using the managed stack; no services were taken over")
         identity = {"schema_version": 1, "control_directory": str(state.root), "execution": execution}
-        owner = folder / "owner.json"
-        if owner.exists() and json.loads(owner.read_text(encoding="utf-8")) != identity:
-            raise ValueError("This service stack belongs to a different control directory or execution configuration")
-        deadline = time.monotonic() + timeout
-        before = _snapshot(folder)
-        if before["daemon"] == "running" and not owner.exists():
-            raise ValueError("Managed socket has no ownership record; reconcile the existing daemon before managing services")
-        if before["daemon"] == "unconfirmed" or (before["daemon"] == "stopping" and action != "shutdown"):
-            return {"project": project_id, "action": action, "outcome": "unconfirmed", **before}
-        if before["daemon"] == "not_running" and action != "start":
-            return {"project": project_id, "action": action, "outcome": "confirmed", **before}
-        if before["daemon"] == "not_running":
+
+        def launch(remaining):
             config = _prepare(state, execution, folder, identity)
             environment = dict(os.environ, AGENTFLOW_CONFIG_DIR=execution["config_directory"],
                                AGENTFLOW_STATE_DIR=execution["state_directory"])
             environment["PYTHONPATH"] = os.pathsep.join(map(str, (
                 Path(execution["installation"]) / "local", Path(execution["installation"]) / "upstream/platform",
                 Path(execution["installation"]) / "upstream/temporal", Path(execution["installation"]) / "upstream")))
-            try:
-                launched = subprocess.run([str(Path(execution["installation"]) / ".venv/bin/supervisord"), "-c", str(config)],
-                                          env=environment, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                                          timeout=max(.01, deadline - time.monotonic()))
-            except subprocess.TimeoutExpired:
-                return {"project": project_id, "action": action, "outcome": "unconfirmed", **_snapshot(folder)}
-            if launched.returncode:
-                raise ValueError("Supervisor did not start; inspect the managed supervisord.log and installed Supervisor package")
-        path = folder / "s.sock"
+            return _launch(execution["installation"], config, environment, remaining)
+
+        return _operate(folder, project_id, action, names, identity, timeout, launch)
+
+
+def _operate(folder: Path, project_id: str, action: str, names: list[str], identity: dict, timeout: int, launch,
+             *, admit_start=nullcontext) -> dict:
+    owner = folder / "owner.json"
+    if owner.exists() and json.loads(owner.read_text(encoding="utf-8")) != identity:
+        raise ValueError("This service stack belongs to a different control directory or execution configuration")
+    deadline = time.monotonic() + timeout
+    before = _snapshot(folder)
+    if before["daemon"] == "running" and not owner.exists():
+        raise ValueError("Managed socket has no ownership record; reconcile the existing daemon before managing services")
+    if before["daemon"] == "unconfirmed" or (before["daemon"] == "stopping" and action != "shutdown"):
+        return {"project": project_id, "action": action, "outcome": "unconfirmed", **before}
+    if before["daemon"] == "not_running" and action != "start":
+        return {"project": project_id, "action": action, "outcome": "confirmed", **before}
+    if before["daemon"] == "not_running":
         try:
-            if action == "shutdown" and before["daemon"] != "stopping":
-                _rpc(path, "shutdown")
-            elif action != "shutdown":
-                current = {item["name"]: item["statename"] for item in _snapshot(folder)["services"]}
-                for name in names:
-                    if name not in current:
-                        if name == "training-cycle-worker" and before["daemon"] == "running":
-                            raise ValueError("Running Supervisor lacks training-cycle-worker; explicitly stop services, shutdown the managed daemon, then restart the selected services. No reload or takeover was performed")
-                        raise ValueError(f"Selected service is absent from the reference Supervisor config: {name}")
-                    if action == "start" and current[name] == "STOPPING":
-                        raise ValueError("Stop is not confirmed; wait for STOPPED before starting again")
-                for name in names:
-                    if (action == "start" and current[name] not in {"RUNNING", "STARTING", "BACKOFF"}) or (action == "stop" and current[name] not in _STOPPED | {"STOPPING"}):
-                        _rpc(path, "startProcess" if action == "start" else "stopProcess", name, False,
-                             timeout=max(.01, min(1, deadline - time.monotonic())))
-            while time.monotonic() < deadline:
-                observed = _snapshot(folder)
-                statuses = {item["name"]: item["statename"] for item in observed["services"]}
-                confirmed = observed["daemon"] == "not_running" if action == "shutdown" else (
-                    observed["daemon"] == "running" and all(statuses.get(name) == "RUNNING" if action == "start"
-                                                            else statuses.get(name) in _STOPPED for name in names))
-                if confirmed:
-                    return {"project": project_id, "action": action, "selected": names, "outcome": "confirmed",
-                            "task_readiness": "not_checked", **observed}
-                if action == "start" and any(statuses.get(name) == "FATAL" for name in names):
-                    return {"project": project_id, "action": action, "selected": names, "outcome": "failed",
-                            "task_readiness": "not_checked", **observed}
-                time.sleep(.1)
-        except _COMMUNICATION_ERRORS:
-            pass  # A request may have reached Supervisor; only observation can confirm it.
-        except xmlrpc.client.Fault as error:
-            raise ValueError(f"Supervisor rejected the service operation (fault {error.faultCode})") from error
-        return {"project": project_id, "action": action, "selected": names, "outcome": "unconfirmed",
-                "task_readiness": "not_checked", **_snapshot(folder)}
+            with admit_start():
+                launched = launch(max(.01, deadline - time.monotonic()))
+        except subprocess.TimeoutExpired:
+            return {"project": project_id, "action": action, "outcome": "unconfirmed", **_snapshot(folder)}
+        if launched.returncode:
+            raise ValueError("Supervisor did not start; inspect the managed supervisord.log and installed Supervisor package")
+    path = folder / "s.sock"
+    try:
+        if action == "shutdown" and before["daemon"] != "stopping":
+            _rpc(path, "shutdown")
+        elif action != "shutdown":
+            current = {item["name"]: item["statename"] for item in _snapshot(folder)["services"]}
+            for name in names:
+                if name not in current:
+                    if name == "training-cycle-worker" and before["daemon"] == "running":
+                        raise ValueError("Running Supervisor lacks training-cycle-worker; explicitly stop services, shutdown the managed daemon, then restart the selected services. No reload or takeover was performed")
+                    raise ValueError(f"Selected service is absent from the reference Supervisor config: {name}")
+                if action == "start" and current[name] == "STOPPING":
+                    raise ValueError("Stop is not confirmed; wait for STOPPED before starting again")
+            for name in names:
+                if action == "start" and current[name] not in {"RUNNING", "STARTING", "BACKOFF"}:
+                    with admit_start():
+                        _rpc(path, "startProcess", name, False, timeout=max(.01, min(1, deadline - time.monotonic())))
+                elif action == "stop" and current[name] not in _STOPPED | {"STOPPING"}:
+                    _rpc(path, "stopProcess", name, False, timeout=max(.01, min(1, deadline - time.monotonic())))
+        while time.monotonic() < deadline:
+            observed = _snapshot(folder)
+            statuses = {item["name"]: item["statename"] for item in observed["services"]}
+            confirmed = observed["daemon"] == "not_running" if action == "shutdown" else (
+                observed["daemon"] == "running" and all(statuses.get(name) == "RUNNING" if action == "start"
+                                                        else statuses.get(name) in _STOPPED for name in names))
+            if confirmed:
+                return {"project": project_id, "action": action, "selected": names, "outcome": "confirmed",
+                        "task_readiness": "not_checked", **observed}
+            if action == "start" and any(statuses.get(name) == "FATAL" for name in names):
+                return {"project": project_id, "action": action, "selected": names, "outcome": "failed",
+                        "task_readiness": "not_checked", **observed}
+            time.sleep(.1)
+    except _COMMUNICATION_ERRORS:
+        pass  # A request may have reached Supervisor; only observation can confirm it.
+    except xmlrpc.client.Fault as error:
+        raise ValueError(f"Supervisor rejected the service operation (fault {error.faultCode})") from error
+    return {"project": project_id, "action": action, "selected": names, "outcome": "unconfirmed",
+            "task_readiness": "not_checked", **_snapshot(folder)}
+
+
+def campaign_worker_status(folder: Path, binding: dict | None) -> dict:
+    snapshot = _snapshot(folder)
+    owner = folder / "owner.json"
+    if owner.exists():
+        if binding is None or json.loads(owner.read_text(encoding="utf-8")) != binding:
+            raise ValueError("Managed Campaign Worker belongs to another original run")
+    elif snapshot["daemon"] != "not_running":
+        raise ValueError("Managed Campaign Worker socket has no original ownership record")
+    return snapshot
+
+
+def control_campaign_worker(folder: Path, binding: dict, action: str, *, timeout: int, admit_start) -> dict:
+    """Operate only the one original Campaign program in its own Supervisor scope."""
+    if action not in ("start", "stop"):
+        raise ValueError("Choose start or stop for the managed Campaign Worker")
+    path = folder / "s.sock"
+    if len(os.fsencode(path)) > 107:
+        raise ValueError("Campaign Worker Supervisor socket path is too long")
+    if action == "stop" and not folder.exists():
+        return {"outcome": "confirmed"}
+    folder.mkdir(exist_ok=True, mode=0o700)
+
+    def launch(remaining):
+        configuration = configparser.ConfigParser(interpolation=None)
+        configuration["supervisord"] = {
+            "logfile": str(folder / "supervisord.log"), "pidfile": str(folder / "supervisord.pid"),
+            "childlogdir": str(folder), "nodaemon": "false",
+        }
+        configuration["unix_http_server"] = {"file": str(path), "chmod": "0700"}
+        configuration["rpcinterface:supervisor"] = {
+            "supervisor.rpcinterface_factory": "supervisor.rpcinterface:make_main_rpcinterface",
+        }
+        command = [sys.executable, "-P", "-m", "ergora", "--home", binding["control_home"],
+                   "campaign", "worker", binding["project"], binding["campaign"]]
+        configuration["program:" + CAMPAIGN_WORKER] = {
+            "command": shlex.join(command).replace("%", "%%"), "autostart": "false",
+            "autorestart": "unexpected", "exitcodes": "0,1,2,130", "startsecs": "1", "startretries": "0",
+            "stopwaitsecs": "70", "stdout_logfile": str(folder / "worker.log"),
+            "stderr_logfile": str(folder / "worker.err.log"),
+        }
+        config = _save_config(folder, configuration, binding)
+        environment = dict(os.environ, PYTHONPATH=str(IMPORT_ROOT))
+        return _launch(binding["installation"], config, environment, remaining)
+
+    # Exiting this private daemon drains its single original Worker as well.
+    return _operate(folder, binding["project"], "start" if action == "start" else "shutdown",
+                    [CAMPAIGN_WORKER] if action == "start" else [], binding, timeout, launch, admit_start=admit_start)
 
 
 def logs(state: State, project_id: str, name: str, *, offset: int = 0,

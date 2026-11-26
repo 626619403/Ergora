@@ -83,6 +83,7 @@ def verify_registration(state, opening):
                                                selected['intent_sha256'])
     if original['registration']['sha256'] != selected['sha256'] or original['revision'] > opening['project_revision']:
         raise ValueError('Campaign original registration identity differs')
+    return original
 
 
 def require_check_project(state, opening):

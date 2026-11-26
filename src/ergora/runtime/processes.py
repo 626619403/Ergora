@@ -15,15 +15,21 @@ from collections.abc import Callable
 _cancel_requested = False
 
 
-def identity(pid: int) -> dict:
-    """Observe one live Linux process without confusing a reused PID or zombie."""
+def observe_process(pid: int) -> tuple[str, dict]:
+    """Read the Linux process state and generation from the same stat record."""
     if type(pid) is not int or pid < 1:
         raise ValueError('Process has no valid identity')
     fields = Path('/proc/' + str(pid) + '/stat').read_text().rsplit(')', 1)[1].split()
-    if fields[0] == 'Z':
+    return fields[0], {'pid': pid, 'start_ticks': fields[19],
+                       'boot_id': Path('/proc/sys/kernel/random/boot_id').read_text().strip()}
+
+
+def identity(pid: int) -> dict:
+    """Observe one live Linux process without confusing a reused PID or zombie."""
+    state, process = observe_process(pid)
+    if state == 'Z':
         raise ValueError('Original process has exited')
-    return {'pid': pid, 'start_ticks': fields[19],
-            'boot_id': Path('/proc/sys/kernel/random/boot_id').read_text().strip()}
+    return process
 
 
 def require_ancestor(pid: int, expected: dict) -> None:
