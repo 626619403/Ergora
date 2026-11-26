@@ -470,6 +470,8 @@ local_gpu_pool._sync=fail_closed_sync
         with _owner(setup) as child:
             release = _result(child)['resource']
         assert release['status'] == 'released'
+        clock = release['release_ref']['owner_decision_clock']
+        assert clock['boot_id'] == pool.session['initial_owner']['boot_id']
         original_config = tmp_path / 'original-config.json'
         original_config.write_bytes((directory / 'config.json').read_bytes())
         command = ['gpu-pool', 'inspect', '--config', str(original_config),
@@ -517,6 +519,24 @@ local_gpu_pool._sync=fail_closed_sync
             assert 'Unknown original GPU resource lease' in capsys.readouterr().err
             assert successor_pool.inspect()['session_id'] == current
             assert [(path.read_bytes(), path.stat().st_ino) for path in archived] == fingerprints
+
+            journal = pool.directory / 'journal.json'
+            journal_raw = journal.read_bytes()
+            retained = json.loads(journal_raw)
+            original_ref = retained['requests'][0]['release_ref']
+            original_ref['owner_decision_clock']['boot_id'] = str(uuid.uuid4())
+            journal.write_bytes(local_gpu_pool._encode(retained))
+            assert cli.main(command) == 2
+            assert 'original pool boot' in capsys.readouterr().err
+
+            original_ref.pop('owner_decision_clock')
+            historical = local_gpu_pool._encode(retained) + b'\n'
+            journal.write_bytes(historical)
+            assert cli.main(command) == 0
+            assert json.loads(capsys.readouterr().out) == {**receipt, 'release_ref': original_ref}
+            assert journal.read_bytes() == historical
+            journal.write_bytes(journal_raw)
+
             with _after_record_read(monkeypatch, Path(config['legacy_sentinel']),
                                     lambda _: proof.write_bytes(fingerprints[-1][0] + b' ')):
                 assert cli.main(command) == 2
@@ -525,8 +545,27 @@ local_gpu_pool._sync=fail_closed_sync
             _stop_session(successor_owner, successor_pool)
 
 
-def test_pending_conflict_waits_for_release_while_later_disjoint_work_runs(tmp_path):
-    with fake_pool(tmp_path / 'pool', count=2) as (pool, config, _):
+@pytest.mark.parametrize('clock_fault', [None, 'unavailable', 'wrong-boot'])
+def test_pending_conflict_waits_for_release_while_later_disjoint_work_runs(tmp_path, clock_fault):
+    inject = ''
+    if clock_fault is not None:
+        inject = f'''
+clock = local_gpu_pool.budget_clock._clock
+release_code = local_gpu_pool._Session._release.__code__
+fault_seen = inventory_path.with_name('clock-fault-observed')
+fault_armed = inventory_path.with_name('clock-fault-armed')
+def sample():
+    if sys._getframe(1).f_code is release_code and fault_armed.exists() and not fault_seen.exists():
+        fault_seen.touch()
+        if {clock_fault!r} == 'unavailable':
+            raise OSError('injected release decision clock unavailable')
+        boot_id, ticks = clock()
+        wrong_boot = ('1' if boot_id[0] == '0' else '0') + boot_id[1:]
+        return wrong_boot, ticks
+    return clock()
+local_gpu_pool.budget_clock._clock = sample
+'''
+    with fake_pool(tmp_path / 'pool', count=2, _setup=inject) as (pool, config, pool_owner):
         shared, free = config['device_uuids']
         hold = ("import time;from pathlib import Path;Path('started').touch()\n"
                 "while not Path('finish').exists():time.sleep(.01)")
@@ -575,11 +614,27 @@ def test_pending_conflict_waits_for_release_while_later_disjoint_work_runs(tmp_p
                 assert request(pending)['state'] == 'pending'
                 assert not (successor.parent / 'started').exists()
 
+                if clock_fault is not None:
+                    inventory_path.with_name('clock-fault-armed').touch()
                 set_reported_pids([])
-                assert _result(first)['resource']['status'] == 'released'
-                assert _result(waiting)['resource']['status'] == 'released'
+                for owner in (first, waiting):
+                    result = _result(owner)
+                    assert result['resource']['status'] == 'released'
+                    assert result['guard_returncode'] == 0
         assert (successor.parent / 'started').read_text().splitlines() == ['once']
-        assert request(original)['release_ref']['sequence'] < request(pending)['consume_binding']['sequence']
+        release_ref = request(original)['release_ref']
+        assert release_ref['sequence'] < request(pending)['consume_binding']['sequence']
+        assert 'owner_decision_clock' in request(pending)['release_ref']
+        if clock_fault is None:
+            assert 'owner_decision_clock' in release_ref
+        else:
+            assert (tmp_path / 'pool' / 'clock-fault-observed').exists()
+            assert 'owner_decision_clock' not in release_ref
+            assert pool.release(held['lease_id'], release_ref['proof_ref'])['release_ref'] == release_ref
+            assert pool.close()['mode'] == 'closed'
+            assert pool_owner.wait(timeout=5) == 0
+            archived = local_gpu_pool.observe_closed_release(config, pool.session['session_id'], held['lease_id'])
+            assert archived['release_ref'] == release_ref
 
 
 def test_guard_death_after_stopped_proof_keeps_unknown_even_when_nvml_empty(tmp_path):
@@ -729,6 +784,9 @@ def publish(path,value,**options):
  global fault_active
  selected=path.name=='journal.json' and any(request['state']=={state!r} for request in value.get('requests',[]))
  fault_active=selected and not fault_fired
+ if fault_active and {state!r}=='released':
+  release=next(request['release_ref'] for request in value['requests'] if request['state']=='released')
+  (inventory_path.parent/'release-candidate.json').write_text(json.dumps(release))
  try:return original_publish(path,value,**options)
  finally:fault_active=False
 local_gpu_pool.os.replace=replace
@@ -749,3 +807,12 @@ local_gpu_pool._publish=publish
         marker = setup.parent / 'started'
         assert (marker.read_text().count('\n') if marker.exists() else 0) == (0 if state == 'consumed' else 1)
         assert result['guard_returncode'] == 0, result
+        if state == 'released':
+            candidate = json.loads((tmp_path / 'pool' / 'release-candidate.json').read_bytes())
+            accepted = requests[0]['release_ref']
+            assert accepted == result['resource']['release_ref']
+            assert pool.release(requests[0]['lease_id'], accepted['proof_ref'])['release_ref'] == accepted
+            if boundary == 'before-replace':
+                assert accepted['owner_decision_clock']['boottime_ns'] > candidate['owner_decision_clock']['boottime_ns']
+            else:
+                assert accepted == candidate

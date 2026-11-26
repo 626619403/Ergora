@@ -119,6 +119,14 @@ def _timestamp(value):
         raise ValueError('GPU admission timestamps require canonical UTC')
 
 
+def _validate_release_decision_clock(clock, boot_id):
+    _fields(clock, {'observed_at', 'boot_id', 'boottime_ns'}, 'release decision clock')
+    _timestamp(clock['observed_at'])
+    if (clock['boot_id'] != boot_id
+            or type(clock['boottime_ns']) is not int or clock['boottime_ns'] < 0):
+        raise ValueError('Invalid release decision clock for the original pool boot')
+
+
 def _now():
     return datetime.now(timezone.utc).isoformat()
 
@@ -681,10 +689,15 @@ def _journal(raw, session_record):
             raise ValueError('Consumed resource has no original consume binding')
         if request['state'] in {'pending', 'cancelled', 'expired'} and consume is not None:
             raise ValueError('Unconsumed request contains a consume binding')
-        if request['release_ref'] is not None:
-            _fields(request['release_ref'], {'proof_ref', 'guard_identity', 'proc_children',
-                                            'nvml_observation', 'nvml_sha256', 'sequence'}, 'release reference')
-            release = request['release_ref']
+        release = request['release_ref']
+        if release is not None:
+            release_fields = {'proof_ref', 'guard_identity', 'proc_children',
+                              'nvml_observation', 'nvml_sha256', 'sequence'}
+            if isinstance(release, dict) and 'owner_decision_clock' in release:
+                release_fields.add('owner_decision_clock')
+                _validate_release_decision_clock(release['owner_decision_clock'],
+                                                 session_record['initial_owner']['boot_id'])
+            _fields(release, release_fields, 'release reference')
             _proof_reference(release['proof_ref'], request['lease_id'], 'stopped')
             _process_identity(release['guard_identity'])
             if (release['proc_children'] != [] or release['nvml_sha256'] != _sha(release['nvml_observation'])
@@ -1387,6 +1400,16 @@ class _Session:
         target['release_ref'] = {'proof_ref': body['proof_ref'], 'guard_identity': guard.peer,
                                  'proc_children': [], 'nvml_observation': assigned,
                                  'nvml_sha256': _sha(assigned), 'sequence': self.journal['sequence'] + 1}
+        original_boot = self.session['initial_owner']['boot_id']
+        try:
+            boot_id, ticks = budget_clock._clock()
+            decision_clock = {'observed_at': _now(), 'boot_id': boot_id, 'boottime_ns': ticks}
+            _validate_release_decision_clock(decision_clock, original_boot)
+        except (OSError, OverflowError, TypeError, ValueError):
+            # Optional timing can be unavailable after the release proof is established.
+            pass
+        else:
+            target['release_ref']['owner_decision_clock'] = decision_clock
         target['state'], target['reason'] = 'released', 'live_guard_reap_and_assigned_nvml_confirmed'
         if updated['mode'] == 'recovering' and not any(item['state'] in _RESERVED for item in updated['requests']):
             updated['mode'] = 'active'

@@ -121,6 +121,8 @@ ergora gpu-pool inspect --config POOL_CONFIG --session-id ORIGINAL_SESSION_ID --
 
 The response includes the original attempt digest and release reference. Use the current resource owner for present device availability and new admission. Read experiment outcomes through the training evidence commands.
 
+When the owner can sample its clock, a fresh release retains `release_ref.owner_decision_clock` in both the live and archived receipt. It records the local pool's decision after validating the original stop proof and device observations. `observed_at` is UTC. `boot_id` and `boottime_ns` identify the Linux elapsed-clock sample. Journal publication or recovery and any subsequent payload start are separate events. A missing sample indicates a clockless historical receipt or timing unavailable at the original decision. The release proof remains available in either case.
+
 ### Explicitly fence a local experiment without a run ID
 
 When original start remains `prepared`/`unknown` without a complete cancellable run ID, or an experiment is prepared but not submitted, confirm its original local fence. This requires Linux/WSL2, the `temporal` extra and undrifted original registration. It requires no running Temporal service, reads no keys and starts no runner:
