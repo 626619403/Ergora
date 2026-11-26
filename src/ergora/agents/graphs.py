@@ -1059,7 +1059,7 @@ class _GraphRun:
         self.result_bytes += result['bytes']
         attempt.update(status='succeeded', result_sha256=result['sha256'])
         if path in self.flow_map_producer_paths:
-            self.leaf_task_hashes[path] = observed['input']['request']['task_sha256']
+            self.leaf_task_hashes[path] = prepared['request']['task_sha256']
         self.completed[path] = {'result': result['document']}
 
     def recover(self, inputs):
