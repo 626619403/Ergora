@@ -5746,6 +5746,10 @@ def local_gpu_configuration(configuration_project, request, tmp_path, monkeypatc
     from test_local_gpu_pool import fake_pool
 
     monkeypatch.setenv('ERGORA_TEST_GUARDED_TRAINING', '1')
+    case = getattr(request, 'param', None)
+    if case == 'work-expiry':
+        # Leave the original budget in charge of the earlier work cutoff.
+        configuration_project['runner']['timeout_seconds'] = 60
     entry = configuration_project['source'] / 'driver.py'
     entry.write_text(entry.read_text() + '''
 _original_run = run
@@ -5781,7 +5785,7 @@ with (output / 'guarded-output').open('x') as stream:
     capability = configuration_project['runner']['configuration_readback']
     capability['source'] = source_reference(entry.parent, commit, entry.name)
     with fake_pool(tmp_path / 'resources', count=1) as (pool, configuration, owner):
-        stale = getattr(request, 'param', None) == 'stale-session'
+        stale = case == 'stale-session'
         capability['local_gpu_pool'] = {
             'configuration': configuration,
             'session_id': '0' * 32 if stale else pool.session['session_id'],
@@ -5940,7 +5944,11 @@ def test_pending_managed_gpu_request_loses_authority_after_source_drift(local_gp
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Managed local GPU ownership requires Linux')
 @pytest.mark.parametrize('installation', ['managed'], indirect=True)
-@pytest.mark.parametrize('stop_kind', ['original-stop', 'work-expiry', 'guard-hard-loss'])
+@pytest.mark.parametrize('stop_kind,local_gpu_configuration', [
+    pytest.param('original-stop', None, id='original-stop'),
+    pytest.param('work-expiry', 'work-expiry', id='work-expiry'),
+    pytest.param('guard-hard-loss', None, id='guard-hard-loss'),
+], indirect=['local_gpu_configuration'])
 def test_managed_gpu_cleanup_uses_the_original_stop_reserve(local_gpu_configuration, stop_kind, monkeypatch, tmp_path):
     import signal
 
@@ -5966,6 +5974,8 @@ def test_managed_gpu_cleanup_uses_the_original_stop_reserve(local_gpu_configurat
             processes.notify_identity({key: original_owner[key] for key in ('pid', 'start_ticks', 'boot_id')},
                                       signal.SIGTERM)
         else:
+            native_request = json.loads((current['job'] / 'request.json').read_bytes())
+            assert native_request['runner']['timeout_seconds'] >= wall - cleanup
             auth = item['state'].root / 'training-cycles/demo/budget/authorization.json'
             clock = json.loads(auth.read_bytes())['clock']
             _until(lambda: budget_clock.remaining(clock, wall, cleanup) <= 0, timeout=38)
