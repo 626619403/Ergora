@@ -657,6 +657,113 @@ def test_session_concurrent_parent_has_one_real_effect(native_session_case):
     assert len((repo / 'native-calls.jsonl').read_text().splitlines()) == 2
 
 
+@pytest.mark.parametrize('end', ['release', 'expiry'])
+def test_continuation_cli_waits_for_original_slot_within_turn_timeout(
+        native_session_case, tmp_path, monkeypatch, capsys, end):
+    from concurrent.futures import ThreadPoolExecutor
+    from contextlib import closing, contextmanager
+    from threading import Event
+    import sqlite3
+
+    from ergora.interfaces import cli
+
+    state, repo, config, runs = native_session_case
+    revision = state.project('demo')['revision']
+    prompt = tmp_path / 'successor.md'
+    prompt.write_text('Continue the original task', encoding='utf-8')
+    contended = Event()
+    proceed = Event()
+    original_lock = runs.file_lock
+
+    @contextmanager
+    def observe_lock(*args, **kwargs):
+        try:
+            with original_lock(*args, **kwargs) as lock:
+                yield lock
+        except BlockingIOError:
+            if not contended.is_set():
+                contended.set()
+                assert proceed.wait(4)
+            raise
+
+    monkeypatch.setattr(runs, 'file_lock', observe_lock)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        active = pool.submit(runs.run_agent, state, 'demo', 'implementer', 'SLEEP original',
+                             timeout=15, session_intent='slot-parent', expected_revision=revision, codex_config=config)
+        limit = time.monotonic() + 8
+        while not (repo / 'native-ready').exists() and not active.done() and time.monotonic() < limit:
+            time.sleep(.02)
+        assert (repo / 'native-ready').exists()
+        session = runs.sessions(state, 'demo')['sessions'][0]
+        root, parent = session['id'], session['latest_run']
+        timeout = 1 if end == 'expiry' else 10
+        command = ['--home', str(state.root), 'agent', 'continue', 'demo', root, '--parent', parent,
+                   '--prompt', str(prompt), '--revision', str(revision), '--intent', 'slot-successor',
+                   '--wait-for-slot', '--timeout', str(timeout)]
+        result = pool.submit(cli.main, command)
+        selection = (state, 'demo', root, parent, 'slot-successor')
+        try:
+            assert contended.wait(3)
+            assert runs.continuation_receipt(*selection)['dispatch'] == 'unrecorded'
+            if end == 'expiry':
+                with closing(sqlite3.connect(state.root / 'ergora.sqlite3')) as db:
+                    db.execute('BEGIN EXCLUSIVE')
+                    proceed.set()
+                    assert result.result(timeout=3) == 2
+                assert 'Timed out waiting for the original session slot' in capsys.readouterr().err
+                assert not active.done()
+        finally:
+            proceed.set()
+            runs.stop_session(state, 'demo', root, parent, intent_id='stop-slot-parent')
+        original = active.result(timeout=10)
+        assert original['execution_stopped'] is True
+        assert not Path('/proc', (repo / 'escape-pid').read_text()).exists()
+        if end == 'release':
+            assert result.result(timeout=10) == 0
+            successor = json.loads(capsys.readouterr().out)
+            assert successor['status'] == 'succeeded' and successor['session']['parent_run'] == parent
+            assert successor['native_session']['id'] == original['native_session']['id']
+            request = runs.native_sources.packet(runs.native_sources.turn_folder(state, successor['id']), 'request.json')
+            assert request['clock']['authorized_at'] < original['finished']
+            assert request['timeout'] == timeout
+            receipt = runs.continuation_receipt(*selection)
+            assert receipt['dispatch'] == 'accepted' and receipt['native_start']['status'] == 'started'
+            assert cli.main(command) == 0 and json.loads(capsys.readouterr().out)['id'] == successor['id']
+        else:
+            assert runs.continuation_receipt(*selection)['dispatch'] == 'unrecorded'
+    assert len((repo / 'native-calls.jsonl').read_text().splitlines()) == (2 if end == 'release' else 1)
+
+
+@pytest.mark.parametrize('binding_changes', [False, True])
+def test_continuation_reconciles_duplicate_committed_before_slot_acquisition(
+        native_session_case, monkeypatch, binding_changes):
+    state, repo, config, runs = native_session_case
+    revision = state.project('demo')['revision']
+    first = runs.run_agent(state, 'demo', 'implementer', 'first', timeout=10,
+                           session_intent='duplicate-race-root', expected_revision=revision, codex_config=config)
+    request = (state, 'demo', first['id'], first['id'], 'same intent')
+    options = {'expected_revision': revision, 'intent_id': 'duplicate-race', 'timeout': 10}
+    original_find = runs.native_sources.find_run
+    selected = runs._continuation_run_id(first['id'], options['intent_id'])
+    concurrent = []
+
+    def find_after_concurrent_reservation(state, project, ident):
+        saved = original_find(state, project, ident)
+        if ident == selected and not concurrent:
+            concurrent.append(None)
+            concurrent[0] = runs.continue_session(*request, **options)
+            if binding_changes:
+                projects.bind(state, 'demo', 'implementer',
+                              {'tool': 'codex', 'model': 'gpt-6.1-sol', 'reasoning_effort': 'high'}, revision)
+        return saved
+
+    monkeypatch.setattr(runs.native_sources, 'find_run', find_after_concurrent_reservation)
+    result = runs.continue_session(*request, **options, wait_for_slot=binding_changes)
+    assert concurrent[0]['status'] == result['status'] == 'succeeded'
+    assert concurrent[0]['id'] == result['id'] == selected
+    assert len((repo / 'native-calls.jsonl').read_text().splitlines()) == 2
+
+
 def test_session_missing_final_is_unknown_and_never_replays(native_session_case):
     state, repo, config, runs = native_session_case
     revision = state.project('demo')['revision']
@@ -1050,7 +1157,7 @@ def test_session_turn_capacity_keeps_every_admitted_chain_readable_and_existing_
     monkeypatch.setattr(runs, 'file_lock', lambda *args, **kwargs: nullcontext(None))
     monkeypatch.setattr(runs.budget_clock, 'authorize', lambda timeout: {'unused_by_effect_stub': True})
     admitted = []
-    def reserve(_state, _project, _root, _parent, _ident, ordinal, *args):
+    def reserve(_state, _project, _root, _parent, _ident, ordinal, *args, check_admission_deadline=False):
         admitted.append(ordinal)
     monkeypatch.setattr(runs, '_reserve_session_turn', reserve)
     assert runs.inspect_session(state, 'demo', root)['can_continue'] is True
@@ -1290,6 +1397,49 @@ def native_document_request(repo, ordinal=0):
 def native_document_history(state):
     directory = state.root / 'retrospectives' / 'documents'
     return {path.relative_to(directory).as_posix(): path.read_bytes() for path in directory.rglob('*') if path.is_file()}
+
+
+@pytest.mark.parametrize('expire_during', ['authority', 'correction'])
+def test_slot_wait_expires_before_first_durable_admission(native_correction_case, monkeypatch, expire_during):
+    state, repo, config, runs, _ = native_correction_case
+    revision = state.project('demo')['revision']
+    first = runs.run_agent(state, 'demo', 'implementer', 'first', timeout=10,
+                          session_intent='slot-admission-parent', expected_revision=revision, codex_config=config)
+    assert first['status'] == 'succeeded'
+    initial_history = native_document_history(state)
+    expired = False
+    checks = 0
+    remaining = runs.budget_clock.remaining
+    validate = runs._validate_session_authority
+    snapshot = runs.document_corrections._snapshot
+
+    def late_authority(context_state, context):
+        nonlocal checks, expired
+        validate(context_state, context)
+        checks += 1
+        if expire_during == 'authority' and checks == 2:
+            expired = True
+
+    def late_snapshot(*args, **kwargs):
+        nonlocal expired
+        result = snapshot(*args, **kwargs)
+        if expire_during == 'correction':
+            expired = True
+        return result
+
+    monkeypatch.setattr(runs, '_validate_session_authority', late_authority)
+    monkeypatch.setattr(runs.document_corrections, '_snapshot', late_snapshot)
+    monkeypatch.setattr(runs.budget_clock, 'remaining',
+                        lambda *args, **kwargs: 0 if expired else remaining(*args, **kwargs))
+
+    selection = (state, 'demo', first['id'], first['id'])
+    intent = 'slot-admission-expired'
+    with pytest.raises(TimeoutError, match='Timed out waiting for the original session slot'):
+        runs.continue_session(*selection, 'keep checking the contract', expected_revision=revision,
+                              intent_id=intent, timeout=10, wait_for_slot=True)
+    assert runs.continuation_receipt(*selection, intent)['dispatch'] == 'unrecorded'
+    assert native_document_history(state) == initial_history
+    assert len((repo / 'native-calls.jsonl').read_text().splitlines()) == 1
 
 
 def test_native_correction_original_source_preview_continuation_and_exact_apply(native_correction_case):

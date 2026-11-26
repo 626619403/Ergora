@@ -734,6 +734,8 @@ def parser() -> argparse.ArgumentParser:
     continuation.add_argument("--revision", type=int, required=True)
     continuation.add_argument("--intent", required=True, help="Stable intent; a lost reply must be observed before any new work")
     continuation.add_argument("--timeout", type=int, default=300)
+    continuation.add_argument("--wait-for-slot", action="store_true",
+                              help="Wait for the original session slot within the turn timeout")
     stop = operations.add_parser("stop", help="Request stop of one exact session turn, then inspect its original record")
     stop.add_argument("project")
     stop.add_argument("id")
@@ -1679,7 +1681,7 @@ def main(argv: list[str] | None = None) -> int:
                 elif args.operation == "continue":
                     output = agent_runs.continue_session(state, args.project, args.id, args.parent,
                         args.prompt.read_text(encoding="utf-8-sig"), expected_revision=args.revision,
-                        intent_id=args.intent, timeout=args.timeout)
+                        intent_id=args.intent, timeout=args.timeout, wait_for_slot=args.wait_for_slot)
                 elif args.operation == "stop":
                     output = agent_runs.stop_session(state, args.project, args.id, args.run, intent_id=args.intent)
                 elif args.operation == "runs":

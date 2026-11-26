@@ -1,7 +1,7 @@
 """Independent Agent invocations, frozen context and durable run records."""
 
 import asyncio
-from contextlib import nullcontext
+from contextlib import ExitStack, nullcontext
 import hashlib
 import json
 import os
@@ -1252,19 +1252,55 @@ def continuation_receipt(state: State, project_id: str, session_id: str, parent_
     return receipt
 
 
+class _SessionSlotTimeout(TimeoutError):
+    """The selected continuation expired before admission."""
+
+
 def continue_session(state: State, project_id: str, session_id: str, parent_run_id: str, prompt: str, *,
-                     expected_revision: int, intent_id: str, timeout: int = 300) -> dict:
+                     expected_revision: int, intent_id: str, timeout: int = 300, wait_for_slot: bool = False) -> dict:
     ident = _continuation_run_id(session_id, intent_id)
     native_sources.session_id(parent_run_id, 'Parent run')
     _session_prompt(prompt, timeout)
     submitted = {'parent_run': parent_run_id, 'prompt': prompt, 'expected_revision': expected_revision,
                  'timeout': timeout, 'intent_id': intent_id}
-    existing = native_sources.find_run(state, project_id, ident)
-    if existing is not None:
-        if existing['submitted'] != submitted or existing['session']['id'] != session_id:
-            raise ValueError('Turn intent was already consumed by a different request')
-        return _observe_session_run(state, existing)
-    with file_lock(state.root / 'runs' / (session_id + '.session.lock'), blocking=False) as lock:
+
+    def observe_existing():
+        existing = native_sources.find_run(state, project_id, ident)
+        if existing is not None:
+            if existing['submitted'] != submitted or existing['session']['id'] != session_id:
+                raise ValueError('Turn intent was already consumed by a different request')
+            return _observe_session_run(state, existing)
+
+    observed = observe_existing()
+    if observed is not None:
+        return observed
+    clock = None
+    if wait_for_slot:
+        clock = budget_clock.authorize(timeout)
+        parent = native_sources.find_run(state, project_id, parent_run_id)
+        if parent is None or parent.get('session', {}).get('id') != session_id:
+            raise ValueError('Wait requires a recorded parent from the selected session')
+        if expected_revision != parent['project_revision']:
+            raise ValueError('Turn revision differs from its original session')
+
+    lock_path = state.root / 'runs' / (session_id + '.session.lock')
+    with ExitStack() as resources:
+        while True:
+            try:
+                lock = resources.enter_context(file_lock(lock_path, blocking=False))
+            except BlockingIOError:
+                if clock is None:
+                    raise
+                remaining = budget_clock.remaining(clock, timeout)
+                if remaining <= 0:
+                    raise _SessionSlotTimeout('Timed out waiting for the original session slot') from None
+                time.sleep(min(.1, remaining))
+            else:
+                break
+
+        observed = observe_existing()
+        if observed is not None:
+            return observed
         turns = _session_turns(state, project_id, session_id)
         if len(turns) >= _MAX_SESSION_TURNS:
             raise ValueError(f'This session reached its {_MAX_SESSION_TURNS}-turn limit; no new turn was reserved')
@@ -1278,10 +1314,12 @@ def continue_session(state: State, project_id: str, session_id: str, parent_run_
                 or not latest.get('native_session', {}).get('id')):
             raise ValueError('Select the latest stopped turn with its saved native UUID; consumed or unknown parents cannot be dispatched')
         return _reserve_session_turn(state, project_id, session_id, latest, ident, len(turns), prompt, timeout,
-                                     budget_clock.authorize(timeout), context, turns[0]['context_digest'], submitted, lock)
+                                     clock or budget_clock.authorize(timeout), context, turns[0]['context_digest'],
+                                     submitted, lock, check_admission_deadline=wait_for_slot)
 
 
-def _reserve_session_turn(state, project, root, parent, ident, ordinal, prompt, timeout, clock, context, digest, submitted, lock):
+def _reserve_session_turn(state, project, root, parent, ident, ordinal, prompt, timeout, clock, context, digest,
+                          submitted, lock, *, check_admission_deadline=False):
     _validate_session_authority(state, context)
     full_prompt = prompt + context['suffix']
     if len(full_prompt.encode('utf-8')) > 10_000_000:
@@ -1291,18 +1329,28 @@ def _reserve_session_turn(state, project, root, parent, ident, ordinal, prompt, 
     policy = context.get('correction_suggestions')
     correction = None
     task = None
+    admitted = False
+
+    def admit():
+        nonlocal admitted
+        # A correction's frozen source can be the first durable write for this intent.
+        if check_admission_deadline and not admitted and budget_clock.remaining(clock, timeout) <= 0:
+            raise _SessionSlotTimeout('Timed out waiting for the original session slot')
+        admitted = True
+
     if policy is not None:
         correction = {**policy, 'proposal_id': None}
         if policy['available']:
             try:
                 task = document_corrections.prepare_native(state, project, ident, session, submitted,
-                    context['project_revision'], clock, path=policy['target'])
+                    context['project_revision'], clock, path=policy['target'],
+                    before_publish=admit if check_admission_deadline else None)
                 proposed_prompt = full_prompt + '\n\n' + document_corrections.native_prompt(task)
                 if len(proposed_prompt.encode('utf-8')) > 10_000_000:
                     raise ValueError('Complete suggestion material cannot fit the original native prompt allowance')
                 full_prompt = proposed_prompt
                 correction.update(proposal_id=task['proposal_id'], request_sha256=task['request_sha256'])
-            except document_corrections.NativePreparationConflict:
+            except (_SessionSlotTimeout, document_corrections.NativePreparationConflict):
                 raise
             except (OSError, ValueError, KeyError, TypeError) as error:
                 correction.update(available=False, reason=str(error))
@@ -1325,6 +1373,7 @@ def _reserve_session_turn(state, project, root, parent, ident, ordinal, prompt, 
     except ValueError as error:
         raise SessionRejected(str(error), submitted['intent_id']) from error
     folder = native_sources.turn_folder(state, ident)
+    admit()
     _publish_session_packet(folder, {'request.json': encoded_request})
     document = {'id': ident, 'project': project, 'kind': 'native-agent-run', 'role': context['role'],
                 'binding': context['binding'], 'project_revision': context['project_revision'],

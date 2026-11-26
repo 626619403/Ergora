@@ -4,6 +4,7 @@ The original retrospective/composition readers own frozen model material. This
 owner adds the local document lifecycle; a preview never grants file authority.
 """
 
+from collections.abc import Callable
 from contextlib import ExitStack, contextmanager
 import difflib
 import hashlib
@@ -493,7 +494,8 @@ def prepare(state: State, project_id: str, path: str, correction: bytes, *, sour
 
 def prepare_native(state: State, project_id: str, run_id: str, session: dict, submitted: dict,
                    revision: int, clock: dict, *, path: str = 'AGENTS.md',
-                   max_material_bytes: int = MAX_MATERIAL_BYTES) -> dict:
+                   max_material_bytes: int = MAX_MATERIAL_BYTES,
+                   before_publish: Callable[[], None] | None = None) -> dict:
     """Freeze D once before native P/N, without importing the native executor."""
     native_sources.session_id(run_id, 'Native run ID')
     contracts.validate(max_material_bytes, _REQUEST['properties']['max_material_bytes'], 'Material byte limit')
@@ -540,6 +542,8 @@ def prepare_native(state: State, project_id: str, run_id: str, session: dict, su
             'origin': 'native-session-operator-submitted', 'native': source},
         'parent': parent, 'max_material_bytes': max_material_bytes, 'proposal_schema': _SCHEMA}
     task['request_sha256'] = _hash(task)
+    if before_publish is not None:
+        before_publish()
     _publish(slot, task)
     _request_reference(slot, task)
     return task
