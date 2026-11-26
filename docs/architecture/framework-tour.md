@@ -4,7 +4,7 @@ English · [Documentation](../README.md) · [Architecture contract](current.md)
 
 Ergora is a control plane for project-bound specialist Agents, workflow composition, formal software delivery, training experiments and reusable improvements. Definitions describe reusable behavior. Each operation freezes its own inputs, checks its execution authority and produces evidence under its original identity.
 
-This tour uses runtime revision `a4bd1d1ec3e28122db245ed450b9f139385094d0` and its `src` tree `5266427be28a224198d57d8234bc461431d119f2` as the exact source reference. Packages, installed applications and local definition libraries have separate identities. The [current plan](../PLAN.md) and its delivery records track review, CI and installation status.
+This tour uses runtime revision `070d1cb3ae8a821c81931297c2c15c3eaa2d276f` and its `src` tree `57abfb1479953222332bdca7c01f4e94585da1a7` as the exact source reference. Packages, installed applications and local definition libraries have separate identities. The [current plan](../PLAN.md) and its delivery records track review, CI and installation status.
 
 ## The whole system
 
@@ -87,7 +87,7 @@ flowchart TB
   DependentCheck -. "saved observation Update" .-> CampaignStatus
   Ready -. "original readiness evidence" .-> CampaignStatus
   Wake -. "same native receipt" .-> CampaignStatus
-  CampaignStatus -. "selected fixed-check evidence" .-> ConsoleTimeline["Formal Tasks timeline<br/>Original Update, Activity and Job"]
+  CampaignStatus -. "selected fixed check or typed training root" .-> ConsoleTimeline["Formal Tasks timeline<br/>Original Job or training result evidence"]
   ConsoleTimeline -.-> Recover
   CampaignStatus -.-> Recover
   Eval -.-> Recover
@@ -155,7 +155,7 @@ With a reachable Temporal service and unavailable Workflow state, `campaign stat
 
 For a fixed-check task, `campaign status --online --task-id TASK` reads its original Update History and separately owned Job together. `matched` requires the same Job identity, terminal fields and complete observation digest. Differing, contradictory or unavailable evidence retains its own status and the saved Run and Update identities. Offline `status --task-id` reads the original Job and local attempt IDs. Both are read-only, including after Campaign STOP or expiry. [Correlate an original fixed check and task Update](../improvement/campaigns.md#record-an-original-fixed-check-for-a-task)
 
-The Formal Tasks Console reads one selected original fixed-check task by Campaign and task ID. The timeline keeps current Workflow Activity, verified original History and the separately owned Job evidence visible. A failed terminal Update shows its saved failure reason, when supplied, with its original Run, Update and event IDs. The timeline is read-only. [Formal Tasks Campaign timeline](../../src/ergora/data/console/campaign-timeline.js)
+The read-only Formal Tasks Console selects one original task by Campaign and task ID. For a fixed-check task it shows the current Workflow Activity, verified original History and separately owned Job evidence. A failed terminal Update shows its saved reason, when supplied, with its original Run, Update and event IDs. For a typed training root it shows the frozen locator, verified original result, training reap and reader guard cleanup. The separate lease panel uses the observation saved in verified History. When the root has a recipient, the timeline shows its original wake Activity and native continuation receipt separately. A recorded Activity timeout can coexist with a verified native success. [Formal Tasks Campaign timeline](../../src/ergora/data/console/campaign-timeline.js)
 
 The confirmed plan can explicitly authorize one existing local Codex recipient for the timed task. After the original waiting receipt, `wake_on_observe` lets the first verified passing guarded result or confirmed terminal observation admit one original readiness under the same readback window, deadline and STOP fence. The guarded result can also make dependents eligible. `recipient.history.intent.source` identifies the guarded Activity by `activity_id`, or a `manual_update` by its original `update_id`. If a matching terminal Update loses the race to a guarded result, History preserves its failed disposition, original events and `readback_already_admitted` reason with a null receipt. [Admit the guarded result or a confirmed observation](../improvement/campaigns.md#admit-the-guarded-result-or-a-confirmed-observation)
 
