@@ -189,3 +189,17 @@ Supply those fields as the `recipient` object's value and confirm the exact plan
 Read `recipient` in Campaign status for local attempt evidence, optional exact wake History, and the native continuation receipt. A verified pre-reservation rejection can report a blocker such as `stale_parent` or `session_slot_timeout`. `native_start` advances only when the original process owner observes the selected Codex payload. Use `run.native_session` for the separately verified native thread and outcome. If the Activity reply or native launch evidence is incomplete, retain the original intent and read status again. Worker replacement processes the pinned Run. An uncertain original dispatch stays bound to the same attempt and receives no replacement authorization.
 
 When online status verifies the original wake History, `recipient.history.timing` shows the event IDs and Temporal timestamps for readback readiness, scheduling, Worker start and delivery termination. Intervals use nanoseconds from the same History clock. Missing or reversed timestamps leave the affected interval null. Use the original native receipt for actual payload start and cleanup.
+
+### Admit the guarded result or a confirmed observation
+
+Set `"wake_on_observe": true` on the one task with the frozen recipient and timed readback to use either source for the same task and native continuation. First record the original pending Job with `observe-check --confirm`. A later confirmed passing observation binds the accepted wait and can supply the wake at the original due time. The guarded Activity can also supply the original passing result and make the task's dependents eligible. Both routes use the original readback window, recipient, STOP and Campaign deadline. A passing observation before the original waiting receipt can be recorded without arming a wake.
+
+When the guarded result arrives first, the opted-in task is `observed` with its Activity proof and a null terminal Update receipt. While the Campaign can report live task state, a subsequent `observe-check` can return that original Activity completion. A manual wake records its terminal Update and identifies it in `recipient.history.intent.source`. A manual result accepted while a guarded read is running can drive the continuation before the reader finishes. The Activity keeps its original deadline and cleanup owner.
+
+After the Campaign closes or when the Worker is unavailable, use online status to read the original History.
+
+```bash
+ergora campaign status my-project fixed-check-plan --online --task-id verify-baseline
+```
+
+Read a verified guarded result in `readback_completion`. If an identical manual Update lost the race, its terminal entry in `task_observation_history` retains the original Run and Update IDs, the accepted and completed event IDs, `status: failed`, `reason: readback_already_admitted` and `receipt: null`. The Activity still supplies the original result. Neither a status read nor a repeated observation delivers a second continuation.

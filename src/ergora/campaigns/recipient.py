@@ -5,8 +5,10 @@ import asyncio
 from temporalio import activity
 
 from ergora.agents import runs
-from ergora.campaigns.records import RECIPIENT_ACTIVITY, recipient_task, wake_intent
-from ergora.campaigns.recipient_gate import RecipientBlocked, RecipientGate, attempt_record, verified_source
+from ergora.campaigns.records import RECIPIENT_ACTIVITY, recipient_task
+from ergora.campaigns.recipient_gate import (
+    RecipientBlocked, RecipientGate, attempt_record, manual_commands, verify_wake_intent,
+)
 from ergora.storage.state import State
 
 
@@ -17,8 +19,7 @@ class CodexRecipient:
     def _deliver(self, intent):
         files, opening, start, run_id = self.files, self.opening, self.start, self.run_id
         task = recipient_task(opening)
-        if intent != wake_intent(opening, run_id, task, verified_source(files, opening, start, run_id, task)):
-            raise ValueError('Recipient Activity differs from its exact original Campaign readback')
+        verify_wake_intent(files, opening, start, run_id, task, intent)
         current, current_start, result = files.load()
         if current != opening or current_start != start:
             raise ValueError('Original Campaign and start attempt changed before recipient delivery')
@@ -56,14 +57,28 @@ class CodexRecipient:
         outcome = runs.continuation_receipt(*selection)
         return {'status': 'observed', 'native_run_id': outcome['run_id']}
 
+    async def _deliver_verified(self, intent):
+        if intent['source'].get('kind') == 'manual_update':
+            from ergora.campaigns import workflow as runtime
+
+            opening = self.opening
+            commands = manual_commands(self.files, opening, self.start, self.run_id, recipient_task(opening))
+            async with asyncio.timeout(runtime.RPC_SECONDS):
+                client = await runtime.connect(opening)
+                handle = client.get_workflow_handle(opening['workflow_id'], run_id=self.run_id)
+                _, _, wake = await runtime.read_task_history(client, handle, opening, commands)
+            if wake is None or wake['intent'] != intent:
+                raise ValueError('Campaign manual delivery lacks its verified original Update and schedule')
+        return await asyncio.to_thread(self._deliver, intent)
+
     @activity.defn(name=RECIPIENT_ACTIVITY)
     async def deliver(self, intent: dict) -> dict:
         info = activity.info()
         if (info.attempt != 1 or info.workflow_id != self.opening['workflow_id'] or info.workflow_run_id != self.run_id
-                or info.activity_id != intent.get('wake_id')):
+                or info.activity_id != intent.get('wake_id') or not isinstance(intent.get('source'), dict)):
             raise ValueError('Recipient Activity must be the original scheduled delivery attempt')
         # The native subprocess owns execution and STOP after the reservation, even if this Worker exits.
-        owner = asyncio.create_task(asyncio.to_thread(self._deliver, intent))
+        owner = asyncio.create_task(self._deliver_verified(intent))
         try:
             while not owner.done():
                 activity.heartbeat(info.activity_id)

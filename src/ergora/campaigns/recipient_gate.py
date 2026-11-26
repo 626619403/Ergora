@@ -10,7 +10,7 @@ import time
 
 from ergora.agents import native_sources
 from ergora.campaigns.records import (
-    CampaignFiles, check_receipt, identity, readback_grant, readback_id, readback_result,
+    CampaignFiles, check_receipt, identity, manual_wake_source, readback_grant, readback_id, readback_result,
     recipient_task, require_check_project, sha256, wake_intent,
 )
 from ergora.runtime import budget_clock, processes
@@ -55,6 +55,29 @@ def verified_source(files, opening, start, run_id, task):
             'fixed_results_sha256': job['fixed_results_sha256'], 'reader_cleanup_sha256': identity(cleanup)}
 
 
+def manual_commands(files, opening, start, run_id, task):
+    wait = files.load_check(opening, start, run_id, task, waiting=True)
+    terminal = files.load_check(opening, start, run_id, task)
+    if wait is None or terminal is None:
+        raise ValueError('Campaign manual wake requires its protected waiting and terminal attempts')
+    return wait, terminal
+
+
+def verify_wake_intent(files, opening, start, run_id, task, intent):
+    claimed = intent.get('source')
+    if not isinstance(claimed, dict):
+        raise ValueError('Campaign recipient attempt lacks its original result source')
+    if claimed.get('kind') == 'manual_update':
+        wait, terminal = manual_commands(files, opening, start, run_id, task)
+        source = manual_wake_source(task, check_receipt(wait), check_receipt(terminal))
+    else:
+        source = verified_source(files, opening, start, run_id, task)
+    expected = wake_intent(opening, run_id, task, source)
+    if intent != expected:
+        raise ValueError('Campaign recipient attempt differs from its original result and deadline')
+    return expected
+
+
 def attempt_record(intent, native_run_id):
     boot, ticks = budget_clock._clock()
     wall = time.time_ns()
@@ -75,10 +98,9 @@ class RecipientGate:
         run_id = attempt['intent'].get('run_id')
         if result is not None and result['run_id'] != run_id:
             raise ValueError('Campaign recipient attempt differs from the saved first Run')
-        source = verified_source(files, opening, start, run_id, task)
-        self.intent = wake_intent(opening, run_id, task, source)
-        if attempt['intent'] != self.intent or attempt['wall_ns'] >= self.intent['expires_at'] * 10**9:
-            raise ValueError('Campaign recipient attempt differs from its original readback and deadline')
+        self.intent = verify_wake_intent(files, opening, start, run_id, task, attempt['intent'])
+        if attempt['wall_ns'] >= self.intent['expires_at'] * 10**9:
+            raise ValueError('Campaign recipient attempt differs from its original result and deadline')
         self.declaration = task['recipient']
         self.binding = opening['recipient_binding']
         self.reference = {'campaign': files.campaign, 'attempt_sha256': identity(attempt)}

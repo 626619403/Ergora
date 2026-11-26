@@ -30,6 +30,7 @@ FIXED_TASK_SOURCE = (*FIXED_TASK_LOCATOR, *FIXED_CHECK_TERMINAL)
 PENDING_JOB_STATES = ('queued', 'attempted')
 READBACK_CLEANUP_SECONDS = 0.8
 READBACK_ACTIVITY = 'ergora_campaign_fixed_check_readback'
+READBACK_ALREADY_ADMITTED = 'readback_already_admitted'
 RECIPIENT_ACTIVITY = 'ergora_campaign_codex_recipient'
 # Last whole UTC second supported by both Python datetime and protobuf Timestamp.
 MAX_EXPIRY = 253_402_300_799
@@ -128,7 +129,7 @@ def validate_fixed_tasks(tasks):
     dependencies = {}
     scheduled = False
     for task in tasks:
-        if not isinstance(task, dict) or task.keys() - {'readback', 'recipient'} != {'task_id', 'depends_on', 'source'}:
+        if not isinstance(task, dict) or task.keys() - {'readback', 'recipient', 'wake_on_observe'} != {'task_id', 'depends_on', 'source'}:
             raise ValueError('Campaign task requires task_id, depends_on and an exact fixed-check source')
         task_id, parents, source = task['task_id'], task['depends_on'], task['source']
         if not safe_id(task_id) or task_id in dependencies:
@@ -158,6 +159,8 @@ def validate_fixed_tasks(tasks):
             validate_recipient(task['recipient'])
             if 'readback' not in task:
                 raise ValueError('Campaign Codex recipient requires the selected original timed readback')
+        if 'wake_on_observe' in task and (task['wake_on_observe'] is not True or 'recipient' not in task):
+            raise ValueError('Campaign manual wake requires an explicitly enabled original timed recipient')
         dependencies[task_id] = parents
     if any(parent not in dependencies for parents in dependencies.values() for parent in parents):
         raise ValueError('Campaign task dependency is absent from the frozen plan')
@@ -220,6 +223,29 @@ def wake_intent(opening, run_id, task, readback):
     return {'wake_id': 'codex-recipient:' + identity(scope), **scope}
 
 
+def manual_wake_source(task, waiting, receipt):
+    if (task.get('wake_on_observe') is not True or waiting is None or receipt is None
+            or waiting.get('decision') != 'waiting_job' or receipt.get('decision') != 'observed'
+            or waiting.get('task_id') != task['task_id'] or receipt.get('task_id') != task['task_id']
+            or waiting.get('run_id') != receipt.get('run_id')
+            or receipt.get('job', {}).get('waiting_receipt_sha256') != identity(waiting)):
+        raise ValueError('Campaign manual wake requires its original accepted wait and terminal Update')
+    job = receipt['job']
+    return {'kind': 'manual_update', 'update_id': receipt['update_id'],
+            'waiting_receipt_sha256': job['waiting_receipt_sha256'], 'observation_sha256': receipt['observation_sha256'],
+            **{key: job[key] for key in FIXED_CHECK_TERMINAL}}
+
+
+def readback_ready_tasks(task, readback):
+    if task is not None and task.get('wake_on_observe') is True and readback.get('status') == 'available':
+        return {task['task_id']}
+    return set()
+
+
+def same_check_observation(first, second):
+    return all(first[key] == second.get(key) for key in ('observation_sha256', *FIXED_CHECK_TERMINAL))
+
+
 def readback_grant(opening, run_id, task, waiting):
     return {'opening_sha256': identity(opening), 'run_id': run_id, 'task_id': task['task_id'],
             'waiting_receipt_sha256': identity(waiting), **task['readback']}
@@ -254,7 +280,7 @@ def checked_readback(opening, run_id, waits, observation):
     elif status == 'unknown':
         if observation.keys() == fields | {'reason'} and observation['reason'] in (
                 'campaign_closed', 'read_window_expired', 'original_read_unavailable', 'original_still_pending',
-                'task_already_observed'):
+                'task_already_observed', 'contradictory_evidence'):
             return observation
     elif status in ('armed', 'scheduled') and observation.keys() == fields:
         return observation
@@ -653,15 +679,24 @@ def require_check_receipt(intent, attempt, receipt):
     return receipt
 
 
-def fixed_task_state(opening, start_attempt_sha256, run_id, observations, waits=None, *, waiting_run=None):
+def fixed_task_state(opening, start_attempt_sha256, run_id, observations, waits=None, *, waiting_run=None,
+                     readback=None):
     tasks = fixed_tasks(opening)
     waits = {} if waits is None else waits
+    if not isinstance(observations, dict) or set(observations) - set(tasks):
+        raise ValueError('Campaign task state differs from the original plan task set')
+    selected = readback_task(opening)
+    automatic = readback_ready_tasks(selected, readback or {})
+    ready = observations.keys() | automatic
+    for task_id in automatic:
+        if not set(tasks[task_id]['depends_on']) <= ready or task_id not in waits:
+            raise ValueError('Campaign guarded result lacks its original wait or ready dependencies')
     for expected, receipts in (('observed', observations), ('waiting_job', waits)):
         if not isinstance(receipts, dict) or set(receipts) - set(tasks):
             raise ValueError('Campaign task state differs from the original plan task set')
         for task_id, receipt in receipts.items():
             if (not isinstance(receipt, dict) or receipt.get('decision') != expected
-                    or not set(tasks[task_id]['depends_on']) <= observations.keys()):
+                    or not set(tasks[task_id]['depends_on']) <= ready):
                 raise ValueError('Campaign task receipt differs from its original stage or dependencies')
             job = receipt.get('job')
             _validate_check_job(tasks[task_id], job)
@@ -669,6 +704,9 @@ def fixed_task_state(opening, start_attempt_sha256, run_id, observations, waits=
                 wait = waits.get(task_id)
                 if job.get('waiting_receipt_sha256') != (identity(wait) if wait is not None else None):
                     raise ValueError('Campaign terminal check differs from its original waiting receipt')
+                if task_id in automatic and not same_check_observation(
+                        readback, {'observation_sha256': receipt.get('observation_sha256'), **job}):
+                    raise ValueError('Campaign original fixed-check observations contradict each other')
             receipt_run = waiting_run if waiting_run is not None and expected == 'waiting_job' else run_id
             intent = check_intent(opening, start_attempt_sha256, receipt_run, task_id,
                                   receipt.get('observation_sha256'), job=job)
@@ -677,8 +715,8 @@ def fixed_task_state(opening, start_attempt_sha256, run_id, observations, waits=
             require_check_receipt(intent, attempt, receipt)
     views = {}
     for task_id, task in tasks.items():
-        status = ('observed' if task_id in observations else 'waiting_job' if task_id in waits else
-                  'ready' if set(task['depends_on']) <= observations.keys() else 'waiting_dependencies')
+        status = ('observed' if task_id in ready else 'waiting_job' if task_id in waits else
+                  'ready' if set(task['depends_on']) <= ready else 'waiting_dependencies')
         view = {**task, 'status': status, 'receipt': observations.get(task_id)}
         if task['source'].get('pending') is True:
             view['waiting_receipt'] = waits.get(task_id)

@@ -7,8 +7,8 @@ import time
 from uuid import uuid4
 
 from ergora.campaigns.records import (
-    FIXED_CHECK_TERMINAL, FIXED_TASK_LOCATOR, FIXED_TASK_UPDATE_PREFIX, PENDING_JOB_STATES, ROLLOVER_UPDATE_PREFIX,
-    WORKFLOW_TYPE,
+    FIXED_CHECK_TERMINAL, FIXED_TASK_LOCATOR, FIXED_TASK_UPDATE_PREFIX, PENDING_JOB_STATES, READBACK_ALREADY_ADMITTED,
+    ROLLOVER_UPDATE_PREFIX, WORKFLOW_TYPE,
     CampaignFiles, attempt_document, check_intent, check_record_name, fixed_tasks, identity,
     original_check_evidence, project_selection, read_plan,
     recipient_task, require_check_project, result_document, rollover_intent, rollover_task, sha256, stop_intent,
@@ -173,15 +173,15 @@ async def _read_original(runtime, output, opening, attempt, run_id, *, client=No
         try:
             async with asyncio.timeout(runtime.RPC_SECONDS):
                 if successor is None:
-                    updates, completion = await runtime.read_task_history(client, handle, opening, check_commands)
+                    updates, completion, wake = await runtime.read_task_history(client, handle, opening, check_commands)
                 else:
                     by_run = {}
                     for command in check_commands:
                         target = _command_handle(client, handle, successor, command)
                         by_run.setdefault(target.run_id, (target, []))[1].append(command)
-                    updates, completion = {}, None
+                    updates, completion, wake = {}, None, None
                     for target, commands in by_run.values():
-                        decisions, _ = await runtime.read_task_history(client, target, opening, commands)
+                        decisions, _, _ = await runtime.read_task_history(client, target, opening, commands)
                         updates.update(decisions)
         except (TimeoutError, ConnectionError, runtime.RPCError):
             return observed
@@ -193,6 +193,8 @@ async def _read_original(runtime, output, opening, attempt, run_id, *, client=No
         observed['task_observation_history'] = _task_observation_history(check_commands, updates)
         if completion is not None:
             observed['readback_completion'] = completion
+        if wake is not None and (completion is None or 'recipient' not in completion):
+            observed['recipient_history'] = wake
     return observed
 
 
@@ -214,7 +216,7 @@ def _task_observation_history(commands, updates=None, *, unobserved='unavailable
 def _recipient_status(state, files, opening, attempt, result, output):
     if opening is None or recipient_task(opening) is None:
         return output
-    original = output.get('readback_completion', {}).get('recipient')
+    original = output.pop('recipient_history', None) or output.get('readback_completion', {}).get('recipient')
     local_attempt = files._read('recipient-attempt') if attempt is not None else None
     selected = recipient_task(opening)['recipient']
     wake = {'status': 'awaiting_readback', 'intent': None, 'native_receipt': None, 'history': original}
@@ -298,17 +300,21 @@ async def status(state: State, project: str, campaign: str, *, online: bool = Fa
                     if command is None and view['source'].get('pending') is True and view['waiting_receipt'] is None:
                         command = files.load_check(opening, attempt, output['run_id'], view, waiting=True)
                     if command is not None:
-                        view.update(eligible=False, attempt_status='unknown', update_id=command['attempt']['update_id'])
+                        update_id = command['attempt']['update_id']
+                        terminal = output.get('task_observation_history', {}).get(view['task_id'], {}).get('terminal', {})
+                        outcome = ('failed' if terminal.get('reason') == READBACK_ALREADY_ADMITTED else 'unknown')
+                        view.update(eligible=False, attempt_status=outcome, update_id=update_id)
         elif check_commands:
             output['task_observation_history'] = _task_observation_history(check_commands, unobserved='not_requested')
     output = _recipient_status(state, files, opening, attempt, result, output)
     if task is not None:
         history = output.get('task_observation_history', {}).get(task_id, {})
-        output['task_evidence'] = await _task_evidence(registration, state.root, task, history.get('terminal'))
+        readback = output.get('readback_completion') if task.get('wake_on_observe') is True else None
+        output['task_evidence'] = await _task_evidence(registration, state.root, task, history.get('terminal'), readback)
     return output
 
 
-async def _task_evidence(registration, home, task, terminal):
+async def _task_evidence(registration, home, task, terminal, readback):
     """Join one original native read with the frozen task and verified Update outcome."""
     from ergora.native.resources import validate_installation
     from ergora.runtime.action_observations import FixedCheckJobIdentityError, FixedCheckStatus, observe
@@ -347,16 +353,17 @@ async def _task_evidence(registration, home, task, terminal):
         return evidence
 
     receipt = terminal['receipt'] if terminal is not None and terminal['status'] == 'verified' else None
-    expected = receipt.get('job', source) if receipt is not None else source
+    expected = receipt.get('job', source) if receipt is not None else readback or source
     if expected.get('pending') is not True:
         expected_fields = {'status': 'succeeded', 'cleanup_confirmed': True, 'stop_requested': False,
                            **{key: expected[key] for key in FIXED_CHECK_TERMINAL}}
         differences = [key for key, value in expected_fields.items() if job.get(key) != value]
         if differences:
             return {**evidence, 'correlation': 'contradictory', 'different_fields': differences}
-    if receipt is None:
+    admitted = receipt or readback
+    if admitted is None:
         return {**evidence, 'correlation': 'pending'}
-    correlation = 'matched' if receipt['observation_sha256'] == evidence['native_observation_sha256'] else 'different_observation'
+    correlation = 'matched' if admitted['observation_sha256'] == evidence['native_observation_sha256'] else 'different_observation'
     return {**evidence, 'correlation': correlation}
 
 
@@ -574,11 +581,53 @@ async def _require_ready_check(runtime, handle, description, opening, attempt, t
     if 'tasks' not in view:
         raise ValueError('Original campaign task Worker is unavailable')
     task = view['tasks'][task_id]
-    if task['status'] not in ('ready', 'waiting_job'):
+    if task['status'] not in ('ready', 'waiting_job') and not _readback_admitted(task):
         raise ValueError('Campaign task requires readiness and original observations for all dependencies')
+    if _readback_admitted(task):
+        return task
     if not task['eligible']:
         raise ValueError('Campaign no longer admits original task observations')
     return task
+
+
+def _readback_admitted(task):
+    return (task.get('wake_on_observe') is True and task['status'] == 'observed' and task['receipt'] is None
+            and task.get('readback_observation', {}).get('status') == 'available')
+
+
+async def _readback_check_response(runtime, client, handle, opening, view, waiting):
+    if waiting is None:
+        raise ValueError('Campaign guarded result lacks its original waiting attempt')
+    _, completion, _ = await runtime.read_task_history(client, handle, opening, [waiting])
+    if completion is None or any(completion.get(key) != value for key, value in view['readback_observation'].items()
+                                 if key != 'status'):
+        raise ValueError('Campaign guarded result does not match its original completed Activity')
+    return _readback_response(opening, handle, view, completion)
+
+
+def _readback_response(opening, handle, task, completion):
+    return {'status': 'observed', 'run_id': handle.run_id, 'workflow_id': opening['workflow_id'],
+            'project': opening['project'], 'campaign': opening['campaign'], 'task_id': task['task_id'],
+            'campaign_project_revision': opening['project_revision'], 'job_project_revision': task['source']['project_revision'],
+            'update_id': None, 'receipt': None, 'readback_completion': completion}
+
+
+async def _check_attempt_response(runtime, client, handle, files, opening, attempt, task, command):
+    if task.get('wake_on_observe') is True:
+        waiting = files.load_check(opening, attempt, handle.run_id, task, waiting=True)
+        if waiting is not None:
+            try:
+                async with asyncio.timeout(runtime.RPC_SECONDS):
+                    updates, completion, _ = await runtime.read_task_history(client, handle, opening, [waiting, command])
+            except (TimeoutError, ConnectionError, runtime.RPCError):
+                return _check_response(opening, task, command, None)
+            update_id = command['attempt']['update_id']
+            outcome = updates.get(update_id, {})
+            if outcome.get('reason') == READBACK_ALREADY_ADMITTED:
+                return {**_readback_response(opening, handle, task, completion),
+                        'rejected_update': {'run_id': handle.run_id, 'update_id': update_id, **outcome}}
+            return _check_response(opening, task, command, outcome.get('receipt'))
+    return _check_response(opening, task, command, await _read_check(runtime, client, handle, command))
 
 
 async def _read_check(runtime, client, handle, command):
@@ -655,7 +704,7 @@ async def observe_check(state: State, project: str, campaign: str, task_id: str,
         first_run_id = handle.run_id
     command = files.load_check(opening, attempt, handle.run_id, task)
     if command is not None:
-        return _check_response(opening, task, command, await _read_check(runtime, client, handle, command))
+        return await _check_attempt_response(runtime, client, handle, files, opening, attempt, task, command)
     source = task['source']
     pending = source.get('pending') is True
     waiting_command = files.load_check(opening, attempt, first_run_id, task, waiting=True) if pending else None
@@ -671,11 +720,14 @@ async def observe_check(state: State, project: str, campaign: str, task_id: str,
     _require_no_pending_rollover(files, opening, attempt, handle, successor)
     require_check_project(state, opening)
     view = await _require_ready_check(runtime, handle, description, opening, attempt, task_id, successor=successor)
+    if _readback_admitted(view):
+        return await _readback_check_response(runtime, client, handle, opening, view, waiting_command)
     if waiting_command is None and view.get('waiting_receipt') is not None:
         raise ValueError('Campaign original waiting task attempt is missing')
+
     def stopped():
         stop_intent_saved, _, saved_stop = files.load_stop(opening, attempt, result)
-        if rollover_task(opening) is not None:
+        if rollover_task(opening) is not None or task.get('wake_on_observe') is True:
             return stop_intent_saved is not None
         return saved_stop is not None and saved_stop['receipt']['decision'] == 'accepted'
 
@@ -692,7 +744,7 @@ async def observe_check(state: State, project: str, campaign: str, task_id: str,
         client, handle, description, successor = await _check_run(runtime, files, opening, attempt, first_run_id, client)
         command = files.load_check(opening, attempt, handle.run_id, task)
         if command is not None:
-            return _check_response(opening, task, command, await _read_check(runtime, client, handle, command))
+            return await _check_attempt_response(runtime, client, handle, files, opening, attempt, task, command)
         current_wait = files.load_check(opening, attempt, first_run_id, task, waiting=True) if pending else None
         if waiting_command is not None and current_wait != waiting_command:
             raise ValueError('Campaign original waiting task attempt changed')
@@ -703,6 +755,8 @@ async def observe_check(state: State, project: str, campaign: str, task_id: str,
             return _check_response(opening, task, current_wait, waiting_receipt)
         _require_no_pending_rollover(files, opening, attempt, handle, successor)
         view = await _require_ready_check(runtime, handle, description, opening, attempt, task_id, successor=successor)
+        if _readback_admitted(view):
+            return await _readback_check_response(runtime, client, handle, opening, view, current_wait)
         if current_wait is None and view.get('waiting_receipt') is not None:
             raise ValueError('Campaign original waiting task attempt is missing')
         if waiting_receipt is not None:
@@ -726,6 +780,8 @@ async def observe_check(state: State, project: str, campaign: str, task_id: str,
                     receipt = await runtime.send_check(client, command, expires_at=expires_at, **scope)
             except (TimeoutError, ConnectionError, runtime.RPCError):
                 pass
+        if receipt is None and not waiting:
+            return await _check_attempt_response(runtime, client, handle, files, opening, attempt, task, command)
         if receipt is None:
             receipt = await _read_check(runtime, client, handle, command)
         return _check_response(opening, task, command, receipt)

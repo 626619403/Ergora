@@ -1952,3 +1952,159 @@ def test_rollover_keeps_the_original_wait_and_fences_unverified_successor(regist
 
     monkeypatch.setattr(application, '_read_original_check', observe_native)
     asyncio.run(exercise())
+
+
+@pytest.mark.skipif(not os.environ.get('ERGORA_TEST_TEMPORAL_BIN'), reason='Requires the optional local Temporal CLI')
+def test_opted_fixed_check_shares_manual_and_guarded_readiness(tmp_path):
+    pytest.importorskip('temporalio')
+    from uuid import uuid4
+
+    from temporalio import activity
+    from temporalio.testing import WorkflowEnvironment
+    from temporalio.worker import Replayer, Worker
+    from ergora.campaigns import workflow as runtime
+    from ergora.campaigns.records import (
+        FIXED_TASK_UPDATE_PREFIX, READBACK_ACTIVITY, RECIPIENT_ACTIVITY, attempt_document,
+        check_intent, identity, original_check_evidence, readback_id, stop_intent, update_attempt, validate_plan,
+    )
+
+    source = {'pending': True, 'project_revision': 1, 'operation_id': 'original',
+              'job_id': 'check-' + 'a' * 40 + '-' + 'b' * 24, 'authorization_sha256': 'a' * 64,
+              'verification_sha256': 'b' * 64, 'request_file_sha256': 'c' * 64, 'job_sha256': 'd' * 64,
+              'candidate_sha': 'a' * 40}
+    succeeded = {key: value for key, value in source.items() if key != 'pending'}
+    succeeded.update(project='demo', stop_requested=False, status='succeeded', cleanup_confirmed=True,
+                     receipt_sha256='e' * 64, fixed_results_sha256='f' * 64)
+    pending = {**succeeded, 'cleanup_confirmed': None, 'status': 'attempted',
+               'receipt_sha256': None, 'fixed_results_sha256': None}
+    deliveries = {}
+    held_reads = {name: (asyncio.Event(), asyncio.Event()) for name in ('manual-held', 'conflict')}
+
+    @activity.defn(name=READBACK_ACTIVITY)
+    async def original_result(grant: dict) -> dict:
+        name = activity.info().workflow_id.rsplit(':', 1)[1]
+        if name in held_reads:
+            started, release = held_reads[name]
+            started.set()
+            while not release.is_set():
+                activity.heartbeat('original status read is held')
+                await asyncio.sleep(.04)
+        return {'activity_id': readback_id(grant), 'reader_cleanup_sha256': 'b' * 64, 'observation': succeeded}
+
+    @activity.defn(name=RECIPIENT_ACTIVITY)
+    async def recipient(intent: dict) -> dict:
+        deliveries.setdefault(intent['workflow_id'], []).append(intent)
+        return {'status': 'observed'}
+
+    async def check(client, queue, campaign):
+        now = int(time.time())
+        due, expiry = now + 4, now + 25
+        selected = {'task_id': 'fixed', 'depends_on': [], 'source': source,
+                    'wake_on_observe': True, 'readback': {'due_at': due, 'deadline_at': due + 12},
+                    'recipient': {'session_id': 'session', 'parent_run_id': 'parent', 'intent_id': 'original',
+                                  'prompt': 'Use the original check result.', 'timeout_seconds': 8}}
+        child = {'task_id': 'dependent', 'depends_on': ['fixed'], 'source': source}
+        plan = {'schema_version': 1, 'goal': 'Verify one fixed check', 'acceptance': 'One original result',
+                'evidence_format': 'Native History', 'baseline_commit': source['candidate_sha'],
+                'limits': {'expires_at': expiry}, 'tasks': [selected, child]}
+        validate_plan(plan)
+        workflow_id = f'ergora-campaign:demo:{campaign}'
+        opening = {'project': 'demo', 'plan': plan, 'workflow_id': workflow_id, 'task_queue': queue,
+                   'scheduler': {'namespace': client.namespace}}
+        attempt = attempt_document(opening, str(uuid4()))
+        run_id = await runtime.start(client, opening, attempt)
+        handle = client.get_workflow_handle(workflow_id, run_id=run_id)
+
+        def command(task, observation, wait=None):
+            evidence, job = original_check_evidence(opening, task, observation)
+            if wait is not None:
+                job = {**job, 'waiting_receipt_sha256': identity(wait)}
+            intent = check_intent(opening, identity(attempt), run_id, task['task_id'], evidence, job=job)
+            return {'intent': intent, 'attempt': update_attempt(intent, FIXED_TASK_UPDATE_PREFIX + str(uuid4()))}
+
+        async def send(update):
+            return await runtime.send_check(client, update, expires_at=expiry)
+
+        waiting = command(selected, pending)
+        wait = await send(waiting)
+        assert wait['decision'] == 'waiting_job'
+        assert await send(waiting) == wait
+        assert await send(command(child, succeeded)) is None
+        assert await send(command(selected, succeeded)) is None
+        commands = [waiting]
+        manual_first = campaign == 'manual-first'
+        conflict = campaign == 'conflict'
+        holds_read = campaign in held_reads
+        if holds_read:
+            async with asyncio.timeout(10):
+                await held_reads[campaign][0].wait()
+        if manual_first or holds_read:
+            observation = {**succeeded, 'detail': 'different observation'} if conflict else succeeded
+            manual = command(selected, observation, wait)
+            result = await send(manual)
+            assert result['decision'] == 'observed' and await send(manual) == result
+            commands.append(manual)
+        async with asyncio.timeout(12):
+            while workflow_id not in deliveries:
+                await asyncio.sleep(.03)
+        if holds_read:
+            still_held = await handle.query(runtime.Campaign.state)
+            assert still_held['timer_readback']['status'] == 'scheduled'
+            assert still_held['check_receipts']['fixed'] == result
+            assert time.time() < due + 12
+            held_reads[campaign][1].set()
+            async with asyncio.timeout(10):
+                while True:
+                    description = await handle.describe()
+                    state = await runtime.runtime_status(handle, description, opening, start_attempt_sha256=identity(attempt))
+                    read = state['tasks']['fixed']['readback_observation']
+                    if read['status'] == ('unknown' if conflict else 'available'):
+                        if conflict:
+                            assert read['reason'] == 'contradictory_evidence'
+                        break
+                    await asyncio.sleep(.03)
+        later = command(child, succeeded)
+        accepted = await send(later)
+        assert accepted['decision'] == 'observed'
+        commands.append(later)
+        updates, readback, wake = await runtime.read_task_history(client, handle, opening, commands)
+        selected_wake, = deliveries[workflow_id]
+        assert wake['intent'] == selected_wake
+        if manual_first or holds_read:
+            assert selected_wake['source']['update_id'] == result['update_id']
+            assert readback is None if manual_first else readback['observation_sha256'] == identity(succeeded)
+        else:
+            assert selected_wake['source']['activity_id'] == readback['activity_id']
+            late = command(selected, succeeded, wait)
+            assert await send(late) is None and await send(late) is None
+            updates, completion, original_wake = await runtime.read_task_history(client, handle, opening, [*commands, late])
+            failed = updates[late['attempt']['update_id']]
+            assert failed['status'] == 'failed' and failed['receipt'] is None
+            assert failed['reason'] == runtime.READBACK_ALREADY_ADMITTED
+            assert completion['completed_event_id'] < failed['completed_event_id'] and original_wake['intent'] == selected_wake
+            conflicting = command(selected, {**succeeded, 'detail': 'different observation'}, wait)
+            assert await send(conflicting) is None
+            assert (await handle.query(runtime.Campaign.state))['check_receipts'].keys() == {'dependent'}
+        intent = stop_intent(opening, identity(attempt), run_id)
+        stop = {'intent': intent, 'attempt': update_attempt(intent, f'ergora-campaign-stop:{uuid4()}')}
+        assert (await runtime.send_stop(client, stop))['decision'] == 'accepted'
+        assert (await handle.result(follow_runs=False))['phase'] == 'stopped'
+        history = await handle.fetch_history()
+        scheduled = [event.activity_task_scheduled_event_attributes.activity_type.name for event in history.events
+                     if event.HasField('activity_task_scheduled_event_attributes')]
+        expected = [RECIPIENT_ACTIVITY] if manual_first else [READBACK_ACTIVITY, RECIPIENT_ACTIVITY]
+        assert scheduled == expected
+        await Replayer(workflows=[runtime.Campaign], namespace=client.namespace).replay_workflow(history)
+
+    async def exercise():
+        async with await WorkflowEnvironment.start_local(
+            ip='127.0.0.1', ui=False, dev_server_existing_path=os.environ['ERGORA_TEST_TEMPORAL_BIN'],
+            dev_server_database_filename=str(tmp_path / 'intake.sqlite'),
+        ) as service:
+            queue = 'fixed-check-intake'
+            async with Worker(service.client, task_queue=queue, workflows=[runtime.Campaign],
+                              activities=[original_result, recipient]):
+                await asyncio.gather(*(check(service.client, queue, name)
+                                       for name in ('manual-first', 'timer-first', 'manual-held', 'conflict')))
+
+    asyncio.run(exercise())
