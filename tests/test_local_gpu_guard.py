@@ -333,6 +333,63 @@ def test_dynamic_disjoint_join_and_older_full_pool_barrier(tmp_path):
         assert all(item['state'] == 'released' for item in pool.inspect()['requests'])
 
 
+def test_pending_conflict_waits_for_release_while_later_disjoint_work_runs(tmp_path):
+    with fake_pool(tmp_path / 'pool', count=2) as (pool, config, _):
+        shared, free = config['device_uuids']
+        hold = ("import time;from pathlib import Path;Path('started').touch()\n"
+                "while not Path('finish').exists():time.sleep(.01)")
+        quick = "from pathlib import Path;Path('started').open('a').write('once\\n')"
+        holder, original = _setup(tmp_path / 'holder', config, [shared], hold, wall=30, reserve=5)
+        successor, pending = _setup(tmp_path / 'successor', config, [shared], quick, wall=30, reserve=5)
+        independent, _ = _setup(tmp_path / 'independent', config, [free], quick, wall=30, reserve=5)
+        inventory_path = tmp_path / 'pool' / 'fake-inventory.json'
+
+        def request(task):
+            return next((item for item in pool.inspect()['requests']
+                         if item['origin']['operation_id'] == task['origin']['operation_id']), {})
+
+        def set_reported_pids(pids):
+            inventory = json.loads(inventory_path.read_bytes())
+            inventory[0]['compute_pids'] = pids
+            replacement = inventory_path.with_suffix('.next')
+            replacement.write_text(json.dumps(inventory), encoding='utf-8')
+            replacement.replace(inventory_path)
+
+        with _owner(holder) as first:
+            _until(lambda: (holder.parent / 'started').exists())
+            held = request(original)
+            assert held['state'] == 'consumed' and held['release_ref'] is None
+            with _owner(successor) as waiting:
+                _until(lambda: request(pending).get('state') == 'pending')
+                with _owner(independent) as disjoint:
+                    finished = _result(disjoint)
+                assert finished['resource']['status'] == 'released'
+                assert (independent.parent / 'started').read_text().splitlines() == ['once']
+                assert request(pending)['state'] == 'pending'
+                assert not (successor.parent / 'started').exists()
+
+                set_reported_pids([os.getpid()])  # Synthetic inventory only.
+                (holder.parent / 'finish').touch()
+                stopped = pool.proof_directory(held['lease_id']) / 'stopped.json'
+                _until(stopped.exists)
+                assert json.loads(stopped.read_bytes())['process_result']['status'] == 'succeeded'
+
+                def inventory_refuses_release():
+                    result = pool.reconcile(held['lease_id'])
+                    return result['status'] == 'unavailable' and 'not empty' in result['reason']
+
+                _until(inventory_refuses_release)
+                assert request(original)['release_ref'] is None
+                assert request(pending)['state'] == 'pending'
+                assert not (successor.parent / 'started').exists()
+
+                set_reported_pids([])
+                assert _result(first)['resource']['status'] == 'released'
+                assert _result(waiting)['resource']['status'] == 'released'
+        assert (successor.parent / 'started').read_text().splitlines() == ['once']
+        assert request(original)['release_ref']['sequence'] < request(pending)['consume_binding']['sequence']
+
+
 def test_guard_death_after_stopped_proof_keeps_unknown_even_when_nvml_empty(tmp_path):
     with fake_pool(tmp_path / 'pool', count=1) as (pool, config, session):
         setup, _ = _setup(tmp_path / 'task', config, config['device_uuids'],
