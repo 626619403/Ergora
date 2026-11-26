@@ -45,6 +45,51 @@ def test_local_http_boundary_and_packaged_assets(console):
     assert [item["id"] for item in client.get("/api/bootstrap").json()["projects"]] == ["demo", "other"]
 
 
+def test_campaign_timeline_reads_and_exposes_only_the_selected_original_task(console, monkeypatch):
+    from ergora.campaigns import application
+
+    client, state, _ = console
+    calls = []
+    selected = {"task_id": "selected", "status": "observed", "eligible": False,
+                "attempt_status": "failed", "update_id": "saved",
+                "readback_observation": {"status": "available"}}
+    attempt = {"terminal": {"status": "failed", "run_id": "original", "update_id": "saved",
+                            "accepted_event_id": 28, "completed_event_id": 29,
+                            "receipt": None, "reason": "readback_already_admitted"}}
+    completion = {"task_id": "selected", "completed_event_id": 19}
+
+    async def status(store, project, campaign, *, online, task_id):
+        calls.append((store.root, project, campaign, online, task_id))
+        return {"project": project, "campaign": campaign, "run_id": "original", "current_run_id": "successor",
+                "workflow_state_status": "observed",
+                "plan": {"acceptance": "Inspect original evidence", "limits": {"expires_at": 100},
+                         "tasks": ["other-private"]},
+                "tasks": {"selected": selected, "other-private": {}},
+                "task_observation_history": {"selected": attempt, "other-private": {}},
+                "task_evidence": {"task_id": task_id, "correlation": "unavailable"},
+                "stop": {"status": "unknown", "remote_status": "unavailable", "update_id": "original-stop",
+                         "receipt": None, "local_fence_saved": True},
+                "rollover": {"status": "unresolved", "update_id": "original-rollover"},
+                "readback_completion": {**completion, "recipient": {"task_id": "other-private"}}}
+
+    monkeypatch.setattr(application, "status", status)
+    path = "/api/projects/demo/campaigns/record/tasks/selected/timeline"
+    assert client.get(path, headers={"Sec-Fetch-Site": "cross-site"}).status_code == 403
+    assert client.post(path).status_code == 405
+    response = client.get(path)
+    assert response.status_code == 200 and response.headers["cache-control"] == "no-store"
+    observed = response.json()
+    assert calls == [(state.root, "demo", "record", True, "selected")]
+    assert observed["run_id"] == "original" and observed["current_run_id"] == "successor"
+    assert observed["task_state"] == selected and observed["task_observation_history"] == attempt
+    assert observed["task_evidence"]["correlation"] == "unavailable"
+    assert observed["stop"] == {"status": "unknown", "remote_status": "unavailable", "update_id": "original-stop",
+                                "decision": None, "receipt_run_id": None, "local_fence_saved": True}
+    assert observed["rollover"] == {"status": "unresolved", "update_id": "original-rollover"}
+    assert observed["readback_completion"] == completion
+    assert "other-private" not in response.text
+
+
 def test_formal_work_priority_confirms_exact_command_and_reads_the_original(console, monkeypatch):
     from ergora.development import application as tasks
 

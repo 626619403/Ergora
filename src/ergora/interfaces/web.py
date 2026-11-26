@@ -16,6 +16,7 @@ from ergora import __version__
 import ergora.training.application as training
 import ergora.definitions.agents as agent_definitions
 import ergora.agents.runs as agent_runs
+import ergora.campaigns.application as campaigns
 import ergora.definitions.bundles as definition_bundles
 import ergora.development.drafts as drafts
 import ergora.improvement.document_corrections as document_corrections
@@ -994,6 +995,34 @@ def create_app(home: Path | None = None) -> FastAPI:
     @application.get("/api/projects/{project_id}/tasks/{task_id}/evidence")
     def formal_task_evidence(project_id: str, task_id: str, run_id: str, timeout: int = 20):
         return tasks.evidence(state, project_id, task_id, run_id=run_id, timeout=timeout)
+
+    @application.get("/api/projects/{project_id}/campaigns/{campaign_id}/tasks/{task_id}/timeline")
+    async def campaign_task_timeline(project_id: str, campaign_id: str, task_id: str):
+        reader = State(state.root, read_only=True)
+        observed = await campaigns.status(reader, project_id, campaign_id, online=True, task_id=task_id)
+        fields = ("project", "campaign", "project_revision", "operator_euid", "plan_sha256",
+                  "attempt_sha256", "result_saved", "workflow_id", "run_id", "current_run_id",
+                  "remote_status", "remote_error", "temporal_status", "workflow_state_status",
+                  "task_observation_history_status", "task_observation_history_error", "task_evidence")
+        plan = observed["plan"]
+        stop = observed["stop"]
+        stop_receipt = stop["receipt"] or {}
+        rollover = observed.get("rollover")
+        completion = observed.get("readback_completion")
+        if completion is not None and completion.get("task_id") == task_id:
+            completion = {name: value for name, value in completion.items() if name != "recipient"}
+        else:
+            completion = None
+        return {**{name: observed[name] for name in fields if name in observed},
+                "acceptance": plan["acceptance"], "expires_at": plan["limits"]["expires_at"],
+                "workflow_phase": observed.get("workflow_state", {}).get("phase"),
+                "task_state": observed.get("tasks", {}).get(task_id),
+                "stop": {"status": stop["status"], "remote_status": stop["remote_status"],
+                         "update_id": stop["update_id"], "local_fence_saved": stop.get("local_fence_saved"),
+                         "decision": stop_receipt.get("decision"), "receipt_run_id": stop_receipt.get("run_id")},
+                "rollover": {"status": rollover["status"], "update_id": rollover["update_id"]} if rollover else None,
+                "task_observation_history": observed.get("task_observation_history", {}).get(task_id, {}),
+                "readback_completion": completion}
 
     @application.post("/api/projects/{project_id}/tasks/{task_id}/handoff")
     def download_formal_task_handoff(project_id: str, task_id: str, body: TaskHandoffPayload):

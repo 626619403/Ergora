@@ -7,6 +7,7 @@ import { taskComposition } from "./task-composition.js";
 import { candidateObservation } from "./candidate-observation.js";
 import { candidateReview } from "./candidate-review.js";
 import { issueWriteback } from "./issue-writeback.js";
+import { campaignTimeline } from "./campaign-timeline.js";
 
 const stageForPhase = {
   INVENTORY: "inventory", PLANNING: "plan", IMPLEMENTING: "work",
@@ -85,6 +86,10 @@ export function tasksView(data, base, { sourceSnapshot = "" } = {}) {
   const selectionKey = `ergora-task:${data.project.id}`;
   const preparationKey = `ergora-preparation:${data.project.id}`;
   const controlDirectory = app.bootstrap.state_directory;
+  actions.append(button("读取 Campaign 任务时间线", () =>
+    campaignTimeline({ base, projectId: data.project.id, controlDirectory,
+      isCurrent: () => title.isConnected && app.project === data.project.id &&
+        app.bootstrap.state_directory === controlDirectory })));
   const previousSelection = sessionStorage.getItem(selectionKey) || "";
   let selected = taskIdPattern.test(previousSelection) ? previousSelection : "";
   let listSequence = 0;
