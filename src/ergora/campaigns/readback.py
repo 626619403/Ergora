@@ -51,9 +51,18 @@ class FixedCheckReadback:
         except asyncio.CancelledError:
             self.files.write('readback-cancel', {'activity_id': info.activity_id})
             if waiter is None:
-                child = await asyncio.shield(spawning)
-                waiter = asyncio.create_task(child.wait())
-            await asyncio.shield(waiter)
+                async def wait_for_guard():
+                    guard = await spawning
+                    return await guard.wait()
+
+                waiter = asyncio.create_task(wait_for_guard())
+            # A later cancellation must still leave the Activity owning the original guard.
+            while not waiter.done():
+                try:
+                    await asyncio.shield(waiter)
+                except asyncio.CancelledError:
+                    continue
+            waiter.result()
             raise
         result = self.files._read('readback-result')
         cleanup = self.files._read('readback-cleanup')

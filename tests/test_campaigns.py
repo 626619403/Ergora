@@ -801,6 +801,97 @@ def test_readback_guard_dispatch_uses_the_validated_registration_snapshot(regist
     assert not (files.directory / 'readback-result.json').exists()
 
 
+@pytest.mark.parametrize('acknowledged', [False, True], ids=['before-ack', 'after-ack'])
+def test_campaign_readback_reaps_guard_after_repeated_cancellation(tmp_path, monkeypatch, acknowledged):
+    pytest.importorskip('temporalio')
+    from dataclasses import replace
+    from temporalio.testing import ActivityEnvironment
+    from ergora.campaigns.readback import FixedCheckReadback
+    from ergora.campaigns.records import (CampaignFiles, attempt_document, check_intent, check_receipt, identity,
+                                         readback_grant, readback_id, update_attempt)
+    from ergora.runtime import processes
+
+    owner = CampaignFiles(State(tmp_path).root, 'demo', 'readback-cancel')
+    owner.ensure_directory()
+    now = int(time.time())
+    task = {'task_id': 'wait', 'source': {'pending': True},
+            'readback': {'due_at': now - 1, 'deadline_at': now + 30}}
+    opening = {'workflow_id': 'ergora-campaign:demo:readback-cancel',
+               'plan': {'limits': {'expires_at': now + 30}, 'tasks': [task]}}
+    start = attempt_document(opening, '4f2f29c3-5e22-446e-a6b4-21febdc545dc')
+    run = 'ef6f5ea1-b9c1-4918-ac9f-178802fd6aa8'
+    intent = check_intent(opening, identity(start), run, task['task_id'], 'a' * 64, job={'status': 'queued'})
+    waiting = {'intent': intent, 'attempt': update_attempt(intent,
+               'ergora-campaign-check:76b46055-eca1-42e6-9649-0f9adc562720')}
+    owner.write('wait-check-wait', waiting)
+    grant = readback_grant(opening, run, task, check_receipt(waiting))
+    activity_id = readback_id(grant)
+    spawn = asyncio.create_subprocess_exec
+
+    async def exercise():
+        spawned, acknowledge, heartbeat = asyncio.Event(), asyncio.Event(), asyncio.Event()
+        child = running = None
+        tearing_down = False
+
+        async def start_guard(*args, **options):
+            nonlocal child
+            assert args == (sys.executable, '-P', '-m', 'ergora.campaigns.readback', str(owner.home),
+                            owner.project, owner.campaign)
+            assert options['start_new_session']
+            child = await spawn(sys.executable, '-I', '-S', '-c',
+                                'import sys\nprint("ready", flush=True)\nsys.stdin.read()',
+                                **{**options, 'stdin': asyncio.subprocess.PIPE, 'stdout': asyncio.subprocess.PIPE})
+            if tearing_down:
+                child.stdin.close()
+            spawned.set()
+            await acknowledge.wait()
+            return child
+
+        async def read():
+            nonlocal running
+            running = asyncio.current_task()
+            return await FixedCheckReadback(owner, opening, start, run).read(grant)
+
+        monkeypatch.setattr(asyncio, 'create_subprocess_exec', start_guard)
+        env = ActivityEnvironment()
+        env.info = replace(env.info, workflow_id=opening['workflow_id'], workflow_run_id=run, activity_id=activity_id)
+        env.on_heartbeat = lambda *_: heartbeat.set()
+        activity = asyncio.create_task(env.run(read))
+        try:
+            async with asyncio.timeout(10):
+                await spawned.wait()
+                assert await child.stdout.readline() == b'ready\n'
+                if acknowledged:
+                    acknowledge.set()
+                    await heartbeat.wait()
+                assert owner._read('readback-attempt') == {
+                    'grant': grant, 'activity_id': activity_id, 'worker': processes.identity(os.getpid()),
+                }
+                assert running.cancel()
+                await asyncio.sleep(0)
+                assert owner._read('readback-cancel') == {'activity_id': activity_id}
+                assert running.cancel()
+                await asyncio.sleep(0)
+                assert child.returncode is None
+                assert not running.done(), 'Activity released its running guard before reaping it'
+
+                acknowledge.set()
+                child.stdin.close()
+                with pytest.raises(asyncio.CancelledError):
+                    await activity
+                assert child.returncode == 0
+                assert owner._read('readback-result') is None
+        finally:
+            tearing_down = True
+            acknowledge.set()
+            if child is not None and child.returncode is None:
+                child.stdin.close()
+                await child.wait()
+            await asyncio.gather(activity, return_exceptions=True)
+
+    asyncio.run(exercise())
+
+
 def test_campaign_one_pending_readback_window_is_frozen():
     from ergora.campaigns.records import FIXED_TASK_LOCATOR, validate_plan
 
