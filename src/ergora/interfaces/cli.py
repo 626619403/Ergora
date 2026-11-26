@@ -335,6 +335,8 @@ def parser() -> argparse.ArgumentParser:
     graph.add_argument("--codex-config", type=Path)
     graph.add_argument("--recoverable", action="store_true", help="Keep original interruption recovery authority on Linux")
     graph.add_argument("--pause-before-route", metavar="INSTANCE", help="Pause a recoverable graph before one chosen follow-up")
+    graph.add_argument("--packaging-consultation", action="store_true",
+                       help="Validate one supervised packaging request and its original specialist reply")
     resume = operations.add_parser("resume-graph", help="Resume an interrupted original recoverable graph on Linux")
     resume.add_argument("project")
     resume.add_argument("directory", type=Path)
@@ -1679,7 +1681,8 @@ def main(argv: list[str] | None = None) -> int:
                         output = graphs.run_graph(State(args.home), args.project, args.manifest, args.manifest_digest,
                             definition_bundles.parse_json(raw.decode('utf-8-sig'), 'Workflow inputs', finite=True),
                             args.directory, args.max_prompt_bytes, args.timeout, codex_config=args.codex_config,
-                            stop_requested=lambda: stopped, recoverable=args.recoverable, pause_before_route=args.pause_before_route)
+                            stop_requested=lambda: stopped, recoverable=args.recoverable,
+                            pause_before_route=args.pause_before_route, packaging_consultation=args.packaging_consultation)
                     else:
                         output = graphs.resume_graph(args.home, args.project, args.directory, args.manifest_digest,
                                                      stop_requested=lambda: stopped, route_checkpoint=args.route_checkpoint,

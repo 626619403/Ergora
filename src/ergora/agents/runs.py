@@ -314,7 +314,7 @@ def _run_prepared(state, prepared, document, timeout, *, mode, codex_config, res
         if saved["digest"] != prepared["digest"]:
             raise ValueError("Composition input changed while copying the run snapshot")
         if record_lifecycle:
-            _confirm_analysis_input(saved, active=active)
+            confirm_original_input(saved, active=active)
         document.update(input_path=str(snapshot))
         native_mcp = None
         if mode in ("task-mcp", "workspace-task-mcp"):
@@ -420,18 +420,38 @@ def _analysis_identity(prepared, authority):
     return expected_run, leaf, list(reversed(chain))
 
 
-def _confirm_analysis_input(prepared, *, active=lambda: None):
+def confirm_original_input(prepared, *, active=lambda: None):
+    """Synchronize and recheck an already verified complete Agent input."""
     root = Path(prepared['path'])
-    _, files, _ = inventory_tree(root, label='Analysis input', max_directories=1000, max_depth=48)
+    _, files, _ = inventory_tree(root, label='Agent input', max_directories=1000, max_depth=48)
     for name, details in files.items():
         active()
         path = root / name
         raw = native_sources.artifact(path.parent, path.name, native_sources.PACKET_BYTES, confirm_durable=True)
         if hashlib.sha256(raw).hexdigest() != details['sha256']:
-            raise ValueError('Analysis input changed during original durable confirmation')
+            raise ValueError('Agent input changed during original durable confirmation')
     active()
     if workflow_definitions.inspect_input(root, material=True) != prepared:
-        raise ValueError('Analysis complete input changed during durable confirmation')
+        raise ValueError('Complete Agent input changed during durable confirmation')
+
+
+def confirm_original_result(state, observed, *, active):
+    """Confirm the exact original files before issuing a dependent durable decision."""
+    saved = {name: value for name, value in observed['input'].items() if name != 'available'}
+    confirm_original_input(saved, active=active)
+    run_id = observed['run']['id']
+    storage = state.root / 'runs'
+    active()
+    prompt = native_sources.artifact(storage / (run_id + '.protocol'), 'prompt.txt',
+                                     saved['request']['prompt_bytes'], confirm_durable=True)
+    if prompt != saved['prompt'].encode('utf-8'):
+        raise native_sources.ArtifactIdentityError('Original invocation prompt changed during durable confirmation')
+    active()
+    result = observed['result']
+    raw = native_sources.artifact(storage / run_id, 'result.json', result['bytes'], confirm_durable=True)
+    if hashlib.sha256(raw).hexdigest() != result['sha256']:
+        raise native_sources.ArtifactIdentityError('Original Agent result changed during durable confirmation')
+    active()
 
 
 def _analysis_cleanup(state, intent, attempt, *, durable):
@@ -525,7 +545,7 @@ def inspect_cycle_analysis(state: State, project_id: str, run_id: str, *, author
                 raise ValueError('Analysis confirmation lost its immutable slot preparation origin')
             saved = workflow_definitions.inspect_input(state.root / 'runs' / (run_id + '.input'), material=True)
             _analysis_identity(saved, authority)
-            _confirm_analysis_input(saved)
+            confirm_original_input(saved)
             raw = native_sources.artifact(state.root / 'runs' / run_id, 'result.json', 8_388_608, confirm_durable=True)
             if hashlib.sha256(raw).hexdigest() != receipt['result_sha256']:
                 raise ValueError('Analysis result changed from the original receipt')

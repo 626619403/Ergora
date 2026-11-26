@@ -1803,6 +1803,168 @@ output.write_text(json.dumps({'summary': 'Review', 'decision': 'approve', 'artif
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Recoverable standalone graphs require Linux/WSL2')
+@pytest.mark.parametrize('case', ['lost-reply', 'wrong-reply', 'wrong-evidence', 'other-structure', 'other-dependency',
+                                  'sync-request', 'sync-reply'])
+def test_supervised_packaging_consultation_requires_exact_original_reply(tmp_path, monkeypatch, case):
+    from ergora._paths import DATA_ROOT
+    from ergora.agents import graphs, packaging_consultation
+
+    state = State(tmp_path / 'state')
+    repo = tmp_path / 'repository'
+    subprocess.run(['git', 'init', str(repo)], capture_output=True, check=True)
+    projects.create(state, 'demo', repo)
+    refs = []
+    for specialist in ('structure', 'dependency'):
+        definition = DATA_ROOT / 'presets' / 'agents' / f'ergora-{specialist}-reviewer'
+        if case == f'other-{specialist}':
+            alternative = tmp_path / case
+            shutil.copytree(definition, alternative)
+            document = alternative / 'agent.json'
+            changed = json.loads(document.read_bytes())
+            changed['version'] = '9.9.0'
+            document.write_text(json.dumps(changed), encoding='utf-8')
+            definition = alternative
+        stored = agent_definitions.import_bundle(state, definition)
+        refs.append({'kind': 'agent', 'digest': stored['digest'],
+                     **{field: stored['definition'][field] for field in ('id', 'version')}})
+    source, directory, manifest, calls = (tmp_path / name for name in ('workflow', 'graph', 'manifest', 'calls'))
+    source.mkdir()
+    policy = {'permissions': {'read': ['definitions'], 'network': [], 'shell': False, 'write': []},
+              'limits': {'concurrency': 1, 'depth': 3, 'instances': 8, 'material_bytes': 65_536}}
+    workflow = {'schema_version': 2, 'id': 'packaging-request', 'version': '1.0.0', 'description': 'Packaging review.',
+                **policy, 'resources': [], 'inputs': ['task'], 'outputs': {'review': {'node': 'join', 'output': 'result'}},
+                'nodes': [
+                    {'id': 'analyze', 'ref': refs[0], 'role': 'reviewer', 'review_requirement': 'required',
+                     'permissions': policy['permissions'], 'depends_on': [], 'inputs': {'task': {'input': 'task'}}},
+                    {'id': 'choose', 'operation': 'choose-agent', 'depends_on': ['analyze'], 'branches': ['dependency'],
+                     'inputs': {'source': {'node': 'analyze', 'output': 'result'}}},
+                    {'id': 'dependency', 'ref': refs[1], 'role': 'reviewer', 'review_requirement': 'required',
+                     'permissions': policy['permissions'], 'depends_on': ['choose', 'analyze'],
+                     'inputs': {'task': {'node': 'analyze', 'output': 'result'}}},
+                    {'id': 'join', 'join': 'all', 'depends_on': ['analyze', 'dependency']},
+                ]}
+    (source / 'workflow.json').write_text(json.dumps(workflow), encoding='utf-8')
+    workflows.import_bundle(state, source)
+    frozen = workflows.prepare_manifest(state.root, workflow['id'], '1.0.0', {'schema_version': 1, **policy}, manifest)
+    model = r'''
+import json, sys
+from pathlib import Path
+output, calls = map(Path, sys.argv[1:3])
+case = sys.argv[3]
+task = json.loads(sys.stdin.read().rsplit('Workflow task port (JSON value):\n', 1)[1])
+with calls.open('a', encoding='utf-8') as stream:
+    stream.write(json.dumps(task) + '\n')
+if 'request_id' in task:
+    assert task['action'] == 'review-standalone-packaging'
+    assert 'private' not in task and 'private marker' not in json.dumps(task)
+    response = {'reply_to': 'wrong-original' if case == 'wrong-reply' else task['request_id'],
+                'candidate_id': task['candidate_id'], 'classification': 'An eager optional import.',
+                'recommendation': 'hold', 'basis': task['pyproject_excerpt']}
+    artifacts = {'response': json.dumps(response)}
+else:
+    response = {key: task[key] for key in ('input_id', 'candidate_id', 'candidate_import', 'pyproject_excerpt')}
+    response['question'] = 'Does the proposed eager import require temporalio in the standalone CLI installation?'
+    if case == 'wrong-evidence':
+        response['pyproject_excerpt'] = task['private']
+    artifacts = {'route': 'dependency', 'response': json.dumps(response)}
+output.write_text(json.dumps({'summary': 'Private marker in the original review', 'decision': 'request-changes',
+                              'artifacts': artifacts}))
+'''
+    command = agent_backends.CodexBackend.command
+
+    def controlled(backend, request):
+        argv, prompt = command(backend, request)
+        return [sys.executable, '-c', model, argv[argv.index('--output-last-message') + 1], str(calls), case], prompt
+
+    monkeypatch.setattr(agent_backends.CodexBackend, 'command', controlled)
+    monkeypatch.setattr(agent_backends.CodexBackend, 'check_invocation', lambda self: None)
+    inputs = {'task': {'input_id': 'original-input', 'candidate_id': 'original-candidate',
+                       'candidate_import': 'from temporalio import workflow',
+                       'pyproject_excerpt': '[project.optional-dependencies]\ntemporal = ["temporalio"]',
+                       'private': 'private marker'}}
+    args = (state, 'demo', manifest, frozen['digest'], inputs, directory, 50_000, 45)
+    options = {'recoverable': True, 'pause_before_route': 'root/choose', 'packaging_consultation': True}
+    if case.startswith('other-'):
+        with pytest.raises(ValueError, match='requires the exact packaged structure and dependency reviewer references'):
+            graphs.run_graph(*args, **options)
+        assert not directory.exists() and not calls.exists() and agent_runs.runs(state, 'demo') == []
+        return
+    paused = graphs.run_graph(*args, **options)
+    assert paused['status'] == 'awaiting_route_decision'
+    selector = {'route_checkpoint': native_sources.sha(paused['route_checkpoint']), 'route_action': 'follow-up'}
+    scope = (state.root, 'demo', directory, frozen['digest'])
+    marker = directory / packaging_consultation.REPLY
+    if case.startswith('sync-'):
+        run_id = (paused['leaves'][0]['run_id'] if case == 'sync-request'
+                  else graphs._recovery_run_id(paused, 'root/dependency'))
+        read = native_sources.artifact
+
+        def interrupt_confirmation(folder, name, limit, *, confirm_durable=False):
+            if confirm_durable and folder.name == run_id + '.protocol' and name == 'prompt.txt':
+                raise OSError('Original protocol prompt durability unavailable')
+            return read(folder, name, limit, confirm_durable=confirm_durable)
+
+        with monkeypatch.context() as patch:
+            patch.setattr(native_sources, 'artifact', interrupt_confirmation)
+            aborted = graphs.resume_graph(*scope, **selector)
+        assert aborted['status'] == 'failed' and 'outputs' not in aborted
+        assert aborted['error'] == 'Original protocol prompt durability unavailable'
+        assert (directory / packaging_consultation.REQUEST).exists() == (case == 'sync-reply')
+        assert not marker.exists()
+        assert len(calls.read_text(encoding='utf-8').splitlines()) == (1 if case == 'sync-request' else 2)
+        assert all(attempt['status'] == 'succeeded' for attempt in aborted['leaves'])
+        return
+    if case == 'lost-reply':
+        class LostCoordinator(BaseException):
+            pass
+
+        publish = graphs._GraphRun.publish_route_record
+
+        def lose_after_reply(run, name, record):
+            publish(run, name, record)
+            if name == packaging_consultation.REPLY:
+                raise LostCoordinator
+
+        with monkeypatch.context() as patch:
+            patch.setattr(graphs._GraphRun, 'publish_route_record', lose_after_reply)
+            with pytest.raises(LostCoordinator):
+                graphs.resume_graph(*scope, **selector)
+        original = marker.read_bytes()
+        readback = graphs.inspect_graph(state, 'demo', directory, frozen['digest'])
+        assert readback['graph_receipt']['status'] == 'incomplete'
+        assert readback['packaging_consultation']['reply']['status'] == 'accepted'
+        recovered = graphs.resume_graph(*scope)
+        assert recovered['status'] == 'succeeded' and marker.read_bytes() == original
+        displaced = marker.with_suffix('.retained')
+        marker.rename(displaced)
+        try:
+            missing = graphs.inspect_graph(state, 'demo', directory, frozen['digest'])
+            assert missing['graph_receipt']['status'] == 'succeeded'
+            assert missing['packaging_consultation']['state'] == 'missing'
+            assert missing['packaging_consultation']['proof'] == 'reply'
+            assert missing['agent_attempts'][1]['original_run']['result']['state'] == 'available'
+        finally:
+            displaced.rename(marker)
+    else:
+        recovered = graphs.resume_graph(*scope, **selector)
+        assert recovered['status'] == 'failed' and 'outputs' not in recovered
+    readback = graphs.inspect_graph(state, 'demo', directory, frozen['digest'])
+    if case == 'wrong-evidence':
+        assert readback['packaging_consultation'] == {'state': 'not_issued'}
+        assert 'differs from the original approved question or evidence' in recovered['error']
+        assert not (directory / packaging_consultation.REQUEST).exists()
+        assert len(calls.read_text(encoding='utf-8').splitlines()) == 1
+    else:
+        reply = readback['packaging_consultation']['reply']
+        assert reply['status'] == ('accepted' if case == 'lost-reply' else 'rejected')
+        specialist = recovered['leaves'][1]
+        assert specialist['status'] == 'succeeded' and specialist['result_sha256'] == reply['result_sha256']
+        with pytest.raises(ValueError, match='terminal or explicitly stopped graph'):
+            graphs.resume_graph(*scope, **selector)
+        assert len(calls.read_text(encoding='utf-8').splitlines()) == 2
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Recoverable standalone graphs require Linux/WSL2')
 @pytest.mark.parametrize('cut', ['completed', 'unknown', 'missing-prompt', 'missing-reservation',
                                   'changed-output', 'invalid-output', 'changed-proof', 'contradictory-stop',
                                   'failed', 'agent-expiry', 'status-expiry', 'proof-expiry', 'child-stop'])

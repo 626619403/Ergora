@@ -33,7 +33,8 @@ def _standalone(composition, selection, result):
         if frozen['digest'] != manifest_digest or frozen['composition'] != composition:
             raise ValueError('Selected standalone manifest differs from the definition preview or its original digest')
     encoded, _ = graphs.preflight_graph(composition, selection['inputs'], capacity, manifest_digest=manifest_digest,
-        recoverable=recoverable, pause_before_route=selection.get('pause_before_route'), codex_config=config)
+        recoverable=recoverable, pause_before_route=selection.get('pause_before_route'), codex_config=config,
+        packaging_consultation=selection.get('packaging_consultation', False))
     result.update(capability={'route': 'standalone-graph', 'status': 'admitted'}, manifest_digest=manifest_digest,
         inputs_sha256=hashlib.sha256(encoded).hexdigest(),
         bindings=[{'instance': node['path'], 'role': node['role'], 'mode': 'text-only',
@@ -84,7 +85,8 @@ def preview(home: Path, identity: str, version: str, grant: dict, admission: dic
     route = admission.get('route')
     if route == 'standalone-graph':
         required = ['project', 'inputs', 'max_prompt_bytes']
-        optional = {'revision', 'manifest', 'manifest_digest', 'timeout', 'recoverable', 'pause_before_route', 'codex_config'}
+        optional = {'revision', 'manifest', 'manifest_digest', 'timeout', 'recoverable', 'pause_before_route',
+                    'codex_config', 'packaging_consultation'}
     elif route == 'formal-task':
         required = ['project', 'revision', 'definition']
         optional = set()

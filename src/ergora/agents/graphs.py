@@ -17,7 +17,7 @@ from threading import Event
 import time
 import uuid
 
-from ergora.agents import backends, invocation, native_sources, runs
+from ergora.agents import backends, invocation, native_sources, packaging_consultation as packaging, runs
 from ergora.configuration import validation as contracts
 from ergora.definitions import agents, bundles, workflows
 from ergora.development import dags, native as development_native
@@ -116,7 +116,7 @@ def _graph_authority_sha(receipt):
     authority = [receipt[name] for name in _RECOVERY_FIELDS]
     if 'pause_before_route' in receipt:
         authority.append(receipt['pause_before_route'])
-    for name in ('fixed_follow_up', 'follow_up_parent'):
+    for name in ('fixed_follow_up', 'follow_up_parent', 'packaging_consultation'):
         if name in receipt:
             authority.append([name, receipt[name]])
     return hashlib.sha256(_bounded_json(authority, _RECEIPT_LIMIT)).hexdigest()
@@ -551,6 +551,9 @@ class _GraphRun:
         self.checkpoint_sha = None
         self.operator_decision = None
         self.follow_up_output = None
+        self.packaging_selection = receipt.get('packaging_consultation')
+        self.packaging_request = None
+        self.recovered_packaging_reply = None
 
     def save(self):
         self.check_owner()
@@ -624,6 +627,17 @@ class _GraphRun:
         if self.result_bytes >= self.result_limit:
             raise ValueError('Workflow has no remaining result bytes')
         path = node['path']
+        if self.packaging_selection is not None and path == self.packaging_selection['recipient']:
+            source = self.packaging_request['authority']['original_requester']
+            requester = next(attempt for attempt in self.receipt['leaves'] if attempt['run_id'] == source['run_id'])
+            observed = runs.inspect_run(self.state, self.project['id'], requester['run_id'],
+                                        max_result_bytes=self.result_limit)
+            self.confirm_packaging_source(requester, observed)
+            marker = self.directory / packaging.REQUEST
+            if os.path.lexists(marker):
+                packaging.verify(self.directory, packaging.REQUEST, self.packaging_request, durable=True)
+            else:
+                self.publish_route_record(packaging.REQUEST, self.packaging_request)
         limit = self.receipt['max_prompt_bytes']
         source = self.directory / f"input-{len(self.receipt['leaves']) + 1}"
         if self.unreserved is None:
@@ -729,6 +743,8 @@ class _GraphRun:
         self.result_bytes += result['bytes']
         if path in self.flow_map_producer_paths:
             self.leaf_task_hashes[path] = observed['input']['request']['task_sha256']
+        if self.packaging_selection is not None and path == self.packaging_selection['recipient']:
+            self.accept_packaging_reply(attempt, observed)
         return {'result': result['document']}
 
     def record_branch_failure(self, attempt, failure):
@@ -1071,9 +1087,44 @@ class _GraphRun:
     def agent_task(self, node, opened):
         parent = node['parent']
         task = self.ports(parent, opened[parent], node['inputs'])['task']
+        if self.packaging_selection is not None:
+            if node['path'] == self.packaging_selection['requester']:
+                return packaging.requester_task(task, self.packaging_selection)
+            if node['path'] == self.packaging_selection['recipient']:
+                route = next(item for item in self.receipt['route_decisions'] if item['instance'] == self.pause_before_route)
+                self.packaging_request = packaging.request(self.receipt, route, self.checkpoint_sha, self.recovery, task,
+                                                           _recovery_run_id(self.receipt, node['path']))
+                return packaging.task(self.packaging_request)
         if 'required_flow_map' in node:
             return self.flow_map_task(node, task, opened[parent][node['required_flow_map']])
         return task
+
+    def confirm_packaging_source(self, attempt, observed):
+        self.check_active()
+        path = attempt['instance']
+        result = _recover_agent_result(observed, self.project['revision'], self.nodes[path], attempt)
+        sequence = next(index for index, leaf in enumerate(self.receipt['leaves'], 1) if leaf is attempt)
+        _check_reservation(self.directory, self.receipt, sequence, attempt)
+        prepared = workflows.inspect_input(self.directory / f'input-{sequence}', material=True)
+        if prepared['digest'] != attempt['input_digest']:
+            raise native_sources.ArtifactIdentityError('Packaging graph input differs from its original reservation')
+        runs.confirm_original_input(prepared, active=self.check_active)
+        runs.confirm_original_result(self.state, observed, active=self.check_active)
+        return result['document']
+
+    def accept_packaging_reply(self, attempt, observed):
+        self.check_active()
+        result = self.confirm_packaging_source(attempt, observed)
+        expected = packaging.reply(self.packaging_request, attempt, result)
+        marker = self.directory / packaging.REPLY
+        if os.path.lexists(marker):
+            packaging.verify(self.directory, packaging.REPLY, expected, durable=True)
+        else:
+            self.publish_route_record(packaging.REPLY, expected)
+        self.check_active()
+        if expected['status'] == 'rejected':
+            raise ValueError('Packaging consultation rejected the original recipient reply: ' + expected['reason'])
+        return result
 
     def record_flow_map_block(self, path, error, *, original=None):
         record = {'instance': path, 'reason': str(error), 'producer': error.producer}
@@ -1146,6 +1197,9 @@ class _GraphRun:
         attempt.update(status='succeeded', result_sha256=result['sha256'])
         if path in self.flow_map_producer_paths:
             self.leaf_task_hashes[path] = prepared['request']['task_sha256']
+        if self.packaging_selection is not None and path == self.packaging_selection['recipient']:
+            self.recovered_packaging_reply = (attempt, observed)
+            return
         self.completed[path] = {'result': result['document']}
 
     def recover(self, inputs):
@@ -1228,7 +1282,10 @@ class _GraphRun:
             node = pending.get(path)
             if node is None or node['kind'] != 'agent' or not self.ready(node, opened):
                 raise ValueError(f'Saved graph input is unreachable through its original dependencies: {path}')
-            return self.agent_task(node, opened)
+            task = self.agent_task(node, opened)
+            if self.packaging_selection is not None and path == self.packaging_selection['recipient']:
+                packaging.verify(self.directory, packaging.REQUEST, self.packaging_request, durable=True)
+            return task
 
         for sequence, attempt in enumerate(leaves, 1):
             path = attempt['instance']
@@ -1255,6 +1312,8 @@ class _GraphRun:
             path = workflows.inspect_input(source)['request']['instance']
             prepared = self.recovery_input(source, path, task_at(path))
             self.unreserved = (path, prepared['digest'])
+        if packaging.REPLY in names and self.recovered_packaging_reply is None:
+            raise ValueError('Saved packaging reply has no verified original recipient attempt')
 
     def wait_for_work(self):
         futures = list(self.running)
@@ -1263,6 +1322,10 @@ class _GraphRun:
         wait(futures, timeout=min(.05, max(0, self.deadline - time.monotonic())), return_when=FIRST_COMPLETED)
 
     def workflow(self, inputs, project_limit):
+        if self.recovered_packaging_reply is not None:
+            attempt, observed = self.recovered_packaging_reply
+            result = self.accept_packaging_reply(attempt, observed)
+            self.completed[attempt['instance']] = {'result': result}
         pending, opened, children = self.workflow_state(inputs)
         root_limit = self.nodes['root']['limits']['concurrency']
         executor = ThreadPoolExecutor(max_workers=min(project_limit, root_limit))
@@ -1401,7 +1464,7 @@ def _root_task_port(leaf, nodes):
     return None
 
 
-def _preflight_leaves(composition, inputs, max_prompt_bytes, codex_config):
+def _preflight_leaves(composition, inputs, max_prompt_bytes, codex_config, selected_packaging=None):
     nodes = {node['path']: node for node in composition['instances']}
     branches = [path for node in nodes.values() if node['kind'] == 'choose-agent' for path in node['branches']]
     for path, leaf in nodes.items():
@@ -1411,23 +1474,29 @@ def _preflight_leaves(composition, inputs, max_prompt_bytes, codex_config):
             runs.preflight_graph_leaf(leaf, codex_config)
             port = _root_task_port(leaf, nodes)
             if port is not None:
-                workflows.compile_input(composition, path, _bounded_json(inputs[port], max_prompt_bytes), max_prompt_bytes,
+                task = inputs[port]
+                if selected_packaging is not None and path == selected_packaging['requester']:
+                    task = packaging.requester_task(task, selected_packaging)
+                workflows.compile_input(composition, path, _bounded_json(task, max_prompt_bytes), max_prompt_bytes,
                                         input_origin='workflow-port')
         except (OSError, ValueError) as error:
             raise RouteBlocked(path, str(error)) from error
 
 
 def preflight_graph(composition, inputs, max_prompt_bytes, *, manifest_digest=None, recoverable=False,
-                    pause_before_route=None, codex_config=None):
+                    pause_before_route=None, codex_config=None, packaging_consultation=False):
     """Validate the same selected graph and declared port values before reserving a run."""
     if pause_before_route is not None:
         _check_route_pause(composition, pause_before_route, recoverable)
     encoded = _graph_inputs(composition, inputs, max_prompt_bytes, recoverable=recoverable)
+    if type(packaging_consultation) is not bool:
+        raise ValueError('packaging_consultation must be a boolean')
+    selected_packaging = packaging.binding(composition, inputs, pause_before_route) if packaging_consultation else None
     _verify_sources(composition, inputs)
     fixed = None
     if any(node['kind'] == 'verify-fixed-check' for node in composition['instances']):
         fixed = _fixed_review_context(composition, json.loads(encoded), manifest_digest)
-    _preflight_leaves(composition, inputs, max_prompt_bytes, codex_config)
+    _preflight_leaves(composition, inputs, max_prompt_bytes, codex_config, selected_packaging)
     return encoded, fixed
 
 
@@ -1506,16 +1575,18 @@ def _check_recovery_result_limit(recovery):
 
 def run_graph(state: State, project_id: str, manifest: Path, manifest_digest: str, inputs: dict, directory: Path,
               max_prompt_bytes: int, timeout: int, *, codex_config: Path | None = None, stop_requested=None,
-              recoverable=False, pause_before_route: str | None = None, fixed_follow_up: PinnedFixedReview | None = None) -> dict:
+              recoverable=False, pause_before_route: str | None = None, fixed_follow_up: PinnedFixedReview | None = None,
+              packaging_consultation=False) -> dict:
     """Run a bounded, dependency-ready read-only graph with no resubmission through this entry."""
     return _run_graph(state, project_id, manifest, manifest_digest, inputs, directory, max_prompt_bytes, timeout,
                       codex_config=codex_config, stop_requested=stop_requested, recoverable=recoverable,
-                      pause_before_route=pause_before_route, fixed_follow_up=fixed_follow_up)
+                      pause_before_route=pause_before_route, fixed_follow_up=fixed_follow_up,
+                      packaging_consultation=packaging_consultation)
 
 
 def _run_graph(state, project_id, manifest, manifest_digest, inputs, directory, max_prompt_bytes, timeout, *,
                codex_config=None, stop_requested=None, recoverable=False, pause_before_route=None,
-               fixed_follow_up=None, follow_up_parent=None):
+               fixed_follow_up=None, follow_up_parent=None, packaging_consultation=False):
     graph_options(max_prompt_bytes, timeout, recoverable=recoverable, codex_config=codex_config)
     deadline = time.monotonic() + timeout
     recovery = None
@@ -1540,7 +1611,8 @@ def _run_graph(state, project_id, manifest, manifest_digest, inputs, directory, 
         raise ValueError('Workflow manifest differs from the explicitly selected digest')
     composition = checked['composition']
     encoded_inputs, fixed_review = preflight_graph(composition, inputs, max_prompt_bytes, manifest_digest=manifest_digest,
-        recoverable=recoverable, pause_before_route=pause_before_route, codex_config=codex_config)
+        recoverable=recoverable, pause_before_route=pause_before_route, codex_config=codex_config,
+        packaging_consultation=packaging_consultation)
     if fixed_review is not None:
         inputs = json.loads(encoded_inputs)
     directory = directory.expanduser().absolute()
@@ -1556,6 +1628,10 @@ def _run_graph(state, project_id, manifest, manifest_digest, inputs, directory, 
                'max_prompt_bytes': max_prompt_bytes, 'leaves': [], 'formal_execution_authorized': False}
     if pause_before_route is not None:
         receipt['pause_before_route'] = pause_before_route
+    if packaging_consultation:
+        if fixed_follow_up is not None:
+            raise ValueError('Select either the packaging consultation or a pinned fixed review')
+        receipt['packaging_consultation'] = packaging.binding(composition, inputs, pause_before_route)
     if fixed_follow_up is not None:
         if pause_before_route is None:
             raise ValueError('A fixed review follow-up requires its original supervisor checkpoint')
@@ -1640,6 +1716,9 @@ def resume_graph(home: Path | None, project_id: str, directory: Path, manifest_d
         if 'pause_before_route' in receipt:
             _check_route_pause(composition, receipt['pause_before_route'], True)
         _graph_inputs(composition, inputs, receipt['max_prompt_bytes'], recoverable=True)
+        if ('packaging_consultation' in receipt and receipt['packaging_consultation']
+                != packaging.binding(composition, inputs, receipt['pause_before_route'])):
+            raise ValueError('Saved packaging consultation differs from its original selection')
         _verify_sources(composition, inputs)
         fixed_review = _fixed_review_context(composition, inputs, manifest_digest)
         run = _GraphRun(state, project, composition, directory, receipt, deadline, None, stop_requested, fixed_review,
@@ -2127,6 +2206,71 @@ def _observe_fixed_follow_up(state, project, directory, composition, receipt, re
         return {**observation, 'state': _local_evidence_state(error), 'error': str(error)}
 
 
+def _observe_packaging_consultation(state, project, directory, composition, receipt, recovery, checkpoint, route, attempts):
+    selected = receipt.get('packaging_consultation')
+    has_request = os.path.lexists(directory / packaging.REQUEST)
+    has_reply = os.path.lexists(directory / packaging.REPLY)
+    if selected is None and not (has_request or has_reply):
+        return None
+    issued = {}
+    try:
+        binding = packaging.binding(composition, receipt['inputs'], receipt.get('pause_before_route'))
+        if selected != binding or recovery['authorization']['state'] != 'corroborated':
+            raise native_sources.ArtifactIdentityError('Packaging consultation differs from the original graph authority')
+        recipient = attempts.get(binding['recipient'])
+        selected_route = route is not None and route['selected'] == binding['recipient']
+        if not has_request:
+            if recipient or has_reply or (selected_route and receipt['status'] == 'succeeded'):
+                return {'state': 'missing', 'proof': 'request'}
+            return {'state': 'not_issued'}
+        if not selected_route:
+            raise native_sources.ArtifactIdentityError('Packaging request lacks the original authorized route')
+        nodes = {node['path']: node for node in composition['instances']}
+        original = native_sources.packet(directory, 'recovery.json')
+        if native_sources.sha(original) != receipt['recovery_sha256']:
+            raise native_sources.ArtifactIdentityError('Packaging request differs from the original graph clock')
+        requester = attempts[binding['requester']]
+        _check_reservation(directory, receipt, requester['sequence'], requester)
+        requester_input = _reconstruct_graph_input(composition, directory / f"input-{requester['sequence']}",
+                                                   requester['instance'],
+                                                   packaging.requester_task(receipt['inputs']['task'], binding),
+                                                   receipt['max_prompt_bytes'])
+        if requester_input['digest'] != requester['input_digest']:
+            raise native_sources.ArtifactIdentityError('Saved packaging question differs from its original requester attempt')
+        limit = original['result_limit']
+        caller = runs.inspect_run(state, project, requester['run_id'], max_result_bytes=limit)
+        result = _recover_agent_result(caller, receipt['project_revision'], nodes[binding['requester']], requester)
+        expected = packaging.request(receipt, route, checkpoint['sha256'], original, result['document'],
+                                     _recovery_run_id(receipt, binding['recipient']))
+        packaging.verify(directory, packaging.REQUEST, expected)
+        issued = {'request_id': expected['request_id'], 'recipient': binding['recipient'],
+                  'action': binding['action'], 'deadline_monotonic_ns': original['deadline_monotonic_ns']}
+        if not has_reply:
+            if receipt['status'] == 'succeeded':
+                return {**issued, 'state': 'missing', 'proof': 'reply'}
+            return {**issued, 'state': 'issued'}
+        if recipient is None:
+            raise native_sources.ArtifactIdentityError('Packaging reply has no original recipient attempt')
+        _check_reservation(directory, receipt, recipient['sequence'], recipient)
+        prepared = _reconstruct_graph_input(composition, directory / f"input-{recipient['sequence']}",
+                                            recipient['instance'], packaging.task(expected), receipt['max_prompt_bytes'])
+        if prepared['digest'] != recipient['input_digest']:
+            raise native_sources.ArtifactIdentityError('Saved packaging input differs from its original recipient attempt')
+        specialist = runs.inspect_run(state, project, recipient['run_id'], max_result_bytes=limit - result['bytes'])
+        # The immutable reply may survive a coordinator loss before progress was written.
+        attempt = {**recipient}
+        if attempt['status'] == 'attempted' and attempt['result_sha256'] is None:
+            del attempt['result_sha256']
+        reply = _recover_agent_result(specialist, receipt['project_revision'], nodes[binding['recipient']], attempt)
+        attempt['result_sha256'] = reply['sha256']
+        checked = packaging.verify(directory, packaging.REPLY, packaging.reply(expected, attempt, reply['document']))
+        if receipt['status'] == 'succeeded' and checked['status'] != 'accepted':
+            raise native_sources.ArtifactIdentityError('Successful graph lacks an accepted original packaging reply')
+        return {**issued, 'state': 'corroborated', 'reply': checked}
+    except (OSError, ValueError, TypeError, KeyError, RecursionError, StateError) as error:
+        return {**issued, **native_sources.observation_failure(error)}
+
+
 def inspect_graph(state: State, project: str, directory: Path, manifest_digest: str) -> dict:
     """Reconstruct graph receipt and Agent observations offline without acquiring execution authority."""
     directory = directory.expanduser().absolute()
@@ -2247,6 +2391,8 @@ def inspect_graph(state: State, project: str, directory: Path, manifest_digest: 
     checkpoint, operator_route = _observe_route_checkpoint(directory, receipt, selectors, attempts, choices, recovery)
     follow_up = _observe_fixed_follow_up(state, project, directory, composition, receipt, recovery,
                                         checkpoint, operator_route, attempts)
+    consultation = _observe_packaging_consultation(state, project, directory, composition, receipt, recovery,
+                                                   checkpoint, operator_route, attempts)
     decisions = []
     for sequence, record in enumerate(route_records, 1):
         supervised = record['instance'] == receipt.get('pause_before_route')
@@ -2300,6 +2446,7 @@ def inspect_graph(state: State, project: str, directory: Path, manifest_digest: 
                       for node in nodes],
             'agent_attempts': list(attempts.values()), 'verification_reads': reads, 'route_decisions': decisions,
             **({'follow_up': follow_up} if follow_up is not None else {}),
+            **({'packaging_consultation': consultation} if consultation is not None else {}),
             **({'unavailable_outputs': observed_unavailable} if observed_unavailable else {}),
             **({'flow_map_blocks': observed_blocks} if observed_blocks else {}),
             'recovery': recovery,
