@@ -15,6 +15,16 @@
     "timeout_seconds": {"type": "integer", "minimum": 1, "maximum": 300},
     "minimum_gain": {"type": "number", "minimum": 0, "maximum": 1},
     "max_reported_cost": {"type": "number", "minimum": 0},
+    "execution_identity": {
+      "type": "object",
+      "properties": {
+        "provider": {"type": "string", "maxLength": 128, "pattern": "\\S"},
+        "model": {"type": "string", "maxLength": 128, "pattern": "\\S"},
+        "cost_unit": {"type": "string", "maxLength": 32, "pattern": "\\S"}
+      },
+      "required": ["provider", "model", "cost_unit"],
+      "additionalProperties": false
+    },
     "cases": {
       "type": "array",
       "minItems": 3,

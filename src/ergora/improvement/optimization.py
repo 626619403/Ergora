@@ -40,6 +40,7 @@ def optimize(state: State, project_id: str, baseline_digest: str, suite_digest: 
 
     baseline = skill_assets.get(state, project_id, baseline_digest)
     specification = evaluation.suite(state, project_id, suite_digest)["manifest"]
+    cost_unit = specification.get("execution_identity", {}).get("cost_unit")
     visible = {case["id"]: case for case in specification["cases"] if case["split"] != "holdout"}
     train = [case["id"] for case in visible.values() if case["split"] == "train"]
     validation = [case["id"] for case in visible.values() if case["split"] == "validation"]
@@ -51,6 +52,8 @@ def optimize(state: State, project_id: str, baseline_digest: str, suite_digest: 
                 "max_proposals": max_proposals, "timeout_seconds": timeout, "started": now(), "status": "running",
                 "metric_calls": 0, "proposals": 0, "reported_cost": 0.0, "evaluations": [], "candidates": [],
                 "reported_cost_complete": True, "output": str(directory)}
+    if cost_unit is not None:
+        document["cost_unit"] = cost_unit
 
     def persist():
         with state.connect() as db:
@@ -140,6 +143,8 @@ def optimize(state: State, project_id: str, baseline_digest: str, suite_digest: 
         document["proposals"] += 1
         request = {"candidate": candidate, "feedback": reflective_dataset, "components": components_to_update,
                    "objective": objective, "response": {"skill": "complete SKILL.md text", "cost": "nonnegative reported cost"}}
+        if cost_unit is not None:
+            request["response"]["cost_unit"] = cost_unit
         remaining = min(300, deadline - time.monotonic())
         if remaining <= 0:
             document["status"] = "budget_exhausted"
@@ -160,6 +165,8 @@ def optimize(state: State, project_id: str, baseline_digest: str, suite_digest: 
         cost = response["cost"]
         if not isinstance(response["skill"], str) or type(cost) not in (int, float) or not math.isfinite(cost) or cost < 0:
             raise ValueError("Proposer requires complete skill text and a finite nonnegative cost")
+        if cost_unit is not None and response.get("cost_unit") != cost_unit:
+            raise ValueError("Proposer reported cost unit differs from the frozen suite")
         total = document["reported_cost"] + cost
         if not math.isfinite(total):
             raise ValueError("Reported cost total is not finite")

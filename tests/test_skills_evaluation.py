@@ -100,6 +100,52 @@ def test_holdout_regression_partial_evidence_and_mutation_are_rejected(skill_pro
         skill_assets.get(state, "demo", candidate["digest"])
 
 
+@pytest.mark.parametrize("drift", [None, "provider", "model", "cost_unit", "missing"])
+def test_pinned_rsi_execution_identity_gates_adoption_and_cost_units(skill_project, drift):
+    state, repo, source, baseline, _ = skill_project
+    identity = {"provider": "controlled-provider", "model": "controlled-model", "cost_unit": "USD"}
+    scorer = repo / "identity-scorer.py"
+    scorer.write_text(f'''
+import json, pathlib, sys
+request = json.load(sys.stdin)
+improved = "IMPROVED" in (pathlib.Path(request["skill_dir"]) / "SKILL.md").read_text()
+result = {{"score": .9 if improved else .5, "passed": True, "cost": .125,
+           "feedback": "fixture", "execution_identity": {identity!r}}}
+drift = {drift!r}
+if improved and request["case"] == "validation" and drift:
+    if drift == "missing":
+        del result["execution_identity"]
+    else:
+        result["execution_identity"][drift] = "changed"
+print(json.dumps(result))
+''', encoding="utf-8")
+    suite = evaluation.register(state, "demo", {"schema_version": 1, "evaluator_argv": [sys.executable, str(scorer)],
+        "evaluator_files": [str(scorer)], "timeout_seconds": 5, "minimum_gain": .1, "max_reported_cost": 1,
+        "execution_identity": identity,
+        "cases": [{"id": split, "split": split, "input": split} for split in ("train", "validation", "holdout")]})
+    skill = source / "SKILL.md"
+    skill.write_text(skill.read_text().replace("BASELINE", "IMPROVED"))
+    candidate = skill_assets.import_bundle(state, "demo", source)
+    base_run = evaluation.evaluate(state, "demo", baseline["digest"], suite["digest"])
+    run = evaluation.evaluate(state, "demo", candidate["digest"], suite["digest"])
+    comparison = evaluation.compare(state, "demo", base_run["id"], run["id"])
+    assert comparison["execution_identity"] == identity
+    assert comparison["eligible"] is (drift is None)
+    if drift is None:
+        assert run["status"] == "succeeded" and run["reported_cost"] == .375
+        assert run["reported_cost_complete"] and all(row["execution_identity"] == identity for row in run["cases"])
+        skills.adopt(state, "demo", base_run["id"], run["id"], 1, "Controlled identity and correctness evidence")
+    else:
+        assert run["status"] == "failed" and [row["id"] for row in run["cases"]] == ["train", "validation"]
+        row = run["cases"][-1]
+        assert "score" not in row and "passed" not in row and row["outcome"] == "unevaluable"
+        assert row["cost"] == .125 and row["reported_cost_complete"] is (drift in ("provider", "model"))
+        assert run["reported_cost"] == (.25 if drift in ("provider", "model") else .125)
+        assert comparison["reported_cost_complete"] is (drift in ("provider", "model"))
+        with pytest.raises(ValueError, match="not eligible"):
+            skills.adopt(state, "demo", base_run["id"], run["id"], 1, "Cannot adopt on mismatched evidence")
+
+
 def test_selected_evaluation_archive_omits_unselected_case_material(skill_project):
     state, _, _, baseline, suite = skill_project
     manifest = suite["manifest"]
@@ -317,6 +363,47 @@ print(json.dumps({"skill":request["candidate"]["skill"].replace("BASELINE","IMPR
         assert snapshot["partial"] is True and snapshot["suite_digest"] == run["suite"] == suite["digest"]
         assert [case["id"] for case in snapshot["cases"]] == [case["id"] for case in run["cases"]]
         assert all(case["split"] != "holdout" for case in snapshot["cases"])
+
+
+@pytest.mark.parametrize("proposal_unit", ["USD", "EUR"])
+def test_real_gepa_enforces_pinned_evaluation_cost_unit(skill_project, proposal_unit):
+    pytest.importorskip("gepa")
+    state, repo, _, baseline, original = skill_project
+    identity = {"provider": "fixture", "model": "cpu-local", "cost_unit": "USD"}
+    scorer = repo / "pinned-scorer.py"
+    scorer.write_text(f'''
+import json, pathlib, sys
+request = json.load(sys.stdin)
+improved = "IMPROVED" in (pathlib.Path(request["skill_dir"]) / "SKILL.md").read_text()
+print(json.dumps({{"score": .9 if improved else .5, "passed": True, "cost": .125,
+                  "feedback": "fixture", "execution_identity": {identity!r}}}))
+''', encoding="utf-8")
+    proposer = repo / "pinned-proposer.py"
+    proposer.write_text(f'''
+import json, sys
+request = json.load(sys.stdin)
+assert request["response"]["cost_unit"] == "USD"
+print(json.dumps({{"skill": request["candidate"]["skill"].replace("BASELINE", "IMPROVED"),
+                  "cost": .25, "cost_unit": {proposal_unit!r}}}))
+''', encoding="utf-8")
+    specification = {key: value for key, value in original["manifest"].items()
+                     if key not in ("file_sha256", "path_bindings")}
+    specification.update(evaluator_argv=[sys.executable, str(scorer)], evaluator_files=[str(scorer)],
+                         execution_identity=identity)
+    suite = evaluation.register(state, "demo", specification)
+    projects.bind(state, "demo", "optimizer", {"tool": "gepa", "proposer_argv": [sys.executable, str(proposer)]}, 1)
+    result = optimization.optimize(state, "demo", baseline["digest"], suite["digest"], "Improve fixture score", 4, 1, 20)
+    subtotal = sum(evaluation.get(state, "demo", item)["reported_cost"] for item in result["evaluations"])
+    assert result["cost_unit"] == "USD" and result["proposals"] == 1
+    if proposal_unit == "USD":
+        assert result["status"] == "succeeded" and result["reported_cost_complete"]
+        assert result["reported_cost"] == subtotal + .25
+    else:
+        assert result["status"] == "failed" and not result["reported_cost_complete"]
+        assert "cost unit differs" in result["error"] and result["reported_cost"] == subtotal
+        raw = Path(result["output"], "proposal-1", "stdout.txt").read_bytes()
+        assert json.loads(raw)["cost_unit"] == "EUR"
+    assert skill_assets.versions(state, "demo")["active"][0]["digest"] == baseline["digest"]
 
 
 @pytest.mark.parametrize("newline", [b"\n", b"\r\n"], ids=["lf", "crlf"])
@@ -665,7 +752,8 @@ print({scored_response!r})
 
 
 @pytest.mark.parametrize("failure", ["nonzero", "timed-out", "killed", "malformed", "missing-cost", "invalid-cost",
-                                     "overflowing-cost", "duplicate-outcome", "oversized", "exception", "interrupt"])
+                                     "overflowing-cost", "duplicate-outcome", "unpinned-execution-identity",
+                                     "oversized", "exception", "interrupt"])
 def test_reported_cost_evaluator_failure_retains_unknown_subtotal_and_case(skill_project, monkeypatch, failure):
     state, _, _, baseline, suite = skill_project
     calls = []
@@ -678,6 +766,8 @@ def test_reported_cost_evaluator_failure_retains_unknown_subtotal_and_case(skill
         "invalid-cost": '{"score":1,"passed":true,"cost":NaN,"feedback":"invalid cost"}',
         "overflowing-cost": '{"outcome":"unevaluable","cost":1e400,"feedback":"unrepresentable cost"}',
         "duplicate-outcome": '{"outcome":"unknown","outcome":"unevaluable","cost":99,"feedback":"ambiguous"}',
+        "unpinned-execution-identity": (
+            '{"outcome":"unevaluable","cost":99,"feedback":"extra field","execution_identity":42}'),
         "oversized": "x" * 1_000_001,
     }
     process_status, returncode = {"nonzero": ("failed", 2), "timed-out": ("timed_out", 0), "killed": ("failed", -9)}.get(

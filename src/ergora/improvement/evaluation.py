@@ -101,6 +101,7 @@ def evaluate(state: State, project_id: str, digest: str, suite_digest: str, case
              unreserved_metric_calls: int | None = None) -> dict:
     candidate = skill_assets.get(state, project_id, digest)
     specification = suite(state, project_id, suite_digest)["manifest"]
+    expected_identity = specification.get("execution_identity")
     cost_limit = specification["max_reported_cost"]
     if remaining_cost is not None:
         cost_limit = min(cost_limit, remaining_cost)
@@ -121,6 +122,8 @@ def evaluate(state: State, project_id: str, digest: str, suite_digest: str, case
     document = {"id": run_id, "project": project_id, "skill": digest, "name": candidate["name"],
                 "suite": suite_digest, "started": now(), "status": "running", "cases": [], "reported_cost": 0.0,
                 "reported_cost_complete": True, "output": str(directory), "cost_limit": cost_limit}
+    if expected_identity is not None:
+        document["expected_execution_identity"] = expected_identity
     with state.connect() as db:
         db.execute("INSERT INTO evaluations VALUES (?, ?, ?)", (run_id, project_id, json.dumps(document)))
 
@@ -164,21 +167,38 @@ def evaluate(state: State, project_id: str, digest: str, suite_digest: str, case
                 result = parse_json(output.read_text(encoding="utf-8"), "Evaluator result")
             except RecursionError as error:
                 raise ValueError("Evaluator JSON response is too deeply nested") from error
+            observed_identity = None
+            if expected_identity is not None and isinstance(result, dict):
+                observed_identity = result.pop("execution_identity", None)
             contracts.validate(result, contracts.EVALUATION_RESULT, "Evaluator result")
             cost = result["cost"]
-            unevaluable = result.get("outcome") == "unevaluable"
-            row.update(cost=cost, feedback=result["feedback"], reported_cost_complete=cost is not None)
+            countable_cost = cost
+            identity_mismatch = False
+            if expected_identity is not None:
+                if observed_identity is not None:
+                    contracts.validate(observed_identity, contracts.EVALUATION_MANIFEST["properties"]["execution_identity"],
+                                       "Reported evaluator execution identity")
+                row["execution_identity"] = observed_identity
+                identity_mismatch = observed_identity != expected_identity
+                if observed_identity is None or observed_identity["cost_unit"] != expected_identity["cost_unit"]:
+                    countable_cost = None
+            unevaluable = identity_mismatch or result.get("outcome") == "unevaluable"
+            row.update(cost=cost, feedback=result["feedback"], reported_cost_complete=countable_cost is not None)
+            if identity_mismatch:
+                row["error"] = "Reported evaluator execution identity differs from the frozen suite"
             if unevaluable:
                 row["outcome"] = "unevaluable"
             else:
                 row.update(score=result["score"], passed=result["passed"])
-            if cost is not None:
-                total = document["reported_cost"] + cost
+            if countable_cost is not None:
+                total = document["reported_cost"] + countable_cost
                 if not math.isfinite(total):
                     raise ValueError("Reported cost total is not finite")
                 document.update(reported_cost=total, reported_cost_complete=True)
             if document["reported_cost"] > cost_limit:
                 document["status"] = "budget_exhausted"
+            elif identity_mismatch:
+                document.update(status="failed", error=f"Case {case['id']}: {row['error']}")
             elif unevaluable:
                 document.update(status="failed", error=f"Case {case['id']}: evaluator returned an unevaluable result")
             persist()
@@ -216,6 +236,7 @@ def compare(state: State, project_id: str, baseline_run: str, candidate_run: str
     if baseline["suite"] != candidate["suite"] or baseline["name"] != candidate["name"]:
         raise ValueError("Compare the same skill name against the same frozen evaluation suite")
     specification = suite(state, project_id, candidate["suite"])["manifest"]
+    expected_identity = specification.get("execution_identity")
     for run in (baseline, candidate):
         skill_assets.get(state, project_id, run["skill"])
     reasons = []
@@ -226,6 +247,9 @@ def compare(state: State, project_id: str, baseline_run: str, candidate_run: str
     for label, run in (("baseline", baseline), ("candidate", candidate)):
         if run["status"] != "succeeded" or {case["id"] for case in run["cases"]} != expected:
             reasons.append(f"{label} did not complete the whole evaluation suite")
+            continue
+        if expected_identity is not None and any(case.get("execution_identity") != expected_identity for case in run["cases"]):
+            reasons.append(f"{label} evaluator execution identity differs from the frozen suite")
             continue
         if label == "candidate" and not all(case["passed"] for case in run["cases"]):
             reasons.append("Candidate failed a required correctness check")
@@ -242,4 +266,5 @@ def compare(state: State, project_id: str, baseline_run: str, candidate_run: str
     return {"baseline": baseline["skill"], "candidate": candidate["skill"], "suite": candidate["suite"],
             "eligible": not reasons, "reasons": reasons, "averages": averages,
             "reported_cost": reported_cost,
-            "reported_cost_complete": all(run.get("reported_cost_complete") is True for run in (baseline, candidate))}
+            "reported_cost_complete": all(run.get("reported_cost_complete") is True for run in (baseline, candidate)),
+            **({"execution_identity": expected_identity} if expected_identity is not None else {})}
