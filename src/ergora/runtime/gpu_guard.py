@@ -12,6 +12,7 @@ import os
 from pathlib import Path
 import secrets
 import select
+import shutil
 import signal
 import socket
 import struct
@@ -27,6 +28,14 @@ _INPUT_FIELDS = {'schema_version', 'kind', 'session_id', 'origin', 'ordered_devi
                  'command', 'source_refs', 'config_ref', 'guard_source_refs', 'owner_identity', 'owner_nonce'}
 _MESSAGE_FIELDS = {'schema_version', 'type', 'owner_nonce', 'sequence', 'owner_identity', 'guard_identity',
                    'input_sha256', 'origin_sha256', 'attempt_raw_sha256', 'budget_sha256', 'command_sha256', 'body'}
+_LAUNCHER_REFUSALS = {
+    'unavailable': 'Owned guard requires an executable in the actual command environment',
+    'lookup_failed': 'Owned guard could not inspect the executable in the actual working directory',
+}
+
+
+class _LauncherPreflightError(ValueError):
+    """The original guard refused the launcher before resource admission."""
 
 
 def _now():
@@ -156,6 +165,29 @@ def _deadline(origin, *, cleanup=False):
     return time.monotonic() + min(1.0, remaining)
 
 
+def _launcher_refusal(command):
+    # Resolve kernel aliases such as /proc/self/cwd in the eventual child cwd.
+    # Restore the guard's original cwd before Popen interprets the same argument.
+    try:
+        original_cwd = os.open('.', os.O_PATH | os.O_DIRECTORY)
+        try:
+            os.chdir(command['cwd'])
+            program = command['argv'][0]
+            if os.path.dirname(program):
+                return None if shutil.which(program) is not None else 'unavailable'
+            for entry in os.get_exec_path(command['env']):
+                if shutil.which(os.path.join(entry or '.', program)) is not None:
+                    return None
+            return 'unavailable'
+        finally:
+            try:
+                os.fchdir(original_cwd)
+            finally:
+                os.close(original_cwd)
+    except OSError:
+        return 'lookup_failed'
+
+
 def run_owned_guard(pool, origin, argv, cwd, env, *, device_uuids, source_refs, config_ref, guard_source_refs,
                     authorize: Callable[[dict], None], stop_requested: Callable[[], bool],
                     before_request: Callable[[dict, str, dict], None] | None = None) -> dict:
@@ -225,11 +257,22 @@ def run_owned_guard(pool, origin, argv, cwd, env, *, device_uuids, source_refs, 
         binding = _bindings(value, guardian)
         deadline = _deadline(origin)
         _wire(parent, deadline, value=_message(binding, 'BIND', 0, value))
-        ready = _verify_message(_wire(parent, deadline), binding, 'READY', 0)
+        response = _wire(parent, deadline)
+        if response.get('type') == 'LAUNCHER_REFUSED':
+            refusal = _verify_message(response, binding, 'LAUNCHER_REFUSED', 0)
+            _exact(refusal, {'reason'}, 'guard launcher refusal')
+            reason = refusal['reason']
+            if not isinstance(reason, str) or reason not in _LAUNCHER_REFUSALS:
+                raise ValueError('Unknown original guard launcher refusal')
+            raise _LauncherPreflightError(_LAUNCHER_REFUSALS[reason])
+        ready = _verify_message(response, binding, 'READY', 0)
         _exact(ready, {'request_id', 'lease_id', 'ready_ref'}, 'guard ready response')
         expected = pool.request_identity(origin, list(device_uuids), guardian, binding['input_sha256'])
         if (ready['request_id'], ready['lease_id']) != expected:
             raise ValueError('Dedicated guardian returned another resource identity')
+        decision = check()
+        if decision['decision'] != 'permit':
+            raise ValueError('Original owner refused resource admission after guard launcher preflight: ' + decision['reason'])
         selected = {'request_id': ready['request_id'], 'origin': origin,
                     'ordered_device_uuids': list(device_uuids), 'guard_ready_ref': ready['ready_ref']}
         if before_request is not None:
@@ -265,6 +308,8 @@ def run_owned_guard(pool, origin, argv, cwd, env, *, device_uuids, source_refs, 
             except (EOFError, OSError, ValueError) as error:
                 channel_error = type(error).__name__
                 break
+    except _LauncherPreflightError:
+        raise
     except BaseException as error:
         stopped = True
         channel_error = type(error).__name__
@@ -319,6 +364,12 @@ def _guard(connection, pool):
     processes.prepare_supervised()
     if resources._children(guardian):
         raise ValueError('Dedicated guard already owns children before admission')
+    refusal = _launcher_refusal(value['command'])
+    if stopped or resources._remaining(origin) <= 0:
+        return 0
+    if refusal is not None:
+        _wire(connection, _deadline(origin), value=_message(binding, 'LAUNCHER_REFUSED', 0, {'reason': refusal}))
+        return 1
     request_id, lease_id = pool.request_identity(origin, value['ordered_device_uuids'], guardian, binding['input_sha256'])
     directory = pool.proof_directory(lease_id)
     directory.mkdir(mode=0o700, parents=True, exist_ok=True)
@@ -433,12 +484,20 @@ def _guard(connection, pool):
             running = True
             return stopped
 
+        output = directory / 'command-output'
         if consumed is not None and consumed['status'] == 'consumed':
-            result = processes.run(value['command']['argv'], Path(value['command']['cwd']), directory / 'command-output',
-                                   origin['wall_seconds'], env=value['command']['env'], supervised=True,
-                                   stop_requested=should_stop)
+            try:
+                result = processes.run(value['command']['argv'], Path(value['command']['cwd']), output,
+                                       origin['wall_seconds'], env=value['command']['env'], supervised=True,
+                                       stop_requested=should_stop)
+            except OSError:
+                # An exec error can escape after consume. Only this prepared
+                # subreaper can establish that its process tree is now empty.
+                if resources._children(guardian):
+                    raise
+                result = {'status': 'failed', 'returncode': None, 'output': str(output)}
         else:
-            result = {'status': 'cancelled', 'returncode': None, 'output': str(directory / 'command-output')}
+            result = {'status': 'cancelled', 'returncode': None, 'output': str(output)}
         # Irreversible spawn closure. Only existing channels/file operations and
         # resource ACKs follow this point; no user code or subprocess may run.
         stopped = True

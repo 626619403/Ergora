@@ -5785,7 +5785,19 @@ def local_gpu_configuration(configuration_project, request, tmp_path, monkeypatc
 _original_run = run
 
 def run(context, request, output, *, run_guarded):
-    result = run_guarded([sys.executable, str(Path(__file__).with_name('guarded.py')), str(output)])
+    launch_path = os.environ.get('ERGORA_TEST_GUARDED_CHILD_PATH')
+    producer = [str(Path(__file__).with_name('guarded.py')), str(output)]
+    if launch_path is None:
+        result = run_guarded([sys.executable, *producer])
+    else:
+        launch_root = Path(launch_path)
+        route = os.environ['ERGORA_TEST_GUARDED_CHILD_LOOKUP']
+        argv0 = '/proc/self/cwd/bin/python3' if route == 'proc-argv' else 'python3'
+        path = '/proc/self/cwd/bin' if route == 'proc-path' else 'bin'
+        (output / 'guarded-exit').touch()
+        marker('guard-admission', {'launcher': argv0, 'path': path,
+                                   'cwd': str(launch_root), 'monotonic_ns': time.monotonic_ns()})
+        result = run_guarded([argv0, *producer], cwd=launch_root, env={'PATH': path})
     if result['process_result']['status'] != 'succeeded':
         raise ValueError('Original guarded fixture command did not succeed')
     try:
@@ -5919,6 +5931,119 @@ def test_managed_training_reads_original_local_gpu_lease_without_advancing_admis
         assert 'identity' in refused['local_gpu_lease']['reason']
     binding_path.write_bytes(original_raw)
     assert training.execution(item['state'], 'demo', 'alpha')['local_gpu_lease'] == offline['local_gpu_lease']
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Managed local GPU ownership requires Linux')
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('launcher', [
+    'missing', 'inaccessible-cwd', 'relative-path-control', 'proc-argv', 'proc-path',
+    'missing-shebang-interpreter', 'removed-after-ready',
+])
+def test_registered_guard_preflight_launch_environment(local_gpu_configuration, tmp_path, monkeypatch, launcher):
+    from test_local_gpu_guard import _until
+
+    item, pool, configuration, _ = local_gpu_configuration
+    launcher_root = tmp_path / 'launch:cwd'
+    bin_directory = launcher_root / 'bin'
+    bin_directory.mkdir(parents=True)
+    executable = bin_directory / 'python3'
+    launches = launcher in ('relative-path-control', 'proc-argv', 'proc-path')
+    on_requested = None
+    if launches or launcher == 'removed-after-ready':
+        executable.symlink_to(Path(sys.executable).resolve())
+    elif launcher == 'missing-shebang-interpreter':
+        missing_interpreter = '/ergora-controlled-missing-python-interpreter'
+        assert not Path(missing_interpreter).exists()
+        executable.write_text(f'#!{missing_interpreter}\n')
+        executable.chmod(0o700)
+        with pytest.raises(FileNotFoundError):
+            subprocess.Popen(['python3'], cwd=launcher_root, env={'PATH': 'bin'})
+    if launcher == 'removed-after-ready':
+        release_ack = tmp_path / 'permit-original-guard-ack'
+        monkeypatch.setenv('ERGORA_TEST_DELAY_GUARD_ACK', str(release_ack))
+
+        def remove_executable(current):
+            _until(lambda: (current['job'] / 'managed-execution/gpu-lease.json').exists())
+            assert pool.inspect()['requests'] == []
+            executable.unlink()
+            release_ack.touch()
+
+        on_requested = remove_executable
+    monkeypatch.setenv('ERGORA_TEST_GUARDED_CHILD_PATH', str(launcher_root))
+    monkeypatch.setenv('ERGORA_TEST_GUARDED_CHILD_LOOKUP', launcher)
+    if launcher == 'inaccessible-cwd':
+        launcher_root.chmod(0o600)
+    try:
+        if launcher == 'inaccessible-cwd' and os.access(launcher_root, os.X_OK):
+            pytest.skip('The current identity can enter a directory without search permission')
+        execution = run_configuration_execution(item, on_requested=on_requested)
+    finally:
+        if launcher == 'inaccessible-cwd':
+            launcher_root.chmod(0o700)
+    job = item['job']
+    output = job / 'run-output'
+    native = json.loads((job / 'result.json').read_bytes())
+    managed = job / 'managed-execution'
+    source_request = json.loads((job / 'configuration-request.json').read_bytes())
+    proof_root = Path(configuration['coordination_directory']) / 'sessions' / pool.session['session_id'] / 'proofs'
+    proofs = [json.loads(path.read_bytes()) for path in proof_root.glob('*/stopped.json')]
+    lease = execution['local_gpu_lease']
+    observed = {
+        'launcher': launcher,
+        'holder': 'configuration-cpu',
+        'source_sha256': source_request['configuration_readback']['source']['inventory_sha256'],
+        'runner_sha256': source_request['runner_sha256'],
+        'original_run_count': json.loads(item['service'][1].read_bytes())['starts'],
+        'native_request_raw_sha256': hashlib.sha256((job / 'request.json').read_bytes()).hexdigest(),
+        'original_attempt_raw_sha256': hashlib.sha256((managed / 'attempt.json').read_bytes()).hexdigest(),
+        'budget': dict(source_request['context']['policy']),
+        'bootstrap': {name: (item['markers'] / (name + '.jsonl')).is_file()
+                      for name in ('import', 'prepare', 'describe', 'guard-admission')},
+        'native_started': (job / 'started.json').is_file(),
+        'executable_exists_at_readback': executable.exists(),
+        'guarded_child_started': (output / 'guarded-start').is_file(),
+        'first_scored_work': (item['markers'] / 'first-work.jsonl').is_file(),
+        'configuration_receipt': (output / 'configuration-receipt.json').is_file(),
+        'native_result': native,
+        'local_gpu_lease': lease,
+        'lease_binding_present': (managed / 'gpu-lease.json').is_file(),
+        'executor_stop_confirmed': execution['executor_stop_confirmed'],
+        'pool_requests': [{name: row[name] for name in
+                          ('state', 'consume_binding', 'release_ref', 'request_id', 'lease_id')}
+                          for row in pool.inspect()['requests']],
+        'child_output_present': (output / 'guarded-output').is_file(),
+        'guard_stopped_proofs': proofs,
+        'output_dirs_at_process_boundary': len(list(proof_root.glob('*/command-output'))),
+        'execution_log_tail': (output / 'execution.log').read_text()[-500:],
+    }
+    print(json.dumps(observed, sort_keys=True), flush=True)
+    assert observed['original_run_count'] == 1
+    assert observed['native_started'] and all(observed['bootstrap'].values())
+    assert observed['executor_stop_confirmed'] is True
+    if launches:
+        assert native['state'] == 'SUCCEEDED'
+        assert observed['guarded_child_started'] and observed['first_scored_work']
+        assert lease['status'] == 'released'
+    else:
+        assert native['state'] == 'FAILED'
+        assert not observed['guarded_child_started'] and not observed['first_scored_work']
+    if launcher in ('missing', 'inaccessible-cwd'):
+        reason = ('requires an executable in the actual command environment' if launcher == 'missing'
+                  else 'could not inspect the executable in the actual working directory')
+        assert reason in observed['execution_log_tail']
+        assert observed['pool_requests'] == [] and not proofs and not observed['lease_binding_present']
+        assert not list(proof_root.glob('*/ready.json'))
+        assert lease['status'] == 'unknown' and 'binding has not been observed' in lease['reason']
+    elif not launches:
+        assert observed['executable_exists_at_readback'] == (launcher == 'missing-shebang-interpreter')
+        assert observed['output_dirs_at_process_boundary'] == 1
+        request, = observed['pool_requests']
+        assert request['consume_binding'] is not None and request['state'] == 'released'
+        proof, = proofs
+        assert proof['process_result']['status'] == 'failed' and proof['process_result']['returncode'] is None
+        assert proof['lease_id'] == request['lease_id'] == lease['lease_id'] and proof['spawn_closed']
+        assert lease['attempt_sha256'] == observed['original_attempt_raw_sha256']
+        assert lease['status'] == 'released' and lease['release_ref'] == request['release_ref']
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Managed local GPU ownership requires Linux')
