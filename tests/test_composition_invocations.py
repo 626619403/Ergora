@@ -1775,6 +1775,112 @@ Path(sys.argv[1]).write_text(json.dumps({'summary':'Review', 'artifacts':{'respo
     assert reads == [source]
 
 
+@pytest.mark.skipif(sys.platform != 'linux', reason='Candidate verification uses registered native Linux readers')
+@pytest.mark.parametrize('end', ['complete', 'stop', 'deadline'])
+def test_pending_verification_allows_a_disjoint_branch_and_keeps_its_original_reader(prepared, tmp_path, monkeypatch, end):
+    from ergora.agents import graphs
+    from ergora.development import application
+
+    state, _, _ = prepared()
+    base = workflows.get(state, 'structure-review', '1.0.0')
+    definition = base['definition']
+    review = {**definition['nodes'][0], 'review_requirement': 'required'}
+    draft = {**definition, 'id': 'overlapping-verification', 'schema_version': 2, 'inputs': ['locator', 'task'],
+             'outputs': {'analysis': {'node': 'review', 'output': 'result'}}, 'nodes': [
+                 {'id': 'evidence', 'operation': 'verify-evidence', 'depends_on': [],
+                  'inputs': {'source': {'input': 'locator'}}},
+                 {**review, 'id': 'independent'},
+                 {**review, 'depends_on': ['evidence'], 'inputs': {'task': {'node': 'evidence', 'output': 'result'}}}]}
+    workflows.revise(state, definition['id'], definition['version'], base['digest'], draft, publish=True)
+    grant = {'schema_version': 1, 'permissions': draft['permissions'], 'limits': {**draft['limits'], 'concurrency': 1}}
+    manifest = tmp_path / 'manifest'
+    selected = workflows.prepare_manifest(state.root, draft['id'], draft['version'], grant, manifest)
+    source = {'task_id': 'demo-task', 'run_id': '00000000-0000-4000-8000-000000000001',
+              'event_id': 12, 'candidate_sha': 'a' * 40, 'receipt_sha256': 'b' * 64}
+    project = state.project('demo')
+    evidence = {**source, 'project': 'demo', 'project_revision': project['revision'],
+                'check_results_sha256': 'c' * 64, 'fixed_check_ids': ['config-check'], 'status': 'validated'}
+
+    installation = tmp_path / 'installation'
+    interpreter = installation / '.venv/bin/python'
+    interpreter.parent.mkdir(parents=True)
+    interpreter.symlink_to(sys.executable)
+    monkeypatch.setattr(application, '_project', lambda state, project_id: {**state.project(project_id),
+        'registration': {'definition': {'execution': {'installation': str(installation),
+            'config_directory': str(tmp_path), 'state_directory': str(tmp_path)}}}})
+
+    reader_pid, independent, dependent = (tmp_path / name for name in ('reader.pid', 'independent', 'dependent'))
+    reader = '''import json, os, sys, time
+from pathlib import Path
+pid, independent, end, evidence = sys.argv[1:]
+request = json.load(sys.stdin)
+assert request['source'] == {key: json.loads(evidence)[key] for key in request['source']}
+assert request['operation'] == 'read-candidate-verification'
+Path(pid).write_text(str(os.getpid()))
+while end != 'complete' or not Path(independent).exists():
+    time.sleep(.02)
+print(evidence)
+'''
+    analysis = '''import json, os, sys, time
+from pathlib import Path
+pid, independent, dependent, output = map(Path, sys.argv[1:])
+task = json.loads(sys.stdin.read().split('Workflow task port (JSON value):\\n')[-1])
+if task == 'independent work':
+    while not pid.exists() or not pid.read_text():
+        time.sleep(.02)
+    os.kill(int(pid.read_text()), 0)
+    independent.touch()
+else:
+    dependent.write_text(json.dumps(task))
+output.write_text(json.dumps({'summary': 'Review', 'artifacts': {'response': 'Ready'}, 'decision': 'approve'}))
+'''
+    deadlines, reads = {}, []
+    original_run = processes.run
+
+    def run(argv, *args, **kwargs):
+        if argv[-1] == 'from ergora.development.runtime.evidence import main;main()':
+            reads.append(kwargs['deadline'])
+            argv = [sys.executable, '-c', reader, str(reader_pid), str(independent), end, json.dumps(evidence)]
+        else:
+            deadlines.setdefault('analysis', kwargs['deadline'])
+        return original_run(argv, *args, **kwargs)
+
+    monkeypatch.setattr(processes, 'run', run)
+    original_command = agent_backends.CodexBackend.command
+
+    def command(backend, request):
+        argv, prompt = original_command(backend, request)
+        output = argv[argv.index('--output-last-message') + 1]
+        return [sys.executable, '-c', analysis, str(reader_pid), str(independent), str(dependent), output], prompt
+
+    monkeypatch.setattr(agent_backends.CodexBackend, 'command', command)
+    monkeypatch.setattr(agent_backends.CodexBackend, 'check_invocation', lambda self: None)
+    directory = tmp_path / 'run'
+    receipt = graphs.run_graph(state, 'demo', manifest, selected['digest'], {'locator': source, 'task': 'independent work'},
+        directory, 30_000, 5, stop_requested=lambda: end == 'stop' and independent.exists())
+
+    assert independent.exists(), 'A ready disjoint Agent must start while the original evidence reader is pending'
+    assert not Path('/proc', reader_pid.read_text()).exists(), 'The original reader must be reaped before returning'
+    record, = receipt['verification_reads']
+    assert record['source'] == source and record['instance'] == 'root/evidence'
+    assert receipt == json.loads((directory / 'run.json').read_bytes())
+    if end == 'complete':
+        assert receipt['status'] == 'succeeded'
+        assert record['status'] == 'validated' and record['evidence'] == evidence
+        assert json.loads(dependent.read_bytes()) == evidence
+        assert [leaf['instance'] for leaf in receipt['leaves']] == ['root/independent', 'root/review']
+    else:
+        status = 'cancelled' if end == 'stop' else 'timed_out'
+        assert receipt['status'] == record['status'] == status
+        assert [leaf['instance'] for leaf in receipt['leaves']] == ['root/independent']
+        assert not dependent.exists() and 'outputs' not in receipt
+    observation = graphs.inspect_graph(state, 'demo', directory, selected['digest'])
+    observed, = observation['verification_reads']
+    assert observed['locator'] == source and observed['status'] == record['status']
+    assert observed['original_receipt'] == {'state': 'not_queried'}
+    assert reads == [deadlines['analysis']]
+
+
 def test_standalone_graph_rechecks_selected_manifest_at_each_leaf(prepared, tmp_path, monkeypatch):
     from ergora.agents.graphs import run_graph
 
@@ -2844,7 +2950,7 @@ Path(output).write_text(json.dumps(value))
         def stop_after_local_block(run):
             if run.receipt.get('flow_map_blocks'):
                 while run.running:
-                    run.wait_for_leaf()
+                    run.wait_for_work()
                     run.collect_finished()
                 save(run)
                 raise RuntimeError('Controlled coordinator loss after the dependent block')

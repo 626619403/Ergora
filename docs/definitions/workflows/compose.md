@@ -120,7 +120,7 @@ For a Workflow v2 graph with a `verify-evidence` node, run the same command with
 }
 ```
 
-Replace the placeholders and example event ID with values from the original run. The read requires the project's original Linux/WSL2 reference installation, Temporal history and job files. It runs synchronously in the graph coordinator and can delay independent dispatch and observation of other Agent results. Active Agent calls retain their original deadline and stop handling. A successful node returns the verified evidence identity on its `result` port. The graph receipt records each original locator and the read outcome in `verification_reads`. Formal verification, approval and candidate release continue through their original owners. [Node and port contract](contracts.md#original-fixed-verification-evidence)
+Replace the placeholders and example event ID with values from the original run. The read requires the project's original Linux/WSL2 reference installation, Temporal history and job files. One candidate evidence read can wait alongside dependency-ready Agent calls under the original graph deadline. The coordinator records the verified evidence before making it available on the `result` port. Stop collects the original reader before the graph returns. The graph receipt records each original locator and the read outcome in `verification_reads`. Formal verification, approval and candidate release continue through their original owners. [Node and port contract](contracts.md#original-fixed-verification-evidence)
 
 ### Gate an advisory review on a completed fixed check
 

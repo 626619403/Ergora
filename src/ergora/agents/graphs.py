@@ -238,6 +238,18 @@ def _fixed_completed_progress(receipt, recovery, review, attempt, expected, comp
     return {**expected, 'status': 'validated', 'evidence': evidence, 'completion_sha256': native_sources.sha(completion)}
 
 
+def _join_executor(executor, futures):
+    interrupted = False
+    while True:
+        try:
+            executor.shutdown()
+            # An interrupted thread join can return early on retry. The calls own their cleanup until the futures settle.
+            wait(futures)
+            return interrupted
+        except KeyboardInterrupt:
+            interrupted = True
+
+
 _FLOW_MAP_SCHEMA = {
     'type': 'object',
     'additionalProperties': False,
@@ -352,6 +364,7 @@ class _GraphRun:
         self.stop = Event()
         self.result_bytes = 0
         self.running = {}
+        self.candidate_read = None
         self.active_slots = Counter()
         self.completed = {}
         self.blocked = set()
@@ -481,7 +494,6 @@ class _GraphRun:
             # Final admission observes results and stops that arrived during durable publication.
             settled = self.check_leaf_admission()
         except BaseException:
-            self.stop.set()
             attempt['status'] = 'not_dispatched'
             raise
         future = executor.submit(runs.run_input, self.state, self.project['id'], source, self.receipt['timeout'], mode='text-only',
@@ -494,6 +506,12 @@ class _GraphRun:
 
     def collect_finished(self):
         settled = False
+        if self.candidate_read is not None:
+            future, record = self.candidate_read
+            if future.done():
+                self.candidate_read = None
+                self.completed[record['instance']] = self.finish_verification(record, None, future.result)
+                settled = True
         while finished := [future for future in self.running if future.done()]:
             for future in finished:
                 attempt = self.running.pop(future)
@@ -547,9 +565,7 @@ class _GraphRun:
             raise TimeoutError('The original fixed-check read deadline expired')
         return now
 
-    def verify_evidence(self, path, source):
-        from ergora.development.application import read_candidate_verification, read_fixed_check_proof
-
+    def prepare_verification(self, path, source):
         self.check_active()
         if self.resumed_wait is None:
             reads = self.receipt.setdefault('verification_reads', [])
@@ -564,20 +580,36 @@ class _GraphRun:
         else:
             record, attempt = self.resumed_wait
             self.resumed_wait = None
+        return record, attempt
+
+    def read_verification(self, kind, source, attempt):
+        from ergora.development.application import read_candidate_verification, read_fixed_check_proof
+
+        options = {'expected_revision': self.project['revision'], 'deadline': self.deadline,
+                   'stop_requested': self.should_stop}
+        if attempt is not None:
+            self.check_fixed_read_cutoff(attempt)
+            options.update(deadline=attempt['deadline_monotonic_ns'] / 1_000_000_000, lock_fd=self.lock_fd)
+        if kind == 'verify-fixed-check':
+            return read_fixed_check_proof(self.state, self.project['id'], source, self.fixed_review, **options)
         try:
-            options = {'expected_revision': self.project['revision'], 'deadline': self.deadline,
-                       'stop_requested': self.should_stop}
+            evidence = read_candidate_verification(self.state, self.project['id'], source, **options)
+        except RuntimeError as error:
+            raise ValueError(f'Candidate verification evidence reader failed: {error}') from error
+        if self.should_stop():
+            raise KeyboardInterrupt
+        if time.monotonic() >= self.deadline:
+            raise TimeoutError('The original workflow deadline expired')
+        return evidence
+
+    def finish_verification(self, record, attempt, read, *, graph_expired=False, completed_before_fence=False):
+        try:
+            evidence = read()
+            result_bytes = len(_bounded_json(evidence, self.result_limit - self.result_bytes))
+            if not completed_before_fence:
+                self.check_active()
             if attempt is not None:
-                self.check_fixed_read_cutoff(attempt)
-                options.update(deadline=attempt['deadline_monotonic_ns'] / 1_000_000_000, lock_fd=self.lock_fd)
-            if self.nodes[path]['kind'] == 'verify-fixed-check':
-                evidence = read_fixed_check_proof(self.state, self.project['id'], source, self.fixed_review, **options)
-            else:
-                evidence = read_candidate_verification(self.state, self.project['id'], source, **options)
-            self.result_bytes += len(_bounded_json(evidence, self.result_limit - self.result_bytes))
-            self.check_active()
-            if attempt is not None:
-                _check_fixed_proof(self.receipt, self.fixed_review, source, evidence)
+                _check_fixed_proof(self.receipt, self.fixed_review, record['source'], evidence)
                 completion = _fixed_read_completion(attempt, evidence, self.check_fixed_read_cutoff(attempt), self.result_limit)
                 _write_recovery_record(self.directory, _FIXED_READ_COMPLETE, completion, preserve_order=True)
                 record['completion_sha256'] = native_sources.sha(completion)
@@ -585,11 +617,12 @@ class _GraphRun:
             record['status'] = 'timed_out'
             raise
         except KeyboardInterrupt:
-            record['status'] = 'cancelled'
+            record['status'] = 'timed_out' if graph_expired else 'cancelled'
             raise
-        except (OSError, ValueError):
+        except Exception:
             record['status'] = 'failed'
             raise
+        self.result_bytes += result_bytes
         record.update(status='validated', evidence=evidence)
         self.save()
         return {'result': evidence}
@@ -684,7 +717,7 @@ class _GraphRun:
             if self.operator_decision is None:
                 while self.running:
                     self.check_active()
-                    self.wait_for_leaf()
+                    self.wait_for_work()
                     if self.collect_finished():
                         self.save()
                 self.check_active()
@@ -969,13 +1002,21 @@ class _GraphRun:
             prepared = self.recovery_input(source, path, task_at(path))
             self.unreserved = (path, prepared['digest'])
 
-    def wait_for_leaf(self):
-        wait(self.running, timeout=min(.05, max(0, self.deadline - time.monotonic())), return_when=FIRST_COMPLETED)
+    def wait_for_work(self):
+        futures = list(self.running)
+        if self.candidate_read is not None:
+            futures.append(self.candidate_read[0])
+        wait(futures, timeout=min(.05, max(0, self.deadline - time.monotonic())), return_when=FIRST_COMPLETED)
 
     def workflow(self, inputs, project_limit):
         pending, opened, children = self.workflow_state(inputs)
         root_limit = self.nodes['root']['limits']['concurrency']
         executor = ThreadPoolExecutor(max_workers=min(project_limit, root_limit))
+        # Keep one original candidate read at a time, alongside the frozen Agent capacity.
+        reader = ThreadPoolExecutor(max_workers=1)
+        graph_aborted = False
+        graph_expired = False
+        completed_before_fence = False
         try:
             while 'root' not in self.completed:
                 self.check_active()
@@ -988,12 +1029,13 @@ class _GraphRun:
                 if 'root' in self.completed:
                     break
                 node = next((node for node in pending.values() if self.ready(node, opened)
+                             and (node['kind'] != 'verify-evidence' or self.candidate_read is None)
                              and (self.unreserved is None or node['kind'] != 'agent'
                                   or node['path'] == self.unreserved[0])), None)
                 if node is None:
-                    if not self.running:
+                    if not self.running and self.candidate_read is None:
                         raise ValueError('No runnable workflow node remains')
-                    self.wait_for_leaf()
+                    self.wait_for_work()
                     continue
                 path = node['path']
                 del pending[path]
@@ -1011,8 +1053,14 @@ class _GraphRun:
                     continue
                 parent = node['parent']
                 ports = self.ports(parent, opened[parent], node['inputs'])
-                if node['kind'] in _VERIFICATION_NODES:
-                    self.completed[path] = self.verify_evidence(path, ports['source'])
+                if node['kind'] == 'verify-evidence':
+                    record, attempt = self.prepare_verification(path, ports['source'])
+                    future = reader.submit(self.read_verification, node['kind'], ports['source'], attempt)
+                    self.candidate_read = future, record
+                elif node['kind'] == 'verify-fixed-check':
+                    record, attempt = self.prepare_verification(path, ports['source'])
+                    self.completed[path] = self.finish_verification(record, attempt,
+                        lambda: self.read_verification(node['kind'], ports['source'], attempt))
                 elif node['kind'] == 'choose-agent':
                     route = self.choose_agent(node, ports['source'])
                     if route is None:
@@ -1021,18 +1069,35 @@ class _GraphRun:
                 else:
                     raise ValueError(f'Unsupported standalone workflow node: {path}')
         except BaseException as error:
+            graph_aborted = True
+            graph_expired = isinstance(error, TimeoutError) and time.monotonic() >= self.deadline
+            # Reuse a passing read that settled before a disjoint branch failed and fenced further dispatch.
+            completed_before_fence = (self.candidate_read is not None and self.candidate_read[0].done()
+                                      and isinstance(error, Exception) and not isinstance(error, TimeoutError))
             self.stop.set()
             if isinstance(error, KeyboardInterrupt):
                 self.fence_stop()
             raise
         finally:
-            executor.shutdown()
-            # The executor joins after the stop fence. Persist original terminal outcomes even after a graph failure.
+            candidate_futures = () if self.candidate_read is None else (self.candidate_read[0],)
+            reader_interrupted = _join_executor(reader, candidate_futures)
+            executor_interrupted = _join_executor(executor, self.running)
+            # Join after the stop fence, then retain original terminal outcomes after a graph failure.
+            if self.candidate_read is not None:
+                future, record = self.candidate_read
+                try:
+                    self.finish_verification(record, None, future.result, graph_expired=graph_expired,
+                                             completed_before_fence=completed_before_fence)
+                except (Exception, KeyboardInterrupt):
+                    pass
             for future, attempt in self.running.items():
                 try:
                     self.finish_leaf(future, attempt)
-                except (OSError, ValueError, RecursionError, KeyboardInterrupt, StateError):
-                    pass
+                except (Exception, KeyboardInterrupt):
+                    if attempt['status'] == 'attempted':
+                        attempt['status'] = 'unknown'
+            if not graph_aborted and (reader_interrupted or executor_interrupted):
+                raise KeyboardInterrupt
         return self.completed['root']
 
 
