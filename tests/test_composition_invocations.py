@@ -647,7 +647,8 @@ raise SystemExit(main(sys.argv[6:]))
     inputs = tmp_path / 'inputs.json'
     inputs.write_text('{"task":{"request":"Assess the architecture and dependency boundary."}}', encoding='utf-8')
     env = {name: os.environ[name] for name in ('PATH', 'SYSTEMROOT', 'TMP', 'TEMP', 'TMPDIR') if name in os.environ}
-    env.update(PYTHONPATH=str(IMPORT_ROOT), PYTHONDONTWRITEBYTECODE='1')
+    env.update(HOME=str(tmp_path), USERPROFILE=str(tmp_path),
+               PYTHONPATH=str(IMPORT_ROOT), PYTHONDONTWRITEBYTECODE='1')
 
     def commands(policy, fault, *, mode='serial', recoverable=False):
         limits = {**inventory_definition['limits'], 'concurrency': 2 if mode == 'parallel' else 1}
