@@ -6,6 +6,7 @@ import re
 
 import ergora.training.native as training_native
 import ergora.configuration.registrations as registrations
+from ergora.runtime import action_observations
 from ergora.storage.state import State
 
 
@@ -130,8 +131,9 @@ def submission(state: State, project_id: str, experiment_id: str, *, original_re
 def execution(state: State, project_id: str, experiment_id: str) -> dict:
     """Read historical lifecycle records without the selected native installation."""
     project = _project(state, project_id)
+    action = action_observations.TrainingExecutionStatus(experiment_id)
     return {'project': project_id, 'project_revision': project['revision'], 'experiment_id': experiment_id,
-            **training_native.training_execution(project, state.root, 'inspect', {'experiment_id': experiment_id})}
+            **action_observations.observe(action, project, state.root)}
 
 
 def execute(state: State, project_id: str, experiment_id: str, expected_revision: int, intent_sha256: str,

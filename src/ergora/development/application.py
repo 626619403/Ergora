@@ -29,6 +29,7 @@ from ergora.development.dags import WorkDelivery, require_formal_nodes
 from ergora.development.route_errors import RouteBlocked
 from ergora.development.envelopes import identity
 from ergora.development.runtime.creation_process import task_preparation
+from ergora.runtime import action_observations
 from ergora.storage.assets import inventory_tree
 from ergora.storage.state import State
 from ergora.development.six_stage import invocation
@@ -519,21 +520,9 @@ def authorize_candidate_check(state: State, project_id: str, operation_id: str, 
 def candidate_check_status(state: State, project_id: str, operation_id: str, *, job_sha256: str | None = None,
                            verify_pending: bool = False, deadline: float | None = None, stop_requested=None) -> dict:
     """Observe the original check, optionally requiring an unrejected pending request."""
-    payload = _candidate_check_status_request(operation_id, job_sha256, verify_pending)
+    action = action_observations.FixedCheckStatus(operation_id, job_sha256, verify_pending)
     project = _project(state, project_id)
-    return development_native.task_fixed_candidate_check(project, state.root, 'status-fixed-check', payload,
-                                                         deadline=deadline, stop_requested=stop_requested)
-
-
-def _candidate_check_status_request(operation_id, job_sha256, verify_pending):
-    if type(verify_pending) is not bool or (verify_pending and job_sha256 is None):
-        raise ValueError('Pending fixed-check observation requires its exact original Job digest')
-    if job_sha256 is not None:
-        _digest(job_sha256, 'Candidate check job')
-    payload = {'operation_id': operation_id, 'job_sha256': job_sha256}
-    if verify_pending:
-        payload['verify_pending'] = True
-    return payload
+    return action_observations.observe(action, project, state.root, deadline=deadline, stop_requested=stop_requested)
 
 
 def stop_candidate_check(state: State, project_id: str, operation_id: str, job_sha256: str, *, confirm: bool = False) -> dict:

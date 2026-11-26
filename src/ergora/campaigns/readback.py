@@ -13,7 +13,7 @@ from ergora.campaigns.records import (
     READBACK_ACTIVITY, READBACK_CLEANUP_SECONDS, CampaignFiles, check_receipt, identity,
     readback_grant, readback_id, readback_task, require_check_project, verify_registration,
 )
-from ergora.runtime import processes
+from ergora.runtime import action_observations, processes
 from ergora.storage.state import State
 
 
@@ -85,8 +85,6 @@ class FixedCheckReadback:
 
 
 def _guard(home, project, campaign):
-    from ergora.development.application import _candidate_check_status_request
-    from ergora.development.native import task_fixed_candidate_check
     from ergora.native.resources import validate_installation
 
     state = State(Path(home), read_only=True)
@@ -133,9 +131,9 @@ def _guard(home, project, campaign):
                                         'reaped_at_monotonic': time.monotonic()})
 
     source = task['source']
-    payload = _candidate_check_status_request(source['operation_id'], source['job_sha256'], True)
-    status = task_fixed_candidate_check(selected, state.root, 'status-fixed-check', payload,
-                                        deadline=work_cutoff, stop_requested=stopped, supervised_cleanup=save_cleanup)
+    action = action_observations.FixedCheckStatus(source['operation_id'], source['job_sha256'], verify_pending=True)
+    status = action_observations.observe(action, selected, state.root, deadline=work_cutoff,
+                                         stop_requested=stopped, supervised_cleanup=save_cleanup)
     cleanup = files._read('readback-cleanup')
     if (cleanup is None or cleanup['receipt']['owner'] != guard or not cleanup['receipt']['model_waited']
             or cleanup['receipt']['remaining_children'] or stopped()):

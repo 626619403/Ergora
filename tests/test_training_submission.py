@@ -139,6 +139,36 @@ def synthetic_execution(prepared, *, controller=None, ident='alpha'):
     return state, definition, runtime, folder
 
 
+def test_original_action_observation_preserves_the_selected_owner_receipt(tmp_path, monkeypatch):
+    from ergora.development import native as development_native
+    from ergora.runtime import action_observations as actions
+
+    project = {'id': 'demo', 'revision': 8}
+    fixed = actions.FixedCheckStatus('check', 'a' * 64, verify_pending=True)
+    check_receipt = {'operation_id': 'check', 'job_sha256': 'a' * 64, 'project': 'demo',
+                     'project_revision': 7, 'status': 'attempted'}
+    monkeypatch.setattr(development_native, 'task_fixed_candidate_check',
+                        lambda *args, **kwargs: check_receipt)
+    assert actions.observe(fixed, project, tmp_path) is check_receipt
+    check_receipt['job_sha256'] = 'b' * 64
+    with pytest.raises(ValueError, match='Fixed-check receipt differs'):
+        actions.observe(fixed, project, tmp_path)
+
+    managed = actions.TrainingExecutionStatus('alpha')
+    lease = {'status': 'unknown', 'release_ref': None}
+    training_receipt = {'records': {'request': {'project': 'demo', 'experiment_id': 'alpha'}},
+                        'local_gpu_lease': lease, 'execution_success': None}
+    monkeypatch.setattr(training_native, 'training_execution', lambda *args: training_receipt)
+    assert actions.observe(managed, project, tmp_path) is training_receipt
+    training_receipt['records']['request']['experiment_id'] = 'other'
+    with pytest.raises(ValueError, match='Training execution request differs'):
+        actions.observe(managed, project, tmp_path)
+    with pytest.raises(ValueError, match='does not support a caller-owned reader window'):
+        actions.observe(managed, project, tmp_path, deadline=100)
+    with pytest.raises(ValueError, match='Unsupported original action observation'):
+        actions.observe('stop', project, tmp_path)
+
+
 def test_execution_history_is_sdk_free_and_survives_missing_installation(historical_execution, capsys):
     from ergora.interfaces.cli import main
 
