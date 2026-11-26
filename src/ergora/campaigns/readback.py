@@ -49,20 +49,31 @@ class FixedCheckReadback:
                 activity.heartbeat(info.activity_id)
                 await asyncio.wait((waiter,), timeout=.15)
         except asyncio.CancelledError:
-            self.files.write('readback-cancel', {'activity_id': info.activity_id})
+            write_error = None
+            try:
+                self.files.write('readback-cancel', {'activity_id': info.activity_id})
+            except OSError as error:
+                write_error = error
             if waiter is None:
                 async def wait_for_guard():
                     guard = await spawning
                     return await guard.wait()
 
                 waiter = asyncio.create_task(wait_for_guard())
-            # A later cancellation must still leave the Activity owning the original guard.
-            while not waiter.done():
-                try:
-                    await asyncio.shield(waiter)
-                except asyncio.CancelledError:
-                    continue
-            waiter.result()
+            # A failed record write or later cancellation cannot transfer guard ownership.
+            try:
+                while not waiter.done():
+                    try:
+                        await asyncio.shield(waiter)
+                    except asyncio.CancelledError:
+                        continue
+                waiter.result()
+            except (Exception, asyncio.CancelledError) as error:
+                if write_error is not None:
+                    raise write_error from error
+                raise
+            if write_error is not None:
+                raise write_error
             raise
         result = self.files._read('readback-result')
         cleanup = self.files._read('readback-cleanup')

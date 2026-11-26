@@ -801,11 +801,17 @@ def test_readback_guard_dispatch_uses_the_validated_registration_snapshot(regist
     assert not (files.directory / 'readback-result.json').exists()
 
 
+@pytest.mark.parametrize('publication, fail_drain', [
+    ('written', False), ('link', False), ('directory-sync', False), ('link', True),
+], ids=['written', 'failed-link', 'failed-directory-sync', 'failed-link-and-drain'])
 @pytest.mark.parametrize('acknowledged', [False, True], ids=['before-ack', 'after-ack'])
-def test_campaign_readback_reaps_guard_after_repeated_cancellation(tmp_path, monkeypatch, acknowledged):
+def test_campaign_readback_reaps_guard_after_repeated_cancellation(tmp_path, monkeypatch, acknowledged,
+                                                                  publication, fail_drain):
     pytest.importorskip('temporalio')
     from dataclasses import replace
+    import errno
     from temporalio.testing import ActivityEnvironment
+    from ergora.campaigns import records
     from ergora.campaigns.readback import FixedCheckReadback
     from ergora.campaigns.records import (CampaignFiles, attempt_document, check_intent, check_receipt, identity,
                                          readback_grant, readback_id, update_attempt)
@@ -827,20 +833,58 @@ def test_campaign_readback_reaps_guard_after_repeated_cancellation(tmp_path, mon
     grant = readback_grant(opening, run, task, check_receipt(waiting))
     activity_id = readback_id(grant)
     spawn = asyncio.create_subprocess_exec
+    cancel_path = owner.directory / 'readback-cancel.json'
+    write_error = None
+    failures = []
+    if publication != 'written':
+        write_error = OSError(errno.EIO, f'Controlled readback cancellation {publication} failure')
+
+        def fail_publication():
+            failures.append(write_error)
+            raise write_error
+
+        if publication == 'link':
+            link = os.link
+
+            def link_record(source, destination):
+                if destination == cancel_path:
+                    fail_publication()
+                return link(source, destination)
+
+            monkeypatch.setattr(os, 'link', link_record)
+        else:
+            sync_directory = records._sync_directory
+
+            def sync_record_directory(path):
+                if path == owner.directory and cancel_path.exists():
+                    fail_publication()
+                return sync_directory(path)
+
+            monkeypatch.setattr(records, '_sync_directory', sync_record_directory)
+    drain_error = OSError(errno.EIO, 'Controlled guard wait failure after exit') if fail_drain else None
 
     async def exercise():
         spawned, acknowledge, heartbeat = asyncio.Event(), asyncio.Event(), asyncio.Event()
-        child = running = None
+        child = running = wait_for_exit = None
         tearing_down = False
 
         async def start_guard(*args, **options):
-            nonlocal child
+            nonlocal child, wait_for_exit
             assert args == (sys.executable, '-P', '-m', 'ergora.campaigns.readback', str(owner.home),
                             owner.project, owner.campaign)
             assert options['start_new_session']
             child = await spawn(sys.executable, '-I', '-S', '-c',
                                 'import sys\nprint("ready", flush=True)\nsys.stdin.read()',
                                 **{**options, 'stdin': asyncio.subprocess.PIPE, 'stdout': asyncio.subprocess.PIPE})
+            wait_for_exit = child.wait
+            if drain_error is not None:
+                async def wait_with_error():
+                    returncode = await wait_for_exit()
+                    if not tearing_down:
+                        raise drain_error
+                    return returncode
+
+                monkeypatch.setattr(child, 'wait', wait_with_error)
             if tearing_down:
                 child.stdin.close()
             spawned.set()
@@ -869,24 +913,33 @@ def test_campaign_readback_reaps_guard_after_repeated_cancellation(tmp_path, mon
                 }
                 assert running.cancel()
                 await asyncio.sleep(0)
-                assert owner._read('readback-cancel') == {'activity_id': activity_id}
+                expected = None if publication == 'link' else {'activity_id': activity_id}
+                assert owner._read('readback-cancel') == expected
+                assert child.returncode is None
+                assert not running.done(), 'Activity released its running guard after cancellation publication failed'
                 assert running.cancel()
                 await asyncio.sleep(0)
                 assert child.returncode is None
                 assert not running.done(), 'Activity released its running guard before reaping it'
+                assert failures == ([write_error] if write_error is not None else [])
 
                 acknowledge.set()
                 child.stdin.close()
-                with pytest.raises(asyncio.CancelledError):
+                error_type = asyncio.CancelledError if write_error is None else OSError
+                with pytest.raises(error_type) as failure:
                     await activity
+                if write_error is not None:
+                    assert failure.value is write_error
+                    assert failure.value.__cause__ is drain_error
                 assert child.returncode == 0
+                assert owner._read('readback-cancel') == expected
                 assert owner._read('readback-result') is None
         finally:
             tearing_down = True
             acknowledge.set()
             if child is not None and child.returncode is None:
                 child.stdin.close()
-                await child.wait()
+                await wait_for_exit()
             await asyncio.gather(activity, return_exceptions=True)
 
     asyncio.run(exercise())
