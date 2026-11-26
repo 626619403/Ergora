@@ -4,7 +4,7 @@ English · [Documentation](../README.md) · [Architecture contract](current.md)
 
 Ergora is a control plane for project-bound specialist Agents, workflow composition, formal software delivery, training experiments and reusable improvements. Definitions describe reusable behavior. Each operation freezes its own inputs, checks its execution authority and produces evidence under its original identity.
 
-This tour uses runtime revision `ca8c05506eece0ec80bb72c0064c3890fffab5a0` and its `src` tree `9bd4b55002bc4df3c8496ba4965b2cf6691b6feb` as the exact source reference. Packages, installed applications and local definition libraries have separate identities. The [current plan](../PLAN.md) and its delivery records track review, CI and installation status.
+This tour uses runtime revision `a4bd1d1ec3e28122db245ed450b9f139385094d0` and its `src` tree `5266427be28a224198d57d8234bc461431d119f2` as the exact source reference. Packages, installed applications and local definition libraries have separate identities. The [current plan](../PLAN.md) and its delivery records track review, CI and installation status.
 
 ## The whole system
 
@@ -57,11 +57,12 @@ flowchart TB
   CampaignRun -. "confirmed record-only rollover" .-> Rollover["One verified successor Run<br/>Original Job and deadline"]
   CampaignRun --> CampaignRead["Optional timer or immediate due read<br/>One guarded status Activity"]
   CampaignRead -->|fixed-check wake| Ready["One verified original readiness<br/>Guarded result or opted-in observation"]
-  CampaignRead -. "record-only managed full result" .-> TrainingRoot["Observed training root<br/>Result and separate lease evidence"]
+  CampaignRead -. "guarded managed full result" .-> TrainingRoot["Observed training root<br/>Result and separate lease evidence"]
   TrainingRoot -. "enables explicit campaign observe-check" .-> DependentCheck["Dependent fixed-check observation<br/>Pre-authorized original Job"]
   CheckJob -. "own original Job evidence" .-> DependentCheck
   CampaignRun -. "confirmed passing observation" .-> Ready
   Ready --> Wake["Opt-in Codex wake<br/>One original attempt and owned STOP"]
+  TrainingRoot -. "opt-in verified training readiness" .-> Wake
   Wake --> Turn
   Improve --> Eval["Trusted evaluation<br/>Reviewed identity and explicit adoption"]
 
@@ -162,7 +163,9 @@ The Worker schedules one original wake from the admitted source. The native sess
 
 `recipient.history.timing` links the original readiness event, wake scheduling, Worker start and delivery termination by original event ID and Temporal timestamp. Intervals use nanoseconds on that History clock. Missing or reversed timestamps leave the affected interval null. The original native receipt reports actual payload start and cleanup. [Campaign timing and receipts](../improvement/campaigns.md#authorize-one-local-codex-recipient)
 
-A record-only plan can bind one root to `training_full_result` for an already authorized managed full verification. The locator pins the original experiment, Workflow, Run, Job and raw request and attempt digests under the same registered project revision. The original Campaign Run schedules one guarded read. A verified successful native result and archive evidence make the root observed. The readback reports the result digest and the resource owner's lease observation separately. A dependent fixed-check task uses confirmed `campaign observe-check` on its own pre-authorized Job. [Read one managed training full result](../improvement/campaigns.md#read-one-managed-training-full-result)
+A plan can bind one root to `training_full_result` for an already authorized managed full verification. The locator pins the original experiment, Workflow, Run, Job and raw request and attempt digests under the same registered project revision. The original Campaign Run schedules one guarded read. A verified successful native result and archive evidence make the root observed. The readback reports the result digest and the resource owner's lease observation separately. A dependent fixed-check task uses confirmed `campaign observe-check` on its own pre-authorized Job. [Read one managed training full result](../improvement/campaigns.md#read-one-managed-training-full-result)
+
+An explicit `recipient` on that root opts in to one wake from the verified original training Activity. The existing local Codex recipient uses its authorized stopped parent and approved prompt under the same registered project revision. The native gate checks the original result and wake schedule before reserving the turn under the original cutoff and STOP fence. [Training-result recipient gate](../../src/ergora/campaigns/recipient_gate.py)
 
 The original read cutoff and Campaign STOP fence govern the reader and result publication. A saved local STOP closes new dependent eligibility and leaves verified result evidence readable, including through original online History after Worker exit. The registered training executor keeps execution control and the original resource owner confirms lease release. [Guarded Campaign readback](../../src/ergora/campaigns/readback.py)
 
