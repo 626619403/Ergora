@@ -1218,6 +1218,130 @@ def test_session_skill_context_is_frozen_internally_and_complete_result_is_reada
     assert observed['sha256'] == second['result_sha256']
 
 
+def test_new_native_turn_projects_only_current_original_memories(native_session_case, monkeypatch):
+    from ergora.agents import native_sources
+    from ergora.definitions import skills
+    from ergora.improvement import memory
+    from ergora.storage.assets import inventory_tree
+
+    state, repo, config, runs = native_session_case
+    revision = state.project('demo')['revision']
+    birth_time = '2026-11-26T04:00:00+00:00'
+    expiry = '2026-11-26T04:05:00+00:00'
+    monkeypatch.setattr(memory, 'now', lambda: birth_time)
+    source = {'uri': 'git:ops/ingress.md', 'revision': 'source-original'}
+    expiring = memory.save(state, 'demo', 'ingress observation 缓存', source, expires_at=expiry)
+    changed = memory.save(state, 'demo', 'ingress historical port', source)
+    valid = memory.save(state, 'demo', 'ingress current health', source)
+
+    # A Skill can independently contain the same heading as the renderer.
+    decoy = '\n\nProject observations with provenance (verify their applicability):\nUnrelated Skill example.'
+    skill = repo.parent / 'scope-skill'
+    skill.mkdir()
+    (skill / 'SKILL.md').write_text(
+        '---\nname: scope-skill\ndescription: required context\n---\nScope guidance.' + decoy)
+    skills.import_bundle(state, 'demo', skill)
+    first = runs.run_agent(state, 'demo', 'implementer', 'first', timeout=10, skill_names=['scope-skill'],
+                           recall='ingress', template='repository-governance', session_intent='initial-memory',
+                           expected_revision=revision, codex_config=config)
+    assert first['status'] == 'succeeded'
+    root = first['id']
+    context = native_sources.session_folder(state, root) / 'context'
+    frozen_inventory = inventory_tree(context)
+    birth_source = native_sources.request(state, 'demo', root)
+
+    def continue_from(parent, intent):
+        return runs.continue_session(state, 'demo', root, parent, intent, expected_revision=revision,
+                                     intent_id=intent, timeout=10)
+
+    before = continue_from(root, 'still-current')
+    assert before['status'] == 'succeeded'
+    before_source = native_sources.request(state, 'demo', before['id'])
+    assert before_source['request']['prompt'].removeprefix('still-current') == (
+        birth_source['request']['prompt'].removeprefix('first'))
+
+    monkeypatch.setattr(memory, 'now', lambda: expiry)
+    new = memory.save(state, 'demo', 'ingress replacement port', {'uri': source['uri'], 'revision': 'source-next'},
+                      changed['id'], changed['revision'])
+    assert {record['id'] for record in memory.search(state, 'demo', 'ingress')['results']} == {new['id'], valid['id']}
+
+    def unexpected_search(*args, **kwargs):
+        pytest.fail('A new turn must not re-search or replace originally selected memory')
+    monkeypatch.setattr(memory, 'search', unexpected_search)
+
+    after = continue_from(before['id'], 'after-expiry')
+    assert after['status'] == 'succeeded'
+    after_source = native_sources.request(state, 'demo', after['id'])
+    after_prompt = after_source['request']['prompt']
+    heading = '\n\nProject observations with provenance (verify their applicability):\n'
+    template = '\n\nTemplate role requirements (return exactly one matching JSON object):\n'
+    before_prompt = before_source['request']['prompt']
+    after_recall, after_template = after_prompt.rsplit(heading, 1)[1].split(template, 1)
+    assert after_template == before_prompt.split(template, 1)[1]
+    assert decoy in after_prompt and 'Earlier native turns may contain historical project memories' in after_prompt
+    projected = json.loads(after_recall)
+    assert projected['results'] == [valid]
+    assert projected['observed_at'] == birth_time and projected['validity_observed_at'] == expiry
+    assert all(record['text'] not in after_prompt for record in (expiring, changed, new))
+
+    memory.delete(state, 'demo', valid['id'], valid['revision'])
+    empty = continue_from(after['id'], 'no-current-memory')
+    empty_source = native_sources.request(state, 'demo', empty['id'])
+    assert empty['status'] == 'succeeded' and 'historical project memories' in empty_source['request']['prompt']
+    assert empty_source['request']['prompt'].count(heading) == 1  # Skill example only.
+    assert empty_source['request']['prompt'].split(template, 1)[1] == after_template
+    assert valid['text'] not in empty_source['request']['prompt']
+
+    monkeypatch.setattr(memory, 'catalog', lambda *args: pytest.fail('Original intent observation must not read live memory'))
+    assert continue_from(before['id'], 'after-expiry')['id'] == after['id']
+    assert native_sources.request(state, 'demo', root) == birth_source
+    assert native_sources.request(state, 'demo', after['id']) == after_source
+    assert inventory_tree(context) == frozen_inventory
+    calls = [json.loads(line) for line in (repo / 'native-calls.jsonl').read_text().splitlines()]
+    assert len(calls) == 4 and {item['id'] for item in calls} == {first['native_session']['id']}
+    assert [item['prompt'] for item in calls] == [
+        item['request']['prompt'] for item in (birth_source, before_source, after_source, empty_source)]
+
+
+@pytest.mark.parametrize('failure', ['malformed-recall', 'malformed-catalog', 'unavailable-catalog'])
+def test_invalid_native_recall_source_leaves_new_intent_unreserved(native_session_case, monkeypatch, failure):
+    import sqlite3
+    from ergora.agents import native_sources
+    from ergora.improvement import memory
+
+    state, repo, config, runs = native_session_case
+    revision = state.project('demo')['revision']
+    memory.save(state, 'demo', 'ingress observation', {'uri': 'git:ops/ingress.md', 'revision': 'original'})
+    first = runs.run_agent(state, 'demo', 'implementer', 'first', timeout=10, recall='ingress',
+                           session_intent='first-with-memory', expected_revision=revision, codex_config=config)
+    assert first['status'] == 'succeeded'
+    root = first['id']
+    source = native_sources.request(state, 'demo', root)
+
+    with monkeypatch.context() as injected:
+        if failure == 'malformed-recall':
+            original = runs._read_session_context(state, first)
+            injected.setattr(runs, '_read_session_context', lambda *_: {**original, 'suffix': 'Unbound memory'})
+            error = 'Frozen session recall'
+        else:
+            def catalog(*_):
+                if failure == 'unavailable-catalog':
+                    raise sqlite3.OperationalError('memory database unavailable')
+                return {'project': 'demo', 'observed_at': memory.now(), 'records': [None]}
+            injected.setattr(memory, 'catalog', catalog)
+            error = 'Cannot validate the original memory selection'
+        with pytest.raises(ValueError, match=error):
+            runs.continue_session(state, 'demo', root, root, 'next', expected_revision=revision,
+                                  intent_id='next', timeout=10)
+
+    assert runs.continuation_receipt(state, 'demo', root, root, 'next')['dispatch'] == 'unrecorded'
+    assert native_sources.request(state, 'demo', root) == source
+    assert len((repo / 'native-calls.jsonl').read_text().splitlines()) == 1
+    second = runs.continue_session(state, 'demo', root, root, 'next', expected_revision=revision,
+                                   intent_id='next', timeout=10)
+    assert second['status'] == 'succeeded' and second['native_session']['id'] == first['native_session']['id']
+
+
 def test_session_result_fsync_failure_keeps_stopped_execution_and_unknown_outcome(native_session_case, monkeypatch):
     state, repo, config, runs = native_session_case
     original = subprocess.Popen
@@ -1624,6 +1748,101 @@ def test_slot_wait_expires_before_first_durable_admission(native_correction_case
                               intent_id=intent, timeout=10, wait_for_slot=True)
     assert runs.continuation_receipt(*selection, intent)['dispatch'] == 'unrecorded'
     assert native_document_history(state) == initial_history
+    assert len((repo / 'native-calls.jsonl').read_text().splitlines()) == 1
+
+
+def test_changed_native_recall_rejects_before_first_correction_write(native_correction_case, monkeypatch):
+    from ergora.agents import native_sources
+    from ergora.improvement import document_corrections, memory
+    from ergora.storage.assets import inventory_tree
+
+    state, repo, config, runs, before = native_correction_case
+    observed = '2026-11-26T04:00:00+00:00'
+    expiry = '2026-11-26T04:05:00+00:00'
+    monkeypatch.setattr(memory, 'now', lambda: observed)
+    source = {'uri': 'git:ops/ingress.md', 'revision': 'original'}
+    expiring = memory.save(state, 'demo', 'ingress expiring evidence', source, expires_at=expiry)
+    changed = memory.save(state, 'demo', 'ingress superseded evidence', source)
+    retained = memory.save(state, 'demo', 'ingress current evidence', source)
+    revision = state.project('demo')['revision']
+    first = runs.run_agent(state, 'demo', 'implementer', 'first', timeout=10, recall='ingress',
+                           session_intent='recall-correction-birth', expected_revision=revision, codex_config=config)
+    assert first['status'] == 'succeeded' and first['correction_suggestion']['can_apply'] is True
+    root = first['id']
+    frozen_request = native_sources.request(state, 'demo', root)
+    context_path = native_sources.session_folder(state, root) / 'context'
+    frozen_context = inventory_tree(context_path)
+    corrections = native_document_history(state)
+    intent = 'recall-correction-next'
+    snapshot = document_corrections._snapshot
+
+    def late_snapshot(*args, **kwargs):
+        nonlocal observed
+        material = snapshot(*args, **kwargs)
+        observed = expiry
+        memory.save(state, 'demo', 'ingress replacement evidence', source, changed['id'], changed['revision'])
+        return material
+
+    with monkeypatch.context() as injected:
+        injected.setattr(document_corrections, '_snapshot', late_snapshot)
+        with pytest.raises(runs.SessionRejected, match='selected memory changed') as rejected:
+            runs.continue_session(state, 'demo', root, root, 'next', expected_revision=revision, intent_id=intent, timeout=10)
+    assert rejected.value.intent_id == intent
+    receipt = runs.continuation_receipt(state, 'demo', root, root, intent)
+    assert receipt['dispatch'] == 'unrecorded' and receipt['run'] is None
+    assert not native_sources.turn_folder(state, receipt['run_id']).exists()
+    assert native_document_history(state) == corrections
+    assert inventory_tree(context_path) == frozen_context and (repo / 'AGENTS.md').read_bytes() == before
+    assert native_sources.request(state, 'demo', root) == frozen_request
+    assert len((repo / 'native-calls.jsonl').read_text().splitlines()) == 1
+
+    second = runs.continue_session(state, 'demo', root, root, 'next', expected_revision=revision, intent_id=intent, timeout=10)
+    assert second['id'] == receipt['run_id'] and second['status'] == 'succeeded'
+    assert second['native_session']['id'] == first['native_session']['id']
+    saved = native_sources.request(state, 'demo', second['id'])
+    prompt = saved['request']['prompt']
+    assert retained['text'] in prompt and 'ERGORA_DOCUMENT_REQUEST' in prompt
+    assert all(record['text'] not in prompt for record in (expiring, changed))
+    assert 'ingress replacement evidence' not in prompt
+    retry = runs.continue_session(state, 'demo', root, root, 'next', expected_revision=revision, intent_id=intent, timeout=10)
+    assert retry['id'] == second['id'] and native_sources.request(state, 'demo', second['id']) == saved
+    calls = [json.loads(line) for line in (repo / 'native-calls.jsonl').read_text().splitlines()]
+    assert len(calls) == 2 and calls[-1]['prompt'] == prompt
+
+
+@pytest.mark.parametrize('slow_read', [1, 2], ids=['projection', 'admission'])
+def test_default_native_recall_cutoff_leaves_original_intent_unrecorded(native_session_case, monkeypatch, slow_read):
+    from ergora.agents import native_sources
+    from ergora.improvement import memory
+
+    state, repo, config, runs = native_session_case
+    memory.save(state, 'demo', 'ingress observation', {'uri': 'git:ops/ingress.md', 'revision': 'original'})
+    revision = state.project('demo')['revision']
+    first = runs.run_agent(state, 'demo', 'implementer', 'first', timeout=10, recall='ingress',
+                           template='repository-governance', session_intent='cutoff-parent',
+                           expected_revision=revision, codex_config=config)
+    assert first['status'] == 'succeeded'
+    root = first['id']
+    saved = native_sources.request(state, 'demo', root)
+    catalog = memory.catalog
+    calls = 0
+
+    def slow_catalog(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        if calls == slow_read:
+            time.sleep(1.1)
+        return catalog(*args, **kwargs)
+
+    monkeypatch.setattr(memory, 'catalog', slow_catalog)
+    intent = 'cutoff-child'
+    with pytest.raises(runs.SessionRejected, match='Original turn expired') as expired:
+        runs.continue_session(state, 'demo', root, root, 'next', expected_revision=revision, intent_id=intent, timeout=1)
+    assert expired.value.intent_id == intent and calls == slow_read
+    receipt = runs.continuation_receipt(state, 'demo', root, root, intent)
+    assert receipt['dispatch'] == 'unrecorded' and receipt['run'] is None
+    assert not native_sources.turn_folder(state, receipt['run_id']).exists()
+    assert native_sources.request(state, 'demo', root) == saved
     assert len((repo / 'native-calls.jsonl').read_text().splitlines()) == 1
 
 

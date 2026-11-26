@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 import signal
+import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -40,6 +41,8 @@ from ergora._paths import IMPORT_ROOT
 
 _MAX_SESSION_TURNS = 10_000
 _PROCESS_START_FIELDS = frozenset({'process_start_receipt', 'process_start_sha256'})
+_RECALL_HEADING = '\n\nProject observations with provenance (verify their applicability):\n'
+_TEMPLATE_ROLE_HEADING = '\n\nTemplate role requirements (return exactly one matching JSON object):\n'
 
 
 def _store(state: State, document: dict) -> None:
@@ -84,7 +87,7 @@ def _prepare_role(state, project_id, role, prompt, timeout, skill_names, recall,
 
         recalled = memory.search(state, project_id, recall, limit=5, project=project)
         context["memories"] = recalled["results"]
-        prompt += "\n\nProject observations with provenance (verify their applicability):\n" + json.dumps(recalled, ensure_ascii=False)
+        prompt += _RECALL_HEADING + json.dumps(recalled, ensure_ascii=False)
     binding = configuration["layers"][role]["binding"]
     validate_binding(role, binding)
     schema = None
@@ -94,7 +97,7 @@ def _prepare_role(state, project_id, role, prompt, timeout, skill_names, recall,
         if role not in contract["agents"]:
             raise ValueError("This template does not use the selected agent role")
         schema = agents.result_schema(contract["agents"][role]["artifacts"], role == "reviewer")
-        prompt += "\n\nTemplate role requirements (return exactly one matching JSON object):\n" + json.dumps(
+        prompt += _TEMPLATE_ROLE_HEADING + json.dumps(
             {"requirements": contract["agents"][role], "result_schema": schema}, ensure_ascii=False)
     return prompt, schema, {'project': project_id, 'role': role, 'binding': binding,
         'project_revision': project['revision'], 'context': context, 'template': template,
@@ -1430,12 +1433,51 @@ def continue_session(state: State, project_id: str, session_id: str, parent_run_
                                      submitted, lock, check_admission_deadline=wait_for_slot, gate=gate)
 
 
+def _current_original_memories(state: State, project: str, recalled: list[dict]) -> tuple[list[dict], str]:
+    import ergora.improvement.memory as memory
+
+    try:
+        catalog = memory.catalog(state, project)
+        if catalog['project'] != project or not isinstance(catalog['observed_at'], str):
+            raise ValueError('Memory catalog differs from the selected project or lacks an observation time')
+        valid = {item['record']['id']: item['record'] for item in catalog['records'] if item['validity'] == 'valid'}
+    except (OSError, sqlite3.Error, KeyError, TypeError, ValueError) as error:
+        raise ValueError('Cannot validate the original memory selection before continuation: ' + str(error)) from error
+    return [record for record in recalled if valid.get(record['id']) == record], catalog['observed_at']
+
+
+def _continuation_suffix(state: State, project: str, context: dict, recalled: list[dict]) -> tuple[str, list[dict]]:
+    suffix = context['suffix']
+    # The writer adds recall after all Skill bodies and before the optional
+    # JSON template block. JSON escapes newlines within both generated blocks.
+    skills, heading, material = suffix.rpartition(_RECALL_HEADING)
+    recall, template_heading, template = material.partition(_TEMPLATE_ROLE_HEADING)
+    if not heading or bool(template_heading) != bool(context['template']):
+        raise ValueError('Frozen session recall has no complete original material block')
+    original = parse_json(recall, 'Frozen session recall', finite=True, bounded=True)
+    if (not isinstance(original, dict) or original.keys() != {'project', 'backend', 'observed_at', 'results'}
+            or original['project'] != project or original['results'] != recalled):
+        raise ValueError('Frozen session recall differs from its original project or selected memory records')
+
+    retained, observed_at = _current_original_memories(state, project, original['results'])
+    if retained == recalled:
+        return suffix, retained
+    current = '\n\nEarlier native turns may contain historical project memories. Use this turn’s recall as current.'
+    if retained:
+        projected = {**original, 'results': retained, 'validity_observed_at': observed_at}
+        current += heading + json.dumps(projected, ensure_ascii=False)
+    return skills + current + template_heading + template, retained
+
+
 def _reserve_session_turn(state, project, root, parent, ident, ordinal, prompt, timeout, clock, context, digest,
                           submitted, lock, *, check_admission_deadline=False, gate=None):
     selected = _validate_session_authority(state, context)
     if type(submitted['expected_revision']) is not int or submitted['expected_revision'] != selected['revision']:
         raise ValueError('Turn requires the current project revision; reload the project and session')
-    full_prompt = prompt + context['suffix']
+    recalled = context['context']['memories'] if parent is not None else []
+    suffix, retained = (_continuation_suffix(state, project, context, recalled) if recalled
+                        else (context['suffix'], []))
+    full_prompt = prompt + suffix
     if len(full_prompt.encode('utf-8')) > 10_000_000:
         raise ValueError('Complete session prompt exceeds 10 MB; it was not truncated')
     session = {'id': root, 'parent_run': parent['id'] if parent else None, 'ordinal': ordinal}
@@ -1447,11 +1489,29 @@ def _reserve_session_turn(state, project, root, parent, ident, ordinal, prompt, 
     task = None
     admitted = False
 
+    def require_time():
+        if (check_admission_deadline or recalled) and budget_clock.remaining(clock, timeout) <= 0:
+            if check_admission_deadline:
+                raise _SessionSlotTimeout('Timed out waiting for the original session slot')
+            raise SessionRejected('Original turn expired before memory admission', submitted['intent_id'])
+
     def admit():
         nonlocal admitted
         # A correction's frozen source can be the first durable write for this intent.
-        if check_admission_deadline and not admitted and budget_clock.remaining(clock, timeout) <= 0:
-            raise _SessionSlotTimeout('Timed out waiting for the original session slot')
+        if admitted:
+            return
+        require_time()
+        if recalled:
+            try:
+                current, _ = _current_original_memories(state, project, recalled)
+            except ValueError as error:
+                raise SessionRejected(str(error), submitted['intent_id']) from error
+            if current != retained:
+                raise SessionRejected('Originally selected memory changed before continuation admission',
+                                      submitted['intent_id'])
+            require_time()
+            if gate is not None:
+                gate.require_open(native_clock=clock, native_timeout=timeout)
         admitted = True
 
     if policy is not None:
@@ -1460,13 +1520,13 @@ def _reserve_session_turn(state, project, root, parent, ident, ordinal, prompt, 
             try:
                 task = document_corrections.prepare_native(state, project, ident, session, submitted,
                     selected['revision'], clock, path=policy['target'],
-                    before_publish=admit if check_admission_deadline else None)
+                    before_publish=admit if check_admission_deadline or recalled else None)
                 proposed_prompt = full_prompt + '\n\n' + document_corrections.native_prompt(task)
                 if len(proposed_prompt.encode('utf-8')) > 10_000_000:
                     raise ValueError('Complete suggestion material cannot fit the original native prompt allowance')
                 full_prompt = proposed_prompt
                 correction.update(proposal_id=task['proposal_id'], request_sha256=task['request_sha256'])
-            except (_SessionSlotTimeout, document_corrections.NativePreparationConflict):
+            except (_SessionSlotTimeout, SessionRejected, document_corrections.NativePreparationConflict):
                 raise
             except (OSError, ValueError, KeyError, TypeError) as error:
                 correction.update(available=False, reason=str(error))

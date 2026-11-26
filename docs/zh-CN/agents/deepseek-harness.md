@@ -64,4 +64,6 @@ ergora agent output my-project RUN_ID --native-history \
 
 普通 `agent run` 可用明确的出生 intent 和项目修订保存项目会话。在项目总览的“项目会话 / 运行 Agent”选择原历史会话后，只输入新任务说明即可继续；CLI 使用 `agent continue`。角色、模板产物、已选 Skill、记忆和 native 配置在新建时冻结，后续沿原 workspace 权限运行。它与正式任务执行和批准分别处理。Codex会话命令固定`--no-daemon`；清理证据只覆盖本轮实际拥有的进程子树。已确认final回收且原生引用可用的停止轮次可接受新的明确prompt；unknown结果不能重放。
 
+准备新续接时，Ergora 依据项目当前的本地记忆目录核对会话初次选定的精确记录。新输入只携带仍与当前有效修订一致的记录，首次持久写入前会再次核对这组记录。如果届时记录集已变、目录不可用或本轮已到期，新 intent 仍为未登记。原生会话历史仍可能包含较早的记忆副本，已保存的请求和按原 intent 读回的证据保留原输入。
+
 当前 CLI／HTTP 参数、丢回复后的精确 intent 观察和逐轮停止见[项目会话操作](../../operations/services.md#project-native-sessions)。持久接口选择 Linux／WSL2 的 Codex，不因此启用其他后端的持久能力。既有单次 composition 结果和原生归档仍通过原 run／output 记录观察。
