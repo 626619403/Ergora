@@ -85,6 +85,7 @@ class DispatchService:
         self.config = SimpleNamespace(identity='ergora-cycle-dispatch-sdk-contract')
         self.storage = Path(os.environ['ERGORA_TEST_CYCLE_DISPATCH'])
         self.case = case
+        self.bootstrap = payload.get('bootstrap')
         identity = payload['identity']
         self.folder = Path(identity['control_home']) / 'training-cycles' / identity['project'] / identity['cycle_id'] / 'controller'
         self.intent = json.loads((self.folder / 'intent.json').read_bytes())
@@ -150,6 +151,17 @@ class DispatchService:
 
     async def get_workflow_execution_history(self, request, **kwargs):
         self.record('history', request)
+        if self.case == 'worker-history-error' and request.maximum_page_size == 8:
+            raise RPCError('x' * 32768, RPCStatusCode.UNAVAILABLE, b'')
+        if self.case == 'worker-history-late':
+            from ergora.runtime import budget_clock
+
+            if request.maximum_page_size == 8:
+                (self.storage / 'worker-history-attempted').touch()
+                await asyncio.sleep(10)
+            else:
+                remaining = (self.bootstrap['deadline_ns'] - budget_clock._clock()[1]) / 1_000_000_000
+                await asyncio.sleep(max(0, remaining - .4))
         original = await self.original_request()
         value = (await DataConverter.default.decode(original.input.payloads, [dict]))[0]
         if self.case in ('input', 'collision'):

@@ -137,6 +137,32 @@ async def lookup_controller_submission(client, intent: dict, *, run_id: str | No
     return handle, description
 
 
+async def observe_controller_worker(handle, task_queue: str, *, timeout: float) -> dict:
+    """Read the first Worker start from an already authenticated original controller handle."""
+    scheduled = None
+    count = 0
+    async for event in handle.fetch_history_events(page_size=8, rpc_timeout=timedelta(seconds=timeout)):
+        count += 1
+        if count > 32:
+            return {'status': 'unobserved'}
+        if event.HasField('workflow_task_scheduled_event_attributes'):
+            if scheduled is not None or event.workflow_task_scheduled_event_attributes.task_queue.name != task_queue:
+                raise ValueError('Worker task schedule differs from the original controller queue')
+            scheduled = event.event_id
+        elif event.HasField('workflow_task_started_event_attributes'):
+            started = event.workflow_task_started_event_attributes
+            if scheduled is None or started.scheduled_event_id != scheduled or event.event_id <= scheduled:
+                raise ValueError('Worker start does not bind its original scheduled task')
+            return {'status': 'started', 'scheduled_event_id': scheduled, 'started_event_id': event.event_id}
+        elif event.HasField('workflow_task_timed_out_event_attributes'):
+            expired = event.workflow_task_timed_out_event_attributes
+            if scheduled is None or expired.scheduled_event_id != scheduled or expired.started_event_id:
+                raise ValueError('Worker timeout does not bind its original scheduled task')
+            scheduled = None
+    return ({'status': 'unobserved'} if scheduled is None else
+            {'status': 'scheduled', 'scheduled_event_id': scheduled})
+
+
 async def authenticate_round_collection(client, intent: dict, binding: dict, request: dict,
                                         context: dict, *, timeout: float):
     """Authenticate the single original collect command, consuming the full fixed history."""

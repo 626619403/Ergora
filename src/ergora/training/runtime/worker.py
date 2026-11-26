@@ -1517,7 +1517,7 @@ async def _dispatch_controller(payload: dict, plan: dict, admission, active) -> 
     from temporalio.converter import WorkflowSerializationContext
     from temporalio.exceptions import ApplicationError, WorkflowAlreadyStartedError
     from temporalio.service import RPCError
-    from ergora.training.runtime.status import lookup_controller_submission
+    from ergora.training.runtime.status import lookup_controller_submission, observe_controller_worker
 
     state = State(Path(payload['identity']['control_home']))
     saved = admission.submission()
@@ -1581,14 +1581,34 @@ async def _dispatch_controller(payload: dict, plan: dict, admission, active) -> 
                 found = await lookup_controller_submission(client, intent, run_id=actual_run, timeout=remaining())
                 if found is None:
                     return observation(current, status='unknown', runtime_status='not_found')
-                _, description = found
+                handle, description = found
                 if activity_context is not None and (description.run_id != actual_run
                         or description.raw_description.workflow_execution_info.type.name != protocol.cycle_workflow_type(intent['protocol'])
                         or description.status.name == 'CONTINUED_AS_NEW'):
                     raise ValueError('Actual activity run or description type differs')
                 current = training_cycles._record_controller(state, admission, run_id=description.run_id)
                 active()
-                return observation(current, runtime_status='queried', temporal_status=description.status.name)
+                facts = {'runtime_status': 'queried', 'temporal_status': description.status.name}
+                if payload['identity']['mode'] == 'reconcile-controller':
+                    try:
+                        available = remaining()
+                        # Leave the supervised process time to exit and deliver the original receipt.
+                        window = min(2, available / 2, available - .5)
+                        if window <= 0:
+                            facts['worker_delivery'] = {
+                                'status': 'unconfirmed', 'reason': 'Remaining inspection allowance needed for receipt delivery',
+                            }
+                        else:
+                            async with asyncio.timeout(window):
+                                facts['worker_delivery'] = await observe_controller_worker(
+                                    handle, intent['task_queue'], timeout=window)
+                    except (RPCError, TimeoutError, ValueError) as error:
+                        facts['worker_delivery'] = {
+                            'status': 'unconfirmed', 'reason': 'Original Worker delivery evidence could not be verified',
+                        }
+                        if isinstance(error, RPCError):
+                            facts['worker_delivery']['rpc_status'] = error.status.name
+                return observation(current, **facts)
 
             if payload['identity']['mode'] in ('reconcile-controller', 'inspect-controller-activity') or saved['attempt_saved']:
                 return await reconcile()

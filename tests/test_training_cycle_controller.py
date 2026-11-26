@@ -1563,7 +1563,8 @@ def test_controller_consent_cannot_dispatch_through_either_manual_binding_path(c
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Controller dispatch uses the original Linux supervised operation')
-def test_controller_cli_reconciles_only_its_original_lost_reply(controller_dispatch, cycle_operation_fault):
+@pytest.mark.parametrize('readback', ['accepted', 'worker-history-error'])
+def test_controller_cli_reconciles_only_its_original_lost_reply(controller_dispatch, cycle_operation_fault, readback):
     from contextlib import redirect_stdout
     import io
     from ergora.interfaces.cli import main
@@ -1584,11 +1585,30 @@ def test_controller_cli_reconciles_only_its_original_lost_reply(controller_dispa
     assert first['status'] == 'unknown' and first['attempt_saved'] is True
     attempt = admission.folder / 'attempt.json'
     original = attempt.read_bytes(), attempt.stat().st_ino
-    cycle_operation_fault('accepted')
+    cycle_operation_fault(readback)
     second = invoke('reconcile')
     assert second['status'] == 'submitted' and second['run_id'] == '00000000-0000-4000-8000-000000000003'
+    if readback == 'worker-history-error':
+        assert second['worker_delivery']['status'] == 'unconfirmed'
+        assert second['worker_delivery']['rpc_status'] == 'UNAVAILABLE'
     assert (attempt.read_bytes(), attempt.stat().st_ino) == original
     assert sum(json.loads(p.read_bytes())['action'] == 'start' for p in storage.glob('call-*.json')) == 1
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Controller dispatch uses the original Linux supervised operation')
+def test_controller_worker_observation_preserves_submission_near_deadline(controller_dispatch):
+    import asyncio
+
+    _, admission, storage, operation = controller_dispatch
+    original = asyncio.run(operation().run())
+    assert original['status'] == 'submitted'
+    observed = asyncio.run(operation('worker-history-late', 'reconcile-controller', inspection_timeout=4).run())
+    assert observed['status'] == 'submitted' and observed['run_id'] == original['run_id']
+    assert observed['worker_delivery']['status'] == 'unconfirmed'
+    assert not (storage / 'worker-history-attempted').exists()
+    assert admission.submission()['run_id'] == original['run_id']
+    calls = (json.loads(path.read_bytes())['action'] for path in storage.glob('call-*.json'))
+    assert sum(action == 'start' for action in calls) == 1
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Controller dispatch uses the original Linux supervised operation')
@@ -1759,6 +1779,62 @@ def test_controller_final_admission_waits_for_an_original_ready_observer(control
     assert sum(action == 'start' for action in calls) == (0 if stop else 1)
     if stop:
         assert 'stop' in outcome['reason']
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Controller dispatch uses the original Linux supervised operation')
+@pytest.mark.parametrize('delivery', ['scheduled', 'started', 'foreign-link', 'unavailable'])
+def test_controller_reconciliation_observes_original_worker_delivery(controller_dispatch, monkeypatch, delivery):
+    import asyncio
+    from types import SimpleNamespace
+    from temporalio.api.history.v1 import HistoryEvent, WorkflowTaskScheduledEventAttributes, WorkflowTaskStartedEventAttributes
+    from temporalio.api.taskqueue.v1 import TaskQueue
+    from temporalio.client import Client
+    from temporalio.service import RPCError, RPCStatusCode
+    from ergora.training import cycles
+    from ergora.training.runtime import worker
+    from fixtures.training_controller_service import DispatchService
+
+    state, admission, storage, operation = controller_dispatch
+    original = asyncio.run(operation().run())
+    assert original['status'] == 'submitted'
+    record_paths = [admission.folder / name for name in ('intent.json', 'attempt.json', 'receipt.json')]
+    records = [(path.read_bytes(), path.stat().st_ino) for path in record_paths]
+    payload = operation(mode='reconcile-controller').payload
+    plan, _, _ = cycles._load(state.root, 'demo', 'controller', admission.directory)
+
+    class WorkerHistory(DispatchService):
+        async def get_workflow_execution_history(self, request, **kwargs):
+            result = await super().get_workflow_execution_history(request, **kwargs)
+            if request.maximum_page_size == 1:
+                return result
+            assert request.execution.run_id == original['run_id']
+            if delivery == 'unavailable':
+                raise RPCError('Controlled Worker history failure', RPCStatusCode.UNAVAILABLE, b'')
+            result.history.events.append(HistoryEvent(event_id=2,
+                workflow_task_scheduled_event_attributes=WorkflowTaskScheduledEventAttributes(
+                    task_queue=TaskQueue(name=self.intent['task_queue']), attempt=1)))
+            if delivery in ('started', 'foreign-link'):
+                result.history.events.append(HistoryEvent(event_id=3,
+                    workflow_task_started_event_attributes=WorkflowTaskStartedEventAttributes(
+                        scheduled_event_id=2 if delivery == 'started' else 99, identity='controlled-worker')))
+            return result
+
+    async def connect():
+        return Client(WorkerHistory(payload, 'accepted'))
+
+    monkeypatch.setattr(worker, '_select_cycle_project', lambda *_: SimpleNamespace(registration=lambda: None))
+    monkeypatch.setitem(sys.modules, 'perf_temporal.connection', SimpleNamespace(connect=connect))
+    outcome = asyncio.run(worker._dispatch_controller(payload, plan, admission, lambda: None))
+    assert outcome['status'] == 'submitted' and outcome['run_id'] == original['run_id']
+    observed = outcome['worker_delivery']
+    if delivery in ('scheduled', 'started'):
+        assert observed['status'] == delivery and observed['scheduled_event_id'] == 2
+        assert observed.get('started_event_id') == (3 if delivery == 'started' else None)
+    else:
+        assert observed['status'] == 'unconfirmed' and 'started_event_id' not in observed
+    assert [(path.read_bytes(), path.stat().st_ino) for path in record_paths] == records
+    calls = (json.loads(path.read_bytes())['action'] for path in storage.glob('call-*.json'))
+    assert sum(action == 'start' for action in calls) == 1
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Controller dispatch uses the original Linux supervised operation')
