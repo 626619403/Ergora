@@ -917,7 +917,15 @@ async def run_worker(client, handle, opening, files, attempt, *, poller_identity
         if recipient_task(opening) is not None:
             from ergora.campaigns.recipient import CodexRecipient
 
-            activities.append(CodexRecipient(files, opening, attempt, handle.run_id).deliver)
+            async def read_wake_history(commands):
+                async with asyncio.timeout(RPC_SECONDS):
+                    history_client = await connect(opening)
+                    original = history_client.get_workflow_handle(opening['workflow_id'], run_id=handle.run_id)
+                    _, _, wake = await read_task_history(history_client, original, opening, commands)
+                return wake
+
+            activities.append(CodexRecipient(
+                files, opening, attempt, handle.run_id, read_wake_history=read_wake_history).deliver)
         worker = Worker(client, task_queue=opening['task_queue'], workflows=[Campaign], activities=activities,
                         identity=poller_identity,
                         graceful_shutdown_timeout=timedelta(seconds=READBACK_CLEANUP_SECONDS if activities else 0))

@@ -13,8 +13,9 @@ from ergora.storage.state import State
 
 
 class CodexRecipient:
-    def __init__(self, files, opening, start, run_id):
+    def __init__(self, files, opening, start, run_id, *, read_wake_history):
         self.files, self.opening, self.start, self.run_id = files, opening, start, run_id
+        self.read_wake_history = read_wake_history
 
     def _deliver(self, intent):
         files, opening, start, run_id = self.files, self.opening, self.start, self.run_id
@@ -59,14 +60,9 @@ class CodexRecipient:
 
     async def _deliver_verified(self, intent):
         if intent['source'].get('kind') == 'manual_update':
-            from ergora.campaigns import workflow as runtime
-
             opening = self.opening
             commands = manual_commands(self.files, opening, self.start, self.run_id, recipient_task(opening))
-            async with asyncio.timeout(runtime.RPC_SECONDS):
-                client = await runtime.connect(opening)
-                handle = client.get_workflow_handle(opening['workflow_id'], run_id=self.run_id)
-                _, _, wake = await runtime.read_task_history(client, handle, opening, commands)
+            wake = await self.read_wake_history(commands)
             if wake is None or wake['intent'] != intent:
                 raise ValueError('Campaign manual delivery lacks its verified original Update and schedule')
         return await asyncio.to_thread(self._deliver, intent)
