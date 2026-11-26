@@ -1729,7 +1729,8 @@ Path(sys.argv[1]).write_text(json.dumps({'summary':'Review', 'artifacts':{'respo
     if case in ('agent-source', 'invalid-source'):
         assert status == 2 and not directory.exists() and not reads and not received.exists()
         if case == 'agent-source':
-            assert 'must come from a workflow root input: root/nested/verify' in captured.err
+            assert 'must come from a workflow root input' in captured.err
+            assert 'root/nested/verify' in captured.err
         return
     receipt = json.loads(captured.out)
     assert receipt == json.loads((directory / 'run.json').read_bytes())
