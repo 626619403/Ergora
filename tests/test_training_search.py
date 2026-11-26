@@ -1288,17 +1288,26 @@ def test_actual_screen_failures_preserve_first_failure_and_never_become_full_suc
         result for index, result in enumerate(prepared) if index != required_index]}}
     required = {**item, 'cycle_id': 'screen-required-resource',
                 'prepared': {'experiments': [prepared[required_index]]}}
+    first_work = (item['markers'] / 'first-work.jsonl').read_bytes()
     # Each manual selection retains one contract and one original clock.
     executed = [*_execute_search(regular, wait_completion=True), *_execute_search(required, wait_completion=True)]
     by_id = {result['experiment_id']: result for result in executed}
     results = [by_id[result['experiment_id']] for result in prepared]
     for fault, result in zip(faults, results):
         output = result['job'] / 'run-output'
-        native = json.loads((result['job'] / 'result.json').read_bytes())
+        native_path = result['job'] / 'result.json'
         expected_state = ('SCREEN_REJECTED' if fault in faults[:3] else
                           'CANCELLED' if fault == 'reference-read-last-sync-fence' else 'FAILED')
-        assert native['state'] == expected_state and native['gate'] is None
-        assert result['budget_final']['native']['state'] == expected_state
+        if fault == 'reference-read-last-sync-fence' and not native_path.exists():
+            assert _reference_fault_native_state(regular, result, fault, first_work) == ('UNKNOWN', True)
+            assert 'native' not in result['budget_final']
+            assert not (output / 'screen-result.json').exists()
+        else:
+            native = json.loads(native_path.read_bytes())
+            assert native['state'] == expected_state and native['gate'] is None
+            assert result['budget_final']['native']['state'] == expected_state
+            if expected_state != 'SCREEN_REJECTED':
+                assert native.get('screen') is None
         assert not (output / 'evidence.json').exists() and not (result['job'] / 'gate-report.json').exists()
         if expected_state == 'SCREEN_REJECTED':
             report = json.loads((output / 'screen-result.json').read_bytes())
@@ -1309,8 +1318,6 @@ def test_actual_screen_failures_preserve_first_failure_and_never_become_full_suc
                 assert report['windows'][0]['effective_work'] == 47
             assert report['first_failure_ref']['sha256'] == _sha((output / 'screen-first-failure.json').read_bytes())
             _assert_screen_is_not_full(item, result)
-        else:
-            assert native.get('screen') is None
         if fault.startswith('reference-read-last-sync-'):
             assert not (output / 'screen').exists(), 'Last reference sync must be followed by fresh live admission'
         if fault in faults[:4]:
@@ -1334,6 +1341,7 @@ def test_actual_screen_failures_preserve_first_failure_and_never_become_full_suc
     assert len(screens) == 6
     for entry in screens:
         assert_budget_process_stopped(entry['process_identity'])
+    assert (item['markers'] / 'first-work.jsonl').read_bytes() == first_work
 
 
 @pytest.mark.parametrize('installation', ['managed'], indirect=True)
