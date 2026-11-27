@@ -145,7 +145,8 @@ def _command_handle(client, handle, successor, command):
 
 
 async def _read_original(runtime, output, opening, attempt, run_id, *, client=None, read_state=False,
-                         stop_records=None, check_commands=(), include_task_history=False, files=None):
+                         stop_records=None, check_commands=(), include_task_history=False, files=None,
+                         include_wake_conflict=False):
     try:
         async with asyncio.timeout(runtime.RPC_SECONDS):
             if client is None:
@@ -193,13 +194,20 @@ async def _read_original(runtime, output, opening, attempt, run_id, *, client=No
                 observed['readback_history_status'] = 'unavailable'
             return observed
         except ValueError as error:
-            if not include_task_history and not full_result:
+            before_wake = getattr(error, 'verified_before_wake', None)
+            if before_wake is None and not include_task_history and not full_result:
                 raise
-            original_terminal = getattr(error, 'verified_original_terminal', None)
-            if full_result and original_terminal is not None:
-                observed['readback_terminal'] = original_terminal
-            return {**observed, 'task_observation_history_status': 'contradictory',
-                    'task_observation_history_error': str(error)}
+            conflict = {'task_observation_history_status': 'contradictory', 'task_observation_history_error': str(error)}
+            if before_wake is None:
+                original_terminal = getattr(error, 'verified_original_terminal', None)
+                if full_result and original_terminal is not None:
+                    observed['readback_terminal'] = original_terminal
+                return {**observed, **conflict}
+            observed.update(conflict)
+            if include_wake_conflict:
+                observed['_wake_history_conflict'] = True
+            updates, completion, terminal, followup_terminal = before_wake
+            wake = None
         if check_commands:
             observed['task_observation_history'] = _task_observation_history(check_commands, updates)
         if completion is not None:
@@ -235,12 +243,14 @@ def _task_observation_history(commands, updates=None, *, unobserved='unavailable
 
 
 def _recipient_status(state, files, opening, attempt, result, output):
+    wake_conflict = output.pop('_wake_history_conflict', False)
     if opening is None or recipient_task(opening) is None:
         return output
     original = output.pop('recipient_history', None) or output.get('readback_completion', {}).get('recipient')
     local_attempt = files._read('recipient-attempt') if attempt is not None else None
     selected = recipient_task(opening)['recipient']
-    wake = {'status': 'awaiting_readback', 'intent': None, 'native_receipt': None, 'history': original}
+    wake = {'status': 'unknown' if wake_conflict else 'awaiting_readback',
+            'intent': None, 'native_receipt': None, 'history': original}
     if original is not None:
         wake.update(status=original['status'], intent=original['intent'])
         if 'outcome' in original:
@@ -310,7 +320,7 @@ async def status(state: State, project: str, campaign: str, *, online: bool = Fa
         if online:
             output = await _read_original(_temporal(), output, opening, attempt, run_id, read_state=True,
                                           stop_records=stop_records, check_commands=check_commands,
-                                          include_task_history=task is not None, files=files)
+                                          include_task_history=task is not None, files=files, include_wake_conflict=True)
             if (check_commands and (task is not None or output['workflow_state_status'] != 'observed')
                     and 'task_observation_history' not in output):
                 output['task_observation_history'] = _task_observation_history(check_commands)

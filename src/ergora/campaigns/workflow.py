@@ -492,6 +492,14 @@ class FollowupHistoryConflict(ValueError):
         self.verified_original_terminal = original_terminal
 
 
+class WakeHistoryConflict(ValueError):
+    """A contradictory wake after verification of its independent read evidence."""
+
+    def __init__(self, error, verified_before_wake):
+        super().__init__(str(error))
+        self.verified_before_wake = verified_before_wake
+
+
 async def read_task_history(client, handle, opening, commands):
     """Read saved task Updates and the opted-in Activity from one pinned History."""
     entries = {}
@@ -612,35 +620,38 @@ async def read_task_history(client, handle, opening, commands):
         updates[update_id]['reason'] = READBACK_ALREADY_ADMITTED
     wake = None
     if wake_events:
-        scheduled = wake_events[0].activity_task_scheduled_event_attributes
-        values = await converter.decode(scheduled.input.payloads)
-        if len(values) != 1 or not isinstance(values[0], dict) or not isinstance(values[0].get('source'), dict):
-            raise ValueError('Campaign recipient History has an invalid original source')
-        claimed = values[0]['source']
-        if claimed.get('kind') == 'manual_update':
-            if timer_wait is None or not isinstance(claimed.get('update_id'), str):
-                raise ValueError('Campaign recipient History lacks its original wait and terminal Update')
-            preceding = entries[timer_wait['attempt']['update_id']]
-            terminal = entries.get(claimed['update_id'], {})
-            source = manual_wake_source(recipient, preceding.get('receipt'), terminal.get('receipt'))
-            ready = terminal['completed_event']
-            if preceding['completed_event_id'] >= ready.event_id:
-                raise ValueError('Campaign recipient terminal Update preceded its original wait')
-        else:
-            if completion is None:
-                raise ValueError('Campaign recipient History lacks its original passing readback')
-            # The original wake intent binds the receipt fields saved at dispatch.
-            source = {'status': 'available', **{key: value for key, value in completion.items()
-                      if key not in ('task_id', 'scheduled_event_id', 'completed_event_id', 'timing', 'recovery_history')}}
-            recovery_history = completion.get('recovery_history')
-            if recovery_history is None:
-                ready = next(event for event in activity_events if event.event_id == completion['completed_event_id'])
+        try:
+            scheduled = wake_events[0].activity_task_scheduled_event_attributes
+            values = await converter.decode(scheduled.input.payloads)
+            if len(values) != 1 or not isinstance(values[0], dict) or not isinstance(values[0].get('source'), dict):
+                raise ValueError('Campaign recipient History has an invalid original source')
+            claimed = values[0]['source']
+            if claimed.get('kind') == 'manual_update':
+                if timer_wait is None or not isinstance(claimed.get('update_id'), str):
+                    raise ValueError('Campaign recipient History lacks its original wait and terminal Update')
+                preceding = entries[timer_wait['attempt']['update_id']]
+                terminal = entries.get(claimed['update_id'], {})
+                source = manual_wake_source(recipient, preceding.get('receipt'), terminal.get('receipt'))
+                ready = terminal['completed_event']
+                if preceding['completed_event_id'] >= ready.event_id:
+                    raise ValueError('Campaign recipient terminal Update preceded its original wait')
             else:
-                ready = next(event for event in recovery_events if event.event_id == recovery_history['completed_event_id'])
-        intent = wake_intent(opening, handle.run_id, recipient, source)
-        wake = await _read_recipient_history(converter, wake_events, opening, intent, ready)
-        if claimed.get('kind') != 'manual_update':
-            completion['recipient'] = wake
+                if completion is None:
+                    raise ValueError('Campaign recipient History lacks its original passing readback')
+                # The original wake intent binds the receipt fields saved at dispatch.
+                source = {'status': 'available', **{key: value for key, value in completion.items()
+                          if key not in ('task_id', 'scheduled_event_id', 'completed_event_id', 'timing', 'recovery_history')}}
+                recovery_history = completion.get('recovery_history')
+                if recovery_history is None:
+                    ready = next(event for event in activity_events if event.event_id == completion['completed_event_id'])
+                else:
+                    ready = next(event for event in recovery_events if event.event_id == recovery_history['completed_event_id'])
+            intent = wake_intent(opening, handle.run_id, recipient, source)
+            wake = await _read_recipient_history(converter, wake_events, opening, intent, ready)
+            if claimed.get('kind') != 'manual_update':
+                completion['recipient'] = wake
+        except ValueError as error:
+            raise WakeHistoryConflict(error, (updates, completion, readback_terminal, followup_terminal)) from error
     return updates, completion, wake, readback_terminal, followup_terminal
 
 
@@ -676,7 +687,9 @@ async def _read_recipient_history(converter, events, opening, intent, readback_c
     event = events[0]
     scheduled = event.activity_task_scheduled_event_attributes
     values = await converter.decode(scheduled.input.payloads)
-    if (len(events) > 3 or event.event_id <= readback_completed.event_id or scheduled.activity_id != intent['wake_id']
+    if (len(events) > 3 or event.event_type != EventType.EVENT_TYPE_ACTIVITY_TASK_SCHEDULED
+            or not 0 < readback_completed.event_id < event.event_id
+            or scheduled.activity_id != intent['wake_id'] or scheduled.activity_type.name != RECIPIENT_ACTIVITY
             or scheduled.task_queue.name != opening['task_queue'] or scheduled.retry_policy.maximum_attempts != 1
             or values != [intent]):
         raise ValueError('Campaign recipient History differs from the exact original wake intent')
@@ -686,7 +699,10 @@ async def _read_recipient_history(converter, events, opening, intent, readback_c
     terminals = []
     for following in events[1:]:
         if following.HasField('activity_task_started_event_attributes'):
-            if start_id is not None or following.activity_task_started_event_attributes.attempt != 1:
+            started = following.activity_task_started_event_attributes
+            if (start_id is not None or following.event_type != EventType.EVENT_TYPE_ACTIVITY_TASK_STARTED
+                    or following.event_id <= event.event_id or started.scheduled_event_id != event.event_id
+                    or started.attempt != 1):
                 raise ValueError('Campaign recipient History has a different original attempt')
             start_id = following.event_id
             result.update(status='unknown', started_event_id=start_id)
@@ -694,7 +710,9 @@ async def _read_recipient_history(converter, events, opening, intent, readback_c
             continue
         if following.HasField('activity_task_completed_event_attributes'):
             done = following.activity_task_completed_event_attributes
-            if start_id is None or done.started_event_id != start_id:
+            if (start_id is None or following.event_type != EventType.EVENT_TYPE_ACTIVITY_TASK_COMPLETED
+                    or following.event_id <= start_id or done.scheduled_event_id != event.event_id
+                    or done.started_event_id != start_id):
                 raise ValueError('Campaign recipient completion lacks its original start')
             replies = await converter.decode(done.result.payloads)
             if (len(replies) != 1 or not isinstance(replies[0], dict)

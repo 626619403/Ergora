@@ -977,28 +977,34 @@ def test_campaign_one_pending_readback_window_is_frozen():
 
 
 @pytest.mark.parametrize('kind', ['completed', 'lost', 'changed', 'duplicate', 'untimed', 'skewed',
-                                 'unstarted', 'foreign-terminal', 'out-of-order', 'duplicate-terminal'])
+                                 'unstarted', 'foreign-terminal', 'out-of-order', 'duplicate-terminal',
+                                 'negative-reuses-start-id', 'wrong-schedule-type', 'wrong-started-type',
+                                 'wrong-completion-type', 'start-reuses-schedule-id', 'completion-reuses-start-id',
+                                 'foreign-start-schedule', 'foreign-completion-schedule'])
 def test_recipient_history_retains_the_original_wake_and_unknown_delivery(kind):
     pytest.importorskip('temporalio')
+    from temporalio.api.enums.v1 import EventType
     from temporalio.api.history.v1 import HistoryEvent
     from temporalio.converter import DataConverter
+    from ergora.campaigns.records import RECIPIENT_ACTIVITY
     from ergora.campaigns.workflow import _read_recipient_history
 
     async def exercise():
         converter = DataConverter.default
         intent = {'wake_id': 'codex-recipient:fixed-controlled-intent'}
         ready = HistoryEvent(event_id=18)
-        schedule = HistoryEvent(event_id=22)
+        schedule = HistoryEvent(event_id=22, event_type=EventType.EVENT_TYPE_ACTIVITY_TASK_SCHEDULED)
         attrs = schedule.activity_task_scheduled_event_attributes
         attrs.activity_id = intent['wake_id']
+        attrs.activity_type.name = RECIPIENT_ACTIVITY
         attrs.task_queue.name = 'original-queue'
         attrs.retry_policy.maximum_attempts = 1
         values = {**intent, 'changed': True} if kind == 'changed' else intent
         attrs.input.payloads.extend(await converter.encode([values]))
-        started = HistoryEvent(event_id=23)
+        started = HistoryEvent(event_id=23, event_type=EventType.EVENT_TYPE_ACTIVITY_TASK_STARTED)
         started.activity_task_started_event_attributes.scheduled_event_id = 22
         started.activity_task_started_event_attributes.attempt = 1
-        ending = HistoryEvent(event_id=24)
+        ending = HistoryEvent(event_id=24, event_type=EventType.EVENT_TYPE_ACTIVITY_TASK_COMPLETED)
         if kind != 'untimed':
             ready.event_time.seconds = 4
             ready.event_time.nanos = 90
@@ -1008,37 +1014,59 @@ def test_recipient_history_retains_the_original_wake_and_unknown_delivery(kind):
             started.event_time.nanos = 120
             ending.event_time.seconds = 6
             ending.event_time.nanos = 140
-        unknown_delivery = kind in ('lost', 'unstarted', 'foreign-terminal', 'out-of-order', 'duplicate-terminal')
+        unknown_delivery = kind in ('lost', 'unstarted', 'foreign-terminal', 'out-of-order', 'duplicate-terminal',
+                                    'negative-reuses-start-id')
         if unknown_delivery:
+            ending.event_type = EventType.EVENT_TYPE_ACTIVITY_TASK_TIMED_OUT
             timed_out = ending.activity_task_timed_out_event_attributes
             timed_out.scheduled_event_id = 22
             timed_out.started_event_id = {
-                'lost': 23, 'unstarted': 0, 'foreign-terminal': 19, 'out-of-order': 23, 'duplicate-terminal': 0}[kind]
+                'lost': 23, 'unstarted': 0, 'foreign-terminal': 19, 'out-of-order': 23, 'duplicate-terminal': 0,
+                'negative-reuses-start-id': 23}[kind]
         elif kind == 'duplicate':
+            ending.event_type = EventType.EVENT_TYPE_ACTIVITY_TASK_SCHEDULED
             ending.activity_task_scheduled_event_attributes.CopyFrom(attrs)
         else:
             completed = ending.activity_task_completed_event_attributes
             completed.scheduled_event_id = 22
             completed.started_event_id = 23
             completed.result.payloads.extend(await converter.encode([{'status': 'observed', 'native_run_id': 'original'}]))
+        wrong_types = {'wrong-schedule-type': schedule, 'wrong-started-type': started, 'wrong-completion-type': ending}
+        if kind in wrong_types:
+            wrong_types[kind].event_type = EventType.EVENT_TYPE_TIMER_FIRED
+        if kind == 'start-reuses-schedule-id':
+            started.event_id = schedule.event_id
+            completed.started_event_id = started.event_id
+        elif kind in ('completion-reuses-start-id', 'negative-reuses-start-id'):
+            ending.event_id = started.event_id
+        elif kind == 'foreign-start-schedule':
+            started.activity_task_started_event_attributes.scheduled_event_id = 99
+        elif kind == 'foreign-completion-schedule':
+            completed.scheduled_event_id = 99
         events = {
             'unstarted': [schedule, ending], 'out-of-order': [schedule, ending, started],
             'duplicate-terminal': [schedule, ending, ending],
         }.get(kind, [schedule, started, ending])
         args = (converter, events, {'task_queue': 'original-queue'}, intent, ready)
-        if kind in ('changed', 'duplicate'):
-            with pytest.raises(ValueError, match='original wake intent|second delivery'):
+        refusals = {'changed': 'original wake intent', 'duplicate': 'second delivery',
+                    'wrong-schedule-type': 'original wake intent', 'wrong-started-type': 'original attempt',
+                    'wrong-completion-type': 'original start', 'start-reuses-schedule-id': 'original attempt',
+                    'completion-reuses-start-id': 'original start', 'foreign-start-schedule': 'original attempt',
+                    'foreign-completion-schedule': 'original start'}
+        if kind in refusals:
+            with pytest.raises(ValueError, match=refusals[kind]):
                 await _read_recipient_history(*args)
         else:
             result = await _read_recipient_history(*args)
-            assert result['intent'] == intent and result['scheduled_event_id'] == 22 and result['completed_event_id'] == 24
+            assert result['intent'] == intent and result['scheduled_event_id'] == 22
+            assert result['completed_event_id'] == ending.event_id
             assert result['status'] == ('unknown' if unknown_delivery else 'observed')
             timing = result['timing']
             assert timing['clock'] == 'temporal_history'
             assert timing['intervals_ns']['scheduled_to_worker_started'] == (
                 None if kind in ('untimed', 'skewed', 'unstarted', 'duplicate-terminal') else 20)
             assert timing['intervals_ns']['ready_to_scheduled'] == (None if kind == 'untimed' else 1_000_000_010)
-            if kind in ('unstarted', 'foreign-terminal', 'out-of-order', 'duplicate-terminal'):
+            if kind in ('unstarted', 'foreign-terminal', 'out-of-order', 'duplicate-terminal', 'negative-reuses-start-id'):
                 assert timing['intervals_ns']['worker_started_to_delivery_terminal'] is None
                 assert ('delivery_terminal' in timing['events']) is (kind == 'unstarted')
             if kind != 'untimed':
@@ -1133,6 +1161,99 @@ def test_recipient_status_retains_a_proven_blocker_and_separates_partial_publica
         assert output['status'] == 'blocked' and output['reason'] == 'session_slot_timeout'
     else:
         assert output['status'] == 'unknown' and 'reason' not in output
+
+
+@pytest.mark.parametrize(('fence', 'wake_conflict', 'local', 'expected'), (
+    ('stopped', True, False, 'unknown'),
+    ('expired', True, False, 'unknown'),
+    ('active', True, False, 'unknown'),
+    ('stopped', False, False, 'blocked'),
+    ('expired', False, False, 'blocked'),
+    ('stopped', True, True, 'observed'),
+))
+def test_campaign_status_keeps_wake_conflict_separate_from_stop_and_native_receipt(
+        tmp_path, monkeypatch, fence, wake_conflict, local, expected):
+    pytest.importorskip('temporalio')
+    from ergora.agents import runs
+    from ergora.campaigns import recipient_gate, workflow
+
+    run_id = 'original-run'
+    state = SimpleNamespace(root=tmp_path)
+    recipient = {'session_id': 'session', 'parent_run_id': 'parent', 'intent_id': 'next'}
+    task = {'task_id': 'result', 'source': {'kind': 'training_full_result'},
+            'readback': {'due_at': 10, 'deadline_at': 80}, 'recipient': recipient}
+    opening = {'plan': {'tasks': [task], 'limits': {'expires_at': 100}}}
+    start, result = {'start': 'original-attempt'}, {'run_id': run_id}
+    stop_receipt = {'decision': 'accepted', 'run_id': run_id}
+    stops = ({'run_id': run_id}, {'update_id': 'original-stop'}, {'receipt': stop_receipt})
+    stop_records = stops if fence == 'stopped' else (None, None, None)
+    original_completion = {'task_id': 'result', 'scheduled_event_id': 11,
+                           'recovery_history': {'completed_event_id': 21}}
+    original_terminal = {'status': 'timed_out', 'terminal_event_id': 13}
+    native_id = runs._continuation_run_id(recipient['session_id'], recipient['intent_id'])
+    native_intent = {'wake_id': 'original-wake'}
+    local_attempt = {'native_run_id': native_id, 'intent': native_intent} if local else None
+    submitted = {'intent_id': recipient['intent_id']}
+    native = {'run_id': native_id, 'dispatch': 'accepted', 'native_start': {'status': 'started'},
+              'run': {'status': 'succeeded', 'execution_stopped': True,
+                      'context_digest': 'original-context', 'submitted': submitted}}
+    files = SimpleNamespace(project='demo', load=lambda: (opening, start, result),
+                            load_stop=lambda *_: stop_records, load_checks=lambda *_: (run_id, []),
+                            _read=lambda key: local_attempt if key == 'recipient-attempt' else None)
+    handle = SimpleNamespace(run_id=run_id)
+
+    async def connect(*_):
+        return object()
+
+    async def current(*_):
+        return handle, SimpleNamespace(run_id=run_id, status=SimpleNamespace(name='COMPLETED')), None
+
+    async def read_stop(*_):
+        assert fence == 'stopped'
+        return stop_receipt
+
+    async def runtime_status(*_, **__):
+        return {'workflow_state_status': 'unavailable'}
+
+    async def read_task_history(*_):
+        if wake_conflict:
+            raise workflow.WakeHistoryConflict(ValueError('Wake History contradicts its original start'),
+                                               ({}, original_completion, original_terminal, None))
+        return {}, None, None, None, None
+
+    runtime = SimpleNamespace(connect=connect, current=current, read_stop=read_stop, runtime_status=runtime_status,
+                              read_task_history=read_task_history, RPC_SECONDS=1, RPCError=RuntimeError)
+    monkeypatch.setattr(application, 'CampaignFiles', lambda *_: files)
+    monkeypatch.setattr(application, 'verify_registration', lambda *_: None)
+    monkeypatch.setattr(application, '_snapshot', lambda *_: {'run_id': run_id, 'attempt_sha256': 'original'})
+    monkeypatch.setattr(application, '_temporal', lambda: runtime)
+    monkeypatch.setattr(application, 'time', SimpleNamespace(time=lambda: 20 if fence == 'active' else 101))
+
+    def verified_gate(*args):
+        assert local and args == (files, opening, start, result, local_attempt)
+        return SimpleNamespace(intent=native_intent, submission=lambda: submitted,
+                               binding={'context_digest': 'original-context'})
+
+    def native_receipt(*args):
+        assert local and args == (state, 'demo', 'session', 'parent', 'next')
+        return native
+
+    monkeypatch.setattr(recipient_gate, 'RecipientGate', verified_gate)
+    monkeypatch.setattr(runs, 'continuation_receipt', native_receipt)
+
+    output = asyncio.run(application.status(state, 'demo', 'original', online=True, task_id='result'))
+    assert '_wake_history_conflict' not in output
+    assert output['stop']['receipt'] == (stop_receipt if fence == 'stopped' else None)
+    projected = output['recipient']
+    assert projected == {'status': expected, 'intent': native_intent if local else None,
+                         'native_receipt': native if local else None, 'history': None,
+                         **({'reason': fence} if expected == 'blocked' else {})}
+    if wake_conflict:
+        assert output['task_observation_history_status'] == 'contradictory'
+        assert output['readback_completion'] == original_completion and output['readback_terminal'] == original_terminal
+        assert output['tasks']['result']['state_source'] == 'history' and output['tasks']['result']['eligible'] is False
+    else:
+        assert 'task_observation_history_status' not in output
 
 
 @pytest.mark.parametrize('outcome', ['passing', 'unrelated', 'pending', 'unaccepted', 'changed-grant',
@@ -2878,9 +2999,10 @@ def test_only_training_readback_projects_its_pending_local_stop_to_the_child(tra
     assert result['tasks']['fixed'] == {'status': 'ready', 'eligible': not training}
 
 
-@pytest.mark.parametrize('view', ('live', 'history', 'missing'))
+@pytest.mark.parametrize('view', ('live', 'history', 'missing', 'wake-contradictory'))
 def test_training_task_view_retains_verified_history_without_live_admission(view):
-    root = {'task_id': 'training', 'depends_on': [], 'source': {'kind': 'training_gpu_release'},
+    kind = 'training_full_result' if view == 'wake-contradictory' else 'training_gpu_release'
+    root = {'task_id': 'training', 'depends_on': [], 'source': {'kind': kind},
             'readback': {'due_at': 15, 'deadline_at': 20}}
     dependent = {'task_id': 'fixed', 'depends_on': ['training'], 'source': {}}
     opening = {'plan': {'tasks': [root, dependent]}}
@@ -2888,6 +3010,7 @@ def test_training_task_view_retains_verified_history_without_live_admission(view
     description = SimpleNamespace(run_id='original', status=SimpleNamespace(name='RUNNING'))
     live = {'training': {'status': 'observed', 'eligible': False}, 'fixed': {'status': 'ready', 'eligible': True}}
     completion = {'task_id': 'training', 'activity_id': 'original-read', 'completed_event_id': 13}
+    terminal = {'status': 'timed_out', 'terminal_event_id': 10}
 
     async def original(client, plan, attempt, run):
         assert (plan, run) == (opening, 'original')
@@ -2900,6 +3023,11 @@ def test_training_task_view_retains_verified_history_without_live_admission(view
 
     async def history(client, selected, plan, commands):
         assert (selected, plan, commands) == (handle, opening, ())
+        if view == 'wake-contradictory':
+            pytest.importorskip('temporalio')
+            from ergora.campaigns.workflow import WakeHistoryConflict
+
+            raise WakeHistoryConflict(ValueError('Wake start is contradictory'), ({}, completion, terminal, None))
         return {}, None if view == 'missing' else completion, None, None, None
 
     runtime = SimpleNamespace(RPC_SECONDS=1, original=original, runtime_status=state,
@@ -2909,11 +3037,16 @@ def test_training_task_view_retains_verified_history_without_live_admission(view
                                                     client=object(), read_state=True))
     if view == 'live':
         assert result['tasks'] == live
-    elif view == 'history':
+    elif view in ('history', 'wake-contradictory'):
         assert result['workflow_state_status'] == 'unavailable'
         assert result['readback_completion'] == completion
         assert result['tasks'] == {'training': {**root, 'status': 'observed', 'receipt': None,
                                                'eligible': False, 'state_source': 'history'}}
+        if view == 'wake-contradictory':
+            assert result['task_observation_history_status'] == 'contradictory'
+            assert result['readback_terminal'] == terminal
+            assert 'recipient_history' not in result and 'recipient' not in result['readback_completion']
+            assert '_wake_history_conflict' not in result
     else:
         assert 'tasks' not in result
         assert 'readback_completion' not in result
