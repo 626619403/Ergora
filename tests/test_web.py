@@ -96,7 +96,8 @@ def test_campaign_timeline_reads_and_exposes_only_the_selected_original_task(con
 
 @pytest.mark.parametrize("disposition", ["released", "unknown", "release-error", "refused", "completed-unknown", "timed-out",
                                          "invalid-terminal-status", "contradictory",
-                                         "reason-path", "reason-object", "native-blocker", "other-task", "training-wait"])
+                                         "reason-path", "reason-object", "native-blocker", "other-task", "training-wait",
+                                         "training-release-unobserved"])
 def test_campaign_timeline_scopes_independent_assignment_evidence(console, monkeypatch, disposition):
     from errno import EACCES
     from os import strerror
@@ -153,11 +154,16 @@ def test_campaign_timeline_scopes_independent_assignment_evidence(console, monke
     elif disposition == "native-blocker":
         run = {"status": "cancelled", "execution_stopped": True, "returncode": -9,
                "campaign_recipient_blocker": "stopped"}
-    elif disposition == "training-wait":
+    elif disposition in ("training-wait", "training-release-unobserved"):
         task["source"] = {"kind": "training_full_result", "locator": {"experiment_id": "alpha"}}
         history = {"status": "unknown", "training_wait_started_event_id": 1, "scheduled_event_id": 12,
                    "started_event_id": 13}
         original_history = {**history, "completed_event_id": 14}
+        if disposition == "training-release-unobserved":
+            release = None
+            raw_extra["release_unobserved"] = projected_extra["release_unobserved"] = True
+    if disposition == "other-task":
+        raw_extra["release_unobserved"] = True
     if disposition in ("released", "training-wait", "timed-out", "other-task"):
         intervals = {"ready_to_scheduled": 0, "scheduled_to_worker_started": 39850,
                      "worker_started_to_delivery_terminal": 1779422223}
@@ -199,7 +205,7 @@ def test_campaign_timeline_scopes_independent_assignment_evidence(console, monke
     assert response.status_code == 200
     projected = response.json()
     assert projected["task_state"] is None
-    if disposition == "training-wait":
+    if disposition in ("training-wait", "training-release-unobserved"):
         assert projected["training_task"]["locator"] == task["source"]["locator"]
     else:
         assert projected["task_evidence"] == task

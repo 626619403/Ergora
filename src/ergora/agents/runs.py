@@ -1038,7 +1038,7 @@ class _SessionAuthorityRevoked(ValueError):
     """The verified native session's original role authority generation changed."""
 
 
-def _validate_session_authority(state, context, *, project=None):
+def _validate_session_authority(state, context, *, project=None, verify_executable=True):
     if project is None:
         project = state.project(context['project'])
     elif project['id'] != context['project']:
@@ -1058,7 +1058,8 @@ def _validate_session_authority(state, context, *, project=None):
         raise ValueError('Current role binding differs from the frozen session')
     agents.validate_binding(context['role'], context['binding'])
     components.validate_agent_minimum(context['binding'], context.get('invocation_minimum'))
-    agent_backends.for_binding(context['binding']).validate_session_configuration(context['inference'], repo)
+    agent_backends.for_binding(context['binding']).validate_session_configuration(
+        context['inference'], repo, verify_executable=verify_executable)
     home = Path(context['native_home'])
     details = home.stat(follow_symlinks=False)
     if is_link(home) or [details.st_dev, details.st_ino] != context['native_home_identity']:
@@ -1083,7 +1084,7 @@ def _session_turns(state, project, ident):
     return turns
 
 
-def _session_summary(state, project, ident, turns):
+def _session_summary(state, project, ident, turns, *, verify_executable=True):
     root, latest = turns[0], turns[-1]
     context = _read_session_context(state, root)
     reason = None
@@ -1097,7 +1098,8 @@ def _session_summary(state, project, ident, turns):
         reason = f'This session reached its {_MAX_SESSION_TURNS}-turn limit; start a new session explicitly'
     else:
         try:
-            _validate_session_authority(state, context)
+            scope = {} if verify_executable else {'verify_executable': False}
+            _validate_session_authority(state, context, **scope)
         except (OSError, ValueError) as error:
             reason = str(error)
     return {'id': ident, 'birth_intent': root['submitted']['intent_id'], 'project': project, 'repo': context['repo'], 'role': context['role'],
@@ -1121,11 +1123,14 @@ def sessions(state: State, project_id: str, *, after: int = 0, limit: int = 20, 
             'next_after': after + limit if len(rows) > limit else None}
 
 
-def inspect_session(state: State, project_id: str, session_id: str, *, after: int = 0, limit: int = 20) -> dict:
+def inspect_session(state: State, project_id: str, session_id: str, *, after: int = 0, limit: int = 20,
+                    verify_executable: bool = True) -> dict:
+    """Read the original session. Executable digests may be omitted for a non-launch advisory."""
     contracts.validate(after, {'type': 'integer', 'minimum': 0}, 'Turn offset')
     contracts.validate(limit, {'type': 'integer', 'minimum': 1, 'maximum': 100}, 'Turn limit')
     turns = _session_turns(state, project_id, session_id)
-    return {**_session_summary(state, project_id, session_id, turns), 'turns': turns[after:after + limit],
+    return {**_session_summary(state, project_id, session_id, turns, verify_executable=verify_executable),
+            'turns': turns[after:after + limit],
             'next_after': after + limit if len(turns) > after + limit else None}
 
 

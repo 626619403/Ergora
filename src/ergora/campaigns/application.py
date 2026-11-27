@@ -2,6 +2,7 @@
 
 import asyncio
 from pathlib import Path
+import sqlite3
 from threading import Event
 import time
 from uuid import uuid4
@@ -119,7 +120,8 @@ def _stop_snapshot(records, *, local_fence=False):
     return snapshot
 
 
-async def _observe(runtime, output, client, handle, description, opening, stop_records, read_state, *, successor=None):
+async def _observe(runtime, output, client, handle, description, opening, stop_records, read_state, *, successor=None,
+                   include_admission=False):
     observed = {**output, 'status': 'observed', 'run_id': description.run_id, 'remote_status': 'original_observed',
                 'temporal_status': description.status.name}
     if successor is not None:
@@ -150,6 +152,8 @@ async def _observe(runtime, output, client, handle, description, opening, stop_r
         try:
             async with asyncio.timeout(runtime.RPC_SECONDS):
                 scope = {'rollover': successor} if successor is not None else {}
+                if include_admission:
+                    scope['include_admission'] = True
                 observed.update(await runtime.runtime_status(handle, description, opening, stop_receipt,
                                                            start_attempt_sha256=output['attempt_sha256'], **scope))
                 saved_stop = observed.get('stop', {}).get('receipt')
@@ -181,7 +185,7 @@ def _command_handle(client, handle, successor, command):
 
 async def _read_original(runtime, output, opening, attempt, run_id, *, client=None, read_state=False,
                          stop_records=None, check_commands=(), include_task_history=False, files=None,
-                         include_wake_conflict=False):
+                         include_wake_conflict=False, include_release_advisory=False):
     try:
         async with asyncio.timeout(runtime.RPC_SECONDS):
             if client is None:
@@ -198,7 +202,7 @@ async def _read_original(runtime, output, opening, attempt, run_id, *, client=No
     except (TimeoutError, ConnectionError):
         return {**output, 'remote_status': 'unavailable', 'remote_error': 'connection_or_lookup'}
     observed = await _observe(runtime, output, client, handle, description, opening, stop_records, read_state,
-                              successor=successor)
+                              successor=successor, include_admission=include_release_advisory)
     if files is not None and rollover_task(opening) is not None and successor is None:
         command = files.load_rollover(opening, attempt, handle.run_id)
         if command is not None:
@@ -214,6 +218,8 @@ async def _read_original(runtime, output, opening, attempt, run_id, *, client=No
             async with asyncio.timeout(runtime.RPC_SECONDS):
                 if successor is None:
                     history_scope = {'start_attempt': attempt} if training_assignment_task(opening) is not None else {}
+                    if observed.get('_original_admission_open') is True:
+                        history_scope['check_pending_wake'] = True
                     updates, completion, wake, terminal, followup_terminal, assignment = await runtime.read_task_history(
                         client, handle, opening, check_commands, **history_scope)
                 else:
@@ -326,14 +332,71 @@ def _assignment_status(state, files, opening, start, result, *, history=None):
             **({'refusal': refusal} if refusal is not None else {})}
 
 
+def _assignment_without_release(assignment):
+    claim = assignment['claim']
+    history = assignment['history'] or {}
+    native = assignment['native_receipt'] or {}
+    run = native.get('run') or {}
+    return (claim is not None and assignment['slot_status'] == 'claimed' and assignment['release'] is None
+            and 'release_error' not in assignment and 'refusal' not in assignment
+            and history.get('intent') == claim['intent'] and history.get('status') not in ('blocked', 'contradictory')
+            and native.get('dispatch') == 'accepted' and run.get('status') not in (None, 'unknown')
+            and run.get('role') == assignment['assignee']['role'] and run.get('stop_request') is None)
+
+
+def _assignment_release_unobserved(state, files, opening, attempt, result, output, original, selected):
+    from ergora.agents import native_sources, runs
+    from ergora.configuration.projects import native_authority_revision
+
+    assignment = output['assignment']
+    if not _assignment_without_release(assignment):
+        return False
+    readback = output.get('tasks', {}).get(assignment['waiting_task_id'], {}).get('readback_observation')
+    if (result is None or result['run_id'] != original['intent']['run_id']
+            or output['stop']['status'] != 'not_recorded' or readback != original['intent']['source']):
+        return False
+    try:
+        session_id, parent_id = selected['session_id'], selected['parent_run_id']
+        parent = native_sources.record(state, files.project, parent_id)
+        session = runs.inspect_session(state, files.project, session_id, after=parent['session']['ordinal'], limit=1,
+                                       verify_executable=False)
+        binding = opening['recipient_binding']
+        role = binding['role']
+        if (session['can_continue'] is not True or session['latest_run'] != parent_id or session['role'] != role
+                or len(session['turns']) != 1):
+            return False
+        turn = session['turns'][0]
+        if (turn['id'] != parent_id or turn['execution_stopped'] is not True or turn['role'] != role
+                or turn['context_digest'] != binding['context_digest']
+                or turn.get('native_session', {}).get('id') != binding['native_id']):
+            return False
+        current = require_check_project(state, opening)
+        if assignment['assignee'] != {'role': role, 'generation': native_authority_revision(current, role)}:
+            return False
+        payload = Path(binding['payload_executable']).stat(follow_symlinks=False)
+        if (payload.st_dev, payload.st_ino, payload.st_size) != (binding['device'], binding['inode'], binding['size']):
+            return False
+        latest = _assignment_status(state, files, opening, attempt, result, history=assignment['history'])
+        if latest['claim'] != assignment['claim'] or not _assignment_without_release(latest):
+            return False
+        observed = runs.continuation_receipt(state, files.project, session_id, parent_id, selected['intent_id'])
+        return (observed['dispatch'] == 'unrecorded' and files._read('recipient-attempt') is None
+                and files.load_stop(opening, attempt, result)[0] is None
+                and time.time() < opening['plan']['limits']['expires_at'])
+    except (OSError, ValueError, KeyError, TypeError, sqlite3.Error):
+        return False
+
+
 def _recipient_status(state, files, opening, attempt, result, output):
     wake_conflict = output.pop('_wake_history_conflict', False)
+    admission_open = output.pop('_original_admission_open', False)
     if opening is None or recipient_task(opening) is None:
         return output
     if assignment_task(opening) is not None:
         output['assignment'] = _assignment_status(state, files, opening, attempt, result,
                                                   history=output.pop('assignment_history', None))
     original = output.pop('recipient_history', None) or output.get('readback_completion', {}).get('recipient')
+    pending_wake = original.pop('_verified_pending_activity', False) if original is not None else False
     local_attempt = files._read('recipient-attempt') if attempt is not None else None
     selected = recipient_task(opening)['recipient']
     wake = {'status': 'unknown' if wake_conflict else 'awaiting_readback',
@@ -375,6 +438,9 @@ def _recipient_status(state, files, opening, attempt, result, output):
         expired = time.time() >= opening['plan']['limits']['expires_at']
         if stopped or expired:
             wake.update(status='blocked' if original is None else 'unknown', reason='stopped' if stopped else 'expired')
+    if (admission_open is True and pending_wake is True and not wake_conflict and local_attempt is None and 'assignment' in output
+            and _assignment_release_unobserved(state, files, opening, attempt, result, output, original, selected)):
+        output['assignment']['release_unobserved'] = True
     return {**output, 'recipient': wake}
 
 
@@ -405,9 +471,12 @@ async def status(state: State, project: str, campaign: str, *, online: bool = Fa
                 output['rollover'] = {'status': 'unavailable' if online else 'not_requested',
                                       'update_id': command['attempt']['update_id']}
         if online:
+            assigned_training = training_assignment_task(opening)
             output = await _read_original(_temporal(), output, opening, attempt, run_id, read_state=True,
                                           stop_records=stop_records, check_commands=check_commands,
-                                          include_task_history=task is not None, files=files, include_wake_conflict=True)
+                                          include_task_history=task is not None, files=files, include_wake_conflict=True,
+                                          include_release_advisory=(assigned_training is not None
+                                              and task_id in (None, assigned_training['task_id'])))
             if (check_commands and (task is not None or output['workflow_state_status'] != 'observed')
                     and 'task_observation_history' not in output):
                 output['task_observation_history'] = _task_observation_history(check_commands)

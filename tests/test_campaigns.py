@@ -18,6 +18,7 @@ from ergora.campaigns import application
 from ergora.configuration import projects, registrations
 from ergora.interfaces.cli import main
 from ergora.storage.state import State
+from test_agents import native_session_case  # noqa: F401
 from test_registrations import installation, registration  # noqa: F401
 
 
@@ -1222,7 +1223,7 @@ def test_assignment_recipient_requires_its_original_wait_and_schedule_before_res
         assert not delivered
 
 
-@pytest.mark.parametrize('kind', ['completed', 'lost', 'changed', 'duplicate', 'untimed', 'skewed',
+@pytest.mark.parametrize('kind', ['scheduled', 'started', 'completed', 'lost', 'changed', 'duplicate', 'untimed', 'skewed',
                                  'unstarted', 'foreign-terminal', 'out-of-order', 'duplicate-terminal',
                                  'negative-reuses-start-id', 'wrong-schedule-type', 'wrong-started-type',
                                  'wrong-completion-type', 'start-reuses-schedule-id', 'completion-reuses-start-id',
@@ -1300,6 +1301,7 @@ def test_recipient_history_retains_the_original_wake_and_unknown_delivery(kind):
         elif kind == 'foreign-completion-schedule':
             completed.scheduled_event_id = 99
         events = {
+            'scheduled': [schedule], 'started': [schedule, started],
             'unstarted': [schedule, ending], 'negative-failed-before-start': [schedule, ending],
             'out-of-order': [schedule, ending, started],
             'duplicate-terminal': [schedule, ending, ending],
@@ -1314,8 +1316,15 @@ def test_recipient_history_retains_the_original_wake_and_unknown_delivery(kind):
             with pytest.raises(ValueError, match=refusals[kind]):
                 await _read_recipient_history(*args)
         else:
-            result = await _read_recipient_history(*args)
+            result = await _read_recipient_history(*args, check_pending=True)
             assert result['intent'] == intent and result['scheduled_event_id'] == 22
+            pending = kind in ('scheduled', 'started')
+            assert ('_verified_pending_activity' in result) is pending
+            assert '_verified_pending_activity' not in await _read_recipient_history(*args)
+            if pending:
+                assert result['status'] == ('scheduled' if kind == 'scheduled' else 'unknown')
+                assert 'completed_event_id' not in result and 'terminal_status' not in result and 'outcome' not in result
+                return
             uncorroborated = ('foreign-terminal', 'out-of-order', 'duplicate-terminal', 'negative-reuses-start-id',
                               'negative-wrong-type', 'negative-foreign-schedule', 'negative-failed-before-start')
             if kind in uncorroborated:
@@ -1344,6 +1353,31 @@ def test_recipient_history_retains_the_original_wake_and_unknown_delivery(kind):
                 assert not timing['events']
 
     asyncio.run(exercise())
+
+
+def test_pending_wake_observation_refuses_stop_close_cancel_and_conflicting_terminal():
+    pytest.importorskip('temporalio')
+    from temporalio.api.enums.v1 import EventType
+    from temporalio.api.history.v1 import HistoryEvent
+    from ergora.campaigns.workflow import STOP_UPDATE, _wake_is_closing
+
+    schedule = HistoryEvent(event_id=12, event_type=EventType.EVENT_TYPE_ACTIVITY_TASK_SCHEDULED)
+    started = HistoryEvent(event_id=13, event_type=EventType.EVENT_TYPE_ACTIVITY_TASK_STARTED)
+    started.activity_task_started_event_attributes.scheduled_event_id = 12
+    wake = [schedule, started]
+    accepted = HistoryEvent(event_id=14, event_type=EventType.EVENT_TYPE_WORKFLOW_EXECUTION_UPDATE_ACCEPTED)
+    accepted.workflow_execution_update_accepted_event_attributes.accepted_request.input.name = STOP_UPDATE
+    assert _wake_is_closing(accepted, wake)
+    cancel = HistoryEvent(event_id=14, event_type=EventType.EVENT_TYPE_ACTIVITY_TASK_CANCEL_REQUESTED)
+    cancel.activity_task_cancel_requested_event_attributes.scheduled_event_id = 12
+    assert _wake_is_closing(cancel, wake)
+    assert _wake_is_closing(HistoryEvent(event_id=14, event_type=EventType.EVENT_TYPE_WORKFLOW_EXECUTION_COMPLETED), wake)
+    inconsistent = HistoryEvent(event_id=14, event_type=EventType.EVENT_TYPE_ACTIVITY_TASK_TIMED_OUT)
+    inconsistent.activity_task_timed_out_event_attributes.scheduled_event_id = 999
+    inconsistent.activity_task_timed_out_event_attributes.started_event_id = 13
+    assert _wake_is_closing(inconsistent, wake)
+    inconsistent.activity_task_timed_out_event_attributes.started_event_id = 999
+    assert not _wake_is_closing(inconsistent, wake)
 
 
 def test_recipient_gate_obeys_the_same_native_cutoff_during_campaign_lock_contention(tmp_path, monkeypatch):
@@ -1504,6 +1538,152 @@ def test_recipient_status_retains_a_proven_blocker_and_separates_partial_publica
         assert output['status'] == 'blocked' and output['reason'] == 'session_slot_timeout'
     else:
         assert output['status'] == 'unknown' and 'reason' not in output
+
+
+@pytest.mark.parametrize('case', (
+    'scheduled', 'started', 'offline', 'terminal', 'workflow-closed', 'expired', 'local-stop', 'late-stop',
+    'readback-mismatch', 'release-error', 'released', 'refused', 'a2-wrong-role', 'a2-history-conflict',
+    'a2-unknown', 'a1-reserved', 'a1-incomplete', 'late-a1-claim', 'a1-unavailable', 'late-release', 'late-release-error',
+    'frozen-generation', 'parent-thread', 'parent-not-stopped', 'payload-missing',
+))
+def test_campaign_release_advisory_requires_live_original_evidence(tmp_path, monkeypatch, case):
+    from ergora.agents import native_sources, runs
+
+    role = 'performance-analyst'
+    wake = {'session_id': 'a1', 'parent_run_id': 'parent', 'intent_id': 'resume'}
+    first = {'task_id': 'result', 'source': {'kind': 'training_full_result', 'wait_for_live': True},
+             'readback': {}, 'recipient': wake}
+    expiry = int(time.time()) + (-1 if case == 'expired' else 60)
+    opening = {'plan': {'tasks': [first], 'limits': {'expires_at': expiry},
+                        'assignment': {'next_task': {'task_id': 'a2'}}}}
+    executable = tmp_path / 'approved-payload'
+    executable.touch()
+    payload = executable.stat()
+    if case == 'payload-missing':
+        executable.unlink()
+    opening['recipient_binding'] = {'role': role, 'context_digest': 'original-context', 'native_id': 'original-thread',
+                                    'payload_executable': str(executable), 'device': payload.st_dev,
+                                    'inode': payload.st_ino, 'size': payload.st_size}
+    claim = {'intent': {'wake_id': 'original-independent'}}
+    assignment = {'waiting_task_id': 'result', 'claim': claim, 'slot_status': 'claimed', 'release': None,
+                  'assignee': {'role': role, 'generation': 4}, 'history': {'intent': claim['intent'], 'status': 'unknown'},
+                  'native_receipt': {'dispatch': 'accepted', 'run': {'status': 'running', 'role': role}}}
+    if case == 'release-error':
+        assignment['release_error'] = 'Scoped error'
+    elif case == 'released':
+        assignment.update(slot_status='released', release={'run_id': 'original-a2'})
+    elif case == 'refused':
+        assignment['refusal'] = {'reason': 'stopped'}
+    elif case == 'a2-wrong-role':
+        assignment['native_receipt']['run']['role'] = 'reviewer'
+    elif case == 'a2-history-conflict':
+        assignment['history'] = {'status': 'contradictory'}
+    elif case == 'a2-unknown':
+        assignment['native_receipt']['run']['status'] = 'unknown'
+    late = ({**assignment, 'slot_status': 'released', 'release': {'run_id': 'original-a2'}}
+            if case == 'late-release' else
+            {**assignment, 'release_error': 'Refreshed read failed'} if case == 'late-release-error' else assignment)
+    assignments = iter((assignment, late))
+    monkeypatch.setattr(application, '_assignment_status', lambda *args, **kwargs: next(assignments))
+    monkeypatch.setattr(application, 'require_check_project',
+                        lambda *_: {'revision': 5, 'native_authority_revisions': {role: 5 if case == 'frozen-generation' else 4}})
+    monkeypatch.setattr(native_sources, 'record', lambda *_: {'session': {'id': 'a1', 'ordinal': 2}})
+
+    def parent(_, project, session, *, after, limit, verify_executable):
+        assert (project, session, after, limit, verify_executable) == ('demo', 'a1', 2, 1, False)
+        return {'role': role, 'latest_run': 'parent', 'can_continue': True, 'turns': [{
+            'id': 'parent', 'role': role, 'execution_stopped': case != 'parent-not-stopped',
+            'context_digest': 'original-context',
+            'native_session': {'id': 'another-thread' if case == 'parent-thread' else 'original-thread'}}]}
+
+    monkeypatch.setattr(runs, 'inspect_session', parent)
+
+    source = {'status': 'available', 'observation_sha256': 'a' * 64}
+    history = {'intent': {'run_id': 'original', 'source': source}, 'status': 'scheduled',
+               'scheduled_event_id': 21, '_verified_pending_activity': True}
+    if case == 'started':
+        history.update(status='unknown', started_event_id=22)
+    elif case == 'terminal':
+        history.update(status='unknown', started_event_id=22, _verified_pending_activity=False)
+    if case == 'readback-mismatch':
+        source = {**source, 'observation_sha256': 'b' * 64}
+    observed = {'_original_admission_open': case not in ('offline', 'workflow-closed'),
+                'readback_completion': {'recipient': history},
+                'stop': {'status': 'prepared' if case == 'local-stop' else 'not_recorded'},
+                'tasks': {'result': {'readback_observation': source}}}
+    reads = iter((None, {'pending': True} if case == 'late-a1-claim' else None))
+    files = SimpleNamespace(project='demo', _read=lambda _: next(reads),
+                            load_stop=lambda *_: ({'pending': True} if case == 'late-stop' else None, None, None))
+
+    def original_receipt(_, project, session, parent, intent):
+        assert (project, session, parent, intent) == ('demo', 'a1', 'parent', 'resume')
+        if case == 'a1-unavailable':
+            raise OSError('Scoped native receipt read failed')
+        return {'dispatch': {'a1-reserved': 'reserved', 'a1-incomplete': 'incomplete'}.get(case, 'unrecorded')}
+
+    monkeypatch.setattr(runs, 'continuation_receipt', original_receipt)
+    response = application._recipient_status(None, files, opening, {'saved': True}, {'run_id': 'original'}, observed)
+    assert response['assignment'].get('release_unobserved') is (True if case in ('scheduled', 'started') else None)
+    assert '_original_admission_open' not in response
+    assert '_verified_pending_activity' not in response['recipient']['history']
+
+
+@pytest.mark.parametrize('parent_state', ['current', 'revoked', 'missing', 'consumed'])
+def test_release_advisory_rechecks_current_chain_using_native_session_owner(native_session_case, monkeypatch, parent_state):
+    state, _, config, runs = native_session_case
+    role = 'implementer'
+    project = state.project('demo')
+    revision = project['revision']
+    assignee = {'role': role, 'generation': projects.native_authority_revision(project, role)}
+    parent = runs.run_agent(state, 'demo', role, 'Seed original advisory recipient', timeout=10,
+                            expected_revision=revision, session_intent='advisory-parent', codex_config=config)
+    assert parent['status'] == 'succeeded' and parent['execution_stopped'] is True
+    selected = {'session_id': parent['id'], 'parent_run_id': parent['id'], 'intent_id': 'original-campaign-wake'}
+    executable = Path(runs._read_session_context(state, parent)['inference']['executable'])
+    payload = executable.stat()
+    binding = {'role': role, 'native_id': parent['native_session']['id'], 'context_digest': parent['context_digest'],
+               'payload_executable': str(executable), 'device': payload.st_dev, 'inode': payload.st_ino, 'size': payload.st_size}
+    if parent_state == 'revoked':
+        projects.bind(state, 'demo', role, {**project['bindings'][role], 'reasoning_effort': 'high'}, revision)
+    elif parent_state == 'missing':
+        with state.connect() as db:
+            db.execute('DELETE FROM agent_runs WHERE project=? AND id=?', ('demo', parent['id']))
+    elif parent_state == 'consumed':
+        later = runs.continue_session(state, 'demo', parent['id'], parent['id'], 'Another original continuation',
+                                      expected_revision=revision, intent_id='already-consumed', timeout=10)
+        assert later['status'] == 'succeeded'
+    assert runs.continuation_receipt(state, 'demo', **selected)['dispatch'] == 'unrecorded'
+
+    original_digest = hashlib.file_digest
+    payload_digests = []
+
+    def observe_digest(stream, *args, **kwargs):
+        if stream.name == str(executable):
+            payload_digests.append(stream.name)
+        return original_digest(stream, *args, **kwargs)
+
+    monkeypatch.setattr(hashlib, 'file_digest', observe_digest)
+    if parent_state == 'current':
+        assert runs.inspect_session(state, 'demo', parent['id'], limit=1)['can_continue']
+        assert payload_digests == [str(executable)]
+        payload_digests.clear()
+
+    claim = {'intent': {'wake_id': 'original-a2'}}
+    assignment = {'waiting_task_id': 'result', 'claim': claim, 'slot_status': 'claimed', 'release': None,
+                  'assignee': assignee, 'history': {'intent': claim['intent'], 'status': 'unknown'},
+                  'native_receipt': {'dispatch': 'accepted', 'run': {'status': 'running', 'role': role}}}
+    monkeypatch.setattr(application, '_assignment_status', lambda *_args, **_kwargs: assignment)
+    monkeypatch.setattr(application, 'require_check_project', lambda *_: state.project('demo'))
+    files = SimpleNamespace(project='demo', _read=lambda _: None, load_stop=lambda *_: (None, None, None))
+    opening = {'plan': {'limits': {'expires_at': int(time.time()) + 60}}, 'recipient_binding': binding}
+    source = {'status': 'available', 'observation_sha256': 'a' * 64}
+    output = {'assignment': assignment, 'tasks': {'result': {'readback_observation': source}},
+              'stop': {'status': 'not_recorded'}}
+    original = {'intent': {'run_id': 'original', 'source': source}}
+    observed = application._assignment_release_unobserved(state, files, opening, {'saved': True},
+                                                           {'run_id': 'original'}, output, original, selected)
+    assert observed is (parent_state == 'current')
+    assert payload_digests == []
 
 
 @pytest.mark.parametrize('independent', [False, True])

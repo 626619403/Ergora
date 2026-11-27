@@ -128,7 +128,7 @@ function trainingEvidence({ locator, recipient, source_kind },
 }
 
 function assignmentEvidence({ task_id, assignee, slot_status, claim, history, native_receipt: native, release, refusal,
-  release_observation_failed }) {
+  release_observation_failed, release_unobserved }) {
   return panel("原独立任务分配", null,
     facts([
       ["独立任务 ID", task_id],
@@ -163,6 +163,8 @@ function assignmentEvidence({ task_id, assignee, slot_status, claim, history, na
       "原独立任务 History 核验失败。") : null,
     release_observation_failed ? node("p", { className: "form-note", role: "status" },
       "原独立任务释放读回失败。") : null,
+    release_unobserved ? node("p", { className: "form-note", role: "status" },
+      "尚未核实原独立任务槽位释放。再次读取时间线可核对原释放回执。") : null,
     record("原独立任务认领", claim),
     record("原独立任务释放证据", release));
 }

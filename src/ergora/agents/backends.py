@@ -151,7 +151,7 @@ class AgentBackend(ABC):
     def session_configuration(self, cwd: Path) -> dict:
         raise ValueError(f"{self.binding['tool']} does not support persistent native sessions")
 
-    def validate_session_configuration(self, configuration: dict, cwd: Path) -> None:
+    def validate_session_configuration(self, configuration: dict, cwd: Path, *, verify_executable: bool = True) -> None:
         raise ValueError(f"{self.binding['tool']} does not support persistent native sessions")
 
     def session_result(self, output: Path, request: Invocation, *, completed: bool = True) -> dict:
@@ -439,13 +439,14 @@ class CodexBackend(AgentBackend):
                 'sandbox': effective.get('sandbox', 'workspace-write' if self.options.get('role') == 'implementer' else 'read-only'),
                 'source_sha256': hashlib.sha256(raw).hexdigest()}
 
-    def validate_session_configuration(self, configuration: dict, cwd: Path) -> None:
+    def validate_session_configuration(self, configuration: dict, cwd: Path, *, verify_executable: bool = True) -> None:
         if self.binding != configuration['binding']:
             raise ValueError('Session binding differs from its frozen native configuration')
-        for filename, expected in configuration['executable_files'].items():
-            with Path(filename).open('rb') as stream:
-                if hashlib.file_digest(stream, 'sha256').hexdigest() != expected:
-                    raise ValueError('Selected native executable changed; start a new session')
+        if verify_executable:
+            for filename, expected in configuration['executable_files'].items():
+                with Path(filename).open('rb') as stream:
+                    if hashlib.file_digest(stream, 'sha256').hexdigest() != expected:
+                        raise ValueError('Selected native executable changed; start a new session')
         self.check_mode('native')
 
     def session_result(self, output: Path, request: Invocation, *, completed: bool = True) -> dict:

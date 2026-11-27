@@ -598,7 +598,8 @@ def _assignment_timeline(assignment: dict) -> dict:
                                                         "attempt_sha256") if key in release}
                         if release is not None else None),
             **({"refusal": {key: refusal[key] for key in ("attempt_sha256", "reason")}} if refusal is not None else {}),
-            **({"release_observation_failed": True} if "release_error" in assignment else {})}
+            **({"release_observation_failed": True} if "release_error" in assignment else {}),
+            **({"release_unobserved": True} if assignment.get("release_unobserved") is True else {})}
 
 
 def create_app(home: Path | None = None) -> FastAPI:

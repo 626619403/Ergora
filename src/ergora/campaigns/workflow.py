@@ -521,7 +521,7 @@ class WakeHistoryConflict(ValueError):
         self.assignment = assignment
 
 
-async def read_task_history(client, handle, opening, commands, *, start_attempt=None):
+async def read_task_history(client, handle, opening, commands, *, start_attempt=None, check_pending_wake=False):
     """Read saved task Updates and the opted-in Activity from one pinned History."""
     entries = {}
     for command in commands:
@@ -561,6 +561,8 @@ async def read_task_history(client, handle, opening, commands, *, start_attempt=
         await _read_update_event(converter, event, entries, CHECK_UPDATE, require_check_receipt)
         if recipient is not None:
             _collect_recipient_event(event, assigned, wake_events, assignment_events, recipient_schedules)
+        if check_pending_wake and _wake_is_closing(event, wake_events):
+            check_pending_wake = False
         if recovery_id is not None and len(recovery_events) < 4:
             if (event.HasField('activity_task_scheduled_event_attributes')
                     and event.activity_task_scheduled_event_attributes.activity_id == recovery_id):
@@ -687,13 +689,35 @@ async def read_task_history(client, handle, opening, commands, *, start_attempt=
                 else:
                     ready = next(event for event in recovery_events if event.event_id == recovery_history['completed_event_id'])
             intent = wake_intent(opening, handle.run_id, recipient, source)
-            wake = await _read_recipient_history(converter, wake_events, opening, intent, ready)
+            wake = await _read_recipient_history(converter, wake_events, opening, intent, ready,
+                                                 check_pending=check_pending_wake)
             if claimed.get('kind') != 'manual_update':
                 completion['recipient'] = wake
         except ValueError as error:
             raise WakeHistoryConflict(error, (updates, completion, readback_terminal, followup_terminal),
                                       assignment) from error
     return updates, completion, wake, readback_terminal, followup_terminal, assignment
+
+
+def _wake_is_closing(event, wake_events):
+    if event.event_type in (
+            EventType.EVENT_TYPE_WORKFLOW_EXECUTION_CANCEL_REQUESTED, EventType.EVENT_TYPE_WORKFLOW_EXECUTION_CANCELED,
+            EventType.EVENT_TYPE_WORKFLOW_EXECUTION_COMPLETED, EventType.EVENT_TYPE_WORKFLOW_EXECUTION_CONTINUED_AS_NEW,
+            EventType.EVENT_TYPE_WORKFLOW_EXECUTION_FAILED, EventType.EVENT_TYPE_WORKFLOW_EXECUTION_TERMINATED,
+            EventType.EVENT_TYPE_WORKFLOW_EXECUTION_TIMED_OUT):
+        return True
+    if (event.HasField('workflow_execution_update_accepted_event_attributes')
+            and event.workflow_execution_update_accepted_event_attributes.accepted_request.input.name == STOP_UPDATE):
+        return True
+    if wake_events and event.HasField('activity_task_cancel_requested_event_attributes'):
+        return event.activity_task_cancel_requested_event_attributes.scheduled_event_id == wake_events[0].event_id
+    if len(wake_events) == 2 and wake_events[1].HasField('activity_task_started_event_attributes'):
+        # A terminal with this exact start but a mismatched schedule also defeats the observation.
+        for kind in ('completed', 'failed', 'timed_out', 'canceled'):
+            field = f'activity_task_{kind}_event_attributes'
+            if event.HasField(field) and getattr(event, field).started_event_id == wake_events[1].event_id:
+                return True
+    return False
 
 
 def _collect_recipient_event(event, assigned, wake_events, assignment_events, schedules):
@@ -746,7 +770,7 @@ def _history_timing(events, pairs):
     return {'clock': 'temporal_history', 'events': observed, 'intervals_ns': intervals}
 
 
-async def _read_recipient_history(converter, events, opening, intent, readback_completed):
+async def _read_recipient_history(converter, events, opening, intent, readback_completed, *, check_pending=False):
     event = events[0]
     scheduled = event.activity_task_scheduled_event_attributes
     values = await converter.decode(scheduled.input.payloads)
@@ -805,6 +829,8 @@ async def _read_recipient_history(converter, events, opening, intent, readback_c
                     break
     result['timing'] = _history_timing(timing_events, (
         ('ready', 'scheduled'), ('scheduled', 'worker_started'), ('worker_started', 'delivery_terminal')))
+    if check_pending and not terminals:
+        result['_verified_pending_activity'] = True
     return result
 
 
@@ -1162,7 +1188,8 @@ def require_state(observed, opening, run_id, phase):
     return observed
 
 
-async def runtime_status(handle, description, opening, stop=None, *, start_attempt_sha256=None, rollover=None):
+async def runtime_status(handle, description, opening, stop=None, *, start_attempt_sha256=None, rollover=None,
+                         include_admission=False):
     temporal_status = description.status
     if temporal_status == WorkflowExecutionStatus.RUNNING:
         try:
@@ -1173,7 +1200,8 @@ async def runtime_status(handle, description, opening, stop=None, *, start_attem
         if 'tasks' in opening['plan'] and (not isinstance(observed, dict) or 'check_receipts' not in observed):
             return {'temporal_status': temporal_status.name, 'workflow_state_status': 'unavailable'}
         expected = record_state(opening, description.run_id, 'waiting_for_expiry')
-        return _observed_state(observed, expected, opening, start_attempt_sha256, temporal_status, stop=stop, rollover=rollover)
+        return _observed_state(observed, expected, opening, start_attempt_sha256, temporal_status,
+                               stop=stop, rollover=rollover, include_admission=include_admission)
     if temporal_status == WorkflowExecutionStatus.COMPLETED:
         observed = await handle.result(follow_runs=False, rpc_timeout=RPC_TIMEOUT)
         if isinstance(observed, dict) and observed.get('phase') == 'stopped':
@@ -1190,7 +1218,8 @@ async def runtime_status(handle, description, opening, stop=None, *, start_attem
     return {'temporal_status': temporal_status.name, 'workflow_state_status': 'unavailable'}
 
 
-def _observed_state(observed, expected, opening, start_attempt_sha256, temporal_status, *, stop=None, rollover=None):
+def _observed_state(observed, expected, opening, start_attempt_sha256, temporal_status, *, stop=None, rollover=None,
+                    include_admission=False):
     extra = {}
     if 'tasks' in opening['plan'] and isinstance(observed, dict) and 'check_receipts' in observed:
         observed = dict(observed)
@@ -1215,6 +1244,8 @@ def _observed_state(observed, expected, opening, start_attempt_sha256, temporal_
                 return {'temporal_status': temporal_status.name, 'workflow_state_status': 'unavailable'}
             active = (admitting and time.time() < expected['expires_at']
                       and (stop is None or stop['decision'] != 'accepted'))
+            if active and include_admission:
+                extra['_original_admission_open'] = True
         if selected is not None:
             tasks[selected['task_id']]['readback_observation'] = readback
         extra['tasks'] = {task_id: {**task, 'eligible': active and not training_readback_task(task) and task['status'] in ('ready', 'waiting_job')}
