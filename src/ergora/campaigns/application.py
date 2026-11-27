@@ -205,9 +205,9 @@ async def _read_original(runtime, output, opening, attempt, run_id, *, client=No
                 # History attests to this original observation. Live admission remains unavailable.
                 observed['tasks'] = {selected['task_id']: {**selected, 'status': 'observed',
                                      'receipt': None, 'eligible': False, 'state_source': 'history'}}
-        elif terminal is not None:
+        if terminal is not None:
             observed['readback_terminal'] = terminal
-        elif full_result:
+        elif full_result and completion is None:
             observed['readback_history_status'] = 'unresolved'
         if wake is not None and (completion is None or 'recipient' not in completion):
             observed['recipient_history'] = wake

@@ -2165,7 +2165,16 @@ def test_training_result_source_only_accepts_its_guarded_full_result():
     with pytest.raises(ValueError, match='complete original locator'):
         validate_tasks([{**task, 'source': {**task['source'], 'locator': {'experiment_id': 'alpha'}}}])
     live = {**task, 'source': {**task['source'], 'wait_for_live': True}}
-    validate_tasks([{**live, 'recipient': recipient}])
+    validate_tasks([{**live, 'recipient': recipient, 'recover_full_result_receipt': True}])
+    for invalid in ({'recover_full_result_receipt': False, 'recipient': recipient}, {'recover_full_result_receipt': True}):
+        with pytest.raises(ValueError, match='selected original full training result and recipient'):
+            validate_tasks([{**live, **invalid}])
+    for kind in ('training_screen_result', 'training_gpu_release'):
+        recovery_source = {'kind': kind, 'locator': locator}
+        if kind == 'training_gpu_release':
+            recovery_source['locator'] = {**locator, 'session_id': 'c'*32, 'lease_id': 'd'*64}
+        with pytest.raises(ValueError, match='selected original full training result and recipient'):
+            validate_tasks([{**task, 'source': recovery_source, 'recipient': recipient, 'recover_full_result_receipt': True}])
     for invalid in (False, 1, None):
         with pytest.raises(ValueError, match='explicitly selected managed full training result'):
             validate_tasks([{**task, 'source': {**task['source'], 'wait_for_live': invalid}}])
@@ -2329,30 +2338,49 @@ def test_training_gpu_release_requires_an_exact_accepted_original_lease():
             checked_readback(opening, run_id, None, {**readback, 'local_gpu_lease': bad})
 
 
-@pytest.mark.parametrize(('timestamp', 'accepted'), (
-    (None, False),
-    ((39, 1_000_000_000), False),
-    ((-62_135_596_801, 0), False),
-    ((40, 0), False),
-    ((39, 999_999_999), True),
-), ids=['absent', 'invalid-nanos', 'invalid-seconds', 'at-cutoff', 'before-cutoff'])
-def test_release_recovery_history_requires_valid_original_completion_time(monkeypatch, timestamp, accepted):
+@pytest.mark.parametrize(('timestamp', 'fault'), (
+    (None, 'cutoff'),
+    ((39, 1_000_000_000), 'cutoff'),
+    ((-62_135_596_801, 0), 'cutoff'),
+    ((40, 0), 'cutoff'),
+    ((39, 999_999_999), None),
+    ((39, 0), 'wrong-schedule-type'),
+    ((39, 0), 'wrong-start-type'),
+    ((39, 0), 'wrong-completion-type'),
+    ((39, 0), 'original-start-before-schedule'),
+    ((39, 0), 'recovery-start-before-schedule'),
+    ((39, 0), 'completion-before-start'),
+    ((39, 0), 'malformed-result'),
+), ids=['absent', 'invalid-nanos', 'invalid-seconds', 'at-cutoff', 'before-cutoff',
+        'schedule-type', 'start-type', 'completion-type', 'original-order', 'recovery-order', 'completion-order',
+        'malformed-result'])
+@pytest.mark.parametrize('full_result', (False, True), ids=('release', 'full-result'))
+def test_receipt_recovery_history_requires_original_activity_lineage(monkeypatch, timestamp, fault, full_result):
     pytest.importorskip('temporalio')
-    from temporalio.api.enums.v1 import TimeoutType
+    from temporalio.api.enums.v1 import EventType, TimeoutType
     from temporalio.api.history.v1 import HistoryEvent
     from temporalio.converter import DataConverter
     from ergora.campaigns import records, workflow as runtime
 
     opening = {'task_queue': 'original-queue'}
-    task = {'task_id': 'release'}
-    grant = {'deadline_at': 40, 'source_sha256': 'a'*64, 'source_kind': 'training_gpu_release'}
-    recovery = records.release_recovery_id(grant)
+    grant = {'deadline_at': 40, 'source_sha256': 'a'*64}
+    if full_result:
+        task = {'task_id': 'full', 'recover_full_result_receipt': True}
+        recovery_type = records.FULL_RESULT_RECOVERY_ACTIVITY
+    else:
+        task = {'task_id': 'release', 'recover_release_receipt': True}
+        grant['source_kind'] = 'training_gpu_release'
+        recovery_type = records.RELEASE_RECOVERY_ACTIVITY
+    recovery = records.receipt_recovery_id(grant)
     original_result = {'reader_cleanup_sha256': 'b'*64}
     reply = {'original_result': original_result, 'recovery_activity_id': recovery, 'recovery_receipt_sha256': 'c'*64}
     old = [
-        HistoryEvent(event_id=11, activity_task_scheduled_event_attributes={'activity_id': 'original'}),
-        HistoryEvent(event_id=12, activity_task_started_event_attributes={'scheduled_event_id': 11, 'attempt': 1}),
-        HistoryEvent(event_id=13, activity_task_timed_out_event_attributes={
+        HistoryEvent(event_id=11, event_type=EventType.EVENT_TYPE_ACTIVITY_TASK_SCHEDULED,
+                     activity_task_scheduled_event_attributes={'activity_id': 'original'}),
+        HistoryEvent(event_id=12, event_type=EventType.EVENT_TYPE_ACTIVITY_TASK_STARTED,
+                     activity_task_started_event_attributes={'scheduled_event_id': 11, 'attempt': 1}),
+        HistoryEvent(event_id=13, event_type=EventType.EVENT_TYPE_ACTIVITY_TASK_TIMED_OUT,
+                     activity_task_timed_out_event_attributes={
             'scheduled_event_id': 11, 'started_event_id': 12, 'failure': {
                 'timeout_failure_info': {'timeout_type': TimeoutType.TIMEOUT_TYPE_HEARTBEAT}}}),
     ]
@@ -2360,6 +2388,8 @@ def test_release_recovery_history_requires_valid_original_completion_time(monkey
 
     def readback_result(opened, selected, activity_id, result):
         assert (opened, selected, activity_id, result) == (opening, task, 'original', original_result)
+        if fault == 'malformed-result':
+            raise KeyError('local_gpu_lease')
         validated.append(result)
         return 'd'*64, {'status': 'succeeded'}
 
@@ -2368,32 +2398,56 @@ def test_release_recovery_history_requires_valid_original_completion_time(monkey
     async def exercise():
         converter = DataConverter.default
         events = [
-            HistoryEvent(event_id=19, activity_task_scheduled_event_attributes={
-                'activity_id': recovery, 'activity_type': {'name': records.RELEASE_RECOVERY_ACTIVITY},
+            HistoryEvent(event_id=19, event_type=EventType.EVENT_TYPE_ACTIVITY_TASK_SCHEDULED,
+                         activity_task_scheduled_event_attributes={
+                'activity_id': recovery, 'activity_type': {'name': recovery_type},
                 'task_queue': {'name': opening['task_queue']}, 'retry_policy': {'maximum_attempts': 1},
                 'input': {'payloads': await converter.encode([grant])}}),
-            HistoryEvent(event_id=20, activity_task_started_event_attributes={'scheduled_event_id': 19, 'attempt': 1}),
-            HistoryEvent(event_id=21, activity_task_completed_event_attributes={
+            HistoryEvent(event_id=20, event_type=EventType.EVENT_TYPE_ACTIVITY_TASK_STARTED,
+                         activity_task_started_event_attributes={'scheduled_event_id': 19, 'attempt': 1}),
+            HistoryEvent(event_id=21, event_type=EventType.EVENT_TYPE_ACTIVITY_TASK_COMPLETED,
+                         activity_task_completed_event_attributes={
                 'scheduled_event_id': 19, 'started_event_id': 20,
                 'result': {'payloads': await converter.encode([reply])}}),
         ]
         if timestamp is not None:
             events[-1].event_time.seconds, events[-1].event_time.nanos = timestamp
-        return await runtime._release_recovery_completion(converter, old, events, opening, task, grant, 'original')
+        wrong_types = {'wrong-schedule-type': 0, 'wrong-start-type': 1, 'wrong-completion-type': 2}
+        if fault in wrong_types:
+            events[wrong_types[fault]].event_type = EventType.EVENT_TYPE_MARKER_RECORDED
+        if fault == 'original-start-before-schedule':
+            old[1].event_id = 10
+            old[2].activity_task_timed_out_event_attributes.started_event_id = 10
+        if fault == 'recovery-start-before-schedule':
+            events[1].event_id = 18
+            events[2].activity_task_completed_event_attributes.started_event_id = 18
+        if fault == 'completion-before-start':
+            events[2].event_id = 20
+        return await runtime._receipt_recovery_completion(converter, old, events, opening, task, grant, 'original')
 
-    if accepted:
+    if fault is None:
         completion = asyncio.run(exercise())
         assert completion['recovery_history']['completed_event_id'] == 21
         assert validated == [original_result]
     else:
-        with pytest.raises(ValueError, match='original attempt or cutoff'):
+        message = {
+            'wrong-schedule-type': 'authorized original read',
+            'original-start-before-schedule': 'exact original heartbeat timeout',
+            'malformed-result': 'invalid original result',
+        }.get(fault, 'original attempt or cutoff')
+        with pytest.raises(ValueError, match=message):
             asyncio.run(exercise())
         assert validated == []
 
 
-@pytest.mark.parametrize('case', ('exact', 'stop', 'expired', 'missing', 'foreign_guard', 'foreign_attempt',
-                                 'unknown_lease', 'unreaped_child', 'original_worker_live'))
-def test_release_recovery_only_accepts_original_receipt_and_reaped_processes(tmp_path, monkeypatch, case):
+@pytest.mark.parametrize(('case', 'full_result'), (
+    *((case, False) for case in ('exact', 'stop', 'expired', 'missing', 'foreign_guard', 'foreign_attempt',
+                                 'unknown_lease', 'unreaped_child', 'original_worker_live')),
+    ('exact', True), ('original_worker_live', True), ('original_worker_extra', True),
+    ('original_worker_exited', True), ('original_worker_unknown', True), ('original_reader_exited_unreaped', True),
+    ('original_worker_padded_ticks', True), ('original_worker_unicode_ticks', True), ('original_worker_zero_ticks', True),
+))
+def test_receipt_recovery_only_accepts_original_receipt_and_reaped_processes(tmp_path, monkeypatch, case, full_result):
     from dataclasses import replace
     pytest.importorskip('temporalio')
 
@@ -2402,12 +2456,15 @@ def test_release_recovery_only_accepts_original_receipt_and_reaped_processes(tmp
 
     locator = {'experiment_id': 'alpha', 'workflow_id': 'perf-experiment/alpha',
                'run_id': 'training-run', 'job_id': 'local-perf-alpha',
-               'native_request_sha256': 'a'*64, 'attempt_sha256': 'b'*64,
-               'session_id': 'c'*32, 'lease_id': 'd'*64}
-    task = {'task_id': 'release', 'depends_on': [], 'source': {'kind': 'training_gpu_release', 'locator': locator},
-            'readback': {'due_at': 20, 'deadline_at': 40}, 'recover_release_receipt': True,
+               'native_request_sha256': 'a'*64, 'attempt_sha256': 'b'*64}
+    task = {'task_id': 'result', 'depends_on': [], 'readback': {'due_at': 20, 'deadline_at': 40},
             'recipient': {'session_id': 'session', 'parent_run_id': 'parent', 'intent_id': 'notice',
-                          'prompt': 'Read the original release.', 'timeout_seconds': 20}}
+                          'prompt': 'Read the original training observation.', 'timeout_seconds': 20}}
+    if full_result:
+        task.update(source={'kind': 'training_full_result', 'locator': locator}, recover_full_result_receipt=True)
+    else:
+        locator.update(session_id='c'*32, lease_id='d'*64)
+        task.update(source={'kind': 'training_gpu_release', 'locator': locator}, recover_release_receipt=True)
     records.validate_tasks([task])
     opening = {'project': 'demo', 'project_revision': 1, 'workflow_id': 'original-campaign',
                'registration': {'sha256': 'e'*64}, 'plan': {'tasks': [task]}}
@@ -2420,17 +2477,31 @@ def test_release_recovery_only_accepts_original_receipt_and_reaped_processes(tmp
     cleanup = {'activity_id': activity_id, 'reaped_at_monotonic': 22,
                'receipt': {'kind': 'supervised-process-cleanup', 'schema_version': 1, 'owner': guard,
                            'model': model, 'model_waited': True, 'remaining_children': [], 'returncode': 0}}
-    lease = {'status': 'released', 'read_only': True, 'request_id': '1'*64, 'request_sha256': '2'*64,
-             **{key: locator[key] for key in ('session_id', 'lease_id', 'attempt_sha256')},
-             'release_ref': {'sequence': 5, 'proof_ref': {'relative_path': f'proofs/{locator["lease_id"]}/stopped.json',
-                                                         'raw_sha256': 'f'*64}}}
+    observation = {'status': 'verified', 'project': 'demo', 'project_revision': 1,
+                   'registration_sha256': 'e'*64, 'locator': locator, 'local_gpu_lease': None}
+    if full_result:
+        observation.update(native_result_state='SUCCEEDED', **{field: 'f'*64 for field in records.TRAINING_RESULT_DIGESTS})
+    else:
+        observation['local_gpu_lease'] = {
+            'status': 'released', 'read_only': True, 'request_id': '1'*64, 'request_sha256': '2'*64,
+            **{key: locator[key] for key in ('session_id', 'lease_id', 'attempt_sha256')},
+            'release_ref': {'sequence': 5, 'proof_ref': {'relative_path': f'proofs/{locator["lease_id"]}/stopped.json',
+                                                        'raw_sha256': 'f'*64}}}
     result = {'activity_id': activity_id, 'reader_cleanup_sha256': records.identity(cleanup),
-              'observation': {'status': 'verified', 'project': 'demo', 'project_revision': 1,
-                              'registration_sha256': 'e'*64, 'locator': locator, 'local_gpu_lease': lease}}
+              'observation': observation}
     documents = {'readback-attempt': {'activity_id': activity_id, 'worker': worker, 'grant': grant},
                  'readback-guard': {'activity_id': activity_id, 'worker': worker, 'guard': guard,
                                     'deadline_monotonic': 40, 'work_cutoff_monotonic': 39},
                  'readback-result': result, 'readback-cleanup': cleanup}
+    worker_observed = dict(worker)
+    if case == 'original_worker_extra':
+        worker['extra'] = True
+    elif case == 'original_worker_padded_ticks':
+        worker['start_ticks'] = '0' + worker_observed['start_ticks']
+    elif case == 'original_worker_unicode_ticks':
+        worker['start_ticks'] = '\u0664\u0662'
+    elif case == 'original_worker_zero_ticks':
+        worker['start_ticks'] = '0'
     if case == 'missing':
         del documents['readback-result']
     elif case == 'foreign_guard':
@@ -2438,7 +2509,7 @@ def test_release_recovery_only_accepts_original_receipt_and_reaped_processes(tmp
     elif case == 'foreign_attempt':
         documents['readback-attempt']['activity_id'] = 'foreign-activity'
     elif case == 'unknown_lease':
-        lease.update(status='unknown', release_ref=None)
+        observation['local_gpu_lease'].update(status='unknown', release_ref=None)
     elif case == 'unreaped_child':
         cleanup['receipt']['model_waited'] = False
         result['reader_cleanup_sha256'] = records.identity(cleanup)
@@ -2448,26 +2519,45 @@ def test_release_recovery_only_accepts_original_receipt_and_reaped_processes(tmp
     monkeypatch.setattr(readback, 'require_check_project', lambda *_: None)
     monkeypatch.setattr(readback.time, 'time', lambda: 41 if case == 'expired' else 30)
 
+    monkeypatch.setattr(readback.time, 'monotonic', lambda: 30)
+
     def observe(pid):
         if pid == worker['pid'] and case == 'original_worker_live':
             return worker
+        if pid == model['pid'] and case == 'original_reader_exited_unreaped':
+            raise ValueError('Original process has exited')
         if pid in (worker['pid'], guard['pid'], model['pid']):
             raise FileNotFoundError
         return {'pid': pid, 'boot_id': 'current-boot', 'start_ticks': '100'}
 
+    def observe_worker(pid):
+        assert pid == worker['pid']
+        if case in ('original_worker_live', 'original_worker_extra', 'original_worker_padded_ticks',
+                    'original_worker_unicode_ticks'):
+            return 'S', worker_observed
+        if case == 'original_worker_exited':
+            return 'Z', worker_observed
+        if case == 'original_worker_unknown':
+            raise PermissionError('Original process status could not be read')
+        raise FileNotFoundError
+
     monkeypatch.setattr(readback.processes, 'identity', observe)
-    recovery = records.release_recovery_id(grant)
+    monkeypatch.setattr(readback.processes, 'observe_process', observe_worker)
+    recovery = records.receipt_recovery_id(grant)
     env = ActivityEnvironment()
     env.info = replace(env.info, workflow_id=opening['workflow_id'], workflow_run_id=run,
-                       activity_id=recovery, activity_type=records.RELEASE_RECOVERY_ACTIVITY)
+                       activity_id=recovery, activity_type=records.receipt_recovery_activity(task))
     handler = readback.CampaignReadback(files, opening, start, run)
 
     async def call():
-        return await env.run(handler.recover_release, grant)
+        return await env.run(handler.recovery_activity_for(task), grant)
 
-    if case == 'exact':
+    if case in ('exact', 'original_worker_exited', 'original_worker_zero_ticks'):
         assert asyncio.run(call()) == {'recovery_activity_id': recovery, 'original_result': result,
                                        'recovery_receipt_sha256': records.identity(documents)}
+    elif case == 'original_worker_unknown':
+        with pytest.raises(PermissionError, match='could not be read'):
+            asyncio.run(call())
     else:
         with pytest.raises(ValueError):
             asyncio.run(call())

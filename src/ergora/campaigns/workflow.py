@@ -25,10 +25,10 @@ from temporalio.worker import Worker
 with workflow.unsafe.imports_passed_through():
     from ergora.campaigns.records import (
         ATTEMPT_MEMO, OPENING_MEMO, READBACK_ALREADY_ADMITTED, READBACK_CLEANUP_SECONDS,
-        RECIPIENT_ACTIVITY, RELEASE_RECOVERY_ACTIVITY, TRAINING_RESULT_SOURCE, WORKFLOW_TYPE,
+        RECIPIENT_ACTIVITY, TRAINING_RESULT_SOURCE, WORKFLOW_TYPE,
         check_receipt, checked_readback, fixed_task_state, has_pending_checks, identity, manual_wake_source,
         readback_activity, readback_grant, readback_id, readback_proof, readback_ready_tasks, readback_reference,
-        readback_result, readback_task, recipient_task, release_recovery_id, release_recovery_proof,
+        readback_result, readback_task, receipt_recovery_activity, receipt_recovery_id, receipt_recovery_proof, recipient_task,
         tasks_by_id, training_readback_task,
         require_check_receipt, require_rollover_receipt, require_stop_receipt, restore_rollover, rollover_checkpoint,
         rollover_task, same_check_observation,
@@ -183,17 +183,18 @@ class Campaign:
         except ActivityError as error:
             cause = error.cause
             remaining = grant['deadline_at'] - workflow.time()
-            if (task.get('recover_release_receipt') is not True or self.stop_decision is not None
+            recovery_activity = receipt_recovery_activity(task)
+            if (recovery_activity is None or self.stop_decision is not None
                     or not isinstance(cause, ActivityTimeoutError) or cause.type != ActivityTimeoutType.HEARTBEAT
                     or remaining <= READBACK_CLEANUP_SECONDS):
                 self._readback_unknown('original_read_unavailable')
                 return
             try:
-                reply = await workflow.execute_activity(RELEASE_RECOVERY_ACTIVITY, grant, activity_id=release_recovery_id(grant),
+                reply = await workflow.execute_activity(recovery_activity, grant, activity_id=receipt_recovery_id(grant),
                     schedule_to_close_timeout=timedelta(seconds=remaining),
                     retry_policy=RetryPolicy(maximum_attempts=1),
                     cancellation_type=workflow.ActivityCancellationType.TRY_CANCEL, result_type=dict)
-                recovery = release_recovery_proof(grant, reply)
+                recovery = receipt_recovery_proof(grant, reply)
                 result = reply['original_result']
             except (ActivityError, ValueError):
                 self._readback_unknown('original_read_unavailable')
@@ -498,7 +499,7 @@ async def read_task_history(client, handle, opening, commands):
         waiting = check_receipt(timer_wait) if timer_wait is not None else None
         grant = readback_grant(opening, handle.run_id, task, waiting)
     activity_id = readback_id(grant) if grant is not None else None
-    recovery_id = release_recovery_id(grant) if task is not None and task.get('recover_release_receipt') is True else None
+    recovery_id = receipt_recovery_id(grant) if receipt_recovery_activity(task) is not None else None
     recovery_events = []
     recovery_ids = set()
     activity_events = []
@@ -568,8 +569,8 @@ async def read_task_history(client, handle, opening, commands):
             converter, activity_events, opening, task, grant, activity_id, cancel_requests)
     if recovery_events:
         if completion is not None:
-            raise ValueError('Campaign release recovery conflicts with an original Activity completion')
-        completion = await _release_recovery_completion(
+            raise ValueError('Campaign receipt recovery conflicts with an original Activity completion')
+        completion = await _receipt_recovery_completion(
             converter, activity_events, recovery_events, opening, task, grant, activity_id)
     for update_id, entry in entries.items():
         event = entry.get('completed_event')
@@ -798,41 +799,56 @@ async def _readback_history(converter, events, opening, task, grant, activity_id
             **readback_proof(evidence, job, result), **({'timing': timing} if timing['events'] else {})}, None
 
 
-async def _release_recovery_completion(converter, original, events, opening, task, grant, activity_id):
-    if len(original) != 3 or len(events) > 3:
-        raise ValueError('Campaign release recovery requires one original timed-out Activity')
+async def _receipt_recovery_completion(converter, original, events, opening, task, grant, activity_id):
+    if len(original) != 3 or not 1 <= len(events) <= 3:
+        raise ValueError('Campaign receipt recovery requires one original timed-out Activity')
     original_schedule, original_start, timeout = original
     original_started = original_start.activity_task_started_event_attributes
     failed = timeout.activity_task_timed_out_event_attributes
-    if (not timeout.HasField('activity_task_timed_out_event_attributes')
+    if (not original_schedule.HasField('activity_task_scheduled_event_attributes')
+            or not original_start.HasField('activity_task_started_event_attributes')
+            or not timeout.HasField('activity_task_timed_out_event_attributes')
+            or original_schedule.event_type != EventType.EVENT_TYPE_ACTIVITY_TASK_SCHEDULED
+            or original_start.event_type != EventType.EVENT_TYPE_ACTIVITY_TASK_STARTED
+            or timeout.event_type != EventType.EVENT_TYPE_ACTIVITY_TASK_TIMED_OUT
+            or not 0 < original_schedule.event_id < original_start.event_id < timeout.event_id
             or original_started.scheduled_event_id != original_schedule.event_id or original_started.attempt != 1
             or failed.scheduled_event_id != original_schedule.event_id or failed.started_event_id != original_start.event_id
             or failed.failure.timeout_failure_info.timeout_type != TimeoutType.TIMEOUT_TYPE_HEARTBEAT):
-        raise ValueError('Campaign release recovery lacks an exact original heartbeat timeout')
+        raise ValueError('Campaign receipt recovery lacks an exact original heartbeat timeout')
     sequence = events[0]
     scheduled = sequence.activity_task_scheduled_event_attributes
-    if (sequence.event_id <= timeout.event_id or scheduled.activity_type.name != RELEASE_RECOVERY_ACTIVITY
+    if (not sequence.HasField('activity_task_scheduled_event_attributes')
+            or sequence.event_type != EventType.EVENT_TYPE_ACTIVITY_TASK_SCHEDULED
+            or sequence.event_id <= timeout.event_id or scheduled.activity_type.name != receipt_recovery_activity(task)
             or scheduled.task_queue.name != opening['task_queue'] or scheduled.retry_policy.maximum_attempts != 1
-            or scheduled.activity_id != release_recovery_id(grant)
+            or scheduled.activity_id != receipt_recovery_id(grant)
             or await converter.decode(scheduled.input.payloads) != [grant]):
-        raise ValueError('Campaign release recovery differs from the authorized original read')
+        raise ValueError('Campaign receipt recovery differs from the authorized original read')
     if len(events) < 3 or not events[-1].HasField('activity_task_completed_event_attributes'):
         return None
     start, completed = events[1:]
     started = start.activity_task_started_event_attributes
     terminal = completed.activity_task_completed_event_attributes
     completion_ns = _history_timestamp_ns(completed)
-    if (started.scheduled_event_id != sequence.event_id or started.attempt != 1
+    if (not start.HasField('activity_task_started_event_attributes')
+            or start.event_type != EventType.EVENT_TYPE_ACTIVITY_TASK_STARTED
+            or completed.event_type != EventType.EVENT_TYPE_ACTIVITY_TASK_COMPLETED
+            or not sequence.event_id < start.event_id < completed.event_id
+            or started.scheduled_event_id != sequence.event_id or started.attempt != 1
             or terminal.scheduled_event_id != sequence.event_id or terminal.started_event_id != start.event_id
             or completion_ns is None or completion_ns >= grant['deadline_at'] * 1_000_000_000):
-        raise ValueError('Campaign release recovery completion differs from its original attempt or cutoff')
+        raise ValueError('Campaign receipt recovery completion differs from its original attempt or cutoff')
     replies = await converter.decode(terminal.result.payloads)
     if len(replies) != 1:
-        raise ValueError('Campaign release recovery has an invalid original result')
+        raise ValueError('Campaign receipt recovery has an invalid original result')
     reply = replies[0]
-    recovery = release_recovery_proof(grant, reply)
+    recovery = receipt_recovery_proof(grant, reply)
     result = reply['original_result']
-    evidence, job = readback_result(opening, task, activity_id, result)
+    try:
+        evidence, job = readback_result(opening, task, activity_id, result)
+    except (KeyError, TypeError) as error:
+        raise ValueError('Campaign receipt recovery has an invalid original result') from error
     return {'task_id': task['task_id'], 'activity_id': activity_id, **readback_reference(grant),
             'scheduled_event_id': original_schedule.event_id, **readback_proof(evidence, job, result), **recovery,
             'recovery_history': {'original_timeout_event_id': timeout.event_id, 'scheduled_event_id': sequence.event_id,
@@ -1090,8 +1106,9 @@ async def run_worker(client, handle, opening, files, attempt, *, poller_identity
 
             reader = CampaignReadback(files, opening, attempt, handle.run_id)
             activities.append(reader.activity_for(task))
-            if task.get('recover_release_receipt') is True:
-                activities.append(reader.recover_release)
+            recovery = reader.recovery_activity_for(task)
+            if recovery is not None:
+                activities.append(recovery)
         if recipient_task(opening) is not None:
             from ergora.campaigns.recipient import CodexRecipient
 

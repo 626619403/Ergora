@@ -32,6 +32,7 @@ READBACK_CLEANUP_SECONDS = 0.8
 READBACK_ACTIVITY = 'ergora_campaign_fixed_check_readback'
 TRAINING_READBACK_ACTIVITY = 'ergora_campaign_training_full_result_readback'
 TRAINING_RESULT_SOURCE = 'training_full_result'
+FULL_RESULT_RECOVERY_ACTIVITY = 'ergora_campaign_training_full_result_recover_receipt'
 TRAINING_RESULT_DIGESTS = ('native_result_sha256', 'reap_record_sha256', 'terminal_output_sha256',
                            'gate_report_sha256', 'evidence_sha256', 'tracking_attempt_sha256')
 TRAINING_SCREEN_ACTIVITY = 'ergora_campaign_training_screen_result_readback'
@@ -145,7 +146,8 @@ def validate_tasks(tasks):
     dependencies = {}
     scheduled = False
     for task in tasks:
-        if not isinstance(task, dict) or task.keys() - {'readback', 'recipient', 'wake_on_observe', 'recover_release_receipt'} != {'task_id', 'depends_on', 'source'}:
+        optional = {'readback', 'recipient', 'wake_on_observe', 'recover_release_receipt', 'recover_full_result_receipt'}
+        if not isinstance(task, dict) or task.keys() - optional != {'task_id', 'depends_on', 'source'}:
             raise ValueError('Campaign task requires task_id, depends_on and an exact source')
         task_id, parents, source = task['task_id'], task['depends_on'], task['source']
         if not safe_id(task_id) or task_id in dependencies:
@@ -195,6 +197,9 @@ def validate_tasks(tasks):
         if 'recover_release_receipt' in task and (task['recover_release_receipt'] is not True
                 or not training_gpu_release_task(task) or 'recipient' not in task):
             raise ValueError('Campaign receipt recovery requires the selected original GPU release and recipient')
+        if 'recover_full_result_receipt' in task and (task['recover_full_result_receipt'] is not True
+                or not training_readback_task(task) or source['kind'] != TRAINING_RESULT_SOURCE or 'recipient' not in task):
+            raise ValueError('Campaign receipt recovery requires the selected original full training result and recipient')
         dependencies[task_id] = parents
     if any(parent not in dependencies for parents in dependencies.values() for parent in parents):
         raise ValueError('Campaign task dependency is absent from the frozen plan')
@@ -339,16 +344,26 @@ def readback_id(grant):
     return prefix + identity(grant)
 
 
-def release_recovery_id(grant):
-    return 'training-gpu-release-recovery:' + identity(grant)
+def receipt_recovery_activity(task):
+    if task is not None:
+        if task.get('recover_release_receipt') is True:
+            return RELEASE_RECOVERY_ACTIVITY
+        if task.get('recover_full_result_receipt') is True:
+            return FULL_RESULT_RECOVERY_ACTIVITY
 
 
-def release_recovery_proof(grant, reply):
+def receipt_recovery_id(grant):
+    prefix = ('training-gpu-release-recovery:' if grant.get('source_kind') == TRAINING_GPU_RELEASE_SOURCE else
+              'training-full-result-recovery:')
+    return prefix + identity(grant)
+
+
+def receipt_recovery_proof(grant, reply):
     if (not isinstance(reply, dict)
             or reply.keys() != {'recovery_activity_id', 'recovery_receipt_sha256', 'original_result'}
-            or reply['recovery_activity_id'] != release_recovery_id(grant)
+            or reply['recovery_activity_id'] != receipt_recovery_id(grant)
             or not sha256(reply['recovery_receipt_sha256'])):
-        raise ValueError('Campaign release recovery differs from the original read grant')
+        raise ValueError('Campaign receipt recovery differs from the original read grant')
     return {field: reply[field] for field in ('recovery_activity_id', 'recovery_receipt_sha256')}
 
 
@@ -487,9 +502,9 @@ def checked_readback(opening, run_id, waits, observation):
         if screen:
             proof = proof.union(TRAINING_SCREEN_PROOF)
         if 'recovery_activity_id' in observation:
-            if (not release or task.get('recover_release_receipt') is not True
-                    or observation['recovery_activity_id'] != release_recovery_id(grant)):
-                raise ValueError('Campaign release recovery differs from the original read grant')
+            if (receipt_recovery_activity(task) is None
+                    or observation['recovery_activity_id'] != receipt_recovery_id(grant)):
+                raise ValueError('Campaign receipt recovery differs from the original read grant')
             fields.add('recovery_activity_id')
             digests.add('recovery_receipt_sha256')
             proof.add('recovery_receipt_sha256')

@@ -11,10 +11,11 @@ from temporalio import activity
 from temporalio.exceptions import ApplicationError
 
 from ergora.campaigns.records import (
-    READBACK_ACTIVITY, READBACK_CLEANUP_SECONDS, RELEASE_RECOVERY_ACTIVITY, TRAINING_GPU_RELEASE_ACTIVITY, TRAINING_READBACK_ACTIVITY,
-    TRAINING_SCREEN_ACTIVITY,
+    FULL_RESULT_RECOVERY_ACTIVITY, READBACK_ACTIVITY, READBACK_CLEANUP_SECONDS, RELEASE_RECOVERY_ACTIVITY,
+    TRAINING_GPU_RELEASE_ACTIVITY, TRAINING_READBACK_ACTIVITY, TRAINING_SCREEN_ACTIVITY,
     CampaignFiles, check_receipt, identity, readback_activity, readback_grant, readback_id, readback_task,
-    release_recovery_id, require_check_project, training_readback_action, training_readback_task, verify_registration,
+    receipt_recovery_activity, receipt_recovery_id, require_check_project, training_readback_action, training_readback_task,
+    verify_registration,
 )
 from ergora.runtime import action_observations, processes
 from ergora.storage.state import State, file_lock
@@ -50,41 +51,64 @@ class CampaignReadback:
 
     @activity.defn(name=RELEASE_RECOVERY_ACTIVITY)
     async def recover_release(self, grant: dict) -> dict:
-        from ergora.campaigns.recipient_gate import verified_release_recovery
+        return self._recover_receipt(grant)
+
+    @activity.defn(name=FULL_RESULT_RECOVERY_ACTIVITY)
+    async def recover_full_result(self, grant: dict) -> dict:
+        return self._recover_receipt(grant)
+
+    def recovery_activity_for(self, task):
+        return {RELEASE_RECOVERY_ACTIVITY: self.recover_release,
+                FULL_RESULT_RECOVERY_ACTIVITY: self.recover_full_result}.get(receipt_recovery_activity(task))
+
+    def _recover_receipt(self, grant):
+        from ergora.campaigns.recipient_gate import verified_receipt_recovery
 
         info = activity.info()
         task = readback_task(self.opening)
-        if (task.get('recover_release_receipt') is not True or info.attempt != 1
+        recovery = receipt_recovery_activity(task)
+        if (recovery is None or info.activity_type != recovery or info.attempt != 1
                 or info.workflow_id != self.opening['workflow_id'] or info.workflow_run_id != self.run_id
-                or info.activity_id != release_recovery_id(grant)
+                or info.activity_id != receipt_recovery_id(grant)
                 or grant != readback_grant(self.opening, self.run_id, task, None)):
-            raise ValueError('Campaign recovery requires its selected original GPU release read')
+            raise ValueError('Campaign recovery requires its selected original training read')
 
-        def require_open():
+        def require_open(work_cutoff=None):
             opening, start, result = self.files.load()
             if opening != self.opening or start != self.start_attempt or result is None or result['run_id'] != self.run_id:
-                raise ValueError('Campaign original start changed before release recovery')
+                raise ValueError('Campaign original start changed before receipt recovery')
             stop, _, _ = self.files.load_stop(opening, start, result)
             if (stop is not None or self.files._read('readback-cancel') is not None
-                    or not grant['due_at'] <= time.time() < grant['deadline_at'] - READBACK_CLEANUP_SECONDS):
-                raise ValueError('Campaign release recovery no longer admits the original receipt')
+                    or not grant['due_at'] <= time.time() < grant['deadline_at'] - READBACK_CLEANUP_SECONDS
+                    or work_cutoff is not None and time.monotonic() >= work_cutoff):
+                raise ValueError('Campaign receipt recovery no longer admits the original receipt')
 
         require_open()
         require_check_project(State(self.files.home, read_only=True), self.opening)
-        _, reply, stamps = verified_release_recovery(self.files, self.opening, self.start_attempt, self.run_id, task)
+        _, reply, guard, model = verified_receipt_recovery(self.files, self.opening, self.start_attempt, self.run_id, task)
+        full_result = recovery == FULL_RESULT_RECOVERY_ACTIVITY
         boot = processes.identity(os.getpid())['boot_id']
-        for saved in stamps:
-            if (not isinstance(saved, dict) or not isinstance(saved.get('start_ticks'), str)
-                    or not saved['start_ticks'].isdigit() or type(saved.get('pid')) is not int or saved['pid'] <= 0
-                    or saved.get('boot_id') != boot):
-                raise ValueError('Campaign release recovery cannot verify the original process identity')
+        for role, saved in (('worker', guard['worker']), ('guard', guard['guard']), ('reader', model)):
+            if (not isinstance(saved, dict) or saved.keys() != {'pid', 'start_ticks', 'boot_id'}
+                    or not isinstance(saved['start_ticks'], str)
+                    or not saved['start_ticks'].isdigit() or type(saved['pid']) is not int or saved['pid'] <= 0
+                    or saved['boot_id'] != boot):
+                raise ValueError('Campaign receipt recovery cannot verify the original process identity')
+            ticks = saved['start_ticks']
+            if full_result and (not ticks.isascii() or (ticks != '0' and ticks.startswith('0'))):
+                raise ValueError('Campaign receipt recovery cannot verify the original process identity')
             try:
-                original_process = processes.identity(saved['pid'])
+                if full_result and role == 'worker':
+                    process_state, original_process = processes.observe_process(saved['pid'])
+                    if process_state in ('Z', 'X', 'x'):
+                        continue
+                else:
+                    original_process = processes.identity(saved['pid'])
             except FileNotFoundError:
                 continue
             if original_process == saved:
-                raise ValueError('Campaign release recovery requires the original processes to have exited')
-        require_open()
+                raise ValueError('Campaign receipt recovery requires the original processes to have exited')
+        require_open(guard['work_cutoff_monotonic'] if full_result else None)
         return reply
 
     async def _read(self, grant):

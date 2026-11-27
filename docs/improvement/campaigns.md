@@ -222,6 +222,8 @@ Use `campaign status PROJECT CAMPAIGN --online --task-id TASK` for the original 
 
 When the original full-result read Activity failed, timed out or was cancelled, `readback_terminal` gives its verified History event IDs and any available typed cause. This describes the reader's outcome. The successful evidence stays in `readback_completion`. If online History is unavailable or has no verified terminal read, `readback_history_status` reports `unavailable` or `unresolved` respectively. Contradictory History retains its existing status. These read-only fields leave live task eligibility unchanged.
 
+On a full-result task with a declared recipient, set `"recover_full_result_receipt": true` at the task level to allow one read-only recovery after the original Activity's heartbeat timeout. Recovery verifies the saved result and original reader cleanup under the same read window and STOP fence. Status retains the timeout in `readback_terminal` and identifies the separate recovery in `readback_completion.recovery_history`. The original Job, reader and declared recipient keep their original identities.
+
 If Workflow state is unavailable, a verified managed training readback still shows the original root task as `observed` with `state_source: history` and `eligible: false`. This also applies to managed screen and lease release observations. The current state and eligibility of dependent tasks require a live Workflow observation.
 
 ### Read one managed training screen decision
