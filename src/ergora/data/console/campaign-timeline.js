@@ -14,6 +14,20 @@ const readbackFollowupLabels = {
   ergora_campaign_training_full_result_reobserve: "守卫重读",
   ergora_campaign_training_full_result_recover_receipt: "回执核对",
 };
+const historyTimingLabels = {
+  ready_to_scheduled: "History 就绪至 Activity 调度",
+  scheduled_to_worker_started: "History Activity 调度至 Worker 开始",
+  worker_started_to_delivery_terminal: "History Worker 开始至 Activity 终止",
+};
+
+function historyTimingFacts(history) {
+  const timing = history?.timing;
+  if (timing?.clock !== "temporal_history") return [];
+  return Object.entries(historyTimingLabels).flatMap(([name, label]) => {
+    const nanoseconds = timing.intervals_ns?.[name];
+    return Number.isInteger(nanoseconds) && nanoseconds >= 0 ? [[label, `${nanoseconds / 1_000_000} ms`]] : [];
+  });
+}
 
 function readbackTerminal(label, terminal) {
   const cause = terminal.cause;
@@ -94,6 +108,7 @@ function trainingEvidence({ locator, recipient, source_kind },
         ["唤醒 Activity 调度事件 ID", history?.scheduled_event_id],
         ["唤醒 Activity 开始事件 ID", history?.started_event_id],
         ["唤醒 Activity 终止事件 ID", history?.completed_event_id],
+        ...historyTimingFacts(history),
       ])) : null,
     recipient ? panel("原接手原生回执", null,
       native ? facts([
@@ -134,6 +149,7 @@ function assignmentEvidence({ task_id, assignee, slot_status, claim, history, na
         ["独立任务 Activity 终止状态", history.terminal_status],
         ["独立任务 Activity 终止事件 ID", history.terminal_event_id],
       ]),
+      ...historyTimingFacts(history),
       ["原独立任务原生 Run ID", native?.run_id],
       ["原独立任务原生派发", native?.dispatch],
       ["原独立任务原生启动", native?.start_status],

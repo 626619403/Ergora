@@ -158,6 +158,19 @@ def test_campaign_timeline_scopes_independent_assignment_evidence(console, monke
         history = {"status": "unknown", "training_wait_started_event_id": 1, "scheduled_event_id": 12,
                    "started_event_id": 13}
         original_history = {**history, "completed_event_id": 14}
+    if disposition in ("released", "training-wait", "timed-out", "other-task"):
+        intervals = {"ready_to_scheduled": 0, "scheduled_to_worker_started": 39850,
+                     "worker_started_to_delivery_terminal": 1779422223}
+        history["timing"] = {"clock": "temporal_history", "intervals_ns": intervals}
+        original_history["timing"] = {**history["timing"], "events": {"ready": "private-value"},
+                                      "intervals_ns": {**intervals, "unsupported": "private-value"}}
+    elif disposition == "unknown":
+        original_history["timing"] = {"clock": "temporal_history", "intervals_ns": {
+            "ready_to_scheduled": -1, "scheduled_to_worker_started": False, "worker_started_to_delivery_terminal": None}}
+    elif disposition == "release-error":
+        original_history["timing"] = {"clock": "private-value", "intervals_ns": {"ready_to_scheduled": 0}}
+    elif disposition == "invalid-terminal-status":
+        original_history["timing"] = {"clock": "temporal_history", "intervals_ns": "private-value"}
     raw_run = None if run is None else {**run, "submitted": "private-value"}
     if raw_blocker is not None:
         raw_run["campaign_recipient_blocker"] = raw_blocker
@@ -314,6 +327,12 @@ def test_campaign_training_timeline_keeps_the_original_result_and_native_disposi
     receipt = {"session_id": "original-session", "parent_run_id": "original-parent", "intent_id": "original-intent",
                "run_id": "native-run", "dispatch": "accepted"}
     activity = {"status": "unknown", "scheduled_event_id": 17, "started_event_id": 18, "completed_event_id": 19}
+    intervals = {"ready_to_scheduled": 423563716, "scheduled_to_worker_started": 0}
+    if workflow_observed:
+        intervals["worker_started_to_delivery_terminal"] = 1779422223
+    activity["timing"] = {"clock": "temporal_history", "intervals_ns": intervals}
+    raw_timing = {**activity["timing"], "events": {"ready": "private-value"}, "intervals_ns": {
+        "worker_started_to_delivery_terminal": "private-value", **intervals, "unsupported": "private-value"}}
 
     async def status(store, project, campaign, *, online, task_id):
         assert (store.root, project, campaign, online, task_id) == (state.root, "demo", "record", True, "full")
@@ -326,7 +345,7 @@ def test_campaign_training_timeline_keeps_the_original_result_and_native_disposi
                 "stop": {"status": "not_recorded", "remote_status": "not_requested", "update_id": None, "receipt": None},
                 "readback_completion": {**completion, "recipient": {"hidden-prompt": "private-value"}},
                 "recipient": {"status": "observed", "intent": {"wake_id": "original-wake", "source": "private-value"},
-                              "history": {**activity, "intent": "private-value"},
+                              "history": {**activity, "timing": raw_timing, "intent": "private-value"},
                               "native_receipt": {**receipt, "native_start": {"status": "started", "process": "private-value"},
                                                  "run": {**run, "binding": "private-value", "submitted": "hidden-prompt"}}}}
 

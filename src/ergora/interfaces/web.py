@@ -518,14 +518,32 @@ def _timeline_native_receipt(receipt: dict | None) -> dict | None:
                                        "campaign_recipient_blocker") if key in run}}
 
 
+def _timeline_history_timing(history: dict) -> dict:
+    timing = history.get("timing")
+    if not isinstance(timing, dict) or timing.get("clock") != "temporal_history":
+        return {}
+    intervals = timing.get("intervals_ns")
+    if not isinstance(intervals, dict):
+        return {}
+    selected = {}
+    for name in ("ready_to_scheduled", "scheduled_to_worker_started", "worker_started_to_delivery_terminal"):
+        value = intervals.get(name)
+        if type(value) is int and value >= 0:
+            selected[name] = value
+    return {"timing": {"clock": timing["clock"], "intervals_ns": selected}} if selected else {}
+
+
 def _training_timeline_recipient(recipient: dict) -> dict:
     history = recipient["history"]
     intent = recipient["intent"]
+    projected_history = None
+    if history is not None:
+        projected_history = {key: history[key] for key in ("status", "scheduled_event_id", "started_event_id",
+                                                          "completed_event_id") if key in history}
+        projected_history.update(_timeline_history_timing(history))
     return {"status": recipient["status"], "reason": recipient.get("reason"),
             "wake_id": intent["wake_id"] if intent is not None else None,
-            "history": ({key: history[key] for key in ("status", "scheduled_event_id", "started_event_id",
-                                                      "completed_event_id") if key in history}
-                        if history is not None else None),
+            "history": projected_history,
             "native_receipt": _timeline_native_receipt(recipient["native_receipt"])}
 
 
@@ -567,6 +585,7 @@ def _assignment_timeline(assignment: dict) -> dict:
             if (terminal_status in ("failed", "timed_out", "cancelled")
                     and type(terminal_event_id) is int and terminal_event_id > 0):
                 projected_history.update(terminal_status=terminal_status, terminal_event_id=terminal_event_id)
+        projected_history.update(_timeline_history_timing(history))
     return {"waiting_task_id": assignment["waiting_task_id"], "task_id": assignment["task_id"],
             "assignee": {key: assignment["assignee"][key] for key in ("role", "generation")},
             "slot_status": assignment["slot_status"],
