@@ -2096,7 +2096,8 @@ def test_opted_fixed_check_shares_manual_and_guarded_readiness(tmp_path):
         accepted = await send(later)
         assert accepted['decision'] == 'observed'
         commands.append(later)
-        updates, readback, wake = await runtime.read_task_history(client, handle, opening, commands)
+        updates, readback, wake, terminal = await runtime.read_task_history(client, handle, opening, commands)
+        assert terminal is None
         selected_wake, = deliveries[workflow_id]
         assert wake['intent'] == selected_wake
         if manual_first or holds_read:
@@ -2106,7 +2107,8 @@ def test_opted_fixed_check_shares_manual_and_guarded_readiness(tmp_path):
             assert selected_wake['source']['activity_id'] == readback['activity_id']
             late = command(selected, succeeded, wait)
             assert await send(late) is None and await send(late) is None
-            updates, completion, original_wake = await runtime.read_task_history(client, handle, opening, [*commands, late])
+            updates, completion, original_wake, terminal = await runtime.read_task_history(client, handle, opening, [*commands, late])
+            assert terminal is None
             failed = updates[late['attempt']['update_id']]
             assert failed['status'] == 'failed' and failed['receipt'] is None
             assert failed['reason'] == runtime.READBACK_ALREADY_ADMITTED
@@ -2564,7 +2566,7 @@ def test_training_task_view_retains_verified_history_without_live_admission(view
 
     async def history(client, selected, plan, commands):
         assert (selected, plan, commands) == (handle, opening, ())
-        return {}, None if view == 'missing' else completion, None
+        return {}, None if view == 'missing' else completion, None, None
 
     runtime = SimpleNamespace(RPC_SECONDS=1, original=original, runtime_status=state,
                               read_task_history=history, RPCError=RuntimeError)
@@ -2581,6 +2583,138 @@ def test_training_task_view_retains_verified_history_without_live_admission(view
     else:
         assert 'tasks' not in result
         assert 'readback_completion' not in result
+
+
+@pytest.mark.parametrize('case', ('failed', 'unbounded_cause', 'timed_out', 'before_start_timeout',
+                                 'schedule_to_start_after_start', 'heartbeat_without_start', 'canceled',
+                                 'cancel_without_start', 'request_before_start', 'missing_cancel_request',
+                                 'foreign_cancel_request', 'wrong_cancel_link', 'wrong_cancel_event_type',
+                                 'wrong_schedule_event_type', 'wrong_start_event_type', 'wrong_terminal_event_type',
+                                 'missing', 'unavailable', 'foreign_schedule', 'foreign_start',
+                                 'foreign_start_standard', 'wrong_attempt', 'duplicate', 'live'))
+def test_full_result_history_exposes_only_exact_terminal_blocker(case):
+    pytest.importorskip('temporalio')
+    from temporalio.api.enums.v1 import EventType, TimeoutType
+    from temporalio.api.history.v1 import HistoryEvent
+    from temporalio.converter import DataConverter
+    from ergora.campaigns import records, workflow
+
+    locator = {'experiment_id': 'alpha', 'workflow_id': 'perf-experiment/alpha',
+               'run_id': 'training-run', 'job_id': 'local-perf-alpha',
+               'native_request_sha256': 'a'*64, 'attempt_sha256': 'b'*64}
+    root = {'task_id': 'full', 'depends_on': [], 'source': {'kind': 'training_full_result', 'locator': locator},
+            'readback': {'due_at': 100, 'deadline_at': 120}}
+    child = {'task_id': 'fixed', 'depends_on': ['full'], 'source': {}}
+    opening = {'workflow_id': 'campaign', 'task_queue': 'original-queue', 'plan': {'tasks': [root, child]}}
+    run = 'original-run'
+    grant = records.readback_grant(opening, run, root, None)
+    activity_id = records.readback_id(grant)
+    live_tasks = {'full': {'status': 'waiting_job', 'eligible': False},
+                  'fixed': {'status': 'waiting_dependencies', 'eligible': False}}
+    typed = {'kind': 'application', 'type': 'ReaderUnavailable', 'non_retryable': True}
+
+    def event(event_id, kind, attributes, *, declared=None):
+        return HistoryEvent(event_id=event_id,
+                            event_type=EventType.Value('EVENT_TYPE_ACTIVITY_TASK_' + (declared or kind)),
+                            **{f'activity_task_{kind.lower()}_event_attributes': attributes})
+
+    async def exercise():
+        converter = DataConverter.default
+        events = [event(11, 'SCHEDULED', {
+            'activity_id': activity_id, 'activity_type': {'name': records.TRAINING_READBACK_ACTIVITY},
+            'task_queue': {'name': opening['task_queue']}, 'retry_policy': {'maximum_attempts': 1},
+            'input': {'payloads': await converter.encode([grant])}},
+            declared='FAILED' if case == 'wrong_schedule_event_type' else None)]
+        start = None if case in ('before_start_timeout', 'heartbeat_without_start', 'cancel_without_start') else 12
+        if case == 'request_before_start':
+            start = 14
+        if start is not None:
+            events.append(event(start, 'STARTED', {'scheduled_event_id': 11, 'attempt': 2 if case == 'wrong_attempt' else 1},
+                                declared='FAILED' if case == 'wrong_start_event_type' else None))
+        terminal_fields = {'scheduled_event_id': 11, 'started_event_id': start or 0}
+        terminal_id = 13
+        if case in ('foreign_start', 'foreign_start_standard'):
+            terminal_fields['started_event_id'] = 99
+        if case == 'foreign_schedule':
+            terminal_fields['scheduled_event_id'] = 99
+        if case in ('timed_out', 'before_start_timeout', 'schedule_to_start_after_start', 'heartbeat_without_start'):
+            cause = {'before_start_timeout': 'SCHEDULE_TO_CLOSE',
+                     'schedule_to_start_after_start': 'SCHEDULE_TO_START'}.get(case, 'HEARTBEAT')
+            events.append(event(13, 'TIMED_OUT', {
+                **terminal_fields, 'failure': {'timeout_failure_info': {
+                    'timeout_type': TimeoutType.Value('TIMEOUT_TYPE_' + cause)}}}))
+            disposition, detail = 'timed_out', {'kind': 'timeout', 'type': cause}
+        elif case in ('canceled', 'cancel_without_start', 'request_before_start', 'missing_cancel_request',
+                      'foreign_cancel_request', 'wrong_cancel_link', 'wrong_cancel_event_type'):
+            terminal_id = 15 if case == 'request_before_start' else 14
+            if case != 'missing_cancel_request':
+                events.append(event(13, 'CANCEL_REQUESTED', {
+                    'scheduled_event_id': 99 if case == 'foreign_cancel_request' else 11,
+                    'workflow_task_completed_event_id': 10},
+                    declared='FAILED' if case == 'wrong_cancel_event_type' else None))
+            events.append(event(terminal_id, 'CANCELED', {
+                **terminal_fields, 'latest_cancel_requested_event_id': 99 if case == 'wrong_cancel_link' else 13}))
+            disposition, detail = 'cancelled', None
+        else:
+            error_type = '/private/' + 'unbounded'*20 if case == 'unbounded_cause' else typed['type']
+            if case not in ('missing', 'unavailable'):
+                events.append(event(13, 'FAILED', {
+                    **terminal_fields, 'failure': {'message': 'private reader output',
+                        'stack_trace': '/private/stack.py', 'application_failure_info': {
+                            'type': error_type, 'non_retryable': True}}},
+                    declared='COMPLETED' if case == 'wrong_terminal_event_type' else None))
+            if case == 'duplicate':
+                events.append(event(14, 'FAILED', terminal_fields))
+            disposition = 'failed'
+            detail = {key: value for key, value in typed.items() if key != 'type'} if case == 'unbounded_cause' else typed
+
+        class Handle:
+            id = opening['workflow_id']
+            run_id = run
+
+            async def fetch_history_events(self, *, rpc_timeout):
+                if case == 'unavailable':
+                    raise TimeoutError('original History reader unavailable')
+                for entry in sorted(events, key=lambda item: item.event_id):
+                    yield entry
+
+        async def original(*_):
+            return Handle(), SimpleNamespace(run_id=run, status=SimpleNamespace(name='RUNNING'))
+
+        async def live_state(*_, **__):
+            if case == 'live':
+                return {'workflow_state_status': 'observed', 'tasks': live_tasks}
+            return {'workflow_state_status': 'unavailable'}
+
+        runtime = SimpleNamespace(RPC_SECONDS=1, original=original, runtime_status=live_state,
+                                  read_task_history=workflow.read_task_history, RPCError=RuntimeError)
+        client = SimpleNamespace(data_converter=converter, namespace='default')
+        observed = await application._read_original(runtime, {'attempt_sha256': 'original'}, opening, {}, run,
+            client=client, read_state=True, include_task_history=case != 'foreign_start_standard')
+        assert 'readback_completion' not in observed
+        if case == 'live':
+            assert observed['tasks'] == live_tasks
+        else:
+            assert 'tasks' not in observed
+        if case in ('foreign_start', 'foreign_start_standard', 'wrong_attempt', 'duplicate', 'heartbeat_without_start',
+                    'schedule_to_start_after_start', 'missing_cancel_request', 'foreign_cancel_request', 'wrong_cancel_link',
+                    'wrong_cancel_event_type', 'wrong_schedule_event_type', 'wrong_start_event_type', 'wrong_terminal_event_type'):
+            assert observed['task_observation_history_status'] == 'contradictory'
+            assert 'readback_terminal' not in observed
+        elif case in ('missing', 'unavailable', 'foreign_schedule'):
+            assert observed['readback_history_status'] == ('unavailable' if case == 'unavailable' else 'unresolved')
+            assert 'readback_terminal' not in observed
+        else:
+            expected = {'status': disposition, 'run_id': run, 'task_id': 'full', 'activity_id': activity_id,
+                        'source_sha256': grant['source_sha256'], 'scheduled_event_id': 11, 'started_event_id': start,
+                        'terminal_event_id': terminal_id}
+            if disposition == 'cancelled':
+                expected['cancel_requested_event_id'] = 13
+            if detail is not None:
+                expected['cause'] = detail
+            assert observed['readback_terminal'] == expected
+
+    asyncio.run(exercise())
 
 
 @pytest.mark.parametrize('history', ('absent', 'different', 'exact'))

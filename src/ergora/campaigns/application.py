@@ -8,7 +8,7 @@ from uuid import uuid4
 
 from ergora.campaigns.records import (
     FIXED_CHECK_TERMINAL, FIXED_TASK_LOCATOR, FIXED_TASK_UPDATE_PREFIX, PENDING_JOB_STATES, READBACK_ALREADY_ADMITTED,
-    ROLLOVER_UPDATE_PREFIX, WORKFLOW_TYPE,
+    ROLLOVER_UPDATE_PREFIX, TRAINING_RESULT_SOURCE, WORKFLOW_TYPE,
     CampaignFiles, attempt_document, check_intent, check_record_name, identity, local_readback_stop,
     original_check_evidence, project_selection, read_plan, readback_task,
     recipient_task, require_check_project, result_document, rollover_intent, rollover_task, sha256, stop_intent,
@@ -171,25 +171,29 @@ async def _read_original(runtime, output, opening, attempt, run_id, *, client=No
                 task['eligible'] = False
     selected = readback_task(opening)
     training = training_readback_task(selected)
+    full_result = training and selected['source']['kind'] == TRAINING_RESULT_SOURCE
     if training or (check_commands and (include_task_history or observed['workflow_state_status'] == 'unavailable'
                                         or recipient_task(opening) is not None)):
         try:
             async with asyncio.timeout(runtime.RPC_SECONDS):
                 if successor is None:
-                    updates, completion, wake = await runtime.read_task_history(client, handle, opening, check_commands)
+                    updates, completion, wake, terminal = await runtime.read_task_history(
+                        client, handle, opening, check_commands)
                 else:
                     by_run = {}
                     for command in check_commands:
                         target = _command_handle(client, handle, successor, command)
                         by_run.setdefault(target.run_id, (target, []))[1].append(command)
-                    updates, completion, wake = {}, None, None
+                    updates, completion, wake, terminal = {}, None, None, None
                     for target, commands in by_run.values():
-                        decisions, _, _ = await runtime.read_task_history(client, target, opening, commands)
+                        decisions, _, _, _ = await runtime.read_task_history(client, target, opening, commands)
                         updates.update(decisions)
         except (TimeoutError, ConnectionError, runtime.RPCError):
+            if full_result:
+                observed['readback_history_status'] = 'unavailable'
             return observed
         except ValueError as error:
-            if not include_task_history:
+            if not include_task_history and not full_result:
                 raise
             return {**observed, 'task_observation_history_status': 'contradictory',
                     'task_observation_history_error': str(error)}
@@ -201,6 +205,10 @@ async def _read_original(runtime, output, opening, attempt, run_id, *, client=No
                 # History attests to this original observation. Live admission remains unavailable.
                 observed['tasks'] = {selected['task_id']: {**selected, 'status': 'observed',
                                      'receipt': None, 'eligible': False, 'state_source': 'history'}}
+        elif terminal is not None:
+            observed['readback_terminal'] = terminal
+        elif full_result:
+            observed['readback_history_status'] = 'unresolved'
         if wake is not None and (completion is None or 'recipient' not in completion):
             observed['recipient_history'] = wake
     return observed
@@ -606,7 +614,7 @@ def _readback_admitted(task):
 async def _readback_check_response(runtime, client, handle, opening, view, waiting):
     if waiting is None:
         raise ValueError('Campaign guarded result lacks its original waiting attempt')
-    _, completion, _ = await runtime.read_task_history(client, handle, opening, [waiting])
+    _, completion, _, _ = await runtime.read_task_history(client, handle, opening, [waiting])
     if completion is None or any(completion.get(key) != value for key, value in view['readback_observation'].items()
                                  if key != 'status'):
         raise ValueError('Campaign guarded result does not match its original completed Activity')
@@ -626,7 +634,7 @@ async def _check_attempt_response(runtime, client, handle, files, opening, attem
         if waiting is not None:
             try:
                 async with asyncio.timeout(runtime.RPC_SECONDS):
-                    updates, completion, _ = await runtime.read_task_history(client, handle, opening, [waiting, command])
+                    updates, completion, _, _ = await runtime.read_task_history(client, handle, opening, [waiting, command])
             except (TimeoutError, ConnectionError, runtime.RPCError):
                 return _check_response(opening, task, command, None)
             update_id = command['attempt']['update_id']

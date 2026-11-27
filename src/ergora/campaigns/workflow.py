@@ -7,7 +7,7 @@ import time
 
 from temporalio import workflow
 from temporalio.api.common.v1 import WorkflowExecution, WorkflowType
-from temporalio.api.enums.v1 import ContinueAsNewInitiator, TimeoutType, UpdateWorkflowExecutionLifecycleStage
+from temporalio.api.enums.v1 import ContinueAsNewInitiator, EventType, TimeoutType, UpdateWorkflowExecutionLifecycleStage
 from temporalio.api.taskqueue.v1 import TaskQueue
 from temporalio.api.update.v1 import Input, Meta, Request, WaitPolicy
 from temporalio.api.workflowservice.v1 import StartWorkflowExecutionRequest, UpdateWorkflowExecutionRequest
@@ -25,14 +25,14 @@ from temporalio.worker import Worker
 with workflow.unsafe.imports_passed_through():
     from ergora.campaigns.records import (
         ATTEMPT_MEMO, OPENING_MEMO, READBACK_ALREADY_ADMITTED, READBACK_CLEANUP_SECONDS,
-        RECIPIENT_ACTIVITY, RELEASE_RECOVERY_ACTIVITY, WORKFLOW_TYPE,
+        RECIPIENT_ACTIVITY, RELEASE_RECOVERY_ACTIVITY, TRAINING_RESULT_SOURCE, WORKFLOW_TYPE,
         check_receipt, checked_readback, fixed_task_state, has_pending_checks, identity, manual_wake_source,
         readback_activity, readback_grant, readback_id, readback_proof, readback_ready_tasks, readback_reference,
         readback_result, readback_task, recipient_task, release_recovery_id, release_recovery_proof,
         tasks_by_id, training_readback_task,
         require_check_receipt, require_rollover_receipt, require_stop_receipt, restore_rollover, rollover_checkpoint,
         rollover_task, same_check_observation,
-        sha256, stop_intent, update_receipt, validate_check_command, validate_rollover_command,
+        safe_id, sha256, stop_intent, update_receipt, validate_check_command, validate_rollover_command,
         validate_stop_attempt, uuid_text, wake_intent,
     )
 
@@ -492,6 +492,7 @@ async def read_task_history(client, handle, opening, commands):
                        and command['intent']['task_id'] == task['task_id']
                        and command['intent']['operation'] == 'wait_check'), None)
     training = training_readback_task(task)
+    full_result = training and task['source']['kind'] == TRAINING_RESULT_SOURCE
     grant = None
     if training or timer_wait is not None:
         waiting = check_receipt(timer_wait) if timer_wait is not None else None
@@ -501,6 +502,7 @@ async def read_task_history(client, handle, opening, commands):
     recovery_events = []
     recovery_ids = set()
     activity_events = []
+    cancel_requests = []
     schedule_ids = set()
     wake_events = []
     wake_ids = set()
@@ -530,7 +532,12 @@ async def read_task_history(client, handle, opening, commands):
                     if event.HasField(field) and getattr(event, field).scheduled_event_id in recovery_ids:
                         recovery_events.append(event)
                         break
-        # Keep at most one schedule, start and completion, plus one event to detect a duplicate.
+        if (full_result and event.HasField('activity_task_cancel_requested_event_attributes')
+                and event.activity_task_cancel_requested_event_attributes.scheduled_event_id in schedule_ids):
+            if len(cancel_requests) < 2:
+                cancel_requests.append(event)
+            continue
+        # Keep one original Activity and a sentinel event to detect duplicates.
         if activity_id is None or len(activity_events) == 4:
             continue
         if event.HasField('activity_task_scheduled_event_attributes'):
@@ -541,8 +548,12 @@ async def read_task_history(client, handle, opening, commands):
               and event.activity_task_started_event_attributes.scheduled_event_id in schedule_ids
               or event.HasField('activity_task_completed_event_attributes')
               and event.activity_task_completed_event_attributes.scheduled_event_id in schedule_ids
-              or recovery_id is not None and event.HasField('activity_task_timed_out_event_attributes')
-              and event.activity_task_timed_out_event_attributes.scheduled_event_id in schedule_ids):
+              or (full_result or recovery_id is not None) and event.HasField('activity_task_timed_out_event_attributes')
+              and event.activity_task_timed_out_event_attributes.scheduled_event_id in schedule_ids
+              or full_result and event.HasField('activity_task_failed_event_attributes')
+              and event.activity_task_failed_event_attributes.scheduled_event_id in schedule_ids
+              or full_result and event.HasField('activity_task_canceled_event_attributes')
+              and event.activity_task_canceled_event_attributes.scheduled_event_id in schedule_ids):
             activity_events.append(event)
     updates = {}
     for update_id, entry in entries.items():
@@ -551,9 +562,10 @@ async def read_task_history(client, handle, opening, commands):
                                   'completed_event_id': entry['completed_event_id'],
                                   'receipt': entry['receipt'],
                                   'status': 'failed' if entry.get('failed') else 'verified'}
-    completion = None
+    completion = readback_terminal = None
     if training or (timer_wait is not None and entries[timer_wait['attempt']['update_id']].get('receipt') is not None):
-        completion = await _readback_completion(converter, activity_events, opening, task, grant, activity_id)
+        completion, readback_terminal = await _readback_history(
+            converter, activity_events, opening, task, grant, activity_id, cancel_requests)
     if recovery_events:
         if completion is not None:
             raise ValueError('Campaign release recovery conflicts with an original Activity completion')
@@ -605,7 +617,7 @@ async def read_task_history(client, handle, opening, commands):
         wake = await _read_recipient_history(converter, wake_events, opening, intent, ready)
         if claimed.get('kind') != 'manual_update':
             completion['recipient'] = wake
-    return updates, completion, wake
+    return updates, completion, wake, readback_terminal
 
 
 def _history_timestamp_ns(event):
@@ -683,8 +695,51 @@ async def _read_recipient_history(converter, events, opening, intent, readback_c
     return result
 
 
-async def _readback_completion(converter, events, opening, task, grant, activity_id):
+def _readback_terminal(task, grant, activity_id, ancestry, event, kind, attributes, cancel_requests):
+    scheduled = ancestry['scheduled']
+    started = ancestry.get('worker_started')
+    scheduled_id, started_id = scheduled.event_id, started.event_id if started is not None else None
+    if (scheduled.event_type != EventType.EVENT_TYPE_ACTIVITY_TASK_SCHEDULED
+            or started is not None and started.event_type != EventType.EVENT_TYPE_ACTIVITY_TASK_STARTED
+            or event.event_type != EventType.Value('EVENT_TYPE_ACTIVITY_TASK_' + kind.upper())):
+        raise ValueError('Campaign readback History event type differs from its Activity attributes')
+    if (scheduled_id <= 0 or event.event_id <= (started_id or scheduled_id)
+            or attributes.started_event_id != (started_id or 0) or (kind == 'failed' and started_id is None)):
+        raise ValueError('Campaign readback terminal event does not bind its original Activity attempt')
+    result = {'status': 'cancelled' if kind == 'canceled' else kind, 'run_id': grant['run_id'],
+              'task_id': task['task_id'], 'activity_id': activity_id, **readback_reference(grant),
+              'scheduled_event_id': scheduled_id, 'started_event_id': started_id, 'terminal_event_id': event.event_id}
+    if kind == 'failed' and attributes.failure.HasField('application_failure_info'):
+        application = attributes.failure.application_failure_info
+        result['cause'] = {'kind': 'application', 'non_retryable': application.non_retryable}
+        if safe_id(application.type):
+            result['cause']['type'] = application.type
+    elif kind == 'timed_out':
+        timeout = attributes.failure.timeout_failure_info.timeout_type
+        if (started_id is None and timeout not in (TimeoutType.TIMEOUT_TYPE_SCHEDULE_TO_CLOSE,
+                                                    TimeoutType.TIMEOUT_TYPE_SCHEDULE_TO_START)
+                or started_id is not None and timeout == TimeoutType.TIMEOUT_TYPE_SCHEDULE_TO_START):
+            raise ValueError('Campaign readback timeout contradicts its original Activity start')
+        if timeout in (TimeoutType.TIMEOUT_TYPE_START_TO_CLOSE, TimeoutType.TIMEOUT_TYPE_SCHEDULE_TO_CLOSE,
+                       TimeoutType.TIMEOUT_TYPE_SCHEDULE_TO_START, TimeoutType.TIMEOUT_TYPE_HEARTBEAT):
+            result['cause'] = {'kind': 'timeout', 'type': TimeoutType.Name(timeout).removeprefix('TIMEOUT_TYPE_')}
+    elif kind == 'canceled':
+        if len(cancel_requests) != 1:
+            raise ValueError('Campaign readback cancellation lacks one original Activity cancel request')
+        cancel_requested, = cancel_requests
+        if (cancel_requested.event_type != EventType.EVENT_TYPE_ACTIVITY_TASK_CANCEL_REQUESTED
+                or not scheduled_id < cancel_requested.event_id < event.event_id
+                or attributes.latest_cancel_requested_event_id != cancel_requested.event_id
+                or cancel_requested.activity_task_cancel_requested_event_attributes.scheduled_event_id != scheduled_id):
+            raise ValueError('Campaign readback cancellation lacks its original Activity cancel request')
+        result['cancel_requested_event_id'] = cancel_requested.event_id
+    return result
+
+
+async def _readback_history(converter, events, opening, task, grant, activity_id, cancel_requests):
     scheduled_id = started_id = completed = None
+    terminal = None
+    full_result = task['source'].get('kind') == TRAINING_RESULT_SOURCE
     timing_events = {}
     for event in events:
         if event.HasField('activity_task_scheduled_event_attributes'):
@@ -699,7 +754,7 @@ async def _readback_completion(converter, events, opening, task, grant, activity
         elif event.HasField('activity_task_started_event_attributes'):
             started = event.activity_task_started_event_attributes
             if started.scheduled_event_id == scheduled_id:
-                if started_id is not None or started.attempt != 1:
+                if started_id is not None or started.attempt != 1 or full_result and event.event_id <= scheduled_id:
                     raise ValueError('Campaign readback differs from its original Activity attempt')
                 started_id = event.event_id
                 timing_events['worker_started'] = event
@@ -709,8 +764,23 @@ async def _readback_completion(converter, events, opening, task, grant, activity
                 if completed is not None or started_id is None or result_event.started_event_id != started_id:
                     raise ValueError('Campaign readback completion does not bind its original Activity attempt')
                 completed = event
+        elif full_result:
+            for kind in ('failed', 'timed_out', 'canceled'):
+                field = f'activity_task_{kind}_event_attributes'
+                if event.HasField(field):
+                    attributes = getattr(event, field)
+                    if attributes.scheduled_event_id == scheduled_id:
+                        if terminal is not None:
+                            raise ValueError('Campaign readback History has multiple original terminal events')
+                        terminal = _readback_terminal(
+                            task, grant, activity_id, timing_events, event, kind, attributes, cancel_requests)
+                    break
+    if terminal is not None:
+        if completed is not None or terminal['started_event_id'] != started_id:
+            raise ValueError('Campaign readback History has conflicting original Activity events')
+        return None, terminal
     if completed is None:
-        return None
+        return None, None
     values = await converter.decode(completed.activity_task_completed_event_attributes.result.payloads)
     if len(values) != 1 or not isinstance(values[0], dict):
         raise ValueError('Campaign original readback Activity has an invalid result')
@@ -720,12 +790,12 @@ async def _readback_completion(converter, events, opening, task, grant, activity
     except (KeyError, TypeError) as error:
         raise ValueError('Campaign original readback Activity has an invalid result') from error
     if job['status'] != 'succeeded':
-        return None
+        return None, None
     timing_events['completed'] = completed
     timing = _history_timing(timing_events, (('scheduled', 'worker_started'), ('worker_started', 'completed')))
     return {'task_id': task['task_id'], 'activity_id': activity_id, **readback_reference(grant),
             'scheduled_event_id': scheduled_id, 'completed_event_id': completed.event_id,
-            **readback_proof(evidence, job, result), **({'timing': timing} if timing['events'] else {})}
+            **readback_proof(evidence, job, result), **({'timing': timing} if timing['events'] else {})}, None
 
 
 async def _release_recovery_completion(converter, original, events, opening, task, grant, activity_id):
@@ -1029,7 +1099,7 @@ async def run_worker(client, handle, opening, files, attempt, *, poller_identity
                 async with asyncio.timeout(RPC_SECONDS):
                     history_client = await connect(opening)
                     original = history_client.get_workflow_handle(opening['workflow_id'], run_id=handle.run_id)
-                    _, _, wake = await read_task_history(history_client, original, opening, commands)
+                    _, _, wake, _ = await read_task_history(history_client, original, opening, commands)
                 return wake
 
             activities.append(CodexRecipient(
