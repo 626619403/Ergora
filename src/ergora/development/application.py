@@ -81,6 +81,8 @@ def _definition(state: State, project: dict, definition: dict, *, working_direct
             raise ValueError('Selected task context requires the original supervised preparation directory')
         with task_context.selected_manifest(state, project['id'], definition['composition'], definition['context'], working_directory) as (option, context):
             result['composition'] = _composition({**definition, 'composition': option}, selection)
+            if 'shared_case' in context:
+                task_envelopes.require_shared_case_member(result['composition'], context['shared_case']['selection']['instance'])
             result['context'] = context
     elif 'composition' in definition:
         result['composition'] = _composition(definition, selection)

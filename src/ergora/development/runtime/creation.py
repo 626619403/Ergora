@@ -244,7 +244,9 @@ class _Creation:
                                'same_backend_members': sorted(composition['diversity']['same_backend_members'])}
             if 'context' in record['files']['task.spec.json']:
                 context = files['task.spec.json']['context']
-                if (context['selection'] != definition['context']
+                expected = {**definition['context']}
+                case = task_envelopes.shared_case_selection(expected.pop('shared_case', None))
+                if (context['selection'] != expected or context.get('shared_case', {}).get('selection') != case
                         or context['project'] != record['project']
                         or context['base_manifest_digest'] != option['manifest_digest']):
                     raise ValueError('Creation context differs from its original explicit selection')
@@ -344,9 +346,14 @@ class _Creation:
         # core.write's ordinary-contract comparison reads only 1 MiB.
         if save_intent:
             self.check_budget()
-            if 'context' in record['files']['task.spec.json']:
-                task_context.require_current(State(Path(record['control_home'])), record['project'], record['files']['task.spec.json'])
-            self.core.write(self.intent_path, record)
+            spec = record['files']['task.spec.json']
+            with ExitStack() as selection:
+                if 'context' in spec:
+                    requested = record['definition']['context']
+                    selection.enter_context(task_context.reserve_shared_case(requested))
+                    task_context.require_current(State(Path(record['control_home'])), record['project'], spec, requested)
+                self.check_budget()
+                self.core.write(self.intent_path, record)
         # Freeze role choices first; expose the runnable spec only after all inputs.
         for filename in _FILES:
             self.check_budget()
@@ -605,7 +612,8 @@ class _Creation:
                 raise ValueError('Project revision changed after preparation; the original authorization is retained')
             if operation == 'preview':
                 if 'context' in record['files']['task.spec.json']:
-                    task_context.require_current(State(Path(record['control_home'])), record['project'], record['files']['task.spec.json'])
+                    task_context.require_current(State(Path(record['control_home'])), record['project'],
+                                                 record['files']['task.spec.json'], record['definition']['context'])
                 return self.preview_result(record, prepare_sha256=instance['sha256'])
             if operation == 'create' and (self.payload['prepare_sha256'] != instance['sha256']
                     or self.payload['preview_sha256'] != self.sha(record)):

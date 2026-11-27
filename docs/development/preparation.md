@@ -135,13 +135,35 @@ On Linux/WSL2, use the same [task-definition schema8](../../src/ergora/data/sche
 }
 ```
 
-At least one of the two lists must be nonempty. Only the project's latest currently valid memory revisions and the exact heads of currently active Skills are accepted. An initially imported baseline can be selected, but that does not establish measured improvement. `root_version` is the new version of the selected manifest's root definition and must differ from the original root. The system retains the same root ID, all member paths, original permissions and limits, adding only source context and complete Skill directories. The derived bundle is frozen with this task and does not change active Skills or the global definition library. Skill attachments require the corresponding instance's `task-mcp`/`workspace-task-mcp` mode. A read scope that does not cover the new root resource URI, conflicting content for a same-name Skill, or insufficient capacity causes explicit rejection. To change permissions, first follow the original parent/child definition revision process, then select a new manifest.
+Select at least one project memory, Skill or shared case. Only the project's latest currently valid memory revisions and the exact heads of currently active Skills are accepted. An initially imported baseline can be selected, but that does not establish measured improvement. `root_version` is the new version of the selected manifest's root definition and must differ from the original root. The system retains the same root ID, all member paths, original permissions and limits, adding only source context and complete Skill directories. The derived bundle is frozen with this task and does not change active Skills or the global definition library. Skill attachments require the corresponding instance's `task-mcp`/`workspace-task-mcp` mode. A read scope that does not cover the new root resource URI, conflicting content for a same-name Skill, or insufficient capacity causes explicit rejection. To change permissions, first follow the original parent/child definition revision process, then select a new manifest.
 
 Use the original `task preview → prepare → preview → create → start`; create still explicitly confirms both prepare and preview digests. The preview's `files["task.spec.json"].context` gives the selected identities. `composition.manifest` carries the complete sources and files. `development.envelopes.selected_context` supports offline checks of the original bodies, sources, expiry and Skill attachment identities. Each graph leaf's `material_bytes` and each scope's `usage`/`limits` show static capacity. Dynamic repository content, predecessor results and complete prompts are still checked at the actual stage; static headroom does not guarantee future success.
 
 Old selections cannot be published for the first time after a correction, deletion, expiry or active-head change. Interrupted recovery with a complete saved creation intent uses the original snapshot, including materials that subsequently became invalid. `task creation` checks the original intent; `task resume-create` recovers by its SHA without reselecting materials or extending the budget. Archived input is run evidence. Deleting canonical memories does not remove frozen tasks or independent backups. The new protocol registers the `.composition-v12` queue and `requests-composition-v12` request root; upgrade and restart the worker/executor before using them. The CLI and HTTP share this contract.
 
 In “Formal tasks → Preview and create,” select the native six stages and read the complete manifest. “Material sources for this task” defaults to inheriting only template materials. To add project materials, select “Inherit template and append project materials,” enter the exact new derived-root version, click “Read current material catalog,” then explicitly select memories and active Skills. The page shows complete memory bodies/sources/expiry, unselectable states and exact Skill heads. Expired and deleted records cannot be selected. Refreshing the catalog clears selections; after a failed read, a successful reread is required before use. The catalog is only an observed snapshot; original admission checks it again. Next explicitly authorize preparation, inspect frozen sources and complete files, then confirm creation with both digests. The authorization-input download includes the complete context selection. All existing ancestor materials are still inherited, and the page offers no operation to remove ancestor resources or expand permissions. The lightweight read-only `GET /api/projects/PROJECT_ID/skills/heads` returns only current active heads without invoking tool diagnostics.
+
+### Select one shared case for a preparation Agent
+
+Use shared search and pinned show to check the case's applicability and sources. Add `shared_case` under the same `context` object, with the exact ID, revision, SHA-256 and one selected read-only preparation Agent path in `task-mcp` mode. The budgeted inventory Agent is the first verified caller. [Shared case commands](../improvement/memory.md#shared-local-case-library)
+
+```json
+{
+  "root_version": "1.1.1",
+  "memories": [],
+  "skills": [],
+  "shared_case": {
+    "library": "/PATH/TO/SHARED/CASES",
+    "id": "task-mcp-missing-sdk",
+    "revision": 1,
+    "sha256": "SHA256_FROM_SEARCH",
+    "instance": "root/development/preparation/inventory/expert",
+    "require_current": true
+  }
+}
+```
+
+The library path is host-side. The selected Agent receives the exact published Markdown and its source references through its frozen context resource. The source is checked during preparation. With `require_current: true`, create checks revision, digest and validity again while saving the first intent. With `false`, the valid case originally selected during preparation is sufficient. After an intent is saved, resume-create reads the original frozen resource and digest even after a correction or withdrawal.
 
 ## Use the refactoring recipe
 

@@ -67,6 +67,7 @@ def test_control_plane_import_graph_is_acyclic(local_dependencies):
     ("ergora.configuration.validation", {"ergora._paths"}),
     ("ergora.storage.state", set()), ("ergora.storage.git", set()),
     ("ergora.storage.assets", set()),
+    ("ergora.improvement.case_markdown", {"ergora.training.materials"}),
     ("ergora.training.materials", {"ergora.storage.assets"}),
     ("ergora.development.route_errors", set()),
     ("ergora.development.dags", {"ergora.development.route_errors"}), ("ergora.issues.identity", set()),
@@ -78,7 +79,8 @@ def test_control_plane_import_graph_is_acyclic(local_dependencies):
     ("ergora.development.envelopes", {
         "ergora.configuration.catalog", "ergora.development.dags", "ergora.issues.identity",
         "ergora.development.budget", "ergora.development.six_stage", "ergora.development.route_errors",
-        "ergora.development", "ergora.development.verification", "ergora.training.materials",
+        "ergora.development", "ergora.development.verification", "ergora.storage.assets", "ergora.training.materials",
+        "ergora.improvement.case_markdown",
     }),
     ("ergora.development.handoff", {
         "ergora._paths", "ergora.configuration", "ergora.configuration.validation",
@@ -96,7 +98,7 @@ def test_foundations_do_not_depend_on_application_modules(local_dependencies, mo
         "ergora._paths", "ergora.configuration.catalog", "ergora.development.dags",
         "ergora.development.envelopes", "ergora.development.route_errors", "ergora.issues.identity", "ergora.runtime.budget_clock",
         "ergora.development.budget", "ergora.development.six_stage", "ergora.storage.git",
-        "ergora.development.verification", "ergora.training.materials", "ergora.storage.assets",
+        "ergora.development.verification", "ergora.improvement.case_markdown", "ergora.training.materials", "ergora.storage.assets",
     }:
         external_roots = {name.split(".")[0] for name in module_imports[module]
                           if name.split(".")[0] != "ergora"}

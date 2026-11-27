@@ -5,13 +5,13 @@ from datetime import datetime
 import hashlib
 import heapq
 import os
-from pathlib import Path, PureWindowsPath
+from pathlib import Path
 import re
 import stat
 import tempfile
 import unicodedata
 
-from ergora.definitions.bundles import parse_json
+from ergora.improvement.case_markdown import CASE_ID, MAX_MARKDOWN_BYTES, MAX_REVISION, decode_markdown, validate_id
 from ergora.improvement.memory import parse_expiry, validate_source
 from ergora.storage.assets import is_link, publish_directory
 from ergora.storage.state import file_lock, now
@@ -19,11 +19,7 @@ from ergora.storage.state import file_lock, now
 
 DEFAULT_LIMIT = 5
 MAX_RESULTS = 20
-MAX_MARKDOWN_BYTES = 65_536
 MAX_EXCERPT_BYTES = 512
-_MAX_METADATA_BYTES = 8_192
-_MAX_REVISION = 999_999_999
-_ID = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
 _REVISION = re.compile(r"[1-9][0-9]{0,8}")
 _SHA256 = re.compile(r"[0-9a-f]{64}")
 _WORDS = re.compile(r"[^\W_]+")
@@ -61,13 +57,6 @@ def _strings(items, label: str) -> None:
         _text(item, label, MAX_EXCERPT_BYTES)
     if len(set(items)) != len(items):
         raise ValueError(f"Shared case {label} requires unique entries")
-
-
-def _case_id(value) -> str:
-    if (not isinstance(value, str) or len(value) > 64 or _ID.fullmatch(value) is None
-            or PureWindowsPath(value).is_reserved()):
-        raise ValueError("Shared case ID requires a portable lowercase letter, digit and hyphen slug")
-    return value
 
 
 def _require_regular(path: Path) -> os.stat_result:
@@ -114,25 +103,12 @@ def _validate_sources(value) -> None:
 
 
 def _parse(raw: bytes, sha256: str) -> _Case:
-    markdown = raw.decode("utf-8")
-    text = markdown.removeprefix("\ufeff").replace("\r\n", "\n")
-    if not text.startswith("---\n"):
-        raise ValueError("Shared case Markdown requires JSON front matter between --- delimiters")
-    header, delimiter, body = text[4:].partition("\n---\n")
-    if not delimiter or len(header.encode("utf-8")) > _MAX_METADATA_BYTES or not body.strip():
-        raise ValueError("Shared case requires front matter of at most 8192 bytes and a nonempty Markdown body")
-    try:
-        record = parse_json(header, "shared case front matter", finite=True, bounded=True)
-    except RecursionError as error:
-        raise ValueError("Shared case front matter nesting exceeds the document limit") from error
-    if not isinstance(record, dict) or set(record) != {
+    record, markdown, body = decode_markdown(raw)
+    if set(record) != {
         "id", "revision", "title", "aliases", "error_signatures", "applicability", "status", "sources", "expires_at",
     }:
         raise ValueError("Shared case front matter requires id, revision, title, aliases, error_signatures, "
                          "applicability, status, sources and expires_at")
-    _case_id(record["id"])
-    if type(record["revision"]) is not int or not 1 <= record["revision"] <= _MAX_REVISION:
-        raise ValueError(f"Shared case revision requires an integer from 1 to {_MAX_REVISION}")
     _text(record["title"], "title", 256)
     _strings(record["aliases"], "aliases")
     _strings(record["error_signatures"], "error signatures")
@@ -238,9 +214,9 @@ def _candidates(cases: Path, query: str, observed: datetime, facts: dict):
     if not _directory(cases):
         return
     for path in cases.iterdir():
-        if len(path.name) > 64 or _ID.fullmatch(path.name) is None:
+        if len(path.name) > 64 or CASE_ID.fullmatch(path.name) is None:
             continue
-        _case_id(path.name)
+        validate_id(path.name)
         case = _current(path)
         if case is None:
             continue
@@ -283,10 +259,10 @@ def search(library: Path, query: str, *, limit: int = DEFAULT_LIMIT, facts: dict
 def show(library: Path, case_id: str, *, revision: int | None = None, sha256: str | None = None,
          facts: dict | None = None) -> dict:
     if (revision is not None or sha256 is not None) and (
-            type(revision) is not int or not 1 <= revision <= _MAX_REVISION
+            type(revision) is not int or not 1 <= revision <= MAX_REVISION
             or not isinstance(sha256, str) or _SHA256.fullmatch(sha256) is None):
         raise ValueError("Exact shared case read requires both a positive --revision and a lowercase --sha256 digest")
-    case_id = _case_id(case_id)
+    case_id = validate_id(case_id)
     cases = _case_root(library)
     case = _current(cases / case_id) if _directory(cases) else None
     if case is None:
@@ -313,8 +289,18 @@ def _sync_directory(directory: Path) -> None:
             os.close(descriptor)
 
 
+def publication_lock(library: Path):
+    """Keep a publisher from changing a current selection through first admission."""
+    cases = _case_root(library)
+    if not _directory(cases):
+        raise ValueError("Shared case library has no published revisions")
+    lock = cases / ".publish.lock"
+    _require_regular(lock)
+    return file_lock(lock)
+
+
 def publish(library: Path, draft: Path, expected_revision: int, *, sha256: str) -> dict:
-    if type(expected_revision) is not int or not 0 <= expected_revision < _MAX_REVISION:
+    if type(expected_revision) is not int or not 0 <= expected_revision < MAX_REVISION:
         raise ValueError("Shared case expected revision must be zero for creation or the current revision")
     if not isinstance(sha256, str) or _SHA256.fullmatch(sha256) is None:
         raise ValueError("Shared case publication requires the reviewed Markdown SHA-256")

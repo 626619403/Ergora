@@ -1,7 +1,7 @@
 """Explicit current project sources, carried by the original root resource tree."""
 
 import base64
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from copy import deepcopy
 import hashlib
 import json
@@ -10,6 +10,7 @@ import shutil
 import tempfile
 
 import ergora.improvement.memory as memory
+from ergora.improvement import shared_cases
 import ergora.definitions.skills as skill_assets
 from ergora.development import envelopes as task_envelopes
 from ergora.storage.assets import digest_tree
@@ -52,6 +53,86 @@ def _sources(state: State, project_id: str, selection: dict) -> tuple[dict, list
     return {'observed_at': catalog['observed_at'], 'memories': memories, 'skills': skills}, paths
 
 
+def _shared_library(request: dict) -> Path:
+    library = Path(request['library']).expanduser()
+    if not library.is_absolute():
+        raise ValueError('Selected shared case requires an absolute host library path')
+    return library
+
+
+def _read_shared_case(request: dict) -> bytes:
+    result = shared_cases.show(_shared_library(request), request['id'],
+                               revision=request['revision'], sha256=request['sha256'])
+    return result['markdown'].encode('utf-8')
+
+
+def _private_version(library, original: dict, reserved: str | None) -> str:
+    used = {item['definition']['version'] for item in library.documents()
+            if item['definition']['id'] == original['id']}
+    major, minor, patch = original['version'].split('.')
+    version = int(patch) + 1
+    while f'{major}.{minor}.{version}' in used or f'{major}.{minor}.{version}' == reserved:
+        version += 1
+    return f'{major}.{minor}.{version}'
+
+
+def _case_base_certificate(document: dict, kind: str) -> dict:
+    filename = kind + '.json'
+    raw = (Path(document['path']) / filename).read_bytes()
+    if hashlib.sha256(raw).hexdigest() != document['files'][filename]['sha256']:
+        raise ValueError('Shared case base definition changed while recording its identity')
+    return {'definition_base64': base64.b64encode(raw).decode('ascii'), 'files': document['files']}
+
+
+def _derive_shared_case(root: Path, workflow_library, graph: dict, definition: dict,
+                        base_root: dict, request: dict, markdown: bytes) -> tuple[dict, dict]:
+    """Revise just the selected Agent and the references on its ancestor path."""
+    import ergora.definitions.agents as agent_definitions
+
+    instance = request['instance']
+    parts = instance.split('/')
+    path = ['/'.join(parts[:depth + 1]) for depth in range(1, len(parts))]
+    instances = {item['path']: item for item in graph['instances']}
+    target = instances.get(instance)
+    if parts[0] != 'root' or not path or target is None or target['kind'] != 'agent':
+        raise ValueError('Select one Agent instance for shared case context')
+    permissions = target['permissions']
+    if permissions['write'] or permissions['shell'] or permissions['network']:
+        raise ValueError('Shared case requires a restricted read-only Agent instance')
+    selection = task_envelopes.shared_case_selection(request)
+    attachment = task_envelopes.shared_case_resource(selection)
+    branch = []
+    for depth, member in reversed(list(enumerate(path))):
+        original_ref = instances[member]['ref']
+        kind = original_ref['kind']
+        library = agent_definitions.library(root) if kind == 'agent' else workflow_library
+        document = library.get(original_ref['id'], original_ref['version'])
+        if document['digest'] != original_ref['digest']:
+            raise ValueError('Shared case branch definition changed during selection')
+        old = document['definition']
+        reserved = definition['version'] if kind == 'workflow' and old['id'] == definition['id'] else None
+        updated = {**old, 'version': _private_version(library, old, reserved)}
+        options = {}
+        if kind == 'agent':
+            if (attachment['path'] in document['files']
+                    or any(resource['id'] == attachment['id'] for resource in old['resources'])):
+                raise ValueError('Selected Agent already uses the reserved shared case resource')
+            updated['resources'] = old['resources'] + [attachment]
+            changes = {'schema_version': 1, 'operations': [{'op': 'write', 'path': attachment['path'],
+                        'content_base64': base64.b64encode(markdown).decode('ascii')}]}
+            preview = library.revise(old['id'], old['version'], document['digest'], updated,
+                                     resource_changes=changes, preview_resources=True)
+            options = {'resource_changes': changes, 'accepted_candidate': preview['candidate']}
+        else:
+            updated, _ = task_envelopes.replace_context_child(updated, parts[depth + 2], derived)
+        saved = library.revise(old['id'], old['version'], document['digest'], updated, publish=True, **options)
+        derived = {'kind': kind, 'id': updated['id'], 'version': updated['version'], 'digest': saved['digest']}
+        branch.append(_case_base_certificate(document, kind))
+    updated_root, _ = task_envelopes.replace_context_child(definition, parts[1], derived)
+    branch.append(_case_base_certificate(base_root, 'workflow'))
+    return updated_root, {'selection': selection, 'base_definitions': list(reversed(branch))}
+
+
 @contextmanager
 def selected_manifest(state: State, project_id: str, option: dict, selection: dict, working_directory: Path):
     """Derive the selected root in the caller's private preparation or inspection tree."""
@@ -61,13 +142,15 @@ def selected_manifest(state: State, project_id: str, option: dict, selection: di
     original = workflow_definitions.inspect_manifest(source)
     if original['digest'] != option['manifest_digest']:
         raise ValueError('Selected composition manifest digest changed')
-    sources, paths = _sources(state, project_id, selection)
+    case_request = selection.get('shared_case')
+    project_selection = {key: value for key, value in selection.items() if key != 'shared_case'}
+    sources, paths = _sources(state, project_id, project_selection)
     working_directory.mkdir(parents=True, exist_ok=True, mode=0o700)
     with tempfile.TemporaryDirectory(prefix='.task-context-', dir=working_directory) as temporary:
         work = Path(temporary)
         copied = work / 'base'
         shutil.copytree(source, copied, symlinks=True)
-        checked = workflow_definitions.inspect_manifest(copied)
+        checked = workflow_definitions.inspect_manifest(copied, material=case_request is not None)
         if checked['digest'] != original['digest']:
             raise ValueError('Composition manifest changed while selecting task context')
         root = checked['manifest']['root']
@@ -81,7 +164,7 @@ def selected_manifest(state: State, project_id: str, option: dict, selection: di
                 or any(item['id'].startswith('ergora-selected-') for item in document['definition']['resources'])):
             raise ValueError('Task context base already uses the reserved selected-context resource namespace')
         snapshot = {'schema_version': 1, 'project': project_id, 'base_manifest_digest': checked['digest'],
-                    'base_root': root, 'base_definition': document['definition'], 'selection': selection, **sources}
+                    'base_root': root, 'base_definition': document['definition'], 'selection': project_selection, **sources}
         encoded = (json.dumps(snapshot, sort_keys=True, ensure_ascii=False, indent=2, allow_nan=False) + '\n').encode('utf-8')
         resource_sha256 = hashlib.sha256(encoded).hexdigest()
         additions = [{'id': 'ergora-selected-context', 'kind': 'context', 'path': 'selected-context/selection.json',
@@ -103,6 +186,11 @@ def selected_manifest(state: State, project_id: str, option: dict, selection: di
         definition = deepcopy(document['definition'])
         definition['version'] = selection['root_version']
         definition['resources'].extend(additions)
+        case_receipt = None
+        if case_request is not None:
+            definition, case_receipt = _derive_shared_case(
+                copied / 'assets', library, checked['composition'], definition, document,
+                case_request, _read_shared_case(case_request))
         changes = {'schema_version': 1, 'operations': operations}
         preview = library.revise(root['id'], root['version'], root['digest'], definition,
                                  resource_changes=changes, preview_resources=True)
@@ -111,11 +199,20 @@ def selected_manifest(state: State, project_id: str, option: dict, selection: di
         manifest = workflow_definitions.prepare_manifest(copied / 'assets', root['id'], definition['version'],
                                                         checked['manifest']['grant'], work / 'selected')
         context = {'project': project_id, 'base_manifest_digest': checked['digest'],
-                   'selection': selection, 'resource_sha256': resource_sha256}
+                   'selection': project_selection, 'resource_sha256': resource_sha256}
+        if case_receipt is not None:
+            context['shared_case'] = case_receipt
         yield {**option, 'manifest': manifest['path'], 'manifest_digest': manifest['digest']}, context
 
 
-def require_current(state: State, project_id: str, document: dict) -> None:
+def reserve_shared_case(selection: dict):
+    request = selection.get('shared_case')
+    if request is None or not request['require_current']:
+        return nullcontext()
+    return shared_cases.publication_lock(_shared_library(request))
+
+
+def require_current(state: State, project_id: str, document: dict, selection: dict) -> None:
     """Check just before first intent; recovery of an existing intent keeps its bytes."""
     frozen = task_envelopes.selected_context(document)
     if frozen['project'] != project_id:
@@ -123,3 +220,8 @@ def require_current(state: State, project_id: str, document: dict) -> None:
     current, _ = _sources(state, project_id, frozen['selection'])
     if any(current[key] != frozen[key] for key in ('memories', 'skills')):
         raise ValueError('Selected task context content changed; prepare a fresh explicit selection')
+    request = selection.get('shared_case')
+    if task_envelopes.shared_case_selection(request) != frozen.get('shared_case'):
+        raise ValueError('Selected shared case differs from its original host declaration')
+    if request is not None and request['require_current']:
+        _read_shared_case(request)

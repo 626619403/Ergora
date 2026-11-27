@@ -15,8 +15,10 @@ from ergora.development.dags import (
     ReviewDAG, WorkDelivery, preparation_members, preparation_stages, require_formal_nodes, require_root_task,
 )
 from ergora.development.route_errors import RouteBlocked
+from ergora.improvement.case_markdown import decode_markdown
 from ergora.issues.identity import validate_snapshot
 from ergora.development import verification as fixed_verification
+from ergora.storage.assets import manifest_digest
 from ergora.training.materials import decode_record
 
 
@@ -32,6 +34,7 @@ WORK_POLL = 'ergora_work_delivery_poll'
 # Complete current admissions carry the frozen tree for every selected leaf.
 # This transport/storage budget is separate from each model's material budget.
 WIRE_LIMIT = 4 * 1_048_576
+_SHARED_CASE_FIELDS = ('id', 'revision', 'sha256', 'instance', 'require_current')
 
 
 def wire_limit(document: dict) -> int:
@@ -148,7 +151,7 @@ def manifest_identity(snapshot: dict) -> str:
         if total > 10_000_000 or type(item['executable_bits']) is not int or item['executable_bits'] & ~0o111:
             raise ValueError('Frozen composition content exceeds its original file-tree contract')
         inventory[name] = {'sha256': hashlib.sha256(content).hexdigest(), 'executable_bits': item['executable_bits']}
-    digest = hashlib.sha256(json.dumps(dict(sorted(inventory.items())), sort_keys=True).encode()).hexdigest()
+    digest = manifest_digest(inventory)
     if digest != snapshot['digest']:
         raise ValueError('Frozen composition manifest bytes differ from their original digest')
     return digest
@@ -179,6 +182,103 @@ def wrap(spec: dict, composition: dict, issue_source: dict | None = None, *, bud
     return {**value, 'sha256': identity(value)}
 
 
+def shared_case_selection(request: dict | None) -> dict | None:
+    """Project the selected identity without the original host library locator."""
+    return None if request is None else {key: request[key] for key in _SHARED_CASE_FIELDS}
+
+
+def shared_case_resource(case: dict) -> dict:
+    return {'id': 'ergora-selected-shared-case', 'kind': 'context', 'path': 'selected-context/shared-case.md',
+            'sha256': case['sha256']}
+
+
+def replace_context_child(definition: dict, child_id: str, ref: dict) -> tuple[dict, dict]:
+    nodes = definition['nodes']
+    for index, child in enumerate(nodes):
+        if child['id'] == child_id and 'ref' in child:
+            return {**definition, 'nodes': nodes[:index] + [{**child, 'ref': ref}] + nodes[index + 1:]}, child['ref']
+    raise ValueError('Selected shared case path differs from its original Workflow child')
+
+
+def require_shared_case_member(composition: dict, instance: str) -> None:
+    member = composition['preparation']['members'].get(instance)
+    if member is None or member['mode'] != 'task-mcp':
+        raise ValueError('Shared case requires one selected preparation Agent in task-mcp mode')
+
+
+def _certified_case_base(receipt: dict, ref: dict) -> dict:
+    if set(receipt) != {'definition_base64', 'files'} or manifest_digest(receipt['files']) != ref['digest']:
+        raise ValueError('Frozen shared case base package differs from its definition digest')
+    encoded = base64.b64decode(receipt['definition_base64'], validate=True)
+    original = receipt['files'][ref['kind'] + '.json']
+    value = decode_record(encoded.removeprefix(b'\xef\xbb\xbf'))
+    if (hashlib.sha256(encoded).hexdigest() != original['sha256']
+            or (value['id'], value['version']) != (ref['id'], ref['version'])):
+        raise ValueError('Frozen shared case base definition differs from its package')
+    return value
+
+
+def _verify_shared_case_branch(composition: dict, receipt: dict, base_root: dict,
+                               base: dict, expected_root: dict) -> None:
+    if set(receipt) != {'selection', 'base_definitions'}:
+        raise ValueError('Invalid frozen shared case fields')
+    selected = receipt['selection']
+    if (set(selected) != set(_SHARED_CASE_FIELDS) or not isinstance(selected['id'], str)
+            or not selected['id'] or type(selected['revision']) is not int or selected['revision'] < 1
+            or type(selected['require_current']) is not bool):
+        raise ValueError('Invalid frozen shared case selection')
+    instance = selected['instance']
+    require_shared_case_member(composition, instance)
+    parts = instance.split('/')
+    definitions = receipt['base_definitions']
+    if parts[0] != 'root' or len(parts) < 2 or not isinstance(definitions, list) or len(definitions) != len(parts):
+        raise ValueError('Selected shared case lineage differs from its instance path')
+    graph = manifest_graph(composition['manifest'])
+    instances = {item['path']: item for item in graph['instances']}
+    path = ['/'.join(parts[:index + 1]) for index in range(len(parts))]
+    attachment = shared_case_resource(selected)
+    files = composition['manifest']['files']
+    original_ref = base_root
+    for index, name in enumerate(path):
+        certificate = definitions[index]
+        original = _certified_case_base(certificate, original_ref)
+        if index == 0 and original != base:
+            raise ValueError('Frozen shared case base root differs from the original task context')
+        ref = instances[name]['ref']
+        last = index == len(path) - 1
+        if (ref['id'] != original_ref['id'] or ref['version'] == original_ref['version']
+                or ref['kind'] != original_ref['kind'] or ref['kind'] != ('agent' if last else 'workflow')):
+            raise ValueError('Selected shared case changed an original definition identity')
+        expected = expected_root if index == 0 else {**original, 'version': ref['version']}
+        prefix = f"assets/{ref['kind']}-definitions/objects/{ref['digest']}/"
+        if last:
+            expected = {**expected, 'resources': expected['resources'] + [attachment]}
+            raw = base64.b64decode(files[prefix + attachment['path']]['content_base64'], validate=True)
+            if hashlib.sha256(raw).hexdigest() != selected['sha256']:
+                raise ValueError('Frozen shared case Markdown digest changed')
+            metadata, _, _ = decode_markdown(raw)
+            if (metadata['id'], metadata['revision']) != (selected['id'], selected['revision']):
+                raise ValueError('Frozen shared case ID or revision differs from its Markdown front matter')
+        else:
+            replacement = instances[path[index + 1]]['ref']
+            expected, original_ref = replace_context_child(expected, parts[index + 1], replacement)
+        definition_path = prefix + ref['kind'] + '.json'
+        actual_definition = json.loads(base64.b64decode(files[definition_path]['content_base64'], validate=True))
+        if actual_definition != expected:
+            raise ValueError('Shared case derivation may only revise the selected case branch')
+        for filename, original_file in certificate['files'].items():
+            if prefix + filename != definition_path:
+                frozen_file = files[prefix + filename]
+                raw = base64.b64decode(frozen_file['content_base64'], validate=True)
+                if (hashlib.sha256(raw).hexdigest() != original_file['sha256']
+                        or frozen_file['executable_bits'] != original_file['executable_bits']):
+                    raise ValueError('Frozen shared case branch changed an original attachment')
+    visible = [leaf['path'] for leaf in graph['instances'] if leaf['kind'] == 'agent'
+               and any(attachment['id'] in resource['ids'] for resource in leaf['resources'])]
+    if visible != [instance]:
+        raise ValueError('Shared case material must belong to exactly the selected Agent')
+
+
 def selected_context(document: dict) -> dict:
     """Read and bind explicit sources to their complete, inherited root resources.
 
@@ -189,7 +289,7 @@ def selected_context(document: dict) -> dict:
 
     try:
         context, composition = document['context'], document['composition']
-        if set(context) != {'project', 'base_manifest_digest', 'selection', 'resource_sha256'}:
+        if context.keys() - {'shared_case'} != {'project', 'base_manifest_digest', 'selection', 'resource_sha256'}:
             raise ValueError('Invalid selected context fields')
         root = composition['root']
         prefix = 'assets/workflow-definitions/objects/' + root['digest'] + '/'
@@ -204,7 +304,8 @@ def selected_context(document: dict) -> dict:
                 or any(saved[key] != context[key] for key in ('project', 'base_manifest_digest', 'selection'))):
             raise ValueError('Selected context source differs from its envelope')
         selection = saved['selection']
-        if set(selection) != {'root_version', 'memories', 'skills'} or not (selection['memories'] or selection['skills']):
+        if (set(selection) != {'root_version', 'memories', 'skills'}
+                or not (selection['memories'] or selection['skills'] or 'shared_case' in context)):
             raise ValueError('Selected context requires explicit source selections')
         observed = datetime.fromisoformat(saved['observed_at'])
         if observed.tzinfo is None or observed.utcoffset() is None:
@@ -245,7 +346,11 @@ def selected_context(document: dict) -> dict:
                 or root['version'] != selection['root_version']):
             raise ValueError('Selected context root differs from its original lineage')
         derived = json.loads(base64.b64decode(files[prefix + 'workflow.json']['content_base64'], validate=True))
-        if derived != {**base, 'version': selection['root_version'], 'resources': base['resources'] + additions}:
+        expected_root = {**base, 'version': selection['root_version'], 'resources': base['resources'] + additions}
+        if 'shared_case' in context:
+            _verify_shared_case_branch(composition, context['shared_case'], saved['base_root'], base, expected_root)
+            saved['shared_case'] = context['shared_case']['selection']
+        elif derived != expected_root:
             raise ValueError('Selected context may only append resources and revise the root version')
         return saved
     except (KeyError, TypeError, ValueError, OverflowError) as error:

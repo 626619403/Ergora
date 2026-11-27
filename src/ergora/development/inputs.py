@@ -366,8 +366,10 @@ class PreparationDAGInput(StageResultsInput):
             [(stage, preparation['members'][path]) for stage, path in preparation_stages(preparation).items()])
 
     def stage_material(self) -> dict:
+        context = self.document.get('context')
         return {**({'issue_source': self.document['issue_source']} if 'issue_source' in self.document else {}),
-                **({'selected_context': self.document['context']} if 'context' in self.document else {}),
+                **({'selected_context': {key: value for key, value in context.items() if key != 'shared_case'}}
+                   if context is not None else {}),
                 **({'verification': self.document['verification']} if 'verification' in self.document else {})}
 
     def evidence_contract(self) -> dict:

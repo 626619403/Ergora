@@ -117,6 +117,12 @@ ergora task create my-project --definition task-definition.json --revision 1 --p
 
 选择与完整原资料在首次准备时冻结；恢复读取原冻结输入，不热换活动head或撤销历史任务。候选生成、可信评价、明确采用／回退和新任务冻结是不同操作，见[完整改进旅程](../../improvement/workflow.md)及[当前context合同](../../development/preparation.md#select-project-memories-and-active-skills-for-a-formal-task)。
 
+### 为准备阶段的一名 Agent 选择共享案例
+
+先通过共享检索和精读核对案例适用范围与来源。在 `context.shared_case` 中填写库的宿主绝对路径、案例 ID、修订、SHA-256、一个使用 `task-mcp` 的只读准备 Agent 完整路径，以及布尔值 `require_current`。首个验收入口是带预算准备任务的盘点专家。其他项目记忆和 Skill 可沿同一 `context` 一并选择。 [命令](../improvement/memory.md#本地共享案例库) · [定义样例](../../development/preparation.md#select-one-shared-case-for-a-preparation-agent)
+
+案例库路径保留在宿主侧。所选 Agent 通过其冻结的上下文资源读取完整 Markdown 和原来源。准备时核对原案例。设 `require_current: true` 时，首次创建意图前还会核对修订、摘要和有效性。设为 `false` 时使用准备期间选中的有效原件。意图已保存后，恢复使用原冻结资源和摘要，后来更正或撤回照常影响新选材。
+
 ## 使用重构配方
 
 `refactoring`把行为保持重构交给原`large-change`六阶段所有者。默认依次安排资料盘点、计划及原owner批准；重构执行者完成`rewrite`后，兼容性专家在集成了前驱的候选上完成`compatibility`；原可信integrate／verify之后，结构、正确性和测试价值三个必需reviewer并行审查。

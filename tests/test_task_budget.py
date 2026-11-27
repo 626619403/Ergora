@@ -3,6 +3,7 @@
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 import asyncio
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -17,6 +18,7 @@ import ergora.native.resources as native_resources
 import ergora.definitions.agents as agent_definitions
 import ergora.issues.application as issues
 import ergora.improvement.memory as memory
+from ergora.improvement import shared_cases
 import ergora.configuration.projects as projects
 import ergora.configuration.registrations as registrations
 import ergora.definitions.skills as skill_assets
@@ -24,7 +26,7 @@ import ergora.development.application as tasks
 import ergora.definitions.workflows as workflow_definitions
 from ergora.development import envelopes as task_envelopes
 from ergora.development.inputs import execution_input, request_roots
-from ergora.storage.state import State
+from ergora.storage.state import State, file_lock
 from test_full_stage_materials import full_creation, full_graph
 from test_work_agents import work_creation, work_graph
 from test_registrations import design_policy, installation, registration
@@ -212,6 +214,184 @@ core.write = interrupted
     restored = tasks.resume_create(state, 'demo', definition['task_id'], 1, pending['intent_sha256'])
     assert restored['status'] == 'published'
     assert tasks.show(state, 'demo', definition['task_id'])['admission_envelope'] == preview['files']['task.spec.json']
+
+
+_CASE_UNIT = 'root/development/preparation/inventory/expert'
+_CASE_SIBLING = 'root/development/preparation/inventory/coordinator'
+_CASE_DRAFT = Path(__file__).parent / 'fixtures' / 'shared-task-mcp-missing.md'
+
+
+def _publish_case(tmp_path):
+    library = tmp_path / 'selected library'
+    library.mkdir()
+    return library, shared_cases.publish(library, _CASE_DRAFT, 0,
+        sha256=hashlib.sha256(_CASE_DRAFT.read_bytes()).hexdigest())['record']
+
+
+def _request_case(definition, library, case, *, require_current=True):
+    definition['context'] = {'root_version': '1.1.1', 'memories': [], 'skills': [],
+        'shared_case': {'library': str(library), 'instance': _CASE_UNIT, 'require_current': require_current,
+                        **{key: case[key] for key in ('id', 'revision', 'sha256')}}}
+
+
+def _revise_case(library, draft, *, withdraw):
+    _, front, _ = _CASE_DRAFT.read_bytes().split(b'---\n', 2)
+    metadata = json.loads(front)
+    metadata.update(revision=2, status='withdrawn' if withdraw else 'verified')
+    raw = ('---\n' + json.dumps(metadata, ensure_ascii=False) + '\n---\nNew reviewed revision.\n').encode()
+    draft.write_bytes(raw)
+    return shared_cases.publish(library, draft, 1, sha256=hashlib.sha256(raw).hexdigest())
+
+
+@pytest.mark.parametrize(('require_current', 'withdraw', 'error'), [
+    (True, False, 'revision or digest changed'),
+    (True, True, 'is withdrawn'),
+    (False, True, None),
+])
+def test_shared_case_rechecks_original_selection_before_saving_first_intent(
+        budget_creation, tmp_path, require_current, withdraw, error):
+    state, registered, definition = budget_creation
+    library, case = _publish_case(tmp_path)
+    _request_case(definition, library, case, require_current=require_current)
+    assert tasks.prepare(state, 'demo', definition, 1)['status'] == 'prepared'
+    preview = tasks.preview(state, 'demo', definition, 1)
+    _revise_case(library, tmp_path / 'different.md', withdraw=withdraw)
+    if error is None:
+        created = tasks.create(state, 'demo', definition, 1, preview['preview_sha256'],
+                               prepare_sha256=preview['prepare_sha256'])
+        assert created['status'] == 'published'
+        assert tasks.show(state, 'demo', definition['task_id'])['admission_envelope'] == preview['files']['task.spec.json']
+        return
+    with pytest.raises(ValueError, match=error):
+        tasks.create(state, 'demo', definition, 1, preview['preview_sha256'],
+                     prepare_sha256=preview['prepare_sha256'])
+    assert tasks.creation(state, 'demo', definition['task_id'])['status'] == 'not_recorded'
+    assert not (_root(registered) / 'tasks' / definition['task_id']).exists()
+
+
+def test_shared_case_reservation_owns_publication_through_the_first_intent_write(budget_creation, tmp_path, monkeypatch):
+    state, _, definition = budget_creation
+    library, case = _publish_case(tmp_path)
+    _request_case(definition, library, case)
+    assert tasks.prepare(state, 'demo', definition, 1)['status'] == 'prepared'
+    preview = tasks.preview(state, 'demo', definition, 1)
+    ready, release = tmp_path / 'reserved', tmp_path / 'continue'
+    intent = definition['task_id'] + '.intent.json'
+    _worker_injection(monkeypatch, '', f'''
+from pathlib import Path
+import time
+from agent_platform import core
+original_write = core.write
+def await_publication(path, value, **kwargs):
+    if path.name == {intent!r}:
+        Path({str(ready)!r}).touch()
+        deadline = time.monotonic() + 15
+        while not Path({str(release)!r}).exists():
+            if time.monotonic() >= deadline:
+                raise ValueError('Timed out in the test intent barrier')
+            time.sleep(.01)
+    return original_write(path, value, **kwargs)
+core.write = await_publication
+''')
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        create = pool.submit(tasks.create, state, 'demo', definition, 1, preview['preview_sha256'],
+                             prepare_sha256=preview['prepare_sha256'])
+        try:
+            deadline = time.monotonic() + 10
+            while not ready.exists() and not create.done() and time.monotonic() < deadline:
+                time.sleep(.01)
+            assert ready.exists()
+            with pytest.raises(BlockingIOError):
+                with file_lock(library / 'cases/.publish.lock', blocking=False):
+                    pass
+        finally:
+            release.touch()
+        assert create.result(timeout=20)['status'] == 'published'
+    assert _revise_case(library, tmp_path / 'later.md', withdraw=True)['record']['revision'] == 2
+
+
+def test_shared_case_only_reaches_the_selected_leaf_and_original_intent_replays_after_withdrawal(
+        budget_creation, tmp_path, monkeypatch):
+    state, _, definition = budget_creation
+    library, case = _publish_case(tmp_path)
+    _request_case(definition, library, case)
+    baseline = workflow_definitions.inspect_manifest(Path(definition['composition']['manifest']), material=True)['composition']
+    assert tasks.prepare(state, 'demo', definition, 1)['status'] == 'prepared'
+    preview = tasks.preview(state, 'demo', definition, 1)
+    document = preview['files']['task.spec.json']
+    frozen = task_envelopes.selected_context(document)
+    context = execution_input(document).stage_material()['selected_context']
+    assert frozen['shared_case'] == {key: value for key, value in definition['context']['shared_case'].items() if key != 'library'}
+    assert 'shared_case' not in context and str(library) not in json.dumps(document)
+    for edits in ({'id': 'different-valid-slug'}, {'revision': 2}, {'id': 'different-valid-slug', 'revision': 2}):
+        changed = deepcopy(document)
+        changed['context']['shared_case']['selection'].update(edits)
+        changed['sha256'] = task_envelopes.identity({key: value for key, value in changed.items() if key != 'sha256'})
+        with pytest.raises(ValueError, match='case ID or revision differs'):
+            execution_input(changed)
+    changed = deepcopy(document)
+    changed['context']['shared_case']['base_definitions'][0]['files']['workflow.json']['sha256'] = '0' * 64
+    changed['sha256'] = task_envelopes.identity({key: value for key, value in changed.items() if key != 'sha256'})
+    with pytest.raises(ValueError, match='base package differs'):
+        execution_input(changed)
+
+    marker = tmp_path / 'original-intent-interrupted'
+    _worker_injection(monkeypatch, '', f'''
+from pathlib import Path
+from agent_platform import core
+original_write = core.write
+def interrupted(path, value, **kwargs):
+    result = original_write(path, value, **kwargs)
+    marker = Path({str(marker)!r})
+    if path.name == 'agent-bindings.json' and '/tasks/' in str(path) and not marker.exists():
+        marker.write_text('Saved original intent with selected case')
+        raise ValueError('Interrupted original selected case publication')
+    return result
+core.write = interrupted
+''')
+    with pytest.raises(ValueError, match='Interrupted original selected case publication'):
+        tasks.create(state, 'demo', definition, 1, preview['preview_sha256'], prepare_sha256=preview['prepare_sha256'])
+    pending = tasks.creation(state, 'demo', definition['task_id'])
+    assert pending['status'] == 'pending' and marker.exists()
+    _revise_case(library, tmp_path / 'withdrawn.md', withdraw=True)
+    assert shared_cases.search(library, 'Task MCP requires the optional dependency')['results'] == []
+    restored = tasks.resume_create(state, 'demo', definition['task_id'], 1, pending['intent_sha256'])
+    assert restored['status'] == 'published'
+    replayed = tasks.show(state, 'demo', definition['task_id'])['admission_envelope']
+    assert replayed == document
+
+    carried = replayed['composition']['manifest']
+    destination = tmp_path / 'carried-manifest'
+    workflow_definitions.restore_manifest(carried, destination)
+    original_ref = next(item['ref'] for item in baseline['instances'] if item['path'] == _CASE_SIBLING)
+    for path, label in ((_CASE_UNIT, 'selected'), (_CASE_SIBLING, 'sibling')):
+        prepared = workflow_definitions.prepare_input_from_manifest(destination, path, b'Inspect scoped evidence.',
+            tmp_path / f'{label}-prepared', 200_000, manifest_digest=carried['digest'])
+        inspected = workflow_definitions.inspect_input(Path(prepared['path']), material=True)
+        leaf = next(item for item in inspected['composition']['instances'] if item['path'] == path)
+        assert str(library) not in inspected['prompt']
+        if path == _CASE_UNIT:
+            selected, = [resource for resource in leaf['resources'] if 'ergora-selected-shared-case' in resource['ids']]
+            asset = Path(prepared['path']) / 'assets/agent-definitions/objects' / leaf['ref']['digest'] / selected['path']
+            assert asset.read_bytes() == _CASE_DRAFT.read_bytes()
+            assert selected['sha256'] == case['sha256']
+        else:
+            assert leaf['ref'] == original_ref
+            assert not any('ergora-selected-shared-case' in resource['ids'] for resource in leaf['resources'])
+            assert 'Task MCP requires the optional dependency' not in inspected['prompt']
+
+
+def test_shared_library_presence_does_not_change_unselected_task(budget_creation, tmp_path):
+    state, _, definition = budget_creation
+    library, case = _publish_case(tmp_path)
+    assert tasks.prepare(state, 'demo', definition, 1)['status'] == 'prepared'
+    preview = tasks.preview(state, 'demo', definition, 1)
+    document = preview['files']['task.spec.json']
+    assert 'context' not in document and document['composition']['manifest']['digest'] == definition['composition']['manifest_digest']
+    assert str(library) not in json.dumps(document)
+    for leaf in task_envelopes.manifest_graph(document['composition']['manifest'])['instances']:
+        if leaf['kind'] == 'agent':
+            assert all(resource['content_digest'] != case['sha256'] for resource in leaf['resources'])
 
 
 def test_complete_eighteen_leaf_wire_recovers_original_publication_and_job(registration, monkeypatch, tmp_path):
