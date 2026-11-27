@@ -4,7 +4,7 @@ English · [Documentation](../README.md) · [Architecture contract](current.md)
 
 Ergora is a control plane for project-bound specialist Agents, workflow composition, formal software delivery, training experiments and reusable improvements. Definitions describe reusable behavior. Each operation freezes its own inputs, checks its execution authority and produces evidence under its original identity.
 
-This tour uses runtime revision `d0eb5a32dfc0d41161995a63bd7ad3418b08af43` and its `src` tree `01d6b1d92f566c1df199cb6dc0916ca8bb1f0554` as the exact source reference. Packages, installed applications and local definition libraries have separate identities. The [current plan](../PLAN.md) and its delivery records track review, CI and installation status.
+This tour uses runtime revision `8ca34e37b758a453618bb540b1fc6b6de942ec9e` and its `src` tree `b35aa6dfd6fa27609a2b44ed892999ee7720f78f` as the exact source reference. Packages, installed applications and local definition libraries have separate identities. The [current plan](../PLAN.md) and its delivery records track review, CI and installation status.
 
 ## The whole system
 
@@ -15,6 +15,7 @@ flowchart TB
   Entry["CLI and web Console"] --> Select["Select an operation"]
   Entry --> Freeze["Static preview and freeze<br/>Exact manifest and selections"]
   Entry --> RoutePreview["Selected-route preview<br/>Static admission and exact blocker"]
+  Entry -->|CLI| SharedCases["Shared case CLI<br/>Local Markdown library"]
   Assets["Starter library<br/>Default six-stage or another exact graph"] --> Freeze
   Freeze -. "selected material" .-> Select
   Freeze -. "original graph and bindings" .-> RoutePreview
@@ -49,6 +50,8 @@ flowchart TB
   Graph -. "Agent graph, saved proof or interrupted wait" .-> Resume["Opt-in resume-graph<br/>Acquire original lock and check saved cutoffs"]
   Resume --> GraphProof
   Session --> Turn["Original leaf result or Codex turn<br/>Dispatch and native observations"]
+  Dev -. "explicit preparation selection" .-> CaseLeaf["One frozen preparation leaf<br/>Current-case check at first intent if required<br/>Saved-intent replay"]
+  SharedCases -. "operator selects ID, revision and digest" .-> CaseLeaf
   Dev -->|explicit submit| Six["Original Temporal six stages<br/>Exact approval and candidate evidence"]
   Train --> Runner["Original training executor<br/>Guard preflight, runner and archive"]
   Campaign --> CampaignRun["Original Temporal campaign<br/>Explicit observations, STOP and expiry"]
@@ -88,7 +91,7 @@ flowchart TB
   ActionRead -.-> Recover
   CampaignRun -. "live Workflow state or verified History" .-> CampaignStatus["Campaign status<br/>History timing and Job correlation"]
   Rollover -. "first and current Run" .-> CampaignStatus
-  CampaignRead -. "verified completion and available timing" .-> CampaignStatus
+  CampaignRead -. "verified completion or full-result read terminal" .-> CampaignStatus
   TrainingRoot -. "verified root result" .-> CampaignStatus
   ScreenRoot -. "retained decision evidence" .-> CampaignStatus
   ReleaseRoot -. "original release receipt" .-> CampaignStatus
@@ -104,6 +107,8 @@ flowchart TB
 ```
 
 Development's [workflow extensions](../../src/ergora/development/runtime/workflows.py) and [executor](../../src/ergora/development/runtime/executor.py) extend the bundled reference. Training's [native entry point](../../src/ergora/training/runtime/execution.py) enters the bundled training executor. Dedicated processes select the installation, configuration and state before importing the reference. [Reference boundary](reference-boundary.md)
+
+`ergora memory shared` searches and reads an explicitly selected local Markdown library from any workspace, independently of project State. A pinned read checks the case revision and digest. Publishing checks the reviewed Markdown SHA-256 and expected revision. [Shared local case library](../improvement/memory.md#shared-local-case-library)
 
 ## Definitions and execution routes
 
@@ -172,7 +177,9 @@ The Worker schedules one original wake from the admitted source. The native sess
 
 `recipient.history.timing` links the original readiness event, wake scheduling, Worker start and delivery termination by original event ID and Temporal timestamp. Intervals use nanoseconds on that History clock. Missing or reversed timestamps leave the affected interval null. The original native receipt reports actual payload start and cleanup. [Campaign timing and receipts](../improvement/campaigns.md#authorize-one-local-codex-recipient)
 
-A plan can bind one root to `training_full_result` for an already authorized managed full verification. The locator pins the original experiment, Workflow, Run, Job and raw request and attempt digests under the same registered project revision. The original Campaign Run schedules one guarded read. A verified successful native result and archive evidence make the root observed. The readback reports the result digest and the resource owner's lease observation separately. A dependent fixed-check task uses confirmed `campaign observe-check` on its own pre-authorized Job. [Read one managed training full result](../improvement/campaigns.md#read-one-managed-training-full-result)
+A plan can bind one root to `training_full_result` for an already authorized managed full verification. The locator pins the original experiment, Workflow, Run, Job and raw request and attempt digests under the same registered project revision. The original Campaign Run schedules one guarded read. A verified successful native result and archive evidence make the root observed. The readback reports the result digest and the resource owner's lease observation separately. A dependent fixed-check task uses confirmed `campaign observe-check` on its own pre-authorized Job.
+
+For the original full-result read Activity, `readback_terminal` reports a verified failure, timeout or cancellation with the original schedule and terminal event IDs and the start event ID when present. It includes a typed cause when available and binds a cancellation to its original request. `readback_completion` carries verified successful readbacks. The original Job owner supplies the execution outcome and the live Workflow supplies task eligibility. [Read one managed training full result](../improvement/campaigns.md#read-one-managed-training-full-result)
 
 An explicit `recipient` on that root opts in to one wake from the verified original training Activity. The existing local Codex recipient uses its authorized stopped parent and approved prompt under the same registered project revision. The native gate checks the original result and wake schedule before reserving the turn under the original cutoff and STOP fence. [Training-result recipient gate](../../src/ergora/campaigns/recipient_gate.py)
 
@@ -211,6 +218,8 @@ The start receipt's metadata writer runs in a separate thread from the native ch
 Choose the formal task route when delivery requires an approved plan, an exact Git candidate and trusted checks. In Definition8, `composition.native` can explicitly select one six-stage instance at `root` or under a supported parent that forwards its task and result. `development.application` checks the registered repository, baseline, permissions, budget and optional issue, memory and Skill snapshots, then prepares and creates the frozen task. Explicit submission uses Input12 and `PreparationDAGWorkflow`. The original Temporal run owns these stages. [Formal route selection](../definitions/workflows/compose.md#select-a-composition-on-the-formal-task-page)
 
 For a prepared, budgeted native task, the Console checks the original preparation and preview digests and reads original creation status before offering first creation. `task preview` reports this readiness on standard error and preserves its static JSON and exit status. When an original creation is pending, published or uncertain, `task creation` reads that intent by the original task ID. `task preparation` reads the receipt when the original budget blocks publication. The creation owner checks that budget again on explicit publication. [Formal task page](../development/tasks.md#formal-task-page)
+
+A budgeted formal task can explicitly set `context.shared_case` for one read-only preparation Agent in `task-mcp` mode. Preparation freezes the exact Markdown and source references in the selected leaf's context resource. Frozen input verification binds the case ID and revision to the Markdown front matter and the digest to the complete bytes. With `require_current: true`, the creation owner rechecks revision, digest and validity under the library lock while saving the first intent. With `false`, first creation uses the valid case frozen during preparation. `task resume-create` replays the saved intent with its original frozen case, including after correction or withdrawal. [Select one shared case for a preparation Agent](../development/preparation.md#select-one-shared-case-for-a-preparation-agent)
 
 1. **`inventory`** inspects the exact starting Git objects. Frozen inventory specialists supply declared results to their coordinator; the canonical inventory records the trusted sources.
 2. **`plan`** uses that inventory and the selected planning DAG. The original workflow computes the plan receipt digest and waits for **the original owner's approval of that exact request and plan**. `development.application.approve` delivers this decision through the native approval owner. A proposed plan alone grants no work execution.
