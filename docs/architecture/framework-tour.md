@@ -4,7 +4,7 @@ English · [Documentation](../README.md) · [Architecture contract](current.md)
 
 Ergora is a control plane for project-bound specialist Agents, workflow composition, formal software delivery, training experiments and reusable improvements. Definitions describe reusable behavior. Each operation freezes its own inputs, checks its execution authority and produces evidence under its original identity.
 
-This tour uses runtime revision `d86054787dfe621d5af42df8a4d5c4299eab8dfb` and its `src` tree `7c279d2725d1f3dc0ef15683d206ff401d9fb53f` as the exact source reference. Packages, installed applications and local definition libraries have separate identities. The [current plan](../PLAN.md) and its delivery records track review, CI and installation status.
+This tour uses runtime revision `3bd4779a0a6fa303e528d285e82b41668812b8db` and its `src` tree `921ef0c2f9c45493ab1a7735110cd64821171c91` as the exact source reference. Packages, installed applications and local definition libraries have separate identities. The [current plan](../PLAN.md) and its delivery records track review, CI and installation status.
 
 ## The whole system
 
@@ -60,6 +60,8 @@ flowchart TB
   CampaignRead -. "guarded managed full result" .-> TrainingRoot["Observed training root<br/>Result and separate lease evidence"]
   CampaignRead -. "guarded managed screen" .-> ScreenRoot["Observed screen decision<br/>Original outcome and separate lease"]
   CampaignRead -. "guarded owner release" .-> ReleaseRoot["Observed local owner release<br/>Original Run, attempt, session and lease"]
+  CampaignRead -. "release read heartbeat timeout" .-> ReleaseRecovery["Opt-in receipt-only Activity<br/>Same Run, read window and STOP"]
+  ReleaseRecovery -. "verified receipt and cleanup" .-> ReleaseRoot
   TrainingRoot -. "enables explicit campaign observe-check" .-> DependentCheck["Dependent fixed-check observation<br/>Pre-authorized original Job"]
   CheckJob -. "own original Job evidence" .-> DependentCheck
   CampaignRun -. "confirmed passing observation" .-> Ready
@@ -86,10 +88,11 @@ flowchart TB
   ActionRead -.-> Recover
   CampaignRun -.-> CampaignStatus["Campaign status<br/>History timing and Job correlation"]
   Rollover -. "first and current Run" .-> CampaignStatus
-  CampaignRead -. "recorded completion" .-> CampaignStatus
+  CampaignRead -. "verified completion and available timing" .-> CampaignStatus
   TrainingRoot -. "verified root result" .-> CampaignStatus
   ScreenRoot -. "retained decision evidence" .-> CampaignStatus
   ReleaseRoot -. "original release receipt" .-> CampaignStatus
+  ReleaseRecovery -. "original timeout and recovery events" .-> CampaignStatus
   DependentCheck -. "saved observation Update" .-> CampaignStatus
   Ready -. "original readiness evidence" .-> CampaignStatus
   Wake -. "same native receipt" .-> CampaignStatus
@@ -176,6 +179,10 @@ An explicit `recipient` on that root opts in to one wake from the verified origi
 A `training_screen_result` root selects one original managed screen by its exact locator and read window. The existing guard and History verify `SCREEN_COMPLETED` or `SCREEN_REJECTED`, the literal decision, diagnostic evidence and separate lease observation. A verified rejection is usable decision evidence and can trigger one wake for its explicitly authorized recipient. A linked full verification requires its own prepared experiment and execution grant. [Read one managed training screen decision](../improvement/campaigns.md#read-one-managed-training-screen-decision)
 
 A `training_gpu_release` root opts in to observing one original local pool release. Its locator binds the registered Run and raw training attempt to the exact pool session and lease, alongside the original experiment, Workflow, Job and raw request digest. The guarded reader can wait for the matching owner receipt through its original authorized release cutoff. Full and screen result queries keep their one-shot bounds. One declared recipient can wake after the original owner release is verified. Release, training result and STOP retain separate evidence. The current pool determines present capacity, and a successor uses its own authorization and consume request. [Read one original managed GPU lease release](../improvement/campaigns.md#read-one-original-managed-gpu-lease-release)
+
+A release task with a declared recipient can set `recover_release_receipt: true` to authorize one separate receipt-only Activity after the original read Activity times out on heartbeat. It verifies the durable owner receipt and original reader cleanup on the same Run under the original read window and STOP fence. History verification requires a valid recovery completion timestamp strictly before the original read deadline. `readback_completion.recovery_history` retains the original timeout event ID and the recovery Activity event IDs. The verified receipt can wake the declared recipient under its original authorization.
+
+For a verified original readback, `readback_completion.timing` shows the available schedule, Worker start and accepted completion event IDs and timestamps. Schedule-to-start and start-to-completion spans use nanoseconds from one Temporal History clock. Missing, malformed or reversed endpoints leave the affected span null. Wake timing uses `recipient.history.timing`, with the accepted recovery completion as readiness on the receipt-only path. Use the pool receipt for lease release and the native receipt for payload start and cleanup. [Readback and wake timing](../improvement/campaigns.md#authorize-one-local-codex-recipient)
 
 The original read cutoff and Campaign STOP fence govern the reader and publication of its observation. A saved local STOP closes new dependent eligibility and leaves verified result evidence readable, including through original online History after Worker exit. The registered training executor keeps execution control and the original resource owner confirms lease release. [Guarded Campaign readback](../../src/ergora/campaigns/readback.py)
 
