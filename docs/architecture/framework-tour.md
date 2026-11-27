@@ -4,7 +4,7 @@ English · [Documentation](../README.md) · [Architecture contract](current.md)
 
 Ergora is a control plane for project-bound specialist Agents, workflow composition, formal software delivery, training experiments and reusable improvements. Definitions describe reusable behavior. Each operation freezes its own inputs, checks its execution authority and produces evidence under its original identity.
 
-This tour uses runtime revision `b0f2419abf0b9df0c8dae79f7277656f07994c4b` and its `src` tree `a37627276209831479269c880002388da763dabf` as the exact source reference. Packages, installed applications and local definition libraries have separate identities. The [current plan](../PLAN.md) and its delivery records track review, CI and installation status.
+This tour uses runtime revision `9839d2765cae034fce7bf242c796e599c0969040` and its `src` tree `f84311ffaa18a3b52516de0d0e75eeae8b24413b` as the exact source reference. Packages, installed applications and local definition libraries have separate identities. The [current plan](../PLAN.md) and its delivery records track review, CI and installation status.
 
 ## The whole system
 
@@ -62,6 +62,8 @@ flowchart TB
   CampaignRun --> CampaignRead["Optional timer or immediate due read<br/>One guarded status Activity"]
   CampaignRead -->|fixed-check wake| Ready["One verified original readiness<br/>Guarded result or opted-in observation"]
   CampaignRead -. "managed full result with optional live wait" .-> TrainingRoot["Observed training root<br/>Result and separate lease evidence"]
+  CampaignRead -. "full-result read heartbeat timeout" .-> FullResultRecovery["Opt-in full-result receipt-only Activity<br/>Same Run, read window and STOP"]
+  FullResultRecovery -. "verified saved result and cleanup" .-> TrainingRoot
   CampaignRead -. "guarded managed screen" .-> ScreenRoot["Observed screen decision<br/>Original outcome and separate lease"]
   CampaignRead -. "guarded owner release" .-> ReleaseRoot["Observed local owner release<br/>Original Run, attempt, session and lease"]
   CampaignRead -. "release read heartbeat timeout" .-> ReleaseRecovery["Opt-in receipt-only Activity<br/>Same Run, read window and STOP"]
@@ -94,6 +96,7 @@ flowchart TB
   CampaignRun -. "live Workflow state or verified History" .-> CampaignStatus["Campaign status<br/>History timing and Job correlation"]
   Rollover -. "first and current Run" .-> CampaignStatus
   CampaignRead -. "verified completion or full-result read terminal" .-> CampaignStatus
+  FullResultRecovery -. "full-result timeout and recovery events" .-> CampaignStatus
   TrainingRoot -. "verified root result" .-> CampaignStatus
   ScreenRoot -. "retained decision evidence" .-> CampaignStatus
   ReleaseRoot -. "original release receipt" .-> CampaignStatus
@@ -183,7 +186,11 @@ A plan can bind one root to `training_full_result` for an already authorized man
 
 Set `wait_for_live: true` on the full-result source to wait within that same guarded Activity for the original acknowledged attempt's executor exit and durable reap. The reader follows the original supervisor generation under the frozen read cutoff and STOP fence, with time reserved for cleanup. Omitting the option requests one immediate read at `due_at`.
 
-For the original full-result read Activity, `readback_terminal` reports a verified failure, timeout or cancellation with the original schedule and terminal event IDs and the start event ID when present. It includes a typed cause when available and binds a cancellation to its original request. `readback_completion` carries verified successful readbacks. The original Job owner supplies the execution outcome and the live Workflow supplies task eligibility. [Read one managed training full result](../improvement/campaigns.md#read-one-managed-training-full-result)
+For the original full-result read Activity, `readback_terminal` reports a verified failure, timeout or cancellation with the original schedule and terminal event IDs and the start event ID when present. It includes a typed cause when available and binds a cancellation to its original request. `readback_completion` carries verified successful readbacks. The original Job owner supplies the execution outcome and the live Workflow supplies task eligibility.
+
+On a full-result task with a declared recipient, set `recover_full_result_receipt: true` at the task level to allow one separate receipt-only Activity after the original heartbeat timeout. It verifies the durable full-result receipt, original reader reap and process identities on the same Run under the original read cutoff and STOP fence. A missing or incomplete durable receipt leaves the read unavailable. History verification requires a valid recovery completion timestamp strictly before the original read deadline.
+
+`readback_terminal` retains the original heartbeat timeout. `readback_completion.recovery_history` links that timeout to the recovery Activity's schedule, start and completion. The accepted recovery completion supplies readiness for the declared recipient. The wake has its own `recipient.history`, and the native receipt records the continuation's start and cleanup. [Read one managed training full result](../improvement/campaigns.md#read-one-managed-training-full-result)
 
 An explicit `recipient` on that root opts in to one wake from the verified original training Activity. The existing local Codex recipient uses its authorized stopped parent and approved prompt under the same registered project revision. The native gate checks the original result and wake schedule before reserving the turn under the original cutoff and STOP fence. Local acceptance used loopback Temporal, a registered CPU attempt and a provider-free Codex fixture to verify one wake Activity, one reservation, one native start and confirmed reap. [Training-result recipient gate](../../src/ergora/campaigns/recipient_gate.py)
 
