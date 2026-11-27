@@ -662,6 +662,47 @@ def test_graph_completion_is_frozen_for_the_standalone_root_only(base):
         imported(base, nested)
 
 
+def test_named_fields_validate_sources_and_expose_the_exact_standalone_route(base):
+    from ergora.development.dags import require_formal_nodes
+    from ergora.development.route_errors import RouteBlocked
+
+    state, agent, directory = base
+    first, second = leaf('first', agent), leaf('second', agent)
+    for node in (first, second):
+        node['review_requirement'] = 'required'
+    second.update(depends_on=['first'], inputs={'task': {'fields': {
+        'request': {'input': 'task'}, 'review': {'node': 'first', 'output': 'result'}}}})
+    doc = definition('named-input-fields', [first, second])
+    doc['schema_version'] = 2
+    for impossible, message in (({'input': 'unknown'}, 'Unknown Workflow input port'),
+                                ({'node': 'first', 'output': 'unknown'}, 'Unknown or non-dependent Workflow output')):
+        invalid = deepcopy(doc)
+        invalid['nodes'][1]['inputs']['task']['fields']['review'] = impossible
+        with pytest.raises(ValueError, match=message):
+            imported(base, invalid)
+    invalid = deepcopy(doc)
+    invalid['nodes'][1]['depends_on'] = []
+    with pytest.raises(ValueError, match='Unknown or non-dependent Workflow output'):
+        imported(base, invalid)
+    invalid['nodes'][1]['inputs']['task']['input'] = 'task'
+    with pytest.raises(ValueError):
+        workflows.inspect_bundle(write_bundle(directory / 'ambiguous', invalid))
+    duplicate = write_bundle(directory / 'duplicate', doc) / 'workflow.json'
+    raw = duplicate.read_text(encoding='utf-8')
+    duplicate.write_text(raw.replace('"fields": {', '"fields": {"review": {"input": "task"},', 1),
+                         encoding='utf-8')
+    with pytest.raises(ValueError, match='Duplicate JSON key.*review'):
+        workflows.inspect_bundle(duplicate.parent)
+
+    imported(base, doc)
+    manifest = directory / 'named-manifest'
+    workflows.prepare_manifest(state.root, doc['id'], doc['version'], grant(), manifest)
+    graph = workflows.inspect_manifest(manifest, material=True)['composition']
+    with pytest.raises(RouteBlocked, match='Named-field input bindings require standalone graph execution') as error:
+        require_formal_nodes(graph)
+    assert error.value.instance == 'root/second'
+
+
 def test_repeated_references_are_distinct_instances_and_preserve_ancestor_sources(base):
     state, agent, _ = base
     sub = imported(base, definition("sub", [leaf("review", agent)]), "Sub instructions.\n")

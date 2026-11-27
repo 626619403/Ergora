@@ -56,6 +56,8 @@ def require_formal_nodes(graph: dict) -> None:
             raise RouteBlocked(node['path'], 'Candidate verification evidence reads require standalone graph execution')
         if node['kind'] == 'choose-agent':
             raise RouteBlocked(node['path'], 'Conditional Agent selection requires standalone graph execution')
+        if any('fields' in binding for binding in node.get('inputs', {}).values()):
+            raise RouteBlocked(node['path'], 'Named-field input bindings require standalone graph execution')
 
 
 def require_root_task(instances: dict, leaf: dict) -> None:

@@ -492,6 +492,25 @@ def _original_branch_failure(observed, attempt, node, project_revision):
     return None
 
 
+def _profile_result_identity(observed, attempt, node, project_revision):
+    original = observed['run']
+    if ('required_flow_map' in node and original['status'] == 'succeeded' and original.get('result_sha256')
+            and attempt.get('result_sha256', original['result_sha256']) == original['result_sha256']
+            and _matches_original_leaf(observed, attempt, node, project_revision)):
+        return {'run_sha256': native_sources.sha(original), 'result_sha256': original['result_sha256']}
+    return None
+
+
+def _profile_result_block_shape(block):
+    if (not isinstance(block, dict) or block.keys() != {'state', 'run_sha256', 'result_sha256'}
+            or block['state'] not in ('missing', 'mismatch')):
+        raise ValueError('Invalid original profile result block')
+    digest = contracts.COMPOSITION_MANIFEST['$defs']['digest']
+    for key in ('run_sha256', 'result_sha256'):
+        contracts.validate(block[key], digest, 'Original profile result block SHA256')
+    return block
+
+
 def _branch_blocks(nodes, failures):
     # Frozen instance order visits each structural parent and each control dependency before its consumers.
     blocked = {}
@@ -735,6 +754,8 @@ class _GraphRun:
         observed = runs.inspect_run(self.state, self.project['id'], attempt['run_id'], max_result_bytes=remaining)
         result = observed['result']
         if not result['available']:
+            if self.block_profile_result(self.nodes[path], attempt, observed):
+                return self.completed[path]
             raise ValueError(f'Workflow leaf {path} cannot supply its original result within the remaining {remaining} bytes: '
                              + result['error'])
         if (not observed['input']['available'] or not observed['prompt']['available']
@@ -746,6 +767,44 @@ class _GraphRun:
         if self.packaging_selection is not None and path == self.packaging_selection['recipient']:
             self.accept_packaging_reply(attempt, observed)
         return {'result': result['document']}
+
+    def block_profile_result(self, node, attempt, observed, *, sequence=None):
+        """Drain independent work after a checked profile run loses its output."""
+        path = node['path']
+        recorded = attempt.get('profile_result_block')
+        saved = None
+        if sequence is not None:
+            marker = f'profile-result-block-{sequence}.json'
+            if not os.path.lexists(self.directory / marker):
+                if recorded is None:
+                    # Reconstruct existing authority before resuming; later leaves may already be reserved.
+                    return False
+                raise ValueError(f'Saved profile result block is missing its original witness: {path}')
+            saved = native_sources.packet(self.directory, marker, confirm_durable=True)
+            if not isinstance(saved, dict) or (recorded is not None and saved.get('result') != recorded):
+                raise ValueError(f'Saved profile result block differs from its original witness: {path}')
+        result = observed['result']
+        missing = result.get('state') in ('missing', 'mismatch')
+        if saved is None and not missing:
+            return False
+        identity = _profile_result_identity(observed, attempt, node, self.project['revision'])
+        if identity is None and saved is None:
+            return False
+        self.check_active()
+        if saved is not None:
+            block = _profile_result_block_shape(saved.get('result'))
+            if (identity != {key: block[key] for key in ('run_sha256', 'result_sha256')}
+                    or saved != {**self.reservation_witness(sequence, attempt), 'result': block}):
+                raise ValueError(f'Profile result block differs from its original attempt: {path}')
+        else:
+            block = {'state': result['state'], **identity}
+            if self.recovery is not None:
+                sequence = next(index for index, leaf in enumerate(self.receipt['leaves'], 1) if leaf is attempt)
+                _write_recovery_record(self.directory, f'profile-result-block-{sequence}.json',
+                                       {**self.reservation_witness(sequence, attempt), 'result': block})
+        attempt.update(status='succeeded', result_sha256=block['result_sha256'], profile_result_block=block)
+        self.block_node(path)
+        return True
 
     def record_branch_failure(self, attempt, failure):
         self.check_active()
@@ -1047,8 +1106,13 @@ class _GraphRun:
             self.completed[branch] = {'status': 'skipped'}
 
     def ports(self, path, inputs, bindings):
-        return {name: inputs[binding['input']] if 'input' in binding else
-                self.completed[path + '/' + binding['node']][binding['output']] for name, binding in bindings.items()}
+        def resolve(binding):
+            if 'input' in binding:
+                return inputs[binding['input']]
+            return self.completed[path + '/' + binding['node']][binding['output']]
+
+        return {name: {field: resolve(source) for field, source in binding['fields'].items()}
+                if 'fields' in binding else resolve(binding) for name, binding in bindings.items()}
 
     def ready(self, node, opened):
         return (node['parent'] in opened and all(path in self.completed and path not in self.blocked
@@ -1166,7 +1230,7 @@ class _GraphRun:
     def recovery_input(self, source, path, task):
         return _reconstruct_graph_input(self.composition, source, path, task, self.receipt['max_prompt_bytes'])
 
-    def recover_leaf(self, node, attempt, prepared):
+    def recover_leaf(self, node, attempt, prepared, sequence):
         path, run_id = node['path'], attempt.get('run_id')
         if run_id != _recovery_run_id(self.receipt, path) or attempt.get('input_digest') != prepared['digest']:
             raise ValueError(f'Saved Agent reservation differs from its original identity: {path}')
@@ -1189,6 +1253,8 @@ class _GraphRun:
             return
         if status == 'failed' or 'original_failure' in attempt:
             raise ValueError(f'Saved branch failure differs from the original Agent outcome: {path}')
+        if self.block_profile_result(node, attempt, observed, sequence=sequence):
+            return
         result = _recover_agent_result(observed, self.project['revision'], node, attempt)
         flow_map_producer = path in self.flow_map_producer_paths
         invocation.validate_result(result['document'], _leaf_result_schema(node, flow_map_producer=flow_map_producer),
@@ -1290,7 +1356,7 @@ class _GraphRun:
         for sequence, attempt in enumerate(leaves, 1):
             path = attempt['instance']
             prepared = self.recovery_input(self.directory / f'input-{sequence}', path, task_at(path))
-            self.recover_leaf(agent_nodes[path], attempt, prepared)
+            self.recover_leaf(agent_nodes[path], attempt, prepared, sequence)
             del pending[path]
         advance_progress()
         if original_blocks:
@@ -1513,7 +1579,10 @@ def _execute_graph(run, inputs, composition):
         elif missing_required:
             receipt.update(status='failed', error='Required workflow outputs unavailable: ' + ', '.join(missing_required))
         elif run.blocked and not run.branch_failures:
-            receipt.update(status='failed', error='Required training FlowMap evidence blocked a dependent Agent')
+            lost_profile = next((leaf['instance'] for leaf in receipt['leaves'] if 'profile_result_block' in leaf), None)
+            error = (f'Workflow leaf {lost_profile} cannot supply its original result' if lost_profile
+                     else 'Required training FlowMap evidence blocked a dependent Agent')
+            receipt.update(status='failed', error=error)
         else:
             receipt.update(status='succeeded', outputs=outputs)
             if run.unavailable_outputs:
@@ -1782,7 +1851,7 @@ def _observe_reserved_input(directory, attempt, manifest, max_prompt_bytes):
 
 
 def _observe_leaf_run(state, project, receipt, manifest, attempt, remaining_result_bytes, route_choices,
-                      *, flow_evidence=None, failure_node=None):
+                      *, flow_evidence=None, failure_node=None, profile_node=None):
     try:
         observed = runs.inspect_run(state, project, attempt['run_id'], max_result_bytes=max(1, remaining_result_bytes))
     except native_sources.RunNotFound as error:
@@ -1820,6 +1889,11 @@ def _observe_leaf_run(state, project, receipt, manifest, attempt, remaining_resu
         source['original_failure'] = {
             'state': 'corroborated' if failure == attempt['original_failure'] else 'mismatch',
         }
+    if profile_node is not None:
+        block = attempt['profile_result_block']
+        original = _profile_result_identity(observed, attempt, profile_node, receipt['project_revision'])
+        source['profile_result_identity'] = ('corroborated' if original == {
+            key: block[key] for key in ('run_sha256', 'result_sha256')} else 'mismatch')
     choice = None
     if route_choices and observed['result']['available']:
         result = observed['result']['document']
@@ -2339,6 +2413,7 @@ def inspect_graph(state: State, project: str, directory: Path, manifest_digest: 
         attempt = {'sequence': sequence, 'instance': leaf['instance'], 'run_id': run_id, 'input_digest': input_digest,
                    'status': leaf_status, 'result_sha256': leaf.get('result_sha256')}
         failure_node = None
+        profile_node = None
         if 'original_failure' in leaf:
             failure = leaf['original_failure']
             if (leaf['instance'] not in continuing_branches or leaf_status != 'failed' or attempt['result_sha256'] is not None
@@ -2348,11 +2423,19 @@ def inspect_graph(state: State, project: str, directory: Path, manifest_digest: 
             contracts.validate(failure['run_sha256'], digest_contract, 'Original branch failure SHA256')
             failure_node = agent_nodes[leaf['instance']]
             attempt['original_failure'] = failure
+        if 'profile_result_block' in leaf:
+            block = _profile_result_block_shape(leaf['profile_result_block'])
+            profile_node = agent_nodes[leaf['instance']]
+            if (status == 'succeeded' or leaf_status != 'succeeded' or 'required_flow_map' not in profile_node
+                    or block['result_sha256'] != leaf.get('result_sha256')):
+                raise ValueError('Invalid saved profile result block for this Agent attempt')
+            attempt['profile_result_block'] = block
         attempt['reserved_input'] = _observe_reserved_input(directory, attempt, manifest, receipt['max_prompt_bytes'])
         route_choices = agent_nodes[leaf['instance']].get('route_choices', ())
         attempt['original_run'], result_bytes, choice = _observe_leaf_run(
             state, project, receipt, manifest, attempt, remaining, route_choices,
-            flow_evidence=flow_evidence if leaf['instance'] in flow_producer_paths else None, failure_node=failure_node)
+            flow_evidence=flow_evidence if leaf['instance'] in flow_producer_paths else None,
+            failure_node=failure_node, profile_node=profile_node)
         remaining -= result_bytes
         attempts[leaf['instance']] = attempt
         if choice is not None:
@@ -2375,6 +2458,23 @@ def inspect_graph(state: State, project: str, directory: Path, manifest_digest: 
         attempt = attempts[path]
         attempt['original_reservation'] = _observe_branch_failure_reservation(
             directory, receipt, recovery['authorization']['state'], attempt)
+    for attempt in attempts.values():
+        if 'profile_result_block' not in attempt:
+            continue
+        block = attempt['profile_result_block']
+        original = attempt['original_run']
+        witness = _observe_branch_failure_reservation(directory, receipt, recovery['authorization']['state'], attempt)
+        if witness['state'] == 'corroborated':
+            expected = {**_reservation_witness(receipt, attempt['sequence'], attempt), 'result': block}
+            try:
+                persisted = native_sources.packet(directory, f"profile-result-block-{attempt['sequence']}.json")
+                witness['state'] = 'corroborated' if persisted == expected else 'mismatch'
+            except (OSError, ValueError) as error:
+                witness = native_sources.observation_failure(error)
+        current = original.get('result', {}).get('state')
+        attempt['profile_result_block'] = {**block, 'original_witness': witness,
+            'evidence_state': ('corroborated' if original.get('profile_result_identity') == 'corroborated'
+                and (current == block['state'] or witness['state'] == 'corroborated') else 'receipt-reported')}
     observed_unavailable = {}
     for name, output in unavailable.items():
         causes = [attempts[path] for path in output['blocked_by']]

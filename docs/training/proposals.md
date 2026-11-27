@@ -73,7 +73,7 @@ Generator-native reports are candidate materials only. Submit candidate code, fr
 
 ## Optional experiment-expert proposals
 
-`ergora composition install-preset training-optimization` imports current common root `ergora-training-proposal@4.2.12`: source mapping, cross-domain experiment design, pure performance diagnosis, kernel implementation-plan assessment and independent measurement review. All five leaves inherit library/environment selection, the [delegated execution policy](../../src/ergora/data/presets/workflows/ergora-training-proposal/skills/ergora-bottleneck-optimization/SKILL.md#specialist-execution-and-supervision) for assigned execution specialists, and original evidence contracts. Model is fixed at gpt-6.2-sol, with max for design/kernel planning and high for diagnosis/measurement review. Selected-direction specialists enter complete optimization as actual structural descendants of this common root. They help operators fill original workload/baseline/experiment contracts; they neither execute search nor grant adoption. Real CPU/GPU execution remains with original runner/evidence gates.
+`ergora composition install-preset training-optimization` imports current common root `ergora-training-proposal@4.2.13`: source mapping, cross-domain experiment design, pure performance diagnosis, kernel implementation-plan assessment and independent measurement review. All five leaves inherit library/environment selection, the [delegated execution policy](../../src/ergora/data/presets/workflows/ergora-training-proposal/skills/ergora-bottleneck-optimization/SKILL.md#specialist-execution-and-supervision) for assigned execution specialists, and original evidence contracts. Model is fixed at gpt-6.2-sol, with max for design/kernel planning and high for diagnosis/measurement review. Selected-direction specialists enter complete optimization as actual structural descendants of this common root. They help operators fill original workload/baseline/experiment contracts; they neither execute search nor grant adoption. Real CPU/GPU execution remains with original runner/evidence gates.
 
 |Leaf path|Main responsibility and required materials|Result boundary|
 |---|---|---|
@@ -110,10 +110,10 @@ Preserve original reference and workload/semantics first; the original runner th
 
 ```bash
 ergora composition install-preset training-optimization
-ergora composition show ergora-training-proposal 4.2.12 --material
+ergora composition show ergora-training-proposal 4.2.13 --material
 ```
 
-Current common root `ergora-training-proposal@4.2.12` combines maps and four cross-domain experts. Root Skill owns evidence, direction and library/environment selection; child Skills retain their methods. For complete specialized optimization, revise this common root to place the complete root reference returned by selected-direction installation among its actual descendants before freezing a complete manifest. The [selected MoE composition example](../../examples/composition/optimization-selected-moe/README.md) supplies the current 18-leaf native development graph and complete handoffs; its [publication.json](../../examples/composition/optimization-selected-moe/publication.json) supplies formal root identity. Use actual returned full root references and manifests. The graph gives design the original task and gives profile that task with the checked FlowMap and its original producer.
+Current common root `ergora-training-proposal@4.2.13` combines maps and four cross-domain experts. Root Skill owns evidence, direction and library/environment selection; child Skills retain their methods. For complete specialized optimization, revise this common root to place the complete root reference returned by selected-direction installation among its actual descendants before freezing a complete manifest. The [selected MoE composition example](../../examples/composition/optimization-selected-moe/README.md) supplies the current 18-leaf native development graph and complete handoffs; its [publication.json](../../examples/composition/optimization-selected-moe/publication.json) supplies formal root identity. Use actual returned full root references and manifests. The graph gives design the original task and gives profile that task with the checked FlowMap and its original producer.
 
 ```mermaid
 flowchart LR
@@ -127,14 +127,16 @@ flowchart LR
 For a [standalone read-only graph](../definitions/workflows/compose.md#run-a-standalone-workflow-graph), prepare the exact manifest and a `proposal-inputs.json` document with a single root `task`. Within that object, include the complete original request, source and baseline material. Put the exact baseline SHA-256 in `baseline.raw_sha256` and source SHA-256 in `source.source_sha256`. Replace the placeholders below with the project, grant and digest from the selected original manifest.
 
 ```bash
-ergora composition prepare-manifest ergora-training-proposal 4.2.12 \
+ergora composition prepare-manifest ergora-training-proposal 4.2.13 \
   --grant ./proposal-grant.json --directory ./proposal-manifest
 ergora composition run-graph PROJECT ./proposal-manifest --manifest-digest MANIFEST_SHA256 \
   --inputs ./proposal-inputs.json --directory ./original-proposal-run \
   --max-prompt-bytes 500000 --timeout 600 --recoverable
 ```
 
-FlowMap uses a required response field with null for unavailable evidence. A missing, mismatched, or over-limit FlowMap produces a block against `root/analysis/profile` before its reservation. The independent design leaf retains its original result. Use `composition inspect-graph` for the same manifest and original run directory. Its FlowMap diagnostic is corroborated when the original input and producer result are both available and match the receipt, and is receipt-reported when that evidence cannot be reconstructed. Kernel and measurement work use the source and evidence supplied in the original task. The single-leaf path still takes its explicit caller-supplied inputs.
+FlowMap uses a required response field with null for unavailable evidence. A missing, mismatched, or over-limit FlowMap produces a block against `root/analysis/profile` before its reservation. The independent design leaf retains its original result. Use `composition inspect-graph` for the same manifest and original run directory. Its FlowMap diagnostic is corroborated when the original input and producer result are both available and match the receipt, and is receipt-reported when that evidence cannot be reconstructed.
+
+In the standalone graph, kernel receives `task` with the original request, source, baseline and any supplied evidence, and `analysis` with the complete design and profile results indexed by their exact instance paths. Measurement receives those same fields plus `flow` for the completed source-map result and `kernel` for the kernel assessment. The graph verifies each original result before using it and refuses to reserve a consumer if required evidence is unavailable, mismatched, or exceeds the complete input or prompt limit. If the successful original profile run's result file is missing or differs from its recorded digest, the graph records that evidence block and lets independent design finish within the original deadline and STOP controls. A recoverable graph keeps that block with the original attempt even if the file later reappears. For an explicit single-leaf call, supply the complete task and the required predecessor evidence yourself.
 
 The inherited policy retains one owner per direction and aims for 4–8 active experts with assigned work from the latest trusted profile. When an expert finishes or encounters a blocker, record the outcome and check which authorized independent work is ready. This stock graph has two independent analysis leaves after flow, and each explicit leaf call runs one member. Select independent topic assignments in an exact revision before freeze, use supported execution capabilities and report the actual active count and blocker.
 

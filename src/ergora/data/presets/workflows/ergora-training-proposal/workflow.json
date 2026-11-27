@@ -1,14 +1,14 @@
 {
   "schema_version": 2,
   "id": "ergora-training-proposal",
-  "version": "4.2.12",
+  "version": "4.2.13",
   "description": "Readonly shared optimization policy and explicit stage handoffs; selected topic descendants inherit complete methods and environment records. Independent leaves require caller-supplied predecessors.",
   "resources": [
     {
       "id": "ergora-training-proposal-v4-instructions",
       "kind": "instructions",
       "path": "instructions.md",
-      "sha256": "efa0b259b4dc4f84b34afd9191007972c23030a0997562aa66e13fa79094617d"
+      "sha256": "2e389f6ccbf80a6b3074539f62454a2b87c2dfb6d84bac70a54fc462bbadbb7a"
     },
     {
       "id": "ergora-bottleneck-optimization-skill",
@@ -103,7 +103,10 @@
       ],
       "inputs": {
         "task": {
-          "input": "task"
+          "fields": {
+            "task": {"input": "task"},
+            "analysis": {"node": "analysis", "output": "result"}
+          }
         }
       }
     },
@@ -116,11 +119,18 @@
         "digest": "5042a91a1a214930935c1d5df5cdf0b1d8bebe092136f3fbc9346980976ea688"
       },
       "depends_on": [
+        "flow",
+        "analysis",
         "kernel"
       ],
       "inputs": {
         "task": {
-          "input": "task"
+          "fields": {
+            "task": {"input": "task"},
+            "flow": {"node": "flow", "output": "result"},
+            "analysis": {"node": "analysis", "output": "result"},
+            "kernel": {"node": "kernel", "output": "result"}
+          }
         }
       }
     },

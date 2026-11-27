@@ -3638,12 +3638,20 @@ def test_unsuccessful_calls_are_visible_in_cli_and_durable_record(prepared, monk
 
 @pytest.mark.parametrize('case', ['success', 'missing', 'omitted', 'null-response', 'baseline', 'source',
                                   'lone-surrogate', 'identity-newline', 'source-newline',
-                                  'oversize', 'oversize-prompt',
+                                  'oversize', 'oversize-prompt', 'oversize-measurement',
+                                  'missing-profile-result', 'mismatched-profile-result', 'mismatched-kernel-result',
+                                  'stop-profile-result',
                                   pytest.param('resume-success', marks=pytest.mark.skipif(
+                                      sys.platform != 'linux', reason='Graph recovery requires Linux/WSL2')),
+                                  pytest.param('resume-kernel', marks=pytest.mark.skipif(
+                                      sys.platform != 'linux', reason='Graph recovery requires Linux/WSL2')),
+                                  pytest.param('resume-kernel-late-missing-profile', marks=pytest.mark.skipif(
+                                      sys.platform != 'linux', reason='Graph recovery requires Linux/WSL2')),
+                                  pytest.param('resume-profile-result', marks=pytest.mark.skipif(
                                       sys.platform != 'linux', reason='Graph recovery requires Linux/WSL2')),
                                   pytest.param('resume-blocked', marks=pytest.mark.skipif(
                                       sys.platform != 'linux', reason='Graph recovery requires Linux/WSL2'))])
-def test_training_proposal_binds_its_original_flow_map_or_keeps_independent_design(
+def test_training_proposal_binds_original_stage_evidence_or_blocks_its_dependents(
         prepared, tmp_path, monkeypatch, case):
     from ergora.agents import graphs
 
@@ -3707,6 +3715,8 @@ elif stage == 'design':
         raise SystemExit(9)
 elif stage == 'measurement':
     value['decision'] = 'request-changes'
+elif case == 'oversize-measurement' and stage in ('profile', 'kernel'):
+    value['artifacts']['response'] = stage[0] * 255000
 Path(output).write_text(json.dumps(value))
 ''', encoding='utf-8')
     original_command = agent_backends.CodexBackend.command
@@ -3728,6 +3738,9 @@ Path(output).write_text(json.dumps(value))
                **dict.fromkeys(('lone-surrogate', 'identity-newline', 'source-newline'), 'invalid-flow-map'),
                **dict.fromkeys(('oversize', 'oversize-prompt'), 'oversize-flow-map')}
     reason = reasons.get(case)
+    profile_result = case in ('missing-profile-result', 'mismatched-profile-result', 'resume-profile-result',
+                              'stop-profile-result')
+    stopped = tmp_path / 'stop-after-original-profile-block'
     agent_task = graphs._GraphRun.agent_task
     record_block = graphs._GraphRun.record_flow_map_block
     blocked_while_design_running = []
@@ -3751,27 +3764,97 @@ Path(output).write_text(json.dumps(value))
     if reason:
         monkeypatch.setattr(graphs._GraphRun, 'agent_task', task_after_original_design_starts)
         monkeypatch.setattr(graphs._GraphRun, 'record_flow_map_block', unblock_independent_design)
-    else:
+    elif not profile_result:
         resume_design.touch()
 
-    if case == 'resume-success':
-        structural = graphs._GraphRun.open_structure
+    unusable = 'root/analysis/profile' if profile_result else (
+        'root/kernel/assess' if case == 'mismatched-kernel-result' else None)
+    retained_artifacts = []
+    overlapping_design = []
+    if unusable:
+        import time
 
-        def stop_before_analysis(run, node, opened):
-            if node['path'] == 'root/analysis':
-                raise RuntimeError('Controlled coordinator loss before analysis')
+        run_input = agent_runs.run_input
+
+        def make_original_result_unavailable(state, project, source, *args, **kwargs):
+            job = run_input(state, project, source, *args, **kwargs)
+            request = json.loads((source / 'request.json').read_bytes())
+            if request['instance'] == unusable:
+                deadline = time.monotonic() + 6
+                while not started.exists() and time.monotonic() < deadline:
+                    time.sleep(.01)
+                assert started.exists()
+                assert job['status'] == 'succeeded'
+                artifact = Path(job['result'])
+                retained = artifact.with_suffix('.retained')
+                retained_artifacts.append((artifact, retained))
+                if case != 'mismatched-profile-result' and profile_result:
+                    artifact.rename(retained)
+                else:
+                    original_bytes = artifact.read_bytes()
+                    retained.write_bytes(original_bytes)
+                    original = json.loads(original_bytes)
+                    original['artifacts']['response'] = 'Changed, schema-valid predecessor evidence'
+                    artifact.write_text(json.dumps(original), encoding='utf-8')
+            return job
+
+        monkeypatch.setattr(agent_runs, 'run_input', make_original_result_unavailable)
+
+    if profile_result:
+        block_profile_result = graphs._GraphRun.block_profile_result
+
+        def release_design_after_original_result_block(run, node, attempt, observed, **options):
+            blocked = block_profile_result(run, node, attempt, observed, **options)
+            if blocked and not resume_design.exists():
+                overlapping_design.append(any(not future.done() and job['instance'] == 'root/analysis/design'
+                                              for future, job in run.running.items()))
+                if case == 'stop-profile-result':
+                    stopped.touch()
+                else:
+                    resume_design.touch()
+            return blocked
+
+        monkeypatch.setattr(graphs._GraphRun, 'block_profile_result', release_design_after_original_result_block)
+
+    if case in ('resume-success', 'resume-kernel', 'resume-kernel-late-missing-profile'):
+        structural = graphs._GraphRun.open_structure
+        interrupted_at = 'root/analysis' if case == 'resume-success' else 'root/measurement'
+
+        def stop_before_consumer(run, node, opened):
+            if node['path'] == interrupted_at:
+                raise RuntimeError('Controlled coordinator loss before opening a consumer')
             return structural(run, node, opened)
 
         with monkeypatch.context() as fault:
-            fault.setattr(graphs._GraphRun, 'open_structure', stop_before_analysis)
+            fault.setattr(graphs._GraphRun, 'open_structure', stop_before_consumer)
             with pytest.raises(RuntimeError, match='coordinator loss'):
                 graphs.run_graph(state, 'demo', manifest, frozen['digest'], {'task':task}, destination, 500000, 45,
                                  recoverable=True)
-    if case == 'resume-blocked':
+        if case == 'resume-kernel-late-missing-profile':
+            initial_receipt = (destination / 'run.json').read_bytes()
+            original = json.loads(initial_receipt)
+            kernel = next(row for row in original['leaves'] if row['instance'] == 'root/kernel/assess')
+            assert kernel['status'] == 'succeeded'
+            profile = next(row for row in original['leaves'] if row['instance'] == 'root/analysis/profile')
+            result = state.root / 'runs' / profile['run_id'] / 'result.json'
+            hidden = result.with_suffix('.temporarily-hidden')
+            paths_before = {path.name for path in destination.iterdir()}
+            calls_before = log.read_bytes()
+            result.rename(hidden)
+            try:
+                with pytest.raises(ValueError, match='requires matching original Agent input, prompt and result'):
+                    graphs.resume_graph(state.root, 'demo', destination, frozen['digest'])
+                assert {path.name for path in destination.iterdir()} == paths_before
+                assert (destination / 'run.json').read_bytes() == initial_receipt
+                assert log.read_bytes() == calls_before
+            finally:
+                hidden.rename(result)
+    if case in ('resume-blocked', 'resume-profile-result'):
         save = graphs._GraphRun.save
 
         def stop_after_local_block(run):
-            if run.receipt.get('flow_map_blocks'):
+            if (run.receipt.get('flow_map_blocks') or
+                    any('profile_result_block' in row for row in run.receipt['leaves'])):
                 while run.running:
                     run.wait_for_work()
                     run.collect_finished()
@@ -3784,9 +3867,13 @@ Path(output).write_text(json.dumps(value))
             with pytest.raises(RuntimeError, match='coordinator loss'):
                 graphs.run_graph(state, 'demo', manifest, frozen['digest'], {'task':task}, destination, 500000, 45,
                                  recoverable=True)
+        if case == 'resume-profile-result':
+            (artifact, retained), = retained_artifacts
+            retained.rename(artifact)
 
     if direct:
-        receipt = graphs.run_graph(state, 'demo', manifest, frozen['digest'], {'task':task}, destination, 500000, 45)
+        receipt = graphs.run_graph(state, 'demo', manifest, frozen['digest'], {'task':task}, destination, 500000, 45,
+                                   stop_requested=stopped.exists)
     else:
         original = json.loads((destination/'run.json').read_bytes())
         receipt = graphs.resume_graph(state.root, 'demo', destination, frozen['digest'])
@@ -3800,18 +3887,66 @@ Path(output).write_text(json.dumps(value))
     leaves = {row['instance']:row for row in receipt['leaves']}
     original_flow = {name: leaves['root/flow/map'][name]
                      for name in ('instance','run_id','input_digest','result_sha256')}
-    assert leaves['root/analysis/design']['status']=='succeeded'
+    assert leaves['root/analysis/design']['status'] == ('cancelled' if case == 'stop-profile-result' else 'succeeded')
     protocol = state.root/'runs'/(original_flow['run_id']+'.protocol')
     native_schema = json.loads((protocol/'schema.json').read_bytes())
     artifact_schema = native_schema['properties']['artifacts']
     assert artifact_schema['required'] == ['response']
     assert artifact_schema['properties']['response']['type'] == ['string', 'null']
-    if reason is None:
+    if unusable:
+        assert receipt['status'] == ('cancelled' if case == 'stop-profile-result' else 'failed')
+        assert 'outputs' not in receipt
+        if case != 'stop-profile-result':
+            assert f'Workflow leaf {unusable} cannot supply its original result' in receipt['error']
+        assert leaves[unusable]['status'] == 'succeeded'
+        forbidden = {'root/measurement/review'}
+        if profile_result:
+            forbidden.add('root/kernel/assess')
+            assert overlapping_design == [True]
+            state_expected = 'mismatch' if case == 'mismatched-profile-result' else 'missing'
+            block = leaves[unusable]['profile_result_block']
+            assert block['state'] == state_expected and block['result_sha256'] == leaves[unusable]['result_sha256']
+            attempt = next(row for row in observed['agent_attempts'] if row['instance'] == unusable)
+            assert attempt['profile_result_block']['evidence_state'] == 'corroborated'
+            if case == 'resume-profile-result':
+                assert attempt['original_run']['result']['state'] == 'available'
+                assert attempt['profile_result_block']['original_witness'] == {'state': 'corroborated'}
+                assert sum(row['stage'] == 'profile' for row in calls) == 1
+            else:
+                assert attempt['original_run']['result']['state'] == state_expected
+        assert forbidden.isdisjoint(leaves)
+        assert len(list(destination.glob('input-*'))) == len(leaves)
+    elif case == 'oversize-measurement':
+        assert receipt['status'] == 'failed' and 'outputs' not in receipt
+        assert receipt['error'] == 'Complete workflow data exceeds 500000 bytes'
+        assert set(leaves) == {'root/flow/map', 'root/analysis/design', 'root/analysis/profile', 'root/kernel/assess'}
+        assert all(leaf['status'] == 'succeeded' for leaf in leaves.values())
+        assert len(list(destination.glob('input-*'))) == len(leaves)
+    elif reason is None:
         assert receipt['status']=='succeeded'
         profile, = [row['task'] for row in calls if row['stage']=='profile']
         expected_map = 'train.py:1 损失 → 梯度 🧪' if case == 'success' else 'train.py:1 loss -> backward'
         assert profile['task']==task and profile['flow_map']['map']==expected_map
         assert profile['flow_map_producer']==original_flow
+
+        def original_reply(path):
+            leaf = leaves[path]
+            result = agent_runs.inspect_run(state, 'demo', leaf['run_id'])['result']
+            assert result['sha256'] == leaf['result_sha256']
+            return result['document']
+
+        flow = {'root/flow/map': {'result': original_reply('root/flow/map')}}
+        analysis = {path: {'result': original_reply(path)}
+                    for path in ('root/analysis/design', 'root/analysis/profile')}
+        kernel = {'root/kernel/assess': {'result': original_reply('root/kernel/assess')}}
+        measurement = original_reply('root/measurement/review')
+        assert [row['task'] for row in calls if row['stage'] == 'kernel'] == [{'task': task, 'analysis': analysis}]
+        assert [row['task'] for row in calls if row['stage'] == 'measurement'] == [
+            {'task': task, 'flow': flow, 'analysis': analysis, 'kernel': kernel}]
+        assert observed['graph_receipt']['recorded_output_ports'] == ['result']
+        assert receipt['outputs'] == {'result': {
+            'root/flow': {'result': flow}, 'root/analysis': {'result': analysis},
+            'root/kernel': {'result': kernel}, 'root/measurement': {'result': measurement}}}
     else:
         assert receipt['status']=='failed' and 'outputs' not in receipt
         assert receipt['error']=='Required training FlowMap evidence blocked a dependent Agent'

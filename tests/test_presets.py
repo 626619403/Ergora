@@ -488,10 +488,12 @@ def test_bottleneck_path_retains_kernel_assessment_and_original_task_in_frozen_l
     definition = workflows.get(state, installed['root']['id'], installed['root']['version'])['definition']
     nodes = {item['id']: item for item in definition['nodes']}
     assert {name: nodes[name]['depends_on'] for name in ('flow', 'analysis', 'kernel', 'measurement')} == {
-        'flow': [], 'analysis': ['flow'], 'kernel': ['analysis'], 'measurement': ['kernel']}
+        'flow': [], 'analysis': ['flow'], 'kernel': ['analysis'], 'measurement': ['flow', 'analysis', 'kernel']}
     assert set(nodes['gather']['depends_on']) == {'flow', 'analysis', 'kernel', 'measurement'}
-    assert all(nodes[name]['inputs'] == {'task': {'input': 'task'}}
-               for name in ('flow', 'kernel', 'measurement'))
+    assert nodes['flow']['inputs'] == {'task': {'input': 'task'}}
+    for name, sources in {'kernel': ('analysis',), 'measurement': ('flow', 'analysis', 'kernel')}.items():
+        assert nodes[name]['inputs'] == {'task': {'fields': {
+            'task': {'input': 'task'}, **{source: {'node': source, 'output': 'result'} for source in sources}}}}
     assert nodes['analysis']['inputs'] == {'task': {'input': 'task'},
                                           'flow': {'node': 'flow', 'output': 'result'}}
     grant = {'schema_version': 1, 'permissions': definition['permissions'], 'limits': definition['limits']}

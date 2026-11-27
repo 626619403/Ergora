@@ -362,7 +362,9 @@ class _Compilation:
             if set(node["inputs"]) != set(expected):
                 raise ValueError(f"Workflow input ports differ at {node['id']}: expected {expected}")
             for value in node["inputs"].values():
-                binding(value, node["depends_on"])
+                sources = value["fields"].values() if "fields" in value else (value,)
+                for source in sources:
+                    binding(source, node["depends_on"])
             if "required_flow_map" in node and node["required_flow_map"] not in definition["inputs"]:
                 raise ValueError(f"Unknown required FlowMap input port at {self.path}: {node['required_flow_map']}")
         self.path = path

@@ -214,6 +214,29 @@
         "$ref": "#/$defs/binding"
       }
     },
+    "node-inputs": {
+      "type": "object",
+      "maxProperties": 32,
+      "propertyNames": {"$ref": "#/$defs/id"},
+      "additionalProperties": {
+        "oneOf": [
+          {"$ref": "#/$defs/binding"},
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["fields"],
+            "properties": {
+              "fields": {
+                "allOf": [
+                  {"$ref": "#/$defs/bindings"},
+                  {"minProperties": 1}
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
     "permissions": {
       "type": "object",
       "additionalProperties": false,
@@ -354,7 +377,7 @@
               ]
             },
             "inputs": {
-              "$ref": "#/$defs/bindings"
+              "$ref": "#/$defs/node-inputs"
             },
             "role": {
               "$ref": "#/$defs/id"
@@ -432,7 +455,7 @@
               ]
             },
             "inputs": {
-              "$ref": "#/$defs/bindings"
+              "$ref": "#/$defs/node-inputs"
             }
           }
         },

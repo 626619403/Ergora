@@ -16,7 +16,9 @@
 
 Agent／Workflow引用必须有 `kind`、`id`、`version`、`digest`。`digest` 是整个包树身份，可从 `check/import/show` 得到；不是 JSON 单文件的 SHA。每个节点有本图内唯一 `id`、显式 `depends_on`。Agent节点另有 `role`、`permissions` 和恰好一个 `task` 输入，其结果端口固定为 `result`；角色必须由目标Agent支持。Workflow节点的输入／输出由精确目标版本声明。
 
-绑定只能是 `{"input":"task"}` 或 `{"node":"implement","output":"result"}`。节点引用另一节点的结果时，必须将它列为直接依赖；不会由引用隐式添加依赖。没有 Python 表达式、任意脚本或循环。端口值是待执行阶段消费的不透明数据，静态检查不证明候选、审查 decision 或领域产物可信。
+`{"input":"task"}` 传递一个工作流输入的完整值。`{"node":"implement","output":"result"}` 传递直接依赖节点的一个完整具名输出。引用本身不会添加依赖。静态检查在执行前解析引用，端口值在运行期间消费。
+
+独立 Workflow v2 中，Agent 或子工作流的输入可用 `{"fields":{"request":{"input":"task"},"analysis":{"node":"analyze","output":"result"}}}` 组装一个对象。每个字段使用一个普通绑定，字段名遵循端口命名规则且不得重复，字段数为 1 至 32。所有引用的节点都须列入 `depends_on`。独立图从原输入和已完成输出组装对象，并在预留后继 Agent 前检查完整输入与提示词上限。显式单叶调用仍由调用者提供完整任务。
 
 `{"id":"gather","join":"all","depends_on":["structure","correctness","test-value"]}` 声明汇合，输出 `result` 的目标语义为每个依赖分支的全部具名输出映射。汇合是等待所有列出分支的数据屏障。正式只读并行审查要求根输出指向覆盖全部叶子的显式all-join；原可信运行器核每个必需分支的候选、会话与收据后才生成聚合引用。静态all-join本身不是多数票或人工批准。
 

@@ -295,8 +295,10 @@ async function convertCandidate(current, render, { text, format, rename }) {
       if (definition.nodes.filter((item) => item.id === rename.to).length > 1) throw new Error("实例 ID 已存在，不能合并引用");
       for (const item of definition.nodes) {
         item.depends_on = item.depends_on.map((id) => id === rename.from ? rename.to : id);
-        for (const binding of Object.values(item.inputs || {}))
-          if (binding?.node === rename.from) binding.node = rename.to;
+        for (const binding of Object.values(item.inputs || {})) {
+          for (const source of binding?.fields ? Object.values(binding.fields) : [binding])
+            if (source?.node === rename.from) source.node = rename.to;
+        }
         if (item.operation === chooseAgent)
           item.branches = item.branches.map((id) => id === rename.from ? rename.to : id);
       }
