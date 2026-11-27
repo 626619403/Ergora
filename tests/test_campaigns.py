@@ -2542,6 +2542,47 @@ def test_only_training_readback_projects_its_pending_local_stop_to_the_child(tra
     assert result['tasks']['fixed'] == {'status': 'ready', 'eligible': not training}
 
 
+@pytest.mark.parametrize('view', ('live', 'history', 'missing'))
+def test_training_task_view_retains_verified_history_without_live_admission(view):
+    root = {'task_id': 'training', 'depends_on': [], 'source': {'kind': 'training_gpu_release'},
+            'readback': {'due_at': 15, 'deadline_at': 20}}
+    dependent = {'task_id': 'fixed', 'depends_on': ['training'], 'source': {}}
+    opening = {'plan': {'tasks': [root, dependent]}}
+    handle = SimpleNamespace(run_id='original')
+    description = SimpleNamespace(run_id='original', status=SimpleNamespace(name='RUNNING'))
+    live = {'training': {'status': 'observed', 'eligible': False}, 'fixed': {'status': 'ready', 'eligible': True}}
+    completion = {'task_id': 'training', 'activity_id': 'original-read', 'completed_event_id': 13}
+
+    async def original(client, plan, attempt, run):
+        assert (plan, run) == (opening, 'original')
+        return handle, description
+
+    async def state(*args, **kwargs):
+        if view == 'live':
+            return {'workflow_state_status': 'observed', 'tasks': live}
+        return {'workflow_state_status': 'unavailable'}
+
+    async def history(client, selected, plan, commands):
+        assert (selected, plan, commands) == (handle, opening, ())
+        return {}, None if view == 'missing' else completion, None
+
+    runtime = SimpleNamespace(RPC_SECONDS=1, original=original, runtime_status=state,
+                              read_task_history=history, RPCError=RuntimeError)
+    initial = {'attempt_sha256': 'digest', 'workflow_state_status': 'not_observed'}
+    result = asyncio.run(application._read_original(runtime, initial, opening, {}, 'original',
+                                                    client=object(), read_state=True))
+    if view == 'live':
+        assert result['tasks'] == live
+    elif view == 'history':
+        assert result['workflow_state_status'] == 'unavailable'
+        assert result['readback_completion'] == completion
+        assert result['tasks'] == {'training': {**root, 'status': 'observed', 'receipt': None,
+                                               'eligible': False, 'state_source': 'history'}}
+    else:
+        assert 'tasks' not in result
+        assert 'readback_completion' not in result
+
+
 @pytest.mark.parametrize('history', ('absent', 'different', 'exact'))
 @pytest.mark.parametrize('kind', ('training_full_result', 'training_screen_result', 'training_gpu_release'))
 def test_training_recipient_binds_original_wake_history_before_reservation(monkeypatch, history, kind):

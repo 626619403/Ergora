@@ -127,8 +127,9 @@ def test_campaign_training_timeline_keeps_the_original_result_and_native_disposi
         return {"project": project, "campaign": campaign, "run_id": "campaign-run",
                 "workflow_state_status": "observed" if workflow_observed else "unavailable",
                 "plan": {"acceptance": "Verify original training", "limits": {"expires_at": 100}, "tasks": [task]},
-                "tasks": {"full": {**task, "status": "observed", "eligible": False, "readback_observation": readback}}
-                if workflow_observed else {},
+                "tasks": {"full": {**task, "status": "observed", "eligible": False,
+                                   **({"readback_observation": readback} if workflow_observed
+                                      else {"state_source": "history"})}},
                 "stop": {"status": "not_recorded", "remote_status": "not_requested", "update_id": None, "receipt": None},
                 "readback_completion": {**completion, "recipient": {"hidden-prompt": "private-value"}},
                 "recipient": {"status": "observed", "intent": {"wake_id": "original-wake", "source": "private-value"},
@@ -141,8 +142,10 @@ def test_campaign_training_timeline_keeps_the_original_result_and_native_disposi
     assert response.status_code == 200, response.text
     observed = response.json()
     assert observed["run_id"] == "campaign-run"
-    assert observed["task_state"] == ({"status": "observed", "eligible": False, "readback_observation": readback}
-                                      if workflow_observed else None)
+    assert observed["task_state"] == {
+        "status": "observed", "eligible": False,
+        **({"readback_observation": readback} if workflow_observed else {"state_source": "history"}),
+    }
     assert observed["readback_completion"] == completion
     assert observed["training_task"] == {
         "task_id": "full", "depends_on": [], "locator": locator, **scope,

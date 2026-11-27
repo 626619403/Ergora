@@ -123,6 +123,7 @@ function timeline(result) {
         ["Workflow 状态读取", result.workflow_state_status],
         ["已核对的 Workflow 阶段", result.workflow_phase],
         ["已核对的任务状态", current?.status],
+        ...(current?.state_source === "history" ? [["任务状态来源", "Temporal History"]] : []),
         ["任务观测准入（eligible）", current?.eligible],
         ["当前任务的原尝试状态", current?.attempt_status],
         ["当前任务的原 Update ID", current?.update_id],

@@ -169,7 +169,8 @@ async def _read_original(runtime, output, opening, attempt, run_id, *, client=No
             observed['rollover'] = {'status': 'unresolved', 'update_id': command['attempt']['update_id']}
             for task in observed.get('tasks', {}).values():
                 task['eligible'] = False
-    training = training_readback_task(readback_task(opening))
+    selected = readback_task(opening)
+    training = training_readback_task(selected)
     if training or (check_commands and (include_task_history or observed['workflow_state_status'] == 'unavailable'
                                         or recipient_task(opening) is not None)):
         try:
@@ -196,6 +197,10 @@ async def _read_original(runtime, output, opening, attempt, run_id, *, client=No
             observed['task_observation_history'] = _task_observation_history(check_commands, updates)
         if completion is not None:
             observed['readback_completion'] = completion
+            if training and observed['workflow_state_status'] == 'unavailable':
+                # History attests to this original observation. Live admission remains unavailable.
+                observed['tasks'] = {selected['task_id']: {**selected, 'status': 'observed',
+                                     'receipt': None, 'eligible': False, 'state_source': 'history'}}
         if wake is not None and (completion is None or 'recipient' not in completion):
             observed['recipient_history'] = wake
     return observed

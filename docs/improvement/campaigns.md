@@ -218,6 +218,8 @@ To authorize one native continuation when this exact result is observed, add the
 
 Use `campaign status PROJECT CAMPAIGN --online --task-id TASK` for the original verified result, Activity and any recipient evidence, including after the Worker exits. The Campaign STOP and read cutoff bound this reader. The original training executor and resource owner keep control of their operations.
 
+If Workflow state is unavailable, a verified managed training readback still shows the original root task as `observed` with `state_source: history` and `eligible: false`. This also applies to managed screen and lease release observations. The current state and eligibility of dependent tasks require a live Workflow observation.
+
 ### Read one managed training screen decision
 
 Use `{"kind":"training_screen_result","locator":{...}}` for a root task that reads an original managed screen. Supply the same six locator fields and the original `due_at` and `deadline_at` window. An optional `recipient` uses the existing frozen session, parent and prompt to wake one authorized expert.

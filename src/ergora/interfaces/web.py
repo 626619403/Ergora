@@ -1035,7 +1035,7 @@ def create_app(home: Path | None = None) -> FastAPI:
             if training_screen_task(selected) or training_gpu_release_task(selected):
                 training_task["source_kind"] = selected["source"]["kind"]
             if task_state is not None:
-                task_state = {key: task_state[key] for key in ("status", "eligible", "readback_observation")
+                task_state = {key: task_state[key] for key in ("status", "eligible", "readback_observation", "state_source")
                               if key in task_state}
             if "recipient" in selected and "recipient" in observed:
                 training_task["recipient"] = _training_timeline_recipient(observed["recipient"])
