@@ -4,7 +4,7 @@ English · [Documentation](../README.md) · [Architecture contract](current.md)
 
 Ergora is a control plane for project-bound specialist Agents, workflow composition, formal software delivery, training experiments and reusable improvements. Definitions describe reusable behavior. Each operation freezes its own inputs, checks its execution authority and produces evidence under its original identity.
 
-This tour uses runtime revision `8ca34e37b758a453618bb540b1fc6b6de942ec9e` and its `src` tree `b35aa6dfd6fa27609a2b44ed892999ee7720f78f` as the exact source reference. Packages, installed applications and local definition libraries have separate identities. The [current plan](../PLAN.md) and its delivery records track review, CI and installation status.
+This tour uses runtime revision `b0f2419abf0b9df0c8dae79f7277656f07994c4b` and its `src` tree `a37627276209831479269c880002388da763dabf` as the exact source reference. Packages, installed applications and local definition libraries have separate identities. The [current plan](../PLAN.md) and its delivery records track review, CI and installation status.
 
 ## The whole system
 
@@ -25,6 +25,7 @@ flowchart TB
   Select --> Check["Fixed-check CLI<br/>Separate authorization"]
   Select --> Graph["Standalone graph<br/>Ready Agents and declared policies"]
   Select --> Session["Prepared leaf or native project session<br/>Fresh Codex turns check recalled memory"]
+  Select --> NativeImplementer["Native CLI implementer<br/>Antigravity and DeepSeek options"]
   Select --> Dev["Formal task<br/>Original preparation and creation readiness"]
   Select --> Train["Training experiments and finite controllers<br/>training.application"]
   Select --> Campaign["Campaign operator CLI<br/>Record, observe or stop"]
@@ -60,7 +61,7 @@ flowchart TB
   CampaignRun -. "confirmed record-only rollover" .-> Rollover["One verified successor Run<br/>Original Job and deadline"]
   CampaignRun --> CampaignRead["Optional timer or immediate due read<br/>One guarded status Activity"]
   CampaignRead -->|fixed-check wake| Ready["One verified original readiness<br/>Guarded result or opted-in observation"]
-  CampaignRead -. "guarded managed full result" .-> TrainingRoot["Observed training root<br/>Result and separate lease evidence"]
+  CampaignRead -. "managed full result with optional live wait" .-> TrainingRoot["Observed training root<br/>Result and separate lease evidence"]
   CampaignRead -. "guarded managed screen" .-> ScreenRoot["Observed screen decision<br/>Original outcome and separate lease"]
   CampaignRead -. "guarded owner release" .-> ReleaseRoot["Observed local owner release<br/>Original Run, attempt, session and lease"]
   CampaignRead -. "release read heartbeat timeout" .-> ReleaseRecovery["Opt-in receipt-only Activity<br/>Same Run, read window and STOP"]
@@ -78,6 +79,7 @@ flowchart TB
   GraphProof -.-> Recover["Read original IDs, receipts and outcomes"]
   CheckJob -.-> ActionRead["Original action observation<br/>Fixed-check and training receipts"]
   Turn -.-> Recover
+  NativeImplementer -. "original native terminal and result" .-> Recover
   Six -. "Plan lookup by original Run" .-> Recover
   Runner -.-> Recover
   Runner -. "archive retained after failure" .-> RetainedArchive["Training evidence<br/>Explicit retained archive read"]
@@ -179,13 +181,15 @@ The Worker schedules one original wake from the admitted source. The native sess
 
 A plan can bind one root to `training_full_result` for an already authorized managed full verification. The locator pins the original experiment, Workflow, Run, Job and raw request and attempt digests under the same registered project revision. The original Campaign Run schedules one guarded read. A verified successful native result and archive evidence make the root observed. The readback reports the result digest and the resource owner's lease observation separately. A dependent fixed-check task uses confirmed `campaign observe-check` on its own pre-authorized Job.
 
+Set `wait_for_live: true` on the full-result source to wait within that same guarded Activity for the original acknowledged attempt's executor exit and durable reap. The reader follows the original supervisor generation under the frozen read cutoff and STOP fence, with time reserved for cleanup. Omitting the option requests one immediate read at `due_at`.
+
 For the original full-result read Activity, `readback_terminal` reports a verified failure, timeout or cancellation with the original schedule and terminal event IDs and the start event ID when present. It includes a typed cause when available and binds a cancellation to its original request. `readback_completion` carries verified successful readbacks. The original Job owner supplies the execution outcome and the live Workflow supplies task eligibility. [Read one managed training full result](../improvement/campaigns.md#read-one-managed-training-full-result)
 
-An explicit `recipient` on that root opts in to one wake from the verified original training Activity. The existing local Codex recipient uses its authorized stopped parent and approved prompt under the same registered project revision. The native gate checks the original result and wake schedule before reserving the turn under the original cutoff and STOP fence. [Training-result recipient gate](../../src/ergora/campaigns/recipient_gate.py)
+An explicit `recipient` on that root opts in to one wake from the verified original training Activity. The existing local Codex recipient uses its authorized stopped parent and approved prompt under the same registered project revision. The native gate checks the original result and wake schedule before reserving the turn under the original cutoff and STOP fence. Local acceptance used loopback Temporal, a registered CPU attempt and a provider-free Codex fixture to verify one wake Activity, one reservation, one native start and confirmed reap. [Training-result recipient gate](../../src/ergora/campaigns/recipient_gate.py)
 
 A `training_screen_result` root selects one original managed screen by its exact locator and read window. The existing guard and History verify `SCREEN_COMPLETED` or `SCREEN_REJECTED`, the literal decision, diagnostic evidence and separate lease observation. A verified rejection is usable decision evidence and can trigger one wake for its explicitly authorized recipient. A linked full verification requires its own prepared experiment and execution grant. [Read one managed training screen decision](../improvement/campaigns.md#read-one-managed-training-screen-decision)
 
-A `training_gpu_release` root opts in to observing one original local pool release. Its locator binds the registered Run and raw training attempt to the exact pool session and lease, alongside the original experiment, Workflow, Job and raw request digest. The guarded reader can wait for the matching owner receipt through its original authorized release cutoff. Full and screen result queries keep their one-shot bounds. One declared recipient can wake after the original owner release is verified. Release, training result and STOP retain separate evidence. The current pool determines present capacity, and a successor uses its own authorization and consume request. [Read one original managed GPU lease release](../improvement/campaigns.md#read-one-original-managed-gpu-lease-release)
+A `training_gpu_release` root opts in to observing one original local pool release. Its locator binds the registered Run and raw training attempt to the exact pool session and lease, alongside the original experiment, Workflow, Job and raw request digest. The guarded reader can wait for the matching owner receipt through its original authorized release cutoff. One declared recipient can wake after the original owner release is verified. Release, training result and STOP retain separate evidence. The current pool determines present capacity, and a successor uses its own authorization and consume request. [Read one original managed GPU lease release](../improvement/campaigns.md#read-one-original-managed-gpu-lease-release)
 
 A release task with a declared recipient can set `recover_release_receipt: true` to authorize one separate receipt-only Activity after the original read Activity times out on heartbeat. It verifies the durable owner receipt and original reader cleanup on the same Run under the original read window and STOP fence. History verification requires a valid recovery completion timestamp strictly before the original read deadline. `readback_completion.recovery_history` retains the original timeout event ID and the recovery Activity event IDs. The verified receipt can wake the declared recipient under its original authorization.
 
@@ -193,11 +197,15 @@ For a verified original readback, `readback_completion.timing` shows the availab
 
 The original read cutoff and Campaign STOP fence govern the reader and publication of its observation. A saved local STOP closes new dependent eligibility and leaves verified result evidence readable, including through original online History after Worker exit. The registered training executor keeps execution control and the original resource owner confirms lease release. [Guarded Campaign readback](../../src/ergora/campaigns/readback.py)
 
+### Native CLI implementer calls
+
+On Linux/WSL2, `agent run` can use `antigravity-cli` (`agy`) or `deepseek-cli` (`dsh`) for one native implementer call in a trusted workspace. Ergora verifies the original working directory and a successful terminal event for the invocation. Structured calls also validate the Ergora result schema. Antigravity requests its terminal sandbox, and DeepSeek selects its headless `workspace-write` preset. The executable probe reports `authentication: not_checked`. Account access, effective sandbox permissions, actual edits and test results require their own evidence. [Antigravity CLI and DeepSeek CLI](../agents/backends.md#antigravity-cli-and-deepseek-cli)
+
 ### One leaf or a native project session
 
 `composition run-input` explicitly runs one admitted leaf. Supply its prerequisite evidence with the prepared input. The backend validates the requested mode; fixed task MCP, when used, exposes the frozen resource table and records resource reads. Backend admission, delivered bytes, actual reading and model quality are separate observations. [Leaf calls](../definitions/workflows/leaf-calls.md)
 
-For completed DeepSeek SDK `text-only` Chat Completions leaves, `composition inspect-run` verifies `native_usage` against the original native result hash and zero-based assistant event index. It retains the SDK's token fields, including separate input and cache-read counters when supplied. The SDK's identical all-zero counters for omitted and explicit-zero usage appear as `zero_or_unreported`. An invalid optional usage observation can stay unavailable while the accepted leaf result remains readable. Billing and workflow-wide cost have their own evidence. [DeepSeek Harness leaf readback](../agents/deepseek-harness.md#deepseek-harness-read-only-leaf-backend)
+Restricted DeepSeek leaves use the DeepSeek Harness SDK. For completed `text-only` Chat Completions leaves, `composition inspect-run` verifies `native_usage` against the original native result hash and zero-based assistant event index. It retains the SDK's token fields, including separate input and cache-read counters when supplied. The SDK's identical all-zero counters for omitted and explicit-zero usage appear as `zero_or_unreported`. An invalid optional usage observation can stay unavailable while the accepted leaf result remains readable. Billing and workflow-wide cost have their own evidence. [DeepSeek Harness leaf readback](../agents/deepseek-harness.md#deepseek-harness-read-only-leaf-backend)
 
 An ordinary native project session uses the role's original workspace grants. It freezes the role, repository, selected backend configuration and context at session start. The current persistent native session route uses Codex on Linux/WSL2. Continuation selects the latest stopped parent with its saved native session identity and a stable turn intent. A caller that opts in with `agent continue --wait-for-slot` waits for the original session slot within the same turn timeout. The CLI and Console read the same receipt by original session, parent and intent. [Project sessions](../operations/services.md#project-native-sessions)
 
