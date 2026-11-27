@@ -1164,6 +1164,10 @@ def test_recipient_history_retains_the_original_wake_and_unknown_delivery(kind):
                 assert 'completed_event_id' not in result
             else:
                 assert result['completed_event_id'] == ending.event_id
+            if unknown_delivery and kind not in uncorroborated:
+                assert result['terminal_status'] == ('cancelled' if terminal_kind == 'canceled' else terminal_kind)
+            else:
+                assert 'terminal_status' not in result
             assert result['status'] == ('unknown' if unknown_delivery else 'observed')
             timing = result['timing']
             assert timing['clock'] == 'temporal_history'

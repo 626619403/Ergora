@@ -94,7 +94,8 @@ def test_campaign_timeline_reads_and_exposes_only_the_selected_original_task(con
     assert "other-private" not in response.text
 
 
-@pytest.mark.parametrize("disposition", ["released", "unknown", "release-error", "refused", "completed-unknown", "contradictory",
+@pytest.mark.parametrize("disposition", ["released", "unknown", "release-error", "refused", "completed-unknown", "timed-out",
+                                         "invalid-terminal-status", "contradictory",
                                          "reason-path", "reason-object", "native-blocker", "other-task"])
 def test_campaign_timeline_scopes_independent_assignment_evidence(console, monkeypatch, disposition):
     from errno import EACCES
@@ -136,6 +137,11 @@ def test_campaign_timeline_scopes_independent_assignment_evidence(console, monke
     elif disposition == "completed-unknown":
         history["completed_event_id"] = 14
         original_history["outcome"] = {"status": "unknown"}
+    elif disposition == "timed-out":
+        history.update(terminal_event_id=14, terminal_status="timed_out")
+        original_history["terminal_status"] = "timed_out"
+    elif disposition == "invalid-terminal-status":
+        original_history["terminal_status"] = {"error": scoped_error}
     elif disposition == "contradictory":
         history = {"status": "contradictory", "verification_failed": True}
         original_history = {"status": "contradictory", "error": f"Invalid decoded payload at {private_lock}"}

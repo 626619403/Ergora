@@ -127,6 +127,10 @@ function assignmentEvidence({ task_id, assignee, slot_status, claim, history, na
       ["独立任务 Activity 调度事件 ID", history?.scheduled_event_id],
       ["独立任务 Activity 开始事件 ID", history?.started_event_id],
       ...(history?.completed_event_id == null ? [] : [["独立任务 Activity 完成事件 ID", history.completed_event_id]]),
+      ...(history?.terminal_event_id == null ? [] : [
+        ["独立任务 Activity 终止状态", history.terminal_status],
+        ["独立任务 Activity 终止事件 ID", history.terminal_event_id],
+      ]),
       ["原独立任务原生 Run ID", native?.run_id],
       ["原独立任务原生派发", native?.dispatch],
       ["原独立任务原生启动", native?.start_status],

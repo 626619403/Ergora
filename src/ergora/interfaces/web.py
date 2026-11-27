@@ -560,6 +560,12 @@ def _assignment_timeline(assignment: dict) -> dict:
             reason = outcome.get("reason")
             if outcome["status"] == "blocked" and isinstance(reason, str) and reason in _ASSIGNMENT_HISTORY_REASONS:
                 projected_history["reason"] = reason
+        elif history["status"] == "unknown":
+            terminal_status = history.get("terminal_status")
+            terminal_event_id = history.get("completed_event_id")
+            if (terminal_status in ("failed", "timed_out", "cancelled")
+                    and type(terminal_event_id) is int and terminal_event_id > 0):
+                projected_history.update(terminal_status=terminal_status, terminal_event_id=terminal_event_id)
     return {"waiting_task_id": assignment["waiting_task_id"], "task_id": assignment["task_id"],
             "assignee": {key: assignment["assignee"][key] for key in ("role", "generation")},
             "slot_status": assignment["slot_status"],

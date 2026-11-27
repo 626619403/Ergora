@@ -783,6 +783,8 @@ async def _read_recipient_history(converter, events, opening, intent, readback_c
                             and attributes.started_event_id == (start_id or 0)
                             and (kind != 'failed' or start_id is not None)):
                         result['completed_event_id'] = terminal.event_id
+                        if kind != 'completed':
+                            result['terminal_status'] = 'cancelled' if kind == 'canceled' else kind
                         timing_events['delivery_terminal'] = terminal
                     break
     result['timing'] = _history_timing(timing_events, (
