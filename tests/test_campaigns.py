@@ -1163,6 +1163,73 @@ def test_recipient_status_retains_a_proven_blocker_and_separates_partial_publica
         assert output['status'] == 'unknown' and 'reason' not in output
 
 
+@pytest.mark.parametrize(('failure', 'dispatch', 'veto', 'status', 'reason'), [
+    ('revoked', 'unrecorded', None, 'blocked', 'recipient_authority_revoked'),
+    ('revoked', 'incomplete', None, 'unknown', None),
+    ('revoked', 'accepted', None, 'unknown', None),
+    ('revoked', 'unavailable', None, None, None),
+    ('revoked', 'unrecorded', 'stopped', 'blocked', 'stopped'),
+    ('revoked', 'unrecorded', 'expired', 'blocked', 'expired'),
+    ('identity', 'unrecorded', None, None, None),
+    ('io', 'unrecorded', None, None, None),
+])
+def test_campaign_recipient_reports_revocation_only_before_native_reservation(monkeypatch, failure, dispatch, veto,
+                                                                           status, reason):
+    from contextlib import nullcontext
+
+    pytest.importorskip('temporalio')
+    from ergora.agents import runs
+    from ergora.campaigns import recipient as delivery
+
+    selected = {'session_id': 'session', 'parent_run_id': 'parent', 'intent_id': 'original',
+                'prompt': 'Read the original result.', 'timeout_seconds': 20}
+    intent = {'wake_id': 'original-wake'}
+    opening = {'project_revision': 1, 'plan': {'tasks': [{'recipient': selected, 'readback': {}}]}}
+    attempt = {'intent': intent, 'native_run_id': 'original-run'}
+    saved = {}
+
+    def write(name, value, *, before_publish):
+        before_publish()
+        saved[name] = value
+
+    files = SimpleNamespace(home=None, project='demo', load=lambda: (opening, 'start', 'run'),
+                            _read=saved.get, write=write)
+    gate = SimpleNamespace(admission=nullcontext, require_open=lambda: None, reference={}, blocker=lambda: veto)
+    monkeypatch.setattr(delivery, 'verify_wake_intent', lambda *args: None)
+    monkeypatch.setattr(delivery, 'State', lambda *args: None)
+    monkeypatch.setattr(delivery, 'attempt_record', lambda *args: attempt)
+    monkeypatch.setattr(delivery, 'RecipientGate', lambda *args: gate)
+    reads = iter(('unrecorded', dispatch))
+
+    def read_receipt(*args):
+        observed = next(reads)
+        if observed == 'unavailable':
+            raise OSError('Continuation read unavailable')
+        return {'run_id': 'original-run', 'dispatch': observed}
+
+    def refuse(*args, **kwargs):
+        if failure == 'revoked':
+            raise runs._SessionAuthorityRevoked('Original role generation changed')
+        if failure == 'identity':
+            raise ValueError('Original repository identity differs')
+        raise OSError('Native continuation read unavailable')
+
+    monkeypatch.setattr(runs, 'continuation_receipt', read_receipt)
+    monkeypatch.setattr(runs, 'continue_session', refuse)
+    activity = delivery.CodexRecipient(files, opening, 'start', 'run', read_wake_history=None)
+    if status is None:
+        error_type = ValueError if failure == 'identity' else OSError
+        with pytest.raises(error_type) as error:
+            activity._deliver(intent)
+        assert type(error.value) is error_type
+    else:
+        observed = activity._deliver(intent)
+        expected = {'status': status, 'native_run_id': 'original-run'}
+        if reason is not None:
+            expected['reason'] = reason
+        assert observed == expected
+    assert saved == {'recipient-attempt': attempt}
+
 @pytest.mark.parametrize(('fence', 'wake_conflict', 'local', 'expected'), (
     ('stopped', True, False, 'unknown'),
     ('expired', True, False, 'unknown'),

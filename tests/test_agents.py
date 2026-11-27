@@ -799,9 +799,16 @@ def test_related_binding_rebind_and_restore_does_not_restore_native_authority(na
     current = projects.bind(state, 'demo', 'implementer', original['bindings']['implementer'], changed['revision'])
     summary = runs.inspect_session(state, 'demo', first['id'])
     assert not summary['can_continue'] and 'authority revision' in summary['reason']
-    with pytest.raises(ValueError, match='authority revision'):
+    with pytest.raises(runs._SessionAuthorityRevoked) as revoked:
         runs.continue_session(state, 'demo', first['id'], first['id'], 'stale authority',
                               expected_revision=current['revision'], intent_id='stale-authority', timeout=10)
+    assert str(revoked.value) == 'Project authority revision or repository identity changed; start a new session'
+    context = runs._read_session_context(state, first)
+    older_project = projects.native_authority_revision(current, context['role']) + 1
+    for changed in ({'repo_identity': [0, 0]}, {'authority_revision': older_project}):
+        with pytest.raises(ValueError) as unverifiable:
+            runs._validate_session_authority(state, {**context, **changed})
+        assert type(unverifiable.value) is ValueError and str(unverifiable.value) == str(revoked.value)
     assert len((repo / 'native-calls.jsonl').read_text().splitlines()) == 1
 
 
@@ -833,12 +840,72 @@ def test_campaign_recipient_rejects_a_consumed_parent_before_native_reservation(
     parent = original['id']
     assert runs.continue_session(state, 'demo', parent, parent, 'already authorized follow-up',
         expected_revision=revision, intent_id='existing-turn', timeout=10)['status'] == 'succeeded'
-    monkeypatch.setattr(runs.RecipientGate, 'load', lambda *args: SimpleNamespace(require_open=lambda: None))
+    gate = SimpleNamespace(require_open=lambda: None, require_turn_context=lambda *args: None)
+    monkeypatch.setattr(runs.RecipientGate, 'load', lambda *args: gate)
     with pytest.raises(runs.RecipientBlocked, match='stale_parent'):
         runs.continue_session(state, 'demo', parent, parent, 'the frozen Campaign prompt', expected_revision=revision,
                               intent_id='campaign-intent', campaign_recipient={'original': True}, timeout=10, wait_for_slot=True)
     assert runs.continuation_receipt(state, 'demo', parent, parent, 'campaign-intent')['dispatch'] == 'unrecorded'
     assert len((repo / 'native-calls.jsonl').read_text().splitlines()) == 2
+
+
+@pytest.mark.parametrize(('altered', 'message'), [
+    ({'context_digest': 'b' * 64}, 'frozen Campaign recipient'),
+    ({'role': 'reviewer'}, 'frozen Campaign recipient'),
+    ({'native_id': 'different-native'}, 'frozen Campaign recipient'),
+    ({'expected_revision': 2}, 'frozen Campaign recipient'),
+    ({'status': 'unknown'}, 'Select the latest stopped turn'),
+    ({'execution_stopped': False}, 'Select the latest stopped turn'),
+    ({'native_id': None}, 'Select the latest stopped turn'),
+    ({'latest_id': 'successor'}, 'Select the latest stopped turn'),
+    ({'latest_id': 'successor', 'unverified_authority': True}, 'Original repository identity is unavailable'),
+    ({}, 'Original role generation advanced'),
+])
+def test_campaign_recipient_requires_original_parent_before_reporting_revocation(tmp_path, monkeypatch,
+                                                                                altered, message):
+    from contextlib import nullcontext
+    from types import SimpleNamespace
+
+    from ergora.agents import runs
+
+    gate = object.__new__(runs.RecipientGate)
+    gate.binding = {'context_digest': 'a' * 64, 'role': 'implementer', 'native_id': 'original-native'}
+    gate.attempt = {'native_run_id': runs._continuation_run_id('session', 'intent')}
+    gate.declaration = {'session_id': 'session', 'parent_run_id': 'parent', 'intent_id': 'intent',
+                        'prompt': 'Read the result.', 'timeout_seconds': 20}
+    gate.opening = {'project_revision': 1}
+    gate.reference = {'original': True}
+    gate.require_open = lambda: None
+    parent = {'id': 'parent', 'session': {'id': 'session'},
+              'context_digest': altered.get('context_digest', gate.binding['context_digest']),
+              'status': altered.get('status', 'succeeded'),
+              'execution_stopped': altered.get('execution_stopped', True),
+              'native_session': {'id': altered.get('native_id', gate.binding['native_id'])}}
+    turns = [parent]
+    if 'latest_id' in altered:
+        turns.append({**parent, 'id': altered['latest_id']})
+    authority_reads = []
+
+    def observe_authority(*args):
+        authority_reads.append(True)
+        if altered.get('unverified_authority'):
+            raise ValueError('Original repository identity is unavailable')
+        raise runs._SessionAuthorityRevoked('Original role generation advanced')
+
+    monkeypatch.setattr(runs.native_sources, 'find_run',
+                        lambda *args: parent if args[-1] == 'parent' else None)
+    monkeypatch.setattr(runs.RecipientGate, 'load', lambda *args: gate)
+    monkeypatch.setattr(runs, 'file_lock', lambda *args, **kwargs: nullcontext())
+    monkeypatch.setattr(runs, '_session_turns', lambda *args: turns)
+    monkeypatch.setattr(runs, '_read_session_context', lambda *args: {'role': altered.get('role', 'implementer')})
+    monkeypatch.setattr(runs, '_validate_session_authority', observe_authority)
+    with pytest.raises(ValueError, match=message) as caught:
+        runs.continue_session(SimpleNamespace(root=tmp_path), 'demo', 'session', 'parent', 'Read the result.',
+                              expected_revision=altered.get('expected_revision', 1), intent_id='intent',
+                              timeout=20, wait_for_slot=True, campaign_recipient={'original': True})
+    assert authority_reads == ([] if altered.keys() & {'context_digest', 'role'} else [True])
+    assert type(caught.value) is (ValueError if altered else runs._SessionAuthorityRevoked)
+    assert not (tmp_path / 'runs').exists()
 
 
 def test_campaign_recipient_slot_timeout_leaves_the_original_intent_unreserved(native_session_case, monkeypatch):

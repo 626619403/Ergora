@@ -1032,15 +1032,22 @@ def _read_session_context(state, root):
     return native_sources.packet(folder, 'context.json')
 
 
+class _SessionAuthorityRevoked(ValueError):
+    """The verified native session's original role authority generation changed."""
+
+
 def _validate_session_authority(state, context):
     project = state.project(context['project'])
     repo = Path(project['repo'])
     details = repo.stat(follow_symlinks=False)
     current_revision = projects.native_authority_revision(project, context['role'])
     expected_revision = context.get('authority_revision', context['project_revision'])
-    if (current_revision != expected_revision or project['repo'] != context['repo']
-            or is_link(repo) or [details.st_dev, details.st_ino] != context['repo_identity']):
-        raise ValueError('Project authority revision or repository identity changed; start a new session')
+    changed = 'Project authority revision or repository identity changed; start a new session'
+    if (project['repo'] != context['repo'] or is_link(repo) or [details.st_dev, details.st_ino] != context['repo_identity']
+            or type(expected_revision) is not int or not 1 <= expected_revision <= current_revision):
+        raise ValueError(changed)
+    if current_revision > expected_revision:
+        raise _SessionAuthorityRevoked(changed)
     requested = projects.effective_configuration(project)['layers'][context['role']]['binding']
     if requested != context['requested_binding']:
         raise ValueError('Current role binding differs from the frozen session')
@@ -1432,22 +1439,34 @@ def continue_session(state: State, project_id: str, session_id: str, parent_run_
             raise ValueError(f'This session reached its {_MAX_SESSION_TURNS}-turn limit; no new turn was reserved')
         latest = turns[-1]
         context = _read_session_context(state, turns[0])
-        _validate_session_authority(state, context)
+        if gate is not None:
+            gate.require_turn_context(turns[0]['context_digest'], context['role'])
+        revocation = None
+        try:
+            _validate_session_authority(state, context)
+        except _SessionAuthorityRevoked as error:
+            if gate is None:
+                raise
+            revocation = error
         try:
             native_sources.turn_folder(state, ident).lstat()
         except FileNotFoundError:
             pass
         else:
             raise ValueError('Original continuation evidence has no verified reservation; read its continuation receipt')
-        if gate is not None and latest['id'] != parent_run_id:
+        if gate is not None and latest['id'] != parent_run_id and revocation is None:
             raise RecipientBlocked('stale_parent')
         if (latest['id'] != parent_run_id or latest.get('status') in ('unknown', 'reserved', 'running')
                 or latest.get('execution_stopped') is not True
                 or not latest.get('native_session', {}).get('id')):
             raise ValueError('Select the latest stopped turn with its saved native UUID; consumed or unknown parents cannot be dispatched')
         if gate is not None:
-            gate.require_turn(state, ident, session_id, turns[0]['context_digest'], context['role'],
-                              latest['native_session']['id'], submitted)
+            selected = (ident, session_id, turns[0]['context_digest'], context['role'],
+                        latest['native_session']['id'], submitted)
+            if revocation is not None:
+                gate.require_turn_identity(*selected)
+                raise revocation
+            gate.require_turn(state, *selected)
         return _reserve_session_turn(state, project_id, session_id, latest, ident, len(turns), prompt, timeout,
                                      clock or budget_clock.authorize(timeout), context, turns[0]['context_digest'],
                                      submitted, lock, check_admission_deadline=wait_for_slot, gate=gate)

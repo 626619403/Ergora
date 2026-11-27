@@ -23,6 +23,7 @@ from ergora.storage.state import State, file_lock
 _SET_LEASE = 1024
 _GET_LEASE = 1025
 _SET_LEASE_SIGNAL = 10  # F_SETSIG
+_TURN_MISMATCH = 'Native turn does not match the frozen Campaign recipient, context and submission'
 
 
 class RecipientBlocked(ValueError):
@@ -231,11 +232,18 @@ class RecipientGate:
                 'expected_revision': self.opening['project_revision'], 'timeout': selected['timeout_seconds'],
                 'intent_id': selected['intent_id'], 'campaign_recipient': self.reference}
 
-    def require_turn(self, state, ident, session, digest, role, native_id, submitted):
+    def require_turn_context(self, digest, role):
+        if digest != self.binding['context_digest'] or role != self.binding['role']:
+            raise ValueError(_TURN_MISMATCH)
+
+    def require_turn_identity(self, ident, session, digest, role, native_id, submitted):
+        self.require_turn_context(digest, role)
         if (ident != self.attempt['native_run_id'] or session != self.declaration['session_id']
-                or digest != self.binding['context_digest'] or role != self.binding['role']
                 or native_id != self.binding['native_id'] or submitted != self.submission()):
-            raise ValueError('Native turn does not match the frozen Campaign recipient, context and submission')
+            raise ValueError(_TURN_MISMATCH)
+
+    def require_turn(self, state, ident, session, digest, role, native_id, submitted):
+        self.require_turn_identity(ident, session, digest, role, native_id, submitted)
         require_check_project(state, self.opening)
 
     @contextmanager

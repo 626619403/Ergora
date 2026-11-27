@@ -50,10 +50,15 @@ class CodexRecipient:
                                   recipient['prompt'], expected_revision=opening['project_revision'],
                                   intent_id=recipient['intent_id'], timeout=recipient['timeout_seconds'],
                                   wait_for_slot=True, campaign_recipient=gate.reference)
-        except (RecipientBlocked, runs._SessionSlotTimeout) as error:
+        except (RecipientBlocked, runs._SessionSlotTimeout, runs._SessionAuthorityRevoked) as error:
             if runs.continuation_receipt(*selection)['dispatch'] != 'unrecorded':
                 return {'status': 'unknown', 'native_run_id': original['run_id']}
-            reason = 'session_slot_timeout' if isinstance(error, runs._SessionSlotTimeout) else str(error)
+            if isinstance(error, runs._SessionAuthorityRevoked):
+                reason = gate.blocker() or 'recipient_authority_revoked'
+            elif isinstance(error, runs._SessionSlotTimeout):
+                reason = 'session_slot_timeout'
+            else:
+                reason = str(error)
             return {'status': 'blocked', 'native_run_id': original['run_id'], 'reason': reason}
         outcome = runs.continuation_receipt(*selection)
         return {'status': 'observed', 'native_run_id': outcome['run_id']}
