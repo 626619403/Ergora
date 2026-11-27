@@ -4,7 +4,7 @@ English · [Documentation](../README.md) · [Architecture contract](current.md)
 
 Ergora is a control plane for project-bound specialist Agents, workflow composition, formal software delivery, training experiments and reusable improvements. Definitions describe reusable behavior. Each operation freezes its own inputs, checks its execution authority and produces evidence under its original identity.
 
-This tour uses runtime revision `9839d2765cae034fce7bf242c796e599c0969040` and its `src` tree `f84311ffaa18a3b52516de0d0e75eeae8b24413b` as the exact source reference. Packages, installed applications and local definition libraries have separate identities. The [current plan](../PLAN.md) and its delivery records track review, CI and installation status.
+This tour uses runtime revision `a58b6e7c98d0b361565d778be99c7751e5c42772` and its `src` tree `d6b6df490aa2e17a050d99e80ea65c931f1624aa` as the exact source reference. Packages, installed applications and local definition libraries have separate identities. The [current plan](../PLAN.md) and its delivery records track review, CI and installation status.
 
 ## The whole system
 
@@ -62,8 +62,10 @@ flowchart TB
   CampaignRun --> CampaignRead["Optional timer or immediate due read<br/>One guarded status Activity"]
   CampaignRead -->|fixed-check wake| Ready["One verified original readiness<br/>Guarded result or opted-in observation"]
   CampaignRead -. "managed full result with optional live wait" .-> TrainingRoot["Observed training root<br/>Result and separate lease evidence"]
-  CampaignRead -. "full-result read heartbeat timeout" .-> FullResultRecovery["Opt-in full-result receipt-only Activity<br/>Same Run, read window and STOP"]
+  CampaignRead -. "heartbeat timeout with durable full-result receipt" .-> FullResultRecovery["Opt-in full-result receipt-only Activity<br/>Same Run, read window and STOP"]
   FullResultRecovery -. "verified saved result and cleanup" .-> TrainingRoot
+  CampaignRead -. "heartbeat timeout and confirmed loss before receipt" .-> FullResultReobservation["Opt-in guarded re-observation<br/>Same Job, attempt, cutoff and STOP"]
+  FullResultReobservation -. "verified original result" .-> TrainingRoot
   CampaignRead -. "guarded managed screen" .-> ScreenRoot["Observed screen decision<br/>Original outcome and separate lease"]
   CampaignRead -. "guarded owner release" .-> ReleaseRoot["Observed local owner release<br/>Original Run, attempt, session and lease"]
   CampaignRead -. "release read heartbeat timeout" .-> ReleaseRecovery["Opt-in receipt-only Activity<br/>Same Run, read window and STOP"]
@@ -97,6 +99,7 @@ flowchart TB
   Rollover -. "first and current Run" .-> CampaignStatus
   CampaignRead -. "verified completion or full-result read terminal" .-> CampaignStatus
   FullResultRecovery -. "full-result timeout and recovery events" .-> CampaignStatus
+  FullResultReobservation -. "original interruption and new read events" .-> CampaignStatus
   TrainingRoot -. "verified root result" .-> CampaignStatus
   ScreenRoot -. "retained decision evidence" .-> CampaignStatus
   ReleaseRoot -. "original release receipt" .-> CampaignStatus
@@ -190,7 +193,11 @@ For the original full-result read Activity, `readback_terminal` reports a verifi
 
 On a full-result task with a declared recipient, set `recover_full_result_receipt: true` at the task level to allow one separate receipt-only Activity after the original heartbeat timeout. It verifies the durable full-result receipt, original reader reap and process identities on the same Run under the original read cutoff and STOP fence. A missing or incomplete durable receipt leaves the read unavailable. History verification requires a valid recovery completion timestamp strictly before the original read deadline.
 
-`readback_terminal` retains the original heartbeat timeout. `readback_completion.recovery_history` links that timeout to the recovery Activity's schedule, start and completion. The accepted recovery completion supplies readiness for the declared recipient. The wake has its own `recipient.history`, and the native receipt records the continuation's start and cleanup. [Read one managed training full result](../improvement/campaigns.md#read-one-managed-training-full-result)
+`readback_terminal` retains the original heartbeat timeout. `readback_completion.recovery_history` links that timeout to the recovery Activity's schedule, start and completion. The accepted recovery completion supplies readiness for the declared recipient. The wake has its own `recipient.history`, and the native receipt records the continuation's start and cleanup.
+
+A task with `wait_for_live: true` and a declared recipient can select `reobserve_full_result_after_reader_loss: true` as its sole full-result follow-up. After the original heartbeat timeout, admission requires proof that the original Worker and guard exited, the guard reaped the interrupted reader after an unsuccessful exit, and the result, cancellation and STOP records are absent. A successful original reader with a missing receipt leaves the result unavailable. The follow-up Activity heartbeats while waiting for the original Campaign lock under the original wall and monotonic cutoffs and STOP fence. It rechecks the interruption proof under the lock before saving one attempt. Only the supervised read is repeated, using the same original training Job and attempt.
+
+`readback_completion` identifies the new read with `reobservation_activity_id` and `reobservation_interruption_sha256`. Its `recovery_history` links the original timeout to the re-observation schedule, start and completion. [Read one managed training full result](../improvement/campaigns.md#read-one-managed-training-full-result)
 
 An explicit `recipient` on that root opts in to one wake from the verified original training Activity. The existing local Codex recipient uses its authorized stopped parent and approved prompt under the same registered project revision. The native gate checks the original result and wake schedule before reserving the turn under the original cutoff and STOP fence. Local acceptance used loopback Temporal, a registered CPU attempt and a provider-free Codex fixture to verify one wake Activity, one reservation, one native start and confirmed reap. [Training-result recipient gate](../../src/ergora/campaigns/recipient_gate.py)
 
@@ -200,7 +207,7 @@ A `training_gpu_release` root opts in to observing one original local pool relea
 
 A release task with a declared recipient can set `recover_release_receipt: true` to authorize one separate receipt-only Activity after the original read Activity times out on heartbeat. It verifies the durable owner receipt and original reader cleanup on the same Run under the original read window and STOP fence. History verification requires a valid recovery completion timestamp strictly before the original read deadline. `readback_completion.recovery_history` retains the original timeout event ID and the recovery Activity event IDs. The verified receipt can wake the declared recipient under its original authorization.
 
-For a verified original readback, `readback_completion.timing` shows the available schedule, Worker start and accepted completion event IDs and timestamps. Schedule-to-start and start-to-completion spans use nanoseconds from one Temporal History clock. Missing, malformed or reversed endpoints leave the affected span null. Wake timing uses `recipient.history.timing`, with the accepted recovery completion as readiness on the receipt-only path. Use the pool receipt for lease release and the native receipt for payload start and cleanup. [Readback and wake timing](../improvement/campaigns.md#authorize-one-local-codex-recipient)
+For a verified original readback, `readback_completion.timing` shows the available schedule, Worker start and accepted completion event IDs and timestamps. Schedule-to-start and start-to-completion spans use nanoseconds from one Temporal History clock. Missing, malformed or reversed endpoints leave the affected span null. Wake timing uses `recipient.history.timing`. When readback uses receipt recovery or re-observation, the accepted follow-up completion supplies the wake's readiness event. Use the pool receipt for lease release and the native receipt for payload start and cleanup. [Readback and wake timing](../improvement/campaigns.md#authorize-one-local-codex-recipient)
 
 The original read cutoff and Campaign STOP fence govern the reader and publication of its observation. A saved local STOP closes new dependent eligibility and leaves verified result evidence readable, including through original online History after Worker exit. The registered training executor keeps execution control and the original resource owner confirms lease release. [Guarded Campaign readback](../../src/ergora/campaigns/readback.py)
 
