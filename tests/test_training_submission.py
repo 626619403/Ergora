@@ -1116,6 +1116,7 @@ def configuration_execution(configuration_project, cycle_selection, service, tmp
     state, definition, runtime, prefix, write, selection = cycle_selection
     options = dict(getattr(request, 'param', {}))
     minimum_saving = options.pop('test_minimum_saving', .001)
+    item['runner']['timeout_seconds'] = options.pop('test_runner_timeout_seconds', item['runner']['timeout_seconds'])
     if options.pop('test_hold_cpu', False):
         from ergora.training.configuration import source_reference
 
@@ -1179,7 +1180,7 @@ def run(context, request, output):
     return item
 
 
-def run_configuration_execution(item, *, wall=60, cleanup=10, on_requested=None):
+def run_configuration_execution(item, *, wall=60, cleanup=10, on_requested=None, stop_wait_seconds=20):
     import ergora.training.cycles as training_cycles
 
     state, definition, runtime, authorized = authorize_budget(item['selection'], item['tmp_path'],
@@ -1196,7 +1197,7 @@ def run_configuration_execution(item, *, wall=60, cleanup=10, on_requested=None)
             item['submission']['run_id'], item['native_sha256'], confirm=True)
         if on_requested is not None:
             on_requested(item)
-        until = time.monotonic() + 20
+        until = time.monotonic() + stop_wait_seconds
         while not (job / 'managed-execution/stopped.json').exists() and time.monotonic() < until:
             time.sleep(.03)
         assert (job / 'managed-execution/stopped.json').exists(), 'Original S must reap the actual native executor'
@@ -1859,21 +1860,45 @@ def test_configuration_driver_manual_native_entry_has_no_execution_authority(con
 
 
 @pytest.mark.parametrize('installation', ['managed'], indirect=True)
-@pytest.mark.parametrize('configuration_execution', [{'fault': 'reader-timeout'}], indirect=True)
-@pytest.mark.parametrize('boundary', ['explicit-fence', 'work-deadline'])
+@pytest.mark.parametrize('boundary,configuration_execution', [
+    pytest.param('explicit-fence', {'fault': 'reader-timeout'}, id='explicit-fence-configuration_execution0'),
+    pytest.param('work-deadline', {'fault': 'reader-timeout', 'test_runner_timeout_seconds': 60},
+                 id='work-deadline-configuration_execution0'),
+], indirect=['configuration_execution'])
 def test_configuration_driver_stops_the_actual_reader_without_returning_its_launch(configuration_execution, boundary):
+    from datetime import datetime, timedelta
+    from ergora.runtime import budget_clock
+
     item = configuration_execution
-    original_clock = None
+    work_deadline = boundary == 'work-deadline'
+    # Real admission and interpreter startup consume the original clock. Leave
+    # headroom for both while the fixture's runner cap stays above that clock.
+    wall, cleanup = (32, 5) if work_deadline else (60, 10)
+    authorization = item['state'].root / 'training-cycles/demo/budget/authorization.json'
+    original_authorization = clock = reader = None
 
     def after_request(active):
-        nonlocal original_clock
-        until = time.monotonic() + 10
-        while not (active['markers'] / 'prepare.jsonl').exists() and time.monotonic() < until:
-            time.sleep(.02)
-        assert (active['markers'] / 'prepare.jsonl').exists(), 'The real reader must be running at the boundary'
-        authorization = active['state'].root / 'training-cycles/demo/budget/authorization.json'
-        original_clock = authorization.read_bytes()
-        if boundary == 'explicit-fence':
+        nonlocal original_authorization, clock, reader
+        original_authorization = authorization.read_bytes()
+        clock = json.loads(original_authorization)['clock']
+        marker = active['markers'] / 'prepare.jsonl'
+        allowance = budget_clock.remaining(clock, wall, cleanup) if work_deadline else 10
+        until = time.monotonic() + allowance
+        rows = []
+        while not rows and time.monotonic() < until:
+            if marker.exists():
+                rows = marker.read_text().splitlines()
+            if not rows:
+                time.sleep(.02)
+        assert len(rows) == 1, 'The real reader must start once before the boundary'
+        prepared = json.loads(rows[0])
+        original_reader = prepared['process_identity']
+        reader = {**original_reader, 'start_ticks': str(original_reader['start_ticks'])}
+        assert prepared['pid'] == reader['pid']
+        assert processes.identity(reader['pid']) == reader
+        if work_deadline:
+            assert budget_clock.remaining(clock, wall, cleanup) > 0
+        else:
             installation = Path(active['definition']['execution']['installation'])
             environment = {**os.environ,
                 'AGENTFLOW_CONFIG_DIR': active['definition']['execution']['config_directory'],
@@ -1891,15 +1916,19 @@ asyncio.run(create_adapter().cancel_job_group(Job(binding_from(record['experimen
                 str(active['job'] / 'request.json')], env=environment, capture_output=True, text=True, timeout=10)
             assert fenced.returncode == 0, fenced.stderr
 
-    observed = run_configuration_execution(item, wall=18 if boundary == 'work-deadline' else 60,
-                                           cleanup=5 if boundary == 'work-deadline' else 10,
-                                           on_requested=after_request)
+    observed = run_configuration_execution(item, wall=wall, cleanup=cleanup, on_requested=after_request,
+                                           stop_wait_seconds=wall if work_deadline else 20)
     assert observed['executor_stop_confirmed'] is True
     assert all(observed['records'][name] is not None for name in ('request', 'launch', 'attempt', 'ack', 'stopped'))
+    if work_deadline:
+        total_deadline = datetime.fromisoformat(clock['deadline_at'])
+        work_cutoff = total_deadline - timedelta(seconds=cleanup)
+        reaped_at = datetime.fromisoformat(observed['records']['stopped']['reaped_at'])
+        assert work_cutoff <= reaped_at <= total_deadline
     assert not (item['markers'] / 'first-work.jsonl').exists()
     assert not (item['job'] / 'run-output/evidence.json').exists()
     assert len((item['markers'] / 'prepare.jsonl').read_text().splitlines()) == 1
-    assert (item['state'].root / 'training-cycles/demo/budget/authorization.json').read_bytes() == original_clock
+    assert authorization.read_bytes() == original_authorization
     before = {path: path.read_bytes() for path in (item['job'] / 'managed-execution').iterdir() if path.is_file()}
     training.execution(item['state'], 'demo', 'alpha')
     training.submission(item['state'], 'demo', 'alpha')
@@ -1910,6 +1939,7 @@ asyncio.run(create_adapter().cancel_job_group(Job(binding_from(record['experimen
     assert len((item['markers'] / 'prepare.jsonl').read_text().splitlines()) == 1
     for name in ('supervisor', 'executor'):
         assert_budget_process_stopped(observed['records']['attempt'][name])
+    assert_budget_process_stopped(reader)
 
 
 @pytest.fixture
