@@ -84,6 +84,8 @@ def install():
             entities.ViewType = SimpleNamespace(ALL=3)
             sys.modules['mlflow.entities'] = entities
             return original_track(*args)
+        if diagnostic := os.environ.get('ERGORA_TEST_TRAINING_TRACKING_STDOUT'):
+            print(diagnostic)
         return 'test-only-tracking-leaf-not-a-service'
 
     training_executor.track = track

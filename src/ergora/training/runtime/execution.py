@@ -1,7 +1,7 @@
 """Explicit execution and parallel supervision behind the existing training owners."""
 
 import asyncio
-from contextlib import ExitStack
+from contextlib import ExitStack, redirect_stdout
 import getpass
 import hashlib
 import json
@@ -389,6 +389,8 @@ def native_main(installation: str) -> None:
         if context['authorization']['schema_version'] == 5 and not (chain.folder.parent / 'result.json').exists():
             parent = execution_evidence.validate_context(context, chain.load())
             admissions.enter_context(parent.permission())
-        print(json.dumps(training_executor.process(chain.folder.parent, admit=admit,
-                         before_runner=before_runner, track_full=track_full),
-                         ensure_ascii=False, allow_nan=False))
+        # Keep Python diagnostics from the native callbacks out of the result stream.
+        with redirect_stdout(sys.stderr):
+            result = training_executor.process(chain.folder.parent, admit=admit,
+                                               before_runner=before_runner, track_full=track_full)
+        print(json.dumps(result, ensure_ascii=False, allow_nan=False))

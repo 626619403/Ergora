@@ -1358,8 +1358,10 @@ def test_observe_original_pending_managed_execution_during_cpu_work(configuratio
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Full result uses the original Linux supervised reader')
 @pytest.mark.parametrize('installation', ['managed'], indirect=True)
-def test_observe_exact_managed_full_result(configuration_execution, tmp_path):
+def test_observe_exact_managed_full_result(configuration_execution, tmp_path, monkeypatch):
     item = configuration_execution
+    diagnostic = 'Tracking diagnostic from the original executor'
+    monkeypatch.setenv('ERGORA_TEST_TRAINING_TRACKING_STDOUT', diagnostic)
     execution = run_configuration_execution(item)
     job = item['job']
     managed = job / 'managed-execution'
@@ -1453,12 +1455,15 @@ print(json.dumps({**answer, 'cleanup': cleanup, 'calls': len(calls),
         return checked
 
     accepted = observed()
+    assert 'receipt' in accepted, accepted
     receipt = accepted['receipt']
     assert accepted['calls'] == 1 and len(accepted['cleanup']) == 1
     assert receipt['status'] == 'verified' and receipt['locator'] == locator
     assert receipt['native_result_state'] == 'SUCCEEDED' and receipt['local_gpu_lease'] is None
     assert receipt['native_result_sha256'] == hashlib.sha256(result.read_bytes()).hexdigest()
     assert receipt['terminal_output_sha256'] == hashlib.sha256(terminal.read_bytes()).hexdigest()
+    assert json.loads(terminal.read_bytes()) == json.loads(result.read_bytes())
+    assert diagnostic in terminal.with_name('stderr.txt').read_text()
     assert receipt['gate_report_sha256'] == hashlib.sha256(gate.read_bytes()).hexdigest()
     assert receipt['tracking_attempt_sha256'] == hashlib.sha256(checkpoint.read_bytes()).hexdigest()
     assert receipt['evidence_sha256'] == json.loads(gate.read_bytes())['evidence_sha256']
