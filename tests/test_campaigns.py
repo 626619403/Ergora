@@ -1940,6 +1940,7 @@ raise SystemExit(main())
 @pytest.mark.skipif(not os.environ.get('ERGORA_TEST_TEMPORAL_BIN'), reason='Requires the optional local Temporal CLI')
 def test_rollover_keeps_the_original_wait_and_fences_unverified_successor(registration, tmp_path, monkeypatch):
     pytest.importorskip('temporalio')
+    from temporalio.api.enums.v1 import EventType
     from temporalio.client import WorkflowHandle
     from temporalio.service import RPCError, RPCStatusCode
     from temporalio.testing import WorkflowEnvironment
@@ -2046,6 +2047,23 @@ def test_rollover_keeps_the_original_wait_and_fences_unverified_successor(regist
                 first_handle = client.get_workflow_handle(opening['workflow_id'], run_id=first)
                 current_handle = client.get_workflow_handle(opening['workflow_id'], run_id=current)
                 before = (await current_handle.fetch_history()).events
+
+                for run_id, field, reason in (
+                        (first, 'workflow_execution_started_event_attributes', 'missing its first event'),
+                        (first, 'workflow_execution_continued_as_new_event_attributes', 'lacks its native rollover close'),
+                        (current, 'workflow_execution_started_event_attributes', 'lacks its native start')):
+                    async def wrong_event_type(handle, *args, **kwargs):
+                        async for event in original_fetch(handle, *args, **kwargs):
+                            if handle.run_id == run_id and event.HasField(field):
+                                copied = type(event).FromString(event.SerializeToString())
+                                copied.event_type = EventType.EVENT_TYPE_TIMER_FIRED
+                                event = copied
+                            yield event
+
+                    with monkeypatch.context() as patch:
+                        patch.setattr(WorkflowHandle, 'fetch_history_events', wrong_event_type)
+                        with pytest.raises(ValueError, match=reason):
+                            await runtime.current(client, saved, opening, attempt, first)
 
                 async def altered(handle, *args, **kwargs):
                     async for event in original_fetch(handle, *args, **kwargs):

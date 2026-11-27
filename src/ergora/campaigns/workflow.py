@@ -984,7 +984,8 @@ async def original(client, opening, attempt, run_id):
     if description.id != opening['workflow_id'] or await description.memo() != expected_memo:
         raise ValueError('Campaign workflow ID or original dispatch memo differs')
     async for event in handle.fetch_history_events(page_size=1, rpc_timeout=RPC_TIMEOUT):
-        if event.event_id != 1 or not event.HasField('workflow_execution_started_event_attributes'):
+        if (event.event_id != 1 or event.event_type != EventType.EVENT_TYPE_WORKFLOW_EXECUTION_STARTED
+                or not event.HasField('workflow_execution_started_event_attributes')):
             break
         started = event.workflow_execution_started_event_attributes
         if (started.workflow_type.name != WORKFLOW_TYPE or started.task_queue.name != opening['task_queue']
@@ -1034,7 +1035,8 @@ async def rollover_successor(client, first, opening, attempt, waiting_command, r
         for name, (_, require_receipt) in commands.items():
             await _read_update_event(converter, event, entries[name], name, require_receipt)
         last = event
-    if last is None or not last.HasField('workflow_execution_continued_as_new_event_attributes'):
+    if (last is None or last.event_type != EventType.EVENT_TYPE_WORKFLOW_EXECUTION_CONTINUED_AS_NEW
+            or not last.HasField('workflow_execution_continued_as_new_event_attributes')):
         raise ValueError('Campaign predecessor lacks its native rollover close event')
     waiting, = entries[CHECK_UPDATE].values()
     committed, = entries[ROLLOVER_UPDATE].values()
@@ -1066,6 +1068,7 @@ async def rollover_successor(client, first, opening, attempt, waiting_command, r
         raise ValueError('Campaign observation did not select its one original rollover successor')
     first_event = await anext(current.fetch_history_events(page_size=1, rpc_timeout=RPC_TIMEOUT), None)
     if (first_event is None or first_event.event_id != 1
+            or first_event.event_type != EventType.EVENT_TYPE_WORKFLOW_EXECUTION_STARTED
             or not first_event.HasField('workflow_execution_started_event_attributes')):
         raise ValueError('Campaign rollover successor lacks its native start event')
     started = first_event.workflow_execution_started_event_attributes
