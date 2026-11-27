@@ -153,8 +153,13 @@ def validate_tasks(tasks):
         if not isinstance(parents, list) or not all(safe_id(item) for item in parents) or len(set(parents)) != len(parents):
             raise ValueError('Campaign task dependencies require distinct safe IDs')
         if training_readback_task(task):
+            source_keys = {'kind', 'locator'}
+            if 'wait_for_live' in source:
+                if source['kind'] != TRAINING_RESULT_SOURCE or source['wait_for_live'] is not True:
+                    raise ValueError('Campaign live wait requires an explicitly selected managed full training result')
+                source_keys.add('wait_for_live')
             if (parents or 'readback' not in task or 'wake_on_observe' in task
-                    or source.keys() != {'kind', 'locator'} or not isinstance(source['locator'], dict)):
+                    or source.keys() != source_keys or not isinstance(source['locator'], dict)):
                 raise ValueError('Campaign training result requires one root task with a guarded readback and exact locator')
             try:
                 training_readback_action(task)
@@ -227,7 +232,7 @@ def training_readback_action(task):
         return TrainingScreenDecision(**task['source']['locator'])
     from ergora.runtime.action_observations import TrainingFullResult
 
-    return TrainingFullResult(**task['source']['locator'])
+    return TrainingFullResult(**task['source']['locator'], wait_for_live=task['source'].get('wait_for_live', False))
 
 
 def has_pending_checks(opening):

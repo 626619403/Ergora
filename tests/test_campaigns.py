@@ -2164,6 +2164,16 @@ def test_training_result_source_only_accepts_its_guarded_full_result():
             validate_tasks([{**task, **extra}])
     with pytest.raises(ValueError, match='complete original locator'):
         validate_tasks([{**task, 'source': {**task['source'], 'locator': {'experiment_id': 'alpha'}}}])
+    live = {**task, 'source': {**task['source'], 'wait_for_live': True}}
+    validate_tasks([{**live, 'recipient': recipient}])
+    for invalid in (False, 1, None):
+        with pytest.raises(ValueError, match='explicitly selected managed full training result'):
+            validate_tasks([{**task, 'source': {**task['source'], 'wait_for_live': invalid}}])
+    for kind in ('training_screen_result', 'training_gpu_release'):
+        with pytest.raises(ValueError, match='explicitly selected managed full training result'):
+            validate_tasks([{**live, 'source': {**live['source'], 'kind': kind}}])
+    with pytest.raises(ValueError, match='complete original locator'):
+        validate_tasks([{**task, 'source': {**task['source'], 'locator': {**locator, 'wait_for_live': True}}}])
     with pytest.raises(ValueError, match='one original readback window'):
         validate_tasks([task, {**task, 'task_id': 'second'}])
 
@@ -2173,6 +2183,10 @@ def test_training_result_source_only_accepts_its_guarded_full_result():
     run, start = 'original-campaign-run', 'd'*64
     grant = readback_grant(opening, run, task, None)
     activity_id = readback_id(grant)
+    live_opening = {**opening, 'plan': {'tasks': [live, dependent]}}
+    live_grant = readback_grant(live_opening, run, live, None)
+    assert live_grant['source_sha256'] != grant['source_sha256']
+    assert readback_id(live_grant) != activity_id
     assert activity_id.startswith('training-full-result-readback:')
     assert 'waiting_receipt_sha256' not in grant
     assert fixed_task_state(opening, start, run, {})['fixed']['status'] == 'waiting_dependencies'

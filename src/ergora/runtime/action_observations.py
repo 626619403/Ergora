@@ -57,6 +57,13 @@ class _ManagedTrainingLocator:
 class TrainingFullResult(_ManagedTrainingLocator):
     """Observe a verified full training result."""
 
+    wait_for_live: bool = False
+
+    def __post_init__(self):
+        super().__post_init__()
+        if type(self.wait_for_live) is not bool:
+            raise ValueError('Training full-result live wait requires an explicit Boolean')
+
 
 @dataclass(frozen=True)
 class TrainingScreenDecision(_ManagedTrainingLocator):
@@ -129,8 +136,11 @@ def _managed_training_result(action, project, home, *, deadline, stop_requested,
         TrainingGpuRelease: (training_gpu_release, 'Training GPU release receipt'),
     }[type(action)]
     locator = asdict(action)
+    options = {}
+    if isinstance(action, TrainingFullResult) and locator.pop('wait_for_live'):
+        options['wait_for_live'] = True
     receipt = reader(project, home, locator, deadline=deadline, stop_requested=stop_requested,
-                     supervised_cleanup=supervised_cleanup)
+                     supervised_cleanup=supervised_cleanup, **options)
     _require_identity(receipt, {'project': project['id'], 'project_revision': project['revision'],
                                 'registration_sha256': project['registration']['sha256'], 'locator': locator},
                       description)

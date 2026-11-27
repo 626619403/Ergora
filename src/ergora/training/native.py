@@ -333,9 +333,11 @@ def training_execution(project: dict, home: Path, operation: str, payload: dict,
 
 
 def training_full_result(project: dict, home: Path, locator: dict, *, deadline: float,
-                         stop_requested, supervised_cleanup) -> dict:
+                         stop_requested, supervised_cleanup, wait_for_live: bool = False) -> dict:
+    if type(wait_for_live) is not bool:
+        raise ValueError('Training full-result live wait requires an explicit Boolean')
     return _managed_training_observation(project, home, locator, 'managed-full-result', 'full-result',
-                                         deadline, stop_requested, supervised_cleanup)
+                                         deadline, stop_requested, supervised_cleanup, wait_for_live=wait_for_live)
 
 
 def training_screen_decision(project: dict, home: Path, locator: dict, *, deadline: float,
@@ -351,7 +353,7 @@ def training_gpu_release(project: dict, home: Path, locator: dict, *, deadline: 
 
 
 def _managed_training_observation(project, home, locator, operation, label, deadline, stop_requested,
-                                  supervised_cleanup):
+                                  supervised_cleanup, *, wait_for_live=False):
     """Observe one managed result from its dedicated single-reader supervisor."""
     from .materials import read_raw
 
@@ -362,7 +364,8 @@ def _managed_training_observation(project, home, locator, operation, label, dead
         raise ValueError(f'Training {label} observation requires its original reader deadline, STOP and cleanup owner')
     if project.get('_original_registration') is not None:
         raise ValueError(f'Training {label} observation requires the selected current registration')
-    if operation != 'managed-gpu-release':
+    waits = operation == 'managed-gpu-release' or wait_for_live
+    if not waits:
         deadline = min(deadline, time.monotonic() + 20)
 
     def stopped():
@@ -377,7 +380,7 @@ def _managed_training_observation(project, home, locator, operation, label, dead
     check_window()
     execution = project['registration']['definition']['execution']
     payload = {'operation': operation, 'project': project, 'control_home': str(home), 'locator': locator}
-    if operation == 'managed-gpu-release':
+    if waits:
         payload['reader_deadline'] = deadline
     environment, raw = _training_reader_request(execution['state_directory'], execution['config_directory'], payload)
     command = [sys.executable, '-P', '-S', '-c', 'from ergora.training.runtime.evidence import main;main()']

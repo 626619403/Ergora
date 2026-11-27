@@ -8,6 +8,7 @@ import math
 import os
 from pathlib import Path
 import sys
+import time
 
 from ergora.training.native import _training_records
 from ergora.training.materials import decode_record
@@ -170,6 +171,35 @@ def _selected_managed_result(project, locator, label):
     return chain, actual
 
 
+def _wait_for_managed_full_result(project, locator, chain, deadline):
+    """Observe the original supervisor through the executor's terminal publication."""
+    from ergora.runtime import processes
+
+    if type(deadline) not in (int, float) or not math.isfinite(deadline):
+        raise ValueError('Training full-result live wait requires the original reader deadline')
+    if chain.records['ack'] is None:
+        raise ValueError('Original full training result has no acknowledged managed executor')
+    supervisor = chain.records['attempt']['supervisor']
+    stopped_path = chain.folder / 'stopped.json'
+    while time.monotonic() < deadline:
+        try:
+            supervisor_live = processes.identity(supervisor['pid']) == supervisor
+        except (OSError, ValueError):
+            supervisor_live = False
+        # The supervisor owns publication after executor exit. Re-read after owner loss
+        # too, since it may have published and exited since the last sample.
+        if not supervisor_live or stopped_path.exists():
+            terminal, _ = _selected_managed_result(project, locator, 'full training')
+            if any(terminal.originals.get(path) != raw for path, raw in chain.originals.items()):
+                raise ValueError('Original full training attempt changed during observation')
+            if terminal.records['stopped'] is not None:
+                return terminal
+            if not supervisor_live:
+                raise ValueError('Original full training supervisor exited before publishing its terminal executor')
+        time.sleep(max(0, min(.05, deadline - time.monotonic())))
+    raise TimeoutError('Original training full-result read reached its deadline')
+
+
 def _managed_full_result(payload):
     """Return a bounded original local full result and independently observed resource disposition."""
     from ergora.training.materials import confirm_file
@@ -177,10 +207,11 @@ def _managed_full_result(payload):
 
     project = _TrainingProject(payload)
     chain, actual = _selected_managed_result(project, payload['locator'], 'full training')
-    request, stopped = (chain.records[key] for key in ('request', 'stopped'))
-    ident = chain.ident
     if not chain.requires_tracking_checkpoint() or protocol.managed_operation(chain.intent) != 'full-verify':
         raise ValueError('Original full verification requires its current managed tracking checkpoint')
+    if chain.records['stopped'] is None and 'reader_deadline' in payload:
+        chain = _wait_for_managed_full_result(project, actual, chain, payload['reader_deadline'])
+    request, stopped = (chain.records[key] for key in ('request', 'stopped'))
     if stopped is None:
         raise ValueError('Original full training result has no saved terminal executor')
     process = stopped['process']
@@ -188,7 +219,7 @@ def _managed_full_result(payload):
         raise ValueError('Original full training executor did not succeed')
 
     experiment = _training_records({'project': project.project['id'], 'repo': project.project['repo'],
-                                    'experiment_id': ident})['experiment']
+                                    'experiment_id': chain.ident})['experiment']
     native = experiment['result']
     if (experiment['execution']['operation'] != 'full-verify' or experiment['started'] is None
             or native is None or native['state'] != 'SUCCEEDED' or experiment['gate_report'] is None):
@@ -288,8 +319,6 @@ def _managed_screen_decision(payload):
 
 def _managed_gpu_release(payload):
     """Wait only for the existing original lease under this reader's cutoff."""
-    import time
-
     from ergora.training.runtime.context import _TrainingProject
 
     project = _TrainingProject(payload)
