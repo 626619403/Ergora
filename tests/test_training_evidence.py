@@ -270,6 +270,9 @@ def test_archive_location_symlink_and_foreign_ticket_are_not_accepted(archive):
 
 def test_selected_text_requires_exact_index_digest_and_capacity(archive):
     state, _, _, _, _, folder, report = archive
+    with pytest.raises(ValueError, match='outside retained full archive observation'):
+        training.evidence(state, 'demo', 'alpha', retained_archive=True,
+                          artifact='notes.txt', evidence_sha256=report['evidence_sha256'])
     for options, error in [({'artifact': 'notes.txt', 'evidence_sha256': 'f' * 64}, 'exact observed evidence'),
                            ({'artifact': '../baseline.json'}, 'absent from the original'),
                            ({'artifact': 'trace.bin'}, 'contains NUL'),

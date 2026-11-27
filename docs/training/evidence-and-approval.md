@@ -42,7 +42,9 @@ New managed full launches require a tracking checkpoint. Before returning a pass
 
 A managed archive process must return a passing durable report or a matching evaluated negative comparator result before tracking can start. A timeout, signal or missing process outcome leaves the original archive failure for inspection. A verified negative result preserves its ordinary failed gate and tracking record, with no passing archive or tracking checkpoint.
 
-Use `retained_archive=true` on the same GET or `retained_archive=True` in Python. The option selects only the registered project and experiment. The original accepted archive remains the input to baseline references, approval and round advancement. Retained archive observation reads only saved local files and issues no execution, retry, release or resource command.
+Once `retained_archive.status` is `verified`, rerun `ergora training evidence my-project EXPERIMENT_ID --retained-archive` with `--artifact INDEXED_PATH --evidence-sha256 RETAINED_EVIDENCE_SHA256`. Take the path from `retained_archive.archive.evidence.artifacts` and the digest from `retained_archive.archive.evidence_sha256`. Use the same UTF-8 text window rules with `--offset` and `--limit`, and continue at `artifact.next_offset`. The response adds the top-level `artifact` window and retains the original native result state, tracking status, fence observation and `archive_status: no_accepted_archive`. An unavailable archive, unindexed path, mismatched digest or corrupt artifact fails explicitly.
+
+On the same GET, combine `retained_archive=true` with `artifact`, `evidence_sha256`, `offset` and `limit`. Python `training.application.evidence` takes the same keywords with `retained_archive=True`. Retained archive observation reads only saved local files. Exporter calls, launch, retry and resource release remain with their original owners. The original accepted archive remains the input to baseline references, approval and round advancement.
 
 ## Multi-round evidence index
 

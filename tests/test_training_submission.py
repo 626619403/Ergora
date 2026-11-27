@@ -1617,6 +1617,31 @@ def test_training_evidence_verifies_retained_archive_after_tracking_failure(
     assert expected['clock_sha256'] == execution['records']['launch']['clock_sha256']
     assert expected['gate_report_sha256'] == retained['gate_report_sha256']
     assert expected['archive_output_sha256'] == retained['archive_output_sha256']
+    artifact = archive / 'configuration-receipt.json'
+    text = originals[artifact].decode('utf-8')
+    selector = {'retained_archive': True, 'artifact': artifact.name, 'evidence_sha256': gate['evidence_sha256']}
+    selected = training.evidence(state, 'demo', 'alpha', **selector, offset=3, limit=11)
+    assert selected == {**result, 'artifact': {
+        'path': artifact.name, 'sha256': hashlib.sha256(originals[artifact]).hexdigest(),
+        'bytes': len(originals[artifact]), 'characters': len(text), 'offset': 3, 'limit': 11,
+        'next_offset': 14, 'text': text[3:14],
+    }}
+    if failure == 'missing-module':
+        from ergora.interfaces.cli import main
+
+        output = io.StringIO()
+        with redirect_stdout(output):
+            assert main(['--home', str(state.root), 'training', 'evidence', 'demo', 'alpha', '--retained-archive',
+                         '--artifact', artifact.name, '--evidence-sha256', gate['evidence_sha256'],
+                         '--offset', '3', '--limit', '11']) == 0
+        assert json.loads(output.getvalue()) == selected
+    for options, error in (
+            ({'evidence_sha256': 'f' * 64}, 'exact retained evidence SHA-256'),
+            ({'artifact': '../configuration-receipt.json'}, 'absent from the original retained evidence index'),
+            ({'offset': len(text) + 1}, 'offset exceeds'),
+            ({'evidence_sha256': None, 'screen_result_sha256': gate['evidence_sha256']}, 'full evidence SHA-256')):
+        with pytest.raises(ValueError, match=error):
+            training.evidence(state, 'demo', 'alpha', **{**selector, **options})
     provider_send = job / 'test-tracking-send'
     if failure == 'lost-after-send':
         assert provider_send.read_text() == gate['manifest_sha256']
@@ -1642,13 +1667,16 @@ def test_training_evidence_verifies_retained_archive_after_tracking_failure(
     try:
         unavailable = training.evidence(state, 'demo', 'alpha', retained_archive=True)['retained_archive']
         assert unavailable['status'] == 'unavailable' and 'reap record' in unavailable['reason']
+        with pytest.raises(ValueError, match='reap record'):
+            training.evidence(state, 'demo', 'alpha', **selector)
     finally:
         stopped_path.write_bytes(originals[stopped_path])
-    artifact = archive / 'configuration-receipt.json'
     try:
         artifact.write_bytes(b'replaced artifact')
         unavailable = training.evidence(state, 'demo', 'alpha', retained_archive=True)['retained_archive']
         assert unavailable['status'] == 'unavailable' and 'digest differs' in unavailable['reason']
+        with pytest.raises(ValueError, match='digest differs'):
+            training.evidence(state, 'demo', 'alpha', **selector)
         with artifact.open('wb') as stream:
             stream.truncate(16 * 1_048_576 + 1)
         unavailable = training.evidence(state, 'demo', 'alpha', retained_archive=True)['retained_archive']

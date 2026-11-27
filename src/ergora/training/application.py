@@ -106,8 +106,10 @@ def evidence(state: State, project_id: str, experiment_id: str, *, artifact: str
         raise ValueError('Training artifact reads require a path from the index and the exact evidence SHA-256')
     if artifact is None and (selected_sha is not None or offset != 0):
         raise ValueError('Evidence SHA and character offset apply only to a selected artifact')
-    if type(retained_archive) is not bool or retained_archive and artifact is not None:
-        raise ValueError('Retained archive observation requires an experiment without an artifact selector')
+    if type(retained_archive) is not bool:
+        raise ValueError('Retained archive observation requires an explicit Boolean')
+    if retained_archive and screen_result_sha256 is not None:
+        raise ValueError('Retained archive artifact requires the exact full evidence SHA-256')
     return training_native.training_evidence(_project(state, project_id), state.root,
         {'operation': 'inspect', 'experiment_id': experiment_id, 'artifact': artifact, 'evidence_sha256': evidence_sha256,
          'screen_result_sha256': screen_result_sha256, 'offset': offset, 'limit': limit,

@@ -127,34 +127,44 @@ def _managed_archive(project, experiment, chain, inventory):
             'archive': {**archive, 'artifact_content_status': 'verified'}}, saved_result
 
 
-def _retained_archive(project, experiment):
-    """Verify the locked executor's saved local gate after an unsuccessful managed job."""
+def _retained_archive(project, experiment, payload):
+    """Verify an unsuccessful managed job's saved gate and any selected original text window."""
     ident, state = experiment['experiment_id'], experiment['recorded_result_state']
     unavailable = {'status': 'unavailable', 'native_result_state': state}
     if experiment['execution']['operation'] != 'full-verify' or state not in (None, 'FAILED', 'CANCELLED'):
-        return {**unavailable, 'reason': 'Original job is outside retained full archive observation'}
+        return {**unavailable, 'reason': 'Original job is outside retained full archive observation'}, None
     if experiment['job_request'] is None or experiment['started'] is None:
-        return {**unavailable, 'reason': 'Original native job request or start is missing'}
+        return {**unavailable, 'reason': 'Original native job request or start is missing'}, None
 
     inventory = _Inventory()
     try:
         chain = protocol.ExecutionRecords(project.project, ident, project.payload['control_home']).load()
         stopped = chain.records['stopped']
         if stopped is None:
-            return {**unavailable, 'reason': 'Original managed execution owner has no saved reap record'}
+            return {**unavailable, 'reason': 'Original managed execution owner has no saved reap record'}, None
         process = stopped['process']
         if state is None and process['status'] == 'succeeded':
-            return {**unavailable, 'reason': 'Missing native result has no unsuccessful original executor observation'}
+            return {**unavailable, 'reason': 'Missing native result has no unsuccessful original executor observation'}, None
         archive, _ = _managed_archive(project, experiment, chain, inventory)
+        selected = None
+        if payload['artifact'] is not None:
+            retained = archive['archive']
+            if payload.get('screen_result_sha256') is not None or payload['evidence_sha256'] != retained['evidence_sha256']:
+                raise ValueError('Retained artifact read requires the exact retained evidence SHA-256')
+            item = next((artifact for artifact in retained['evidence']['artifacts'] if artifact['path'] == payload['artifact']), None)
+            if item is None:
+                raise ValueError('Selected artifact is absent from the original retained evidence index')
+            raw = inventory.originals[Path(retained['path']) / item['path']][0]
+            selected = _artifact_window(raw, item, payload)
         inventory.confirm()
     except (OSError, KeyError, TypeError, ValueError, project.core.Blocked) as error:
-        return {**unavailable, 'reason': str(error)}
+        return {**unavailable, 'reason': str(error)}, None
     request = chain.records['request']
     return {'status': 'verified', 'native_result_state': state, 'job_id': request['job_id'],
             'run_id': request['run_id'], 'attempt_sha256': chain.sha(chain.records['attempt']),
             'reap_record_sha256': chain.sha(stopped),
             'executor_process': {key: process[key] for key in ('status', 'returncode')},
-            **archive}
+            **archive}, selected
 
 
 def _selected_managed_result(project, locator, label):
@@ -552,9 +562,14 @@ def inspect(payload: dict) -> dict:
               'artifact_limit_bytes': 16_777_216, 'response_limit_bytes': 8_388_608,
               'scope': 'Saved native records only; no live phase, statistical re-evaluation, artifact-wide verification, authorization or integration completion claim'}
     if payload.get('retained_archive'):
-        result['retained_archive'] = _retained_archive(project, experiment)
+        retained, selected = _retained_archive(project, experiment, payload)
+        result['retained_archive'] = retained
         result['scope'] = ('Saved native records and bounded retained archive verification; '
                            'no live runtime query, statistical re-evaluation, authorization or integration completion claim')
+        if payload['artifact'] is not None:
+            if retained['status'] != 'verified':
+                raise ValueError('Selected retained training artifact is unavailable: ' + retained['reason'])
+            return {**result, 'artifact': selected}
     if experiment.get('screen_ref') is not None:
         native = experiment['job_request']
         job = {'binding': binding, 'job_id': native['job_id']}
