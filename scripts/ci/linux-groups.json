@@ -10,6 +10,7 @@
       "tests/test_projects_tools.py",
       "tests/test_reference.py",
       "tests/test_review_associations.py",
+      "tests/test_shared_cases.py",
       "tests/test_state_migrations.py",
       "tests/test_task_creation.py",
       "tests/test_task_events.py",

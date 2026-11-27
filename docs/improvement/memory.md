@@ -1,4 +1,4 @@
-# Manage project memory and optional ReMe
+# Manage project memory and shared cases
 
 English · [Documentation](../README.md) · [简体中文](../zh-CN/improvement/memory.md)
 
@@ -70,4 +70,33 @@ ReMe synchronization removes expired/deleted projections without requiring a tim
 
 The current database is schema v6. Upgrading does not rewrite old memories and first saves an original-database backup. **Stop old CLI tasks, the console and workers before upgrading them together and explicitly restarting.** Reopened old clients refuse the new version, while original triggers reject already-open old writers. SQLite cannot revoke materials or caches an old reader already fetched. New and old processes must not share one home concurrently. Rollback requires the complete pre-upgrade offline backup at the original home; retain new-version data separately.
 
-Continue: [Carry a retrospective into the next task](workflow.md) · [Prepare a task's frozen composition](../development/preparation.md).
+## Shared local case library
+
+Use the installed `ergora` command from any workspace. Pass the same absolute path to an existing local directory with `--library`. Shared commands use that directory's `cases/` tree independently of project registration, `ERGORA_HOME` and ReMe.
+
+```bash
+ergora memory shared search 'Task MCP requires the optional dependency' --library "$case_library" \
+  --technology ergora-task-mcp --environment linux --version 0.2.0
+ergora memory shared show task-mcp-missing-sdk --library "$case_library" \
+  --revision 1 --sha256 SHA256_FROM_SEARCH \
+  --technology ergora-task-mcp --environment linux --version 0.2.0
+```
+
+Search returns up to five current matches by default and accepts `--limit` from 1 to 20. A match includes the ID, revision, SHA-256 of the complete Markdown, status, sources, and a title, signature or excerpt bounded to 512 UTF-8 bytes. A complete error signature in the query ranks ahead of title and alias matches. With `--project`, `--technology`, `--environment` or `--version`, `applicability_match` reports `matched`, `incompatible` or `unknown` and lists the mismatched or missing facts. Project, technology and environment labels are case-insensitive. Versions are exact strings. An `unresolved` case records an open question and a next diagnostic.
+
+Both reads return JSON on standard output. `show` returns the current metadata in `record` and the exact Markdown in `markdown`, with a 65,536-byte file limit. Provide both `--revision` and `--sha256` to verify a search selection. Search returns an empty `results` array when no eligible case matches. An unknown case or a stale pinned read produces exit code 2 and a diagnostic on standard error. Expiry and withdrawal remove the case from new search. In those states an unpinned `show` reports the current metadata with `markdown: null`, and a pinned `show` refuses the selection.
+
+### Publish a reviewed case
+
+Keep drafts outside the library's `cases/` tree. Each draft is a UTF-8 Markdown file. Put JSON front matter between lines containing `---`. Provide the stable lowercase ID, revision, title, aliases or error signatures, applicability, status, sources, and `expires_at`. Applicability specifies a project or technology, an environment and a nonempty list of exact versions. Each source has a shareable `uri` and a pinned `revision`. The library treats source references such as `git:docs/design.md` and HTTPS URLs as text. Use a timestamp with a timezone for expiry or `null` for an unlimited lifetime. Record the symptom, cause or open question, resolution or next diagnostic, and verification in the body. [Example case](../../tests/fixtures/shared-task-mcp-missing.md)
+
+Record the SHA-256 of the complete Markdown at draft review. The publisher checks it against the bytes it will publish.
+
+```bash
+ergora memory shared publish ./reviewed-case.md --library "$case_library" --expected-revision 0 \
+  --sha256 REVIEWED_SHA256
+```
+
+The first publication initializes `cases/` in the selected directory. Start a new case at revision 1 and use `--expected-revision 0`. For a correction or withdrawal, keep the same ID, advance the draft by one revision, and provide the current revision as `--expected-revision`. Use status `verified`, `unresolved` or `withdrawn`. One locked publisher exposes each complete revision as `cases/ID/REVISION/case.md`. If publication is interrupted, check the current revision and digest before retrying. Preserve the complete shared library directory in an offline backup while publication is stopped, separately from any `ERGORA_HOME` backup.
+
+Continue with [Carry a retrospective into the next task](workflow.md) or [Prepare a task's frozen composition](../development/preparation.md).

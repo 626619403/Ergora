@@ -959,7 +959,7 @@ def parser() -> argparse.ArgumentParser:
             operation.add_argument("--reconcile-reason", help="Required to continue an uncertain native outcome after checking old jobs have stopped")
         if name != "list":
             operation.add_argument("--timeout", type=int, default=30 if name != "run" else 3600)
-    memories = commands.add_parser("memory", help="Project-scoped memories, provenance and revisions")
+    memories = commands.add_parser("memory", help="Project memory and the explicit local shared case library")
     operations = memories.add_subparsers(dest="operation", required=True)
     for name in ("list", "catalog", "sync", "search", "save", "history", "delete", "restore"):
         operation = operations.add_parser(name)
@@ -985,6 +985,27 @@ def parser() -> argparse.ArgumentParser:
             operation.add_argument("--revision", type=int, default=0 if name == "save" else None, required=name != "save")
         if name == "restore":
             operation.add_argument("--from-revision", type=int, required=True)
+    shared = operations.add_parser("shared", help="Look up shared cases independently of project state")
+    shared_operations = shared.add_subparsers(dest="shared_operation", required=True)
+    search_cases = shared_operations.add_parser("search", help="Rank current shared cases by symptom or error")
+    show_case = shared_operations.add_parser("show", help="Read one current shared case and verify a selection")
+    publish_case = shared_operations.add_parser("publish", help="Publish one reviewed Markdown draft")
+    for operation in (search_cases, show_case, publish_case):
+        operation.add_argument("--library", required=True, type=Path, help="Explicit local shared library directory")
+    for operation in (search_cases, show_case):
+        operation.add_argument("--project", help="Project applicability label")
+        operation.add_argument("--technology", help="Technology applicability label")
+        operation.add_argument("--environment", help="Environment applicability label")
+        operation.add_argument("--version", help="Exact applicable version")
+    search_cases.add_argument("query")
+    search_cases.add_argument("--limit", type=int, help="Maximum number of results (default: 5)")
+    show_case.add_argument("id")
+    show_case.add_argument("--revision", type=int, help="Revision returned by search, paired with --sha256")
+    show_case.add_argument("--sha256", help="Markdown digest returned by search, paired with --revision")
+    publish_case.add_argument("draft", type=Path)
+    publish_case.add_argument("--expected-revision", type=int, required=True,
+                              help="Current published revision, or zero to create a case")
+    publish_case.add_argument("--sha256", required=True, help="SHA-256 of the reviewed Markdown draft")
     skill = commands.add_parser("skill", help="Import, evaluate, adopt and roll back Agent Skills")
     operations = skill.add_subparsers(dest="operation", required=True)
     for name in ("import", "list", "export", "adopt", "rollback", "optimize", "optimizations"):
@@ -1922,6 +1943,19 @@ def main(argv: list[str] | None = None) -> int:
                 output = kernel.operate(state, args.project, args.id, args.operation, args.timeout, getattr(args, "reconcile_reason", None))
             print(json.dumps(output, ensure_ascii=False, indent=2))
             return 1 if isinstance(output, dict) and output["status"] in ("failed", "outcome_unknown", "timed_out", "cancelled", "native_failed") else 0
+        elif args.command == "memory" and args.operation == "shared":
+            from ergora.improvement import shared_cases
+
+            if args.shared_operation == "publish":
+                output = shared_cases.publish(args.library, args.draft, args.expected_revision, sha256=args.sha256)
+            else:
+                facts = {name: getattr(args, name) for name in ("project", "technology", "environment", "version")
+                         if getattr(args, name) is not None}
+                if args.shared_operation == "search":
+                    limit = shared_cases.DEFAULT_LIMIT if args.limit is None else args.limit
+                    output = shared_cases.search(args.library, args.query, limit=limit, facts=facts)
+                else:
+                    output = shared_cases.show(args.library, args.id, revision=args.revision, sha256=args.sha256, facts=facts)
         elif args.command == "memory":
             state = State(args.home)
             if args.operation == "list":

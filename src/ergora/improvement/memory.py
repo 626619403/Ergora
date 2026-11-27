@@ -11,7 +11,7 @@ from ergora.configuration import catalog as components
 from ergora.storage.state import State, file_lock, now
 
 
-def _expiry(value: str | None) -> datetime | None:
+def parse_expiry(value: str | None) -> datetime | None:
     if value is None:
         return None
     try:
@@ -26,7 +26,7 @@ def _expiry(value: str | None) -> datetime | None:
 def _validity(document: dict, observed: datetime) -> str:
     if document["status"] == "deleted":
         return "deleted"
-    expiry = _expiry(document.get("expires_at"))
+    expiry = parse_expiry(document.get("expires_at"))
     return "expired" if expiry is not None and observed >= expiry else "valid"
 
 
@@ -58,18 +58,22 @@ def history(state: State, project_id: str, memory_id: str) -> list[dict]:
     return result
 
 
+def validate_source(source: dict) -> None:
+    if not isinstance(source, dict) or set(source) != {"uri", "revision"} or any(
+        not isinstance(source[k], str) or not source[k].strip() for k in ("uri", "revision")
+    ):
+        raise ValueError("Source must contain nonempty uri and revision strings")
+
+
 def save(state: State, project_id: str, text: str, source: dict, memory_id: str | None = None,
          expected_revision: int = 0, *, expires_at: str | None | EllipsisType = ...) -> dict:
     """Omitted expiry preserves the latest revision's limit; explicit null clears it."""
     state.project(project_id)
     if not isinstance(text, str) or not text.strip() or len(text) > 100_000:
         raise ValueError("Memory requires 1–100000 characters")
-    if not isinstance(source, dict) or set(source) != {"uri", "revision"} or any(
-        not isinstance(source[k], str) or not source[k].strip() for k in ("uri", "revision")
-    ):
-        raise ValueError("Source must contain nonempty uri and revision strings")
+    validate_source(source)
     if expires_at is not ...:
-        expiry = _expiry(expires_at)
+        expiry = parse_expiry(expires_at)
         expires_at = expiry.isoformat() if expiry is not None else None
     is_correction = memory_id is not None
     memory_id = memory_id or uuid.uuid4().hex
