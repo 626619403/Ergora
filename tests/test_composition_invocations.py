@@ -589,8 +589,7 @@ if instance == 'root/dependency' and fault == 'malformed':
     result.write_text('{}', encoding='utf-8')
     raise SystemExit(0)
 if instance == 'root/structure' and mode == 'parallel':
-    wait_for(lambda: any(attempt['instance'] == 'root/dependency' and attempt['status'] == 'failed'
-                         for attempt in json.loads((directory / 'run.json').read_bytes())['leaves']))
+    wait_for(lambda: (witnesses / 'dependency-failure-saved').exists())
 if instance == 'root/structure' and mode == 'stop':
     wait_for(lambda: False)
 
@@ -630,7 +629,10 @@ def after_observation(self):
     if self.receipt['status'] == 'incomplete' and any(
             attempt['instance'] == 'root/dependency' and attempt['status'] == 'failed'
             for attempt in self.receipt['leaves']):
-        hold()
+        if mode == 'parallel':
+            (directory.with_name('witnesses') / 'dependency-failure-saved').touch()
+        if cut == 'after':
+            hold()
 
 def hold():
     directory.with_name('interrupted').touch(exist_ok=False)
@@ -639,7 +641,7 @@ def hold():
 original_collect, original_save = graphs._GraphRun.collect_finished, graphs._GraphRun.save
 if cut == 'before':
     graphs._GraphRun.collect_finished = before_observation
-elif cut == 'after':
+elif cut == 'after' or mode == 'parallel':
     graphs._GraphRun.save = after_observation
 raise SystemExit(main(sys.argv[6:]))
 ''', encoding='utf-8')
