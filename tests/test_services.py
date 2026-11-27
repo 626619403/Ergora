@@ -1,5 +1,6 @@
 import asyncio
 import configparser
+from contextlib import nullcontext
 import hashlib
 import http.client
 import json
@@ -36,7 +37,7 @@ def wait_for_fixture_log(runtime):
 
 
 @pytest.fixture
-def stack():
+def stack(request):
     if sys.platform != "linux":
         pytest.skip("Supervisor services run in Linux/WSL2")
     pytest.importorskip("supervisor")
@@ -51,6 +52,10 @@ def stack():
         (binary / "python").symlink_to(sys.executable)
         (binary / "supervisord").symlink_to(Path(sys.executable).parent / "supervisord")
         runtime, config = root / "runtime", root / "config"
+        if socket_bytes := getattr(request, "param", None):
+            room = socket_bytes - len(os.fsencode(root / "ergora-services/s.sock")) - 1
+            runtime = root / ("é" * (room // 2) + "x" * (room % 2))
+            assert len(os.fsencode(runtime / "ergora-services/s.sock")) == socket_bytes
         (runtime / "logs").mkdir(parents=True)
         config.mkdir()
         (config / "supervisor.d").mkdir()
@@ -105,7 +110,7 @@ while True: time.sleep(.1)
                 assert not (folder / "s.sock").exists(), "Fixture Supervisor did not stop"
 
 
-def test_selected_start_is_idempotent_and_does_not_autostart_other_programs(stack):
+def test_selected_start_is_idempotent_and_does_not_autostart_other_programs(stack, monkeypatch):
     state, runtime, config = stack
     original = (config / "supervisord.ini").read_bytes()
     result = services.control(state, "demo", "start", ["temporal"], 1, timeout=5)
@@ -118,13 +123,51 @@ def test_selected_start_is_idempotent_and_does_not_autostart_other_programs(stac
     assert "from ergora.training.runtime.worker import main;main(" in managed["program:training-budget-worker"]["command"]
     assert "agent_platform.service training-worker" in managed["program:training-worker"]["command"]
     assert managed["program:training-budget-worker"]["stdout_logfile"] != managed["program:training-worker"]["stdout_logfile"]
+
+    def refuse_launch_check(*_):
+        pytest.fail("An existing Supervisor does not bind a temporary socket")
+
+    monkeypatch.setattr(services, "_require_launch_socket_path", refuse_launch_check)
+    assert services.status(state, "demo")["daemon"] == "running"
     again = services.control(state, "demo", "start", ["temporal"], 1, timeout=5)
     assert next(p for p in again["services"] if p["name"] == "temporal")["pid"] == states["temporal"]["pid"]
     assert (config / "supervisord.ini").read_bytes() == original
     stopped = services.control(state, "demo", "stop", ["temporal"], 1, confirm=True, timeout=5)
     assert stopped["outcome"] == "confirmed"
     assert next(p for p in stopped["services"] if p["name"] == "temporal")["statename"] == "STOPPED"
+    assert services.control(state, "demo", "start", ["temporal"], 1, timeout=5)["outcome"] == "confirmed"
     assert services.control(state, "demo", "shutdown", [], 1, confirm=True, timeout=5)["outcome"] == "confirmed"
+
+
+@pytest.mark.parametrize("stack", [103], indirect=True)
+def test_shared_supervisor_refuses_socket_without_room_for_pid_suffix(stack, monkeypatch):
+    state, runtime, _ = stack
+    monkeypatch.setattr(services, "_PID_MAX_PATH", runtime / "unavailable-pid-max")
+    with pytest.raises(ValueError, match=r"temporary \.PID suffix \(103 bytes, at most 99.*state_directory"):
+        services.control(state, "demo", "start", ["temporal"], 1)
+    folder = runtime / "ergora-services"
+    assert {path.name for path in folder.iterdir()} <= {"lock"}
+    assert services.status(state, "demo")["daemon"] == "not_running"
+    assert not (runtime / "temporal.started").exists()
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Linux UNIX socket and PID allocation limits")
+def test_campaign_supervisor_refuses_socket_without_room_for_pid_suffix(monkeypatch):
+    with tempfile.TemporaryDirectory(prefix="ergora-svc-") as temporary:
+        root = Path(temporary)
+        pid_max = root / "pid-max"
+        pid_max.write_text("100000\n", encoding="ascii")
+        monkeypatch.setattr(services, "_PID_MAX_PATH", pid_max)
+        room = 103 - len(os.fsencode(root / "svc/s.sock")) - 1
+        folder = root / ("é" * (room // 2) + "x" * (room % 2)) / "svc"
+        folder.parent.mkdir()
+        binding = {"project": "demo", "installation": str(root), "campaign": "one", "control_home": str(root)}
+        with pytest.raises(ValueError, match=r"temporary \.PID suffix \(103 bytes, at most 101.*Campaign ID"):
+            services.control_campaign_worker(folder, binding, "start", timeout=2, admit_start=nullcontext)
+        assert not folder.exists()
+        assert services.campaign_worker_status(folder, binding)["daemon"] == "not_running"
+        assert services.control_campaign_worker(folder, binding, "stop", timeout=2,
+                                                admit_start=nullcontext)["outcome"] == "confirmed"
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Linux process evidence for the managed Campaign Worker')

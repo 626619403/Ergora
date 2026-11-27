@@ -31,6 +31,9 @@ CAMPAIGN_WORKER = "campaign-worker"
 NAMES = ("temporal", "mlflow", "worker", "executor", "a2a", "training-worker", "training-budget-worker", "training-cycle-worker")
 _COMMUNICATION_ERRORS = (OSError, http.client.HTTPException, xmlrpc.client.ProtocolError, xmlrpc.client.ResponseError, ExpatError)
 _STOPPED = {"STOPPED", "EXITED", "FATAL"}
+_UNIX_SOCKET_PATH_BYTES = 107
+_PID_MAX_PATH = Path("/proc/sys/kernel/pid_max")
+_LINUX_PID_MAX_LIMIT = 4 * 1024 * 1024  # Linux PID_MAX_LIMIT on supported 64-bit hosts.
 
 
 class _UnixConnection(http.client.HTTPConnection):
@@ -134,8 +137,6 @@ def _launch(installation, configuration, environment, timeout):
 
 def _prepare(state: State, execution: dict, folder: Path, identity: dict) -> Path:
     path = folder / "s.sock"
-    if len(os.fsencode(path)) > 107:
-        raise ValueError("Supervisor Unix socket path is too long; use a shorter persistent execution state_directory")
     configuration = Path(execution["config_directory"])
     original = configuration / "supervisord.ini"
     parser = configparser.ConfigParser(interpolation=None)
@@ -217,11 +218,28 @@ def control(state: State, project_id: str, action: str, names: list[str], revisi
                 Path(execution["installation"]) / "upstream/temporal", Path(execution["installation"]) / "upstream")))
             return _launch(execution["installation"], config, environment, remaining)
 
-        return _operate(folder, project_id, action, names, identity, timeout, launch)
+        return _operate(folder, project_id, action, names, identity, timeout, launch,
+                        socket_remedy="Use a shorter persistent execution state_directory.")
+
+
+def _require_launch_socket_path(path: Path, remedy: str) -> None:
+    # Supervisor binds a temporary <socket>.<pid> before linking the final socket.
+    try:
+        pid_max = int(_PID_MAX_PATH.read_text(encoding="ascii"))
+    except (OSError, ValueError):
+        pid_max = _LINUX_PID_MAX_LIMIT
+    if pid_max <= 1:
+        pid_max = _LINUX_PID_MAX_LIMIT
+    suffix_bytes = 1 + len(str(pid_max - 1))  # Linux excludes pid_max from allocation.
+    allowed_bytes = _UNIX_SOCKET_PATH_BYTES - suffix_bytes
+    path_bytes = len(os.fsencode(path))
+    if path_bytes > allowed_bytes:
+        raise ValueError(f"Supervisor Unix socket path is too long for its temporary .PID suffix "
+                         f"({path_bytes} bytes, at most {allowed_bytes} before the suffix). {remedy}")
 
 
 def _operate(folder: Path, project_id: str, action: str, names: list[str], identity: dict, timeout: int, launch,
-             *, admit_start=nullcontext) -> dict:
+             *, socket_remedy: str, admit_start=nullcontext) -> dict:
     owner = folder / "owner.json"
     if owner.exists() and json.loads(owner.read_text(encoding="utf-8")) != identity:
         raise ValueError("This service stack belongs to a different control directory or execution configuration")
@@ -233,15 +251,16 @@ def _operate(folder: Path, project_id: str, action: str, names: list[str], ident
         return {"project": project_id, "action": action, "outcome": "unconfirmed", **before}
     if before["daemon"] == "not_running" and action != "start":
         return {"project": project_id, "action": action, "outcome": "confirmed", **before}
+    path = folder / "s.sock"
     if before["daemon"] == "not_running":
         try:
             with admit_start():
+                _require_launch_socket_path(path, socket_remedy)
                 launched = launch(max(.01, deadline - time.monotonic()))
         except subprocess.TimeoutExpired:
             return {"project": project_id, "action": action, "outcome": "unconfirmed", **_snapshot(folder)}
         if launched.returncode:
             raise ValueError("Supervisor did not start; inspect the managed supervisord.log and installed Supervisor package")
-    path = folder / "s.sock"
     try:
         if action == "shutdown" and before["daemon"] != "stopping":
             _rpc(path, "shutdown")
@@ -297,13 +316,11 @@ def control_campaign_worker(folder: Path, binding: dict, action: str, *, timeout
     if action not in ("start", "stop"):
         raise ValueError("Choose start or stop for the managed Campaign Worker")
     path = folder / "s.sock"
-    if len(os.fsencode(path)) > 107:
-        raise ValueError("Campaign Worker Supervisor socket path is too long")
     if action == "stop" and not folder.exists():
         return {"outcome": "confirmed"}
-    folder.mkdir(exist_ok=True, mode=0o700)
 
     def launch(remaining):
+        folder.mkdir(exist_ok=True, mode=0o700)
         configuration = configparser.ConfigParser(interpolation=None)
         configuration["supervisord"] = {
             "logfile": str(folder / "supervisord.log"), "pidfile": str(folder / "supervisord.pid"),
@@ -327,7 +344,8 @@ def control_campaign_worker(folder: Path, binding: dict, action: str, *, timeout
 
     # Exiting this private daemon drains its single original Worker as well.
     return _operate(folder, binding["project"], "start" if action == "start" else "shutdown",
-                    [CAMPAIGN_WORKER] if action == "start" else [], binding, timeout, launch, admit_start=admit_start)
+                    [CAMPAIGN_WORKER] if action == "start" else [], binding, timeout, launch,
+                    socket_remedy="Use a shorter Ergora control home or Campaign ID.", admit_start=admit_start)
 
 
 def logs(state: State, project_id: str, name: str, *, offset: int = 0,
