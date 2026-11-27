@@ -42,6 +42,7 @@ TRAINING_SCREEN_PROOF = ('native_result_state', 'decision', 'performance_state',
                          'full_execution_authorized', 'diagnostics')
 TRAINING_GPU_RELEASE_ACTIVITY = 'ergora_campaign_training_gpu_release_readback'
 TRAINING_GPU_RELEASE_SOURCE = 'training_gpu_release'
+RELEASE_RECOVERY_ACTIVITY = 'ergora_campaign_recover_training_gpu_release'
 READBACK_ALREADY_ADMITTED = 'readback_already_admitted'
 RECIPIENT_ACTIVITY = 'ergora_campaign_codex_recipient'
 # Last whole UTC second supported by both Python datetime and protobuf Timestamp.
@@ -144,7 +145,7 @@ def validate_tasks(tasks):
     dependencies = {}
     scheduled = False
     for task in tasks:
-        if not isinstance(task, dict) or task.keys() - {'readback', 'recipient', 'wake_on_observe'} != {'task_id', 'depends_on', 'source'}:
+        if not isinstance(task, dict) or task.keys() - {'readback', 'recipient', 'wake_on_observe', 'recover_release_receipt'} != {'task_id', 'depends_on', 'source'}:
             raise ValueError('Campaign task requires task_id, depends_on and an exact source')
         task_id, parents, source = task['task_id'], task['depends_on'], task['source']
         if not safe_id(task_id) or task_id in dependencies:
@@ -186,6 +187,9 @@ def validate_tasks(tasks):
                 raise ValueError('Campaign Codex recipient requires the selected original timed readback')
         if 'wake_on_observe' in task and (task['wake_on_observe'] is not True or 'recipient' not in task):
             raise ValueError('Campaign manual wake requires an explicitly enabled original timed recipient')
+        if 'recover_release_receipt' in task and (task['recover_release_receipt'] is not True
+                or not training_gpu_release_task(task) or 'recipient' not in task):
+            raise ValueError('Campaign receipt recovery requires the selected original GPU release and recipient')
         dependencies[task_id] = parents
     if any(parent not in dependencies for parents in dependencies.values() for parent in parents):
         raise ValueError('Campaign task dependency is absent from the frozen plan')
@@ -330,6 +334,19 @@ def readback_id(grant):
     return prefix + identity(grant)
 
 
+def release_recovery_id(grant):
+    return 'training-gpu-release-recovery:' + identity(grant)
+
+
+def release_recovery_proof(grant, reply):
+    if (not isinstance(reply, dict)
+            or reply.keys() != {'recovery_activity_id', 'recovery_receipt_sha256', 'original_result'}
+            or reply['recovery_activity_id'] != release_recovery_id(grant)
+            or not sha256(reply['recovery_receipt_sha256'])):
+        raise ValueError('Campaign release recovery differs from the original read grant')
+    return {field: reply[field] for field in ('recovery_activity_id', 'recovery_receipt_sha256')}
+
+
 def readback_reference(grant):
     field = 'source_sha256' if 'source_sha256' in grant else 'waiting_receipt_sha256'
     if 'source_kind' in grant:
@@ -464,6 +481,13 @@ def checked_readback(opening, run_id, waits, observation):
         proof = digests | {'local_gpu_lease'} if training else digests
         if screen:
             proof = proof.union(TRAINING_SCREEN_PROOF)
+        if 'recovery_activity_id' in observation:
+            if (not release or task.get('recover_release_receipt') is not True
+                    or observation['recovery_activity_id'] != release_recovery_id(grant)):
+                raise ValueError('Campaign release recovery differs from the original read grant')
+            fields.add('recovery_activity_id')
+            digests.add('recovery_receipt_sha256')
+            proof.add('recovery_receipt_sha256')
         if (observation.keys() == fields | proof and all(sha256(observation[key]) for key in digests)
                 and (not screen or _screen_decision_matches(observation, task['source']['locator']))
                 and (not release or _training_gpu_release_matches(observation, task['source']['locator']))

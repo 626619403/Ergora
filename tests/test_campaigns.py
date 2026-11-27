@@ -1138,7 +1138,8 @@ def test_recipient_status_retains_a_proven_blocker_and_separates_partial_publica
 @pytest.mark.parametrize('outcome', ['passing', 'unrelated', 'pending', 'unaccepted', 'changed-grant',
                                      'history-unavailable', 'service-unavailable', 'no-timer',
                                      'changed-command', 'wrong-acceptance', 'changed-receipt', 'accepted-only',
-                                     'offline', 'completed-failure', 'duplicate-id'])
+                                     'offline', 'completed-failure', 'duplicate-id',
+                                     'timed', 'timed-missing', 'timed-bad', 'timed-bad-seconds', 'timed-reversed'])
 def test_status_recovers_original_task_history_without_worker(registration, tmp_path, monkeypatch, outcome):
     pytest.importorskip('temporalio')
     from temporalio.api.history.v1 import HistoryEvent
@@ -1148,6 +1149,16 @@ def test_status_recovers_original_task_history_without_worker(registration, tmp_
     from ergora.campaigns.records import (READBACK_ACTIVITY, CampaignFiles, FIXED_TASK_LOCATOR, attempt_document,
                                          check_intent, check_receipt, identity, project_selection, read_plan,
                                          readback_grant, readback_id, result_document, update_attempt)
+
+    timing_case = {
+        'timed': ((100, 20), (100, 30), (100, 60), True, 10, 30),
+        'timed-missing': ((100, 20), None, (100, 60), False, None, None),
+        'timed-bad': ((100, 20), (100, 1_000_000_000), (100, 60), False, None, None),
+        'timed-bad-seconds': ((100, 20), (253_402_300_800, 30), (100, 60), False, None, None),
+        'timed-reversed': ((100, 20), (100, 10), (100, 60), True, None, 50),
+    }.get(outcome)
+    if timing_case is not None:
+        outcome = 'passing'
 
     state, definition = registration
     registrations.register(state, definition, 0)
@@ -1255,6 +1266,10 @@ def test_status_recovers_original_task_history_without_worker(registration, tmp_
                     'scheduled_event_id': 99 if outcome == 'unrelated' else 4, 'started_event_id': 5,
                     'result': {'payloads': await converter.encode([activity_result])}}),
             ])
+            if timing_case is not None:
+                for event, timestamp in zip(events[-3:], timing_case[:3], strict=True):
+                    if timestamp is not None:
+                        event.event_time.seconds, event.event_time.nanos = timestamp
         if outcome != 'unaccepted':
             accepted, completed = await update_events(terminal_command, terminal_receipt, 7)
             if outcome == 'changed-command':
@@ -1332,12 +1347,25 @@ def test_status_recovers_original_task_history_without_worker(registration, tmp_
                 'run_id': run_id, 'update_id': update_id, 'status': unresolved_status, 'receipt': None,
             }
         if outcome in ('passing', 'accepted-only', 'completed-failure'):
-            assert observed['readback_completion'] == {
+            expected_completion = {
                 'task_id': 'wait', 'activity_id': activity_id, 'waiting_receipt_sha256': identity(waiting),
                 'scheduled_event_id': 4, 'completed_event_id': 6, 'receipt_sha256': 'd' * 64,
                 'fixed_results_sha256': 'e' * 64, 'observation_sha256': identity(observation),
                 'reader_cleanup_sha256': 'f' * 64,
             }
+            if timing_case is not None:
+                scheduled, worker, completed, worker_timed, queue_span, read_span = timing_case
+                stamps = {'scheduled': (4, scheduled), 'completed': (6, completed)}
+                if worker_timed:
+                    stamps['worker_started'] = (5, worker)
+                expected_completion['timing'] = {
+                    'clock': 'temporal_history',
+                    'events': {name: {'event_id': event_id, 'seconds': seconds, 'nanos': nanos}
+                               for name, (event_id, (seconds, nanos)) in stamps.items()},
+                    'intervals_ns': {'scheduled_to_worker_started': queue_span,
+                                     'worker_started_to_completed': read_span},
+                }
+            assert observed['readback_completion'] == expected_completion
         else:
             assert 'readback_completion' not in observed
 
@@ -2283,6 +2311,150 @@ def test_training_gpu_release_requires_an_exact_accepted_original_lease():
             readback_result(opening, task, activity_id, {**raw, 'observation': {**observation, 'local_gpu_lease': bad}})
         with pytest.raises(ValueError, match='original evidence'):
             checked_readback(opening, run_id, None, {**readback, 'local_gpu_lease': bad})
+
+
+@pytest.mark.parametrize(('timestamp', 'accepted'), (
+    (None, False),
+    ((39, 1_000_000_000), False),
+    ((-62_135_596_801, 0), False),
+    ((40, 0), False),
+    ((39, 999_999_999), True),
+), ids=['absent', 'invalid-nanos', 'invalid-seconds', 'at-cutoff', 'before-cutoff'])
+def test_release_recovery_history_requires_valid_original_completion_time(monkeypatch, timestamp, accepted):
+    pytest.importorskip('temporalio')
+    from temporalio.api.enums.v1 import TimeoutType
+    from temporalio.api.history.v1 import HistoryEvent
+    from temporalio.converter import DataConverter
+    from ergora.campaigns import records, workflow as runtime
+
+    opening = {'task_queue': 'original-queue'}
+    task = {'task_id': 'release'}
+    grant = {'deadline_at': 40, 'source_sha256': 'a'*64, 'source_kind': 'training_gpu_release'}
+    recovery = records.release_recovery_id(grant)
+    original_result = {'reader_cleanup_sha256': 'b'*64}
+    reply = {'original_result': original_result, 'recovery_activity_id': recovery, 'recovery_receipt_sha256': 'c'*64}
+    old = [
+        HistoryEvent(event_id=11, activity_task_scheduled_event_attributes={'activity_id': 'original'}),
+        HistoryEvent(event_id=12, activity_task_started_event_attributes={'scheduled_event_id': 11, 'attempt': 1}),
+        HistoryEvent(event_id=13, activity_task_timed_out_event_attributes={
+            'scheduled_event_id': 11, 'started_event_id': 12, 'failure': {
+                'timeout_failure_info': {'timeout_type': TimeoutType.TIMEOUT_TYPE_HEARTBEAT}}}),
+    ]
+    validated = []
+
+    def readback_result(opened, selected, activity_id, result):
+        assert (opened, selected, activity_id, result) == (opening, task, 'original', original_result)
+        validated.append(result)
+        return 'd'*64, {'status': 'succeeded'}
+
+    monkeypatch.setattr(runtime, 'readback_result', readback_result)
+
+    async def exercise():
+        converter = DataConverter.default
+        events = [
+            HistoryEvent(event_id=19, activity_task_scheduled_event_attributes={
+                'activity_id': recovery, 'activity_type': {'name': records.RELEASE_RECOVERY_ACTIVITY},
+                'task_queue': {'name': opening['task_queue']}, 'retry_policy': {'maximum_attempts': 1},
+                'input': {'payloads': await converter.encode([grant])}}),
+            HistoryEvent(event_id=20, activity_task_started_event_attributes={'scheduled_event_id': 19, 'attempt': 1}),
+            HistoryEvent(event_id=21, activity_task_completed_event_attributes={
+                'scheduled_event_id': 19, 'started_event_id': 20,
+                'result': {'payloads': await converter.encode([reply])}}),
+        ]
+        if timestamp is not None:
+            events[-1].event_time.seconds, events[-1].event_time.nanos = timestamp
+        return await runtime._release_recovery_completion(converter, old, events, opening, task, grant, 'original')
+
+    if accepted:
+        completion = asyncio.run(exercise())
+        assert completion['recovery_history']['completed_event_id'] == 21
+        assert validated == [original_result]
+    else:
+        with pytest.raises(ValueError, match='original attempt or cutoff'):
+            asyncio.run(exercise())
+        assert validated == []
+
+
+@pytest.mark.parametrize('case', ('exact', 'stop', 'expired', 'missing', 'foreign_guard', 'foreign_attempt',
+                                 'unknown_lease', 'unreaped_child', 'original_worker_live'))
+def test_release_recovery_only_accepts_original_receipt_and_reaped_processes(tmp_path, monkeypatch, case):
+    from dataclasses import replace
+    pytest.importorskip('temporalio')
+
+    from temporalio.testing import ActivityEnvironment
+    from ergora.campaigns import readback, records
+
+    locator = {'experiment_id': 'alpha', 'workflow_id': 'perf-experiment/alpha',
+               'run_id': 'training-run', 'job_id': 'local-perf-alpha',
+               'native_request_sha256': 'a'*64, 'attempt_sha256': 'b'*64,
+               'session_id': 'c'*32, 'lease_id': 'd'*64}
+    task = {'task_id': 'release', 'depends_on': [], 'source': {'kind': 'training_gpu_release', 'locator': locator},
+            'readback': {'due_at': 20, 'deadline_at': 40}, 'recover_release_receipt': True,
+            'recipient': {'session_id': 'session', 'parent_run_id': 'parent', 'intent_id': 'notice',
+                          'prompt': 'Read the original release.', 'timeout_seconds': 20}}
+    records.validate_tasks([task])
+    opening = {'project': 'demo', 'project_revision': 1, 'workflow_id': 'original-campaign',
+               'registration': {'sha256': 'e'*64}, 'plan': {'tasks': [task]}}
+    run = 'original-run'
+    start = {'attempt': 'original'}
+    grant = records.readback_grant(opening, run, task, None)
+    activity_id = records.readback_id(grant)
+    worker, guard, model = [{'pid': process, 'boot_id': 'current-boot', 'start_ticks': '42'}
+                            for process in (10001, 10002, 10003)]
+    cleanup = {'activity_id': activity_id, 'reaped_at_monotonic': 22,
+               'receipt': {'kind': 'supervised-process-cleanup', 'schema_version': 1, 'owner': guard,
+                           'model': model, 'model_waited': True, 'remaining_children': [], 'returncode': 0}}
+    lease = {'status': 'released', 'read_only': True, 'request_id': '1'*64, 'request_sha256': '2'*64,
+             **{key: locator[key] for key in ('session_id', 'lease_id', 'attempt_sha256')},
+             'release_ref': {'sequence': 5, 'proof_ref': {'relative_path': f'proofs/{locator["lease_id"]}/stopped.json',
+                                                         'raw_sha256': 'f'*64}}}
+    result = {'activity_id': activity_id, 'reader_cleanup_sha256': records.identity(cleanup),
+              'observation': {'status': 'verified', 'project': 'demo', 'project_revision': 1,
+                              'registration_sha256': 'e'*64, 'locator': locator, 'local_gpu_lease': lease}}
+    documents = {'readback-attempt': {'activity_id': activity_id, 'worker': worker, 'grant': grant},
+                 'readback-guard': {'activity_id': activity_id, 'worker': worker, 'guard': guard,
+                                    'deadline_monotonic': 40, 'work_cutoff_monotonic': 39},
+                 'readback-result': result, 'readback-cleanup': cleanup}
+    if case == 'missing':
+        del documents['readback-result']
+    elif case == 'foreign_guard':
+        documents['readback-guard']['guard'] = worker
+    elif case == 'foreign_attempt':
+        documents['readback-attempt']['activity_id'] = 'foreign-activity'
+    elif case == 'unknown_lease':
+        lease.update(status='unknown', release_ref=None)
+    elif case == 'unreaped_child':
+        cleanup['receipt']['model_waited'] = False
+        result['reader_cleanup_sha256'] = records.identity(cleanup)
+    files = SimpleNamespace(home=tmp_path, _read=documents.get, load=lambda: (opening, start, {'run_id': run}),
+                            load_stop=lambda *_: ({} if case == 'stop' else None, None, None))
+    State(tmp_path)
+    monkeypatch.setattr(readback, 'require_check_project', lambda *_: None)
+    monkeypatch.setattr(readback.time, 'time', lambda: 41 if case == 'expired' else 30)
+
+    def observe(pid):
+        if pid == worker['pid'] and case == 'original_worker_live':
+            return worker
+        if pid in (worker['pid'], guard['pid'], model['pid']):
+            raise FileNotFoundError
+        return {'pid': pid, 'boot_id': 'current-boot', 'start_ticks': '100'}
+
+    monkeypatch.setattr(readback.processes, 'identity', observe)
+    recovery = records.release_recovery_id(grant)
+    env = ActivityEnvironment()
+    env.info = replace(env.info, workflow_id=opening['workflow_id'], workflow_run_id=run,
+                       activity_id=recovery, activity_type=records.RELEASE_RECOVERY_ACTIVITY)
+    handler = readback.CampaignReadback(files, opening, start, run)
+
+    async def call():
+        return await env.run(handler.recover_release, grant)
+
+    if case == 'exact':
+        assert asyncio.run(call()) == {'recovery_activity_id': recovery, 'original_result': result,
+                                       'recovery_receipt_sha256': records.identity(documents)}
+    else:
+        with pytest.raises(ValueError):
+            asyncio.run(call())
 
 
 @pytest.mark.parametrize('phase', ('release', 'cutoff', 'stop_waiting', 'stop_acquired', 'stop_before_link', 'write_error'))

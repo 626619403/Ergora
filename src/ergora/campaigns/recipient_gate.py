@@ -11,7 +11,8 @@ import time
 from ergora.agents import native_sources
 from ergora.campaigns.records import (
     CampaignFiles, check_receipt, identity, manual_wake_source, readback_grant, readback_id, readback_proof,
-    readback_reference, readback_result, recipient_task, require_check_project, sha256, training_readback_task, wake_intent,
+    readback_reference, readback_result, recipient_task, release_recovery_id, release_recovery_proof,
+    require_check_project, sha256, training_readback_task, wake_intent,
 )
 from ergora.runtime import budget_clock, processes
 from ergora.storage.state import State, file_lock
@@ -68,6 +69,26 @@ def manual_commands(files, opening, start, run_id, task):
     return wait, terminal
 
 
+def verified_release_recovery(files, opening, start, run_id, task):
+    if task.get('recover_release_receipt') is not True:
+        raise ValueError('Campaign release receipt recovery was not selected')
+    names = ('readback-attempt', 'readback-guard', 'readback-result', 'readback-cleanup')
+    documents = {name: files._read(name) for name in names}
+    source = verified_source(files, opening, start, run_id, task)
+    guard, cleanup = (documents[name] for name in ('readback-guard', 'readback-cleanup'))
+    finished = cleanup['receipt']
+    if (finished.get('kind') != 'supervised-process-cleanup' or finished.get('schema_version') != 1
+            or finished.get('returncode') != 0 or not isinstance(finished.get('model'), dict)
+            or not guard['deadline_monotonic'] >= guard['work_cutoff_monotonic'] >= cleanup['reaped_at_monotonic']
+            or any(files._read(name) != value for name, value in documents.items())):
+        raise ValueError('Campaign release recovery requires unchanged original guard and reaped reader proof')
+    grant = readback_grant(opening, run_id, task, None)
+    reply = {'recovery_activity_id': release_recovery_id(grant), 'recovery_receipt_sha256': identity(documents),
+             'original_result': documents['readback-result']}
+    return {**source, **release_recovery_proof(grant, reply)}, reply, (
+        guard['worker'], guard['guard'], finished['model'])
+
+
 def verify_wake_intent(files, opening, start, run_id, task, intent):
     claimed = intent.get('source')
     if not isinstance(claimed, dict):
@@ -75,6 +96,8 @@ def verify_wake_intent(files, opening, start, run_id, task, intent):
     if claimed.get('kind') == 'manual_update':
         wait, terminal = manual_commands(files, opening, start, run_id, task)
         source = manual_wake_source(task, check_receipt(wait), check_receipt(terminal))
+    elif 'recovery_activity_id' in claimed:
+        source, _, _ = verified_release_recovery(files, opening, start, run_id, task)
     else:
         source = verified_source(files, opening, start, run_id, task)
     expected = wake_intent(opening, run_id, task, source)

@@ -11,10 +11,10 @@ from temporalio import activity
 from temporalio.exceptions import ApplicationError
 
 from ergora.campaigns.records import (
-    READBACK_ACTIVITY, READBACK_CLEANUP_SECONDS, TRAINING_GPU_RELEASE_ACTIVITY, TRAINING_READBACK_ACTIVITY,
+    READBACK_ACTIVITY, READBACK_CLEANUP_SECONDS, RELEASE_RECOVERY_ACTIVITY, TRAINING_GPU_RELEASE_ACTIVITY, TRAINING_READBACK_ACTIVITY,
     TRAINING_SCREEN_ACTIVITY,
     CampaignFiles, check_receipt, identity, readback_activity, readback_grant, readback_id, readback_task,
-    require_check_project, training_readback_action, training_readback_task, verify_registration,
+    release_recovery_id, require_check_project, training_readback_action, training_readback_task, verify_registration,
 )
 from ergora.runtime import action_observations, processes
 from ergora.storage.state import State, file_lock
@@ -47,6 +47,45 @@ class CampaignReadback:
         return {READBACK_ACTIVITY: self.read, TRAINING_READBACK_ACTIVITY: self.read_training_result,
                 TRAINING_SCREEN_ACTIVITY: self.read_training_screen,
                 TRAINING_GPU_RELEASE_ACTIVITY: self.read_training_gpu_release}[readback_activity(task)]
+
+    @activity.defn(name=RELEASE_RECOVERY_ACTIVITY)
+    async def recover_release(self, grant: dict) -> dict:
+        from ergora.campaigns.recipient_gate import verified_release_recovery
+
+        info = activity.info()
+        task = readback_task(self.opening)
+        if (task.get('recover_release_receipt') is not True or info.attempt != 1
+                or info.workflow_id != self.opening['workflow_id'] or info.workflow_run_id != self.run_id
+                or info.activity_id != release_recovery_id(grant)
+                or grant != readback_grant(self.opening, self.run_id, task, None)):
+            raise ValueError('Campaign recovery requires its selected original GPU release read')
+
+        def require_open():
+            opening, start, result = self.files.load()
+            if opening != self.opening or start != self.start_attempt or result is None or result['run_id'] != self.run_id:
+                raise ValueError('Campaign original start changed before release recovery')
+            stop, _, _ = self.files.load_stop(opening, start, result)
+            if (stop is not None or self.files._read('readback-cancel') is not None
+                    or not grant['due_at'] <= time.time() < grant['deadline_at'] - READBACK_CLEANUP_SECONDS):
+                raise ValueError('Campaign release recovery no longer admits the original receipt')
+
+        require_open()
+        require_check_project(State(self.files.home, read_only=True), self.opening)
+        _, reply, stamps = verified_release_recovery(self.files, self.opening, self.start_attempt, self.run_id, task)
+        boot = processes.identity(os.getpid())['boot_id']
+        for saved in stamps:
+            if (not isinstance(saved, dict) or not isinstance(saved.get('start_ticks'), str)
+                    or not saved['start_ticks'].isdigit() or type(saved.get('pid')) is not int or saved['pid'] <= 0
+                    or saved.get('boot_id') != boot):
+                raise ValueError('Campaign release recovery cannot verify the original process identity')
+            try:
+                original_process = processes.identity(saved['pid'])
+            except FileNotFoundError:
+                continue
+            if original_process == saved:
+                raise ValueError('Campaign release recovery requires the original processes to have exited')
+        require_open()
+        return reply
 
     async def _read(self, grant):
         info = activity.info()

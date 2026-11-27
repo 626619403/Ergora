@@ -10,6 +10,7 @@ function trainingEvidence({ locator, recipient, source_kind }, completion, confl
   const lease = completion?.local_gpu_lease;
   const history = recipient?.history;
   const native = recipient?.native_receipt;
+  const recovery = completion?.recovery_history;
   const screen = source_kind === "training_screen_result";
   const gpuRelease = source_kind === "training_gpu_release";
   return [
@@ -37,7 +38,10 @@ function trainingEvidence({ locator, recipient, source_kind }, completion, confl
         ] : []),
         ...(!gpuRelease ? [["训练执行回收记录 SHA256", completion?.reap_record_sha256]] : []),
         ["读取守卫清理 SHA256", completion?.reader_cleanup_sha256],
-        ["训练读取 Activity 完成事件 ID", completion?.completed_event_id],
+        ...(recovery ? [
+          ["原读取 Activity 超时事件 ID", recovery.original_timeout_event_id],
+          ["回执核对 Activity 完成事件 ID", recovery.completed_event_id],
+        ] : [["训练读取 Activity 完成事件 ID", completion?.completed_event_id]]),
       ]),
       record("History 核对的原训练读取回执", completion)),
     panel("原训练资源租约", null,
