@@ -155,6 +155,120 @@ def test_native_structured_output_normalization_uses_actual_process(tmp_path, mo
             assert argv[argv.index("--effort") + 1] == effort
 
 
+@pytest.mark.skipif(sys.platform != "linux", reason="Native CLI adapters require Linux")
+@pytest.mark.parametrize("tool, terminal_case, schema_case", [
+    (tool, case, structured)
+    for tool, backend_cases in {
+        "antigravity-cli": ["extra_user_turn"],
+        "deepseek-cli": [
+            "multiple_internal_turns", "fatal_error", "failed_last_turn",
+            "turn_before_session", "session_inside_turn", "duplicate_turn",
+        ],
+    }.items()
+    for case, structured in [
+        ("success", False), ("success", True), ("error", False), ("wrong_identity", True),
+        ("missing_terminal", True), ("invalid_result", True), ("wrong_cwd", False), ("wrong_cwd", True),
+        *((case, structured) for case in backend_cases for structured in (False, True)),
+    ]
+])
+def test_headless_implementer_requires_original_terminal(tmp_path, tool, terminal_case, schema_case):
+    worktree = tmp_path / "worktree"
+    worktree.mkdir()
+    cli = tmp_path / "native-cli"
+    cli.write_text(f"""#!{sys.executable}
+import json
+from pathlib import Path
+import sys
+
+tool = {tool!r}
+case = {terminal_case!r}
+structured = {schema_case!r}
+args = sys.argv[1:]
+stdin = sys.stdin.read()
+result = {{"summary": "implemented", "artifacts": {{"check": "passed"}}}}
+if case == "invalid_result":
+    result["artifacts"].clear()
+text = json.dumps(result) if structured else "Completed a source change."
+identity = "different" if case == "wrong_identity" else "original"
+cwd = str(Path.cwd().parent if case == "wrong_cwd" else Path.cwd())
+steps = []
+following = []
+
+if tool == "antigravity-cli":
+    assert "--sandbox" in args
+    assert args[:4] == ["--input-format", "stream-json", "--output-format", "stream-json"]
+    message = json.loads(stdin)
+    assert message == {{"event": "user", "message": {{"content": "Implement this change."}}}}
+    assert ("--json-schema" in args) == structured
+    opening = {{"event": "init", "conversation_id": "original", "init": {{"cwd": cwd}}}}
+    terminal = {{"event": "result", "result": {{"conversation_id": identity,
+        "status": "ERROR" if case == "error" else "SUCCESS", "response": text,
+        "num_turns": 2 if case == "extra_user_turn" else 1}}}}
+    if structured:
+        terminal["result"]["structured_output"] = result
+else:
+    assert args[:3] == ["--profile", "headless", "--patch"]
+    overlay = Path(args[3])
+    assert overlay.is_absolute()
+    assert overlay.read_text().splitlines() == [
+        "- id: headless-runner", "  inject: [headlessStartup]", "  config:",
+        "    task: !!js ctx.headlessStartup.task",
+        "    sessionId: !!js ctx.headlessStartup.sessionId",
+        "    json: !!js ctx.headlessStartup.json",
+    ]
+    assert args[4:] == ["--permission-mode", "workspace-write", "--json", "-"]
+    assert stdin.startswith("Implement this change.")
+    if structured:
+        schema = json.loads(stdin.split("JSON Schema:\\n", 1)[1])
+        assert schema["properties"]["artifacts"]["required"] == ["check"]
+    opening = {{"type": "session", "sessionId": "original", "cwd": cwd}}
+    terminal = {{"type": "final", "sessionId": identity,
+        "reason": {{"kind": "error" if case == "error" else "completed"}}, "text": text}}
+    if case in ("multiple_internal_turns", "duplicate_turn"):
+        steps.extend([
+            {{"type": "status", "phase": "turn_start", "turn": 1}},
+            {{"type": "status", "phase": "step_start", "turn": 1, "step": 1}},
+            {{"type": "text", "text": "Intermediate response"}},
+            {{"type": "status", "phase": "step_end", "turn": 1, "step": 1}},
+            {{"type": "status", "phase": "turn_end", "turn": 1, "reason": {{"kind": "completed"}}}},
+        ])
+    turn = 2 if case == "multiple_internal_turns" else 1
+    reason = {{"kind": "error"}} if case == "failed_last_turn" else terminal["reason"]
+    steps.extend([
+        {{"type": "status", "phase": "turn_start", "turn": turn}},
+        {{"type": "status", "phase": "turn_end", "turn": turn, "reason": reason}},
+    ])
+    if case == "fatal_error":
+        following.append({{"type": "error", "message": "native driver failure"}})
+
+events = [opening, *steps]
+if case == "turn_before_session":
+    events = [*steps, opening]
+elif case == "session_inside_turn":
+    events = [steps[0], opening, *steps[1:]]
+for event in events:
+    print(json.dumps(event))
+if case != "missing_terminal":
+    print(json.dumps(terminal))
+for event in following:
+    print(json.dumps(event))
+if case in ("success", "multiple_internal_turns"):
+    Path("changed.txt").write_text("changed", encoding="utf-8")
+""", encoding="utf-8")
+    cli.chmod(0o700)
+    schema = agents.result_schema(["check"]) if schema_case else None
+    report = agents.invoke({"tool": tool, "executable": str(cli)}, "implementer",
+                           "Implement this change.", worktree, tmp_path / "output", 5, schema)
+    assert report["returncode"] == 0
+    if terminal_case in ("success", "multiple_internal_turns"):
+        assert report["status"] == "succeeded" and (worktree / "changed.txt").read_text() == "changed"
+        if schema_case:
+            assert json.loads(Path(report["result"]).read_text())["artifacts"] == {"check": "passed"}
+    else:
+        assert report["status"] == "failed" and "result" not in report
+        assert (tmp_path / "output" / "stdout.txt").exists()
+
+
 @pytest.fixture
 def codex_schema_process(tmp_path):
     """A native-process substitute with the observed provider's reference restriction."""

@@ -126,6 +126,22 @@ Pinned source and its independent venv default to `~/.local/share/ergora-tools/m
 
 The provider's environment variables supply authentication. mini supports implementation, without serving as a read-only independent reviewer. Its driver uses native LiteLLM tool-call models and consistent Bash tool instructions, retaining the trajectory. On completion it writes final text to the submission file in the run archive, then uses the prompted command to submit the body to the same structural validation. Empty submission fails. Shell actions remain in the outer monitor's process group under the overall task timeout; one action can consume all remaining time. Costs use upstream reports. One API request may exceed the remaining budget; this is not a prepaid-spend ceiling. Installation and CPU SDK checks do not establish model quality.
 
+### Antigravity CLI and DeepSeek CLI
+
+On Linux/WSL2, install and configure [Antigravity CLI](https://antigravity.google/docs/cli/headless) or [DeepSeek Harness CLI](https://github.com/deepseek-ai/deepseek-harness/tree/master/apps/cli). Bind the implementer to `{"tool":"antigravity-cli"}` or `{"tool":"deepseek-cli"}`. Set `executable` to an absolute path if `agy` or `dsh` is outside the service's PATH.
+
+```bash
+ergora project bind PROJECT implementer --binding implementer.json --revision CURRENT_REVISION
+ergora tools doctor PROJECT --probe --timeout 5
+ergora agent run PROJECT implementer --prompt task.md --timeout 300
+```
+
+Antigravity uses its native login. Its binding can set optional `model` and `effort`. Ergora requests the native terminal sandbox with `--sandbox`. Its effect depends on Linux namespace support and native permissions. Headless Antigravity can deny a tool request that needs approval and still return a successful answer. Check the actual Git diff and test results to confirm implementation. [Antigravity headless permissions](https://antigravity.google/docs/cli/headless) · [Sandbox requirements](https://antigravity.google/docs/sandbox/)
+
+DeepSeek uses the configured default model and the headless profile with the native `workspace-write` preset. Ergora supplies the task on stdin and uses a final CLI overlay to select a fresh session and JSON output. The shipped DeepSeek Harness CLI 0.2.2-rc.2 headless profile resolves API keys from the launch environment, the working directory's `.env`, then `DSH_HOME/.env`. Using GUI-managed keys or sign-ins requires explicitly enabling their providers in native configuration. [DeepSeek headless credentials](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.2.2-rc.2/packages/bundle/headless/README.md#credentials)
+
+Both adapters run one native implementer request in a trusted workspace. Use a separate worktree for each concurrent implementation task. Ergora checks the working directory, native identity and successful completion, then validates the stage schema when present. The run retains raw stdout and stderr. `ergora tools doctor PROJECT --probe` can check the executable version and reports authentication as `not_checked`. The [DeepSeek Harness SDK adapter](deepseek-harness.md) remains available for restricted leaves.
+
 ## Maintain built-in component descriptions
 
 `src/ergora/data/components.json` supplies built-in roles/tool descriptions at catalog `schema_version: 1`. Roles save capability requirements, display information and recommended bindings for new projects. Components save implemented driver names, capabilities, operations, platforms, probe methods, configuration fields and installation sources. `ergora tools list` and Web bootstrap return these descriptions; binding forms are generated from their fields. ForgeKernel/mini installers also read pinned sources/commits from this file.

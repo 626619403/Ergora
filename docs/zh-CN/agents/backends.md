@@ -124,6 +124,22 @@ bash scripts/install-agent.sh mini-swe-agent
 
 认证由相应 provider 的环境变量提供。mini 支持实现角色，不承担只读独立审查。驱动使用原生 LiteLLM tool-call 模型与一致的 bash 工具提示，保存 trajectory；完成时将最终文本写到运行归档中的提交文件，再用提示中给出的命令提交正文，交给同一结构验证。空 submission 判为失败。shell action 保留在外层监控的进程组，使用整体任务时限；一个 action 可消耗剩余时限。成本沿用上游报告值，单次 API 请求可能超过剩余预算，不是预付费金额上限。安装和 CPU SDK 检查不代表模型效果验收。
 
+### Antigravity CLI 与 DeepSeek CLI
+
+在 Linux/WSL2 上按官方指南安装并配置 [Antigravity CLI](https://antigravity.google/docs/cli/headless) 或 [DeepSeek Harness CLI](https://github.com/deepseek-ai/deepseek-harness/tree/master/apps/cli)。实现角色可绑定 `{"tool":"antigravity-cli"}` 或 `{"tool":"deepseek-cli"}`。服务的 PATH 找不到 `agy` 或 `dsh` 时，通过 `executable` 指定绝对路径。
+
+```bash
+ergora project bind PROJECT implementer --binding implementer.json --revision CURRENT_REVISION
+ergora tools doctor PROJECT --probe --timeout 5
+ergora agent run PROJECT implementer --prompt task.md --timeout 300
+```
+
+Antigravity 使用自身登录，可在绑定中选择 `model` 和 `effort`。Ergora 通过 `--sandbox` 请求原生终端沙箱，实际效果取决于 Linux namespace 支持和原生权限。无头模式可以拒绝需要审批的工具操作，随后仍返回成功答复。以实际 Git diff 和测试结果确认实现是否完成。[Antigravity 无头模式权限](https://antigravity.google/docs/cli/headless) · [沙箱要求](https://antigravity.google/docs/sandbox/)
+
+DeepSeek 使用原生配置的默认模型，通过 `headless` profile 和原生 `workspace-write` 权限运行。Ergora 从 stdin 提供任务，并用 CLI 最后加载的配置补丁选择新会话和 JSON 输出。DeepSeek Harness CLI 0.2.2-rc.2 随附的无头配置按启动环境变量、工作目录的 `.env`、`DSH_HOME/.env` 的顺序读取 API key。使用 GUI 管理的密钥或登录状态需要在原生配置中显式启用相应组件。[DeepSeek 无头凭据](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.2.2-rc.2/packages/bundle/headless/README.md#credentials)
+
+两者在受信任的工作区执行单次原生实现请求。并行实现时使用独立 worktree。Ergora 核对工作目录、原生标识和成功终态，有阶段 schema 时再验证结构化结果。运行记录保留原生 stdout 和 stderr。`ergora tools doctor PROJECT --probe` 可检查可执行文件版本，认证状态为 `not_checked`。受限只读叶子可继续用 [DeepSeek Harness SDK](deepseek-harness.md)。
+
 ## 维护内置组件描述
 
 源码中的 `src/ergora/data/components.json` 是内置角色与工具目录的来源，目录版本为 `schema_version: 1`。角色保存能力要求、显示信息和新项目默认绑定；组件保存已实现的驱动名称、能力、操作、平台、探测方式、配置字段及安装来源。`ergora tools list` 和 Web bootstrap 返回这些描述，绑定表单按字段生成。ForgeKernel 与 mini 的安装器也从此文件读取固定源码和提交。

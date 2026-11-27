@@ -108,6 +108,11 @@ def invoke(binding: dict, role: str, prompt: str, cwd: Path, output: Path, timeo
             document.update(result=str(output / "result.json"), result_sha256=hashlib.sha256(content).hexdigest())
         except (OSError, ValueError, TypeError, AttributeError, KeyError, RecursionError) as error:
             document.update(status="failed", error=f"Invalid structured agent result: {error}")
+    elif process_succeeded and session is None:
+        try:
+            backend.validate_native_completion(output, request)
+        except (OSError, ValueError, RecursionError) as error:
+            document.update(status="failed", error=f"Invalid native agent result: {error}")
     if session is not None:
         try:
             document['native_session'] = backend.session_result(output, request, completed=document['status'] == 'succeeded')

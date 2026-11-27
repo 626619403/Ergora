@@ -923,6 +923,114 @@
       "note": "GitHub/GitLab 工单上下文与显式候选评论；只保存凭据变量名。写入需已导出v7候选及精确意图确认；unknown不重发。读取不授予执行权限；更新时间/ETag不是写入CAS。",
       "installation": null
     },
+    "antigravity-cli": {
+      "kind": "agent",
+      "implementation": "antigravity-cli",
+      "layers": [],
+      "capabilities": [
+        "scoped-code-write",
+        "test-execution"
+      ],
+      "operations": {
+        "*": [
+          "agent.run"
+        ]
+      },
+      "platforms": [
+        "linux"
+      ],
+      "probe": "agent",
+      "configuration": {
+        "type": "object",
+        "properties": {
+          "tool": {
+            "const": "antigravity-cli"
+          },
+          "executable": {
+            "type": "string",
+            "title": "CLI 可执行文件（留空从 PATH 查找）",
+            "minLength": 1,
+            "pattern": "\\S",
+            "not": {
+              "pattern": "\u0000"
+            }
+          },
+          "model": {
+            "type": "string",
+            "title": "模型 ID（留空使用 agy 设置）",
+            "minLength": 1,
+            "pattern": "\\S",
+            "not": {
+              "pattern": "\u0000"
+            }
+          },
+          "effort": {
+            "type": "string",
+            "title": "agy 推理强度（留空使用模型默认）",
+            "minLength": 1,
+            "pattern": "\\S",
+            "not": {
+              "pattern": "\u0000"
+            }
+          }
+        },
+        "required": [
+          "tool"
+        ],
+        "additionalProperties": false
+      },
+      "note": "实现角色使用 agy 原生登录并请求终端沙箱，实际沙箱能力依赖运行环境。",
+      "installation": {
+        "kind": "external",
+        "url": "https://antigravity.google/docs/cli/headless"
+      },
+      "platform_note": "Requires Linux; use WSL2"
+    },
+    "deepseek-cli": {
+      "kind": "agent",
+      "implementation": "deepseek-cli",
+      "layers": [],
+      "capabilities": [
+        "scoped-code-write",
+        "test-execution"
+      ],
+      "operations": {
+        "*": [
+          "agent.run"
+        ]
+      },
+      "platforms": [
+        "linux"
+      ],
+      "probe": "agent",
+      "configuration": {
+        "type": "object",
+        "properties": {
+          "tool": {
+            "const": "deepseek-cli"
+          },
+          "executable": {
+            "type": "string",
+            "title": "CLI 可执行文件（留空从 PATH 查找）",
+            "minLength": 1,
+            "pattern": "\\S",
+            "not": {
+              "pattern": "\u0000"
+            }
+          }
+        },
+        "required": [
+          "tool"
+        ],
+        "additionalProperties": false
+      },
+      "note": "实现角色使用 dsh 的 headless profile、默认模型和原生 workspace-write 权限。",
+      "installation": {
+        "kind": "external",
+        "url": "https://github.com/deepseek-ai/deepseek-harness/tree/master/apps/cli"
+      },
+      "platform_note": "Requires Linux; use WSL2"
+    },
     "deepseek-harness": {
       "kind": "agent",
       "implementation": "deepseek-harness",

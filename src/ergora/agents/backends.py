@@ -1,6 +1,7 @@
 """Native Agent adapters; the local mapping selects execution, not public schemas."""
 
 from abc import ABC, abstractmethod
+from collections.abc import Iterable, Iterator
 from copy import deepcopy
 from dataclasses import dataclass
 import hashlib
@@ -27,6 +28,31 @@ def _events(output: Path):
         for line in stream:
             if line.strip():
                 yield json.loads(line)
+
+
+def _headless_turn(events: Iterable[object], event_key: str, opening_name: str, terminal_name: str) -> tuple[dict, dict]:
+    opening = None
+    terminal = None
+    for event in events:
+        if not isinstance(event, dict):
+            raise ValueError("Headless output contains an invalid event")
+        kind = event.get(event_key)
+        if kind == opening_name:
+            if opening is not None or terminal is not None:
+                raise ValueError("Headless output contains more than one invocation")
+            opening = event
+        elif kind == terminal_name:
+            if opening is None or terminal is not None:
+                raise ValueError("Headless output contains an unexpected terminal event")
+            terminal = event
+    if opening is None or terminal is None:
+        raise ValueError("Headless output has no complete invocation and terminal event")
+    return opening, terminal
+
+
+def _check_headless_cwd(observed: object, request_cwd: Path) -> None:
+    if not isinstance(observed, str) or Path(observed) != request_cwd.resolve():
+        raise ValueError("Headless output does not report the original working directory")
 
 
 def _restricted_policy(mode: str, native_tools: list[str], credentials: str, sandbox: dict) -> dict:
@@ -109,6 +135,9 @@ class AgentBackend(ABC):
 
     def read_result(self, output: Path, request: Invocation) -> dict:
         return json.loads((output / "stdout.txt").read_text(encoding="utf-8"))
+
+    def validate_native_completion(self, output: Path, request: Invocation) -> None:
+        """Check any backend-specific completion evidence for a plain invocation."""
 
     def native_usage(self, protocol: Path, mode: str, *, expected_sha256: str | None = None) -> dict | None:
         """Observe supported usage from the original invocation artifacts."""
@@ -670,8 +699,147 @@ class CommandBackend(AgentBackend):
         return self.binding["argv"], stdin
 
 
+class _HeadlessCliBackend(AgentBackend):
+    default_executable: str
+
+    def executable(self) -> str:
+        return self.binding.get("executable", self.default_executable)
+
+    def check_invocation(self) -> None:
+        if sys.platform != "linux":
+            raise ValueError(f"{self.binding['tool']} native invocation requires Linux or WSL2")
+
+    def probe_commands(self, cwd: Path) -> list[tuple[str, list[str]]]:
+        return [("version", [processes.resolve_program(self.executable(), cwd), "--version"])]
+
+
+class AntigravityBackend(_HeadlessCliBackend):
+    default_executable = "agy"
+    guidance = ("Sign in interactively with agy before a headless call.",
+                "The native sandbox is requested and requires host namespace support. Check actual edits and test results.")
+
+    def command(self, request: Invocation) -> tuple[list[str], str]:
+        argv = [self.executable(), "--input-format", "stream-json", "--output-format", "stream-json", "--sandbox"]
+        for field in ("model", "effort"):
+            if field in self.binding:
+                argv.extend((f"--{field}", self.binding[field]))
+        if request.schema is not None:
+            argv.extend(("--json-schema", json.dumps(request.schema)))
+        message = {"event": "user", "message": {"content": request.prompt}}
+        return argv, json.dumps(message, ensure_ascii=False) + "\n"
+
+    @staticmethod
+    def _terminal(output: Path, request: Invocation) -> dict:
+        opening, terminal = _headless_turn(_events(output), "event", "init", "result")
+        init = opening.get("init")
+        _check_headless_cwd(init.get("cwd") if isinstance(init, dict) else None, request.cwd)
+        result = terminal.get("result")
+        identity = opening.get("conversation_id")
+        if not isinstance(identity, str) or not identity or not isinstance(result, dict) or result.get("conversation_id") != identity:
+            raise ValueError("Antigravity result belongs to an unknown conversation")
+        if result.get("status") != "SUCCESS":
+            raise ValueError("Antigravity did not report a successful turn; see native stdout and stderr")
+        turns = result.get("num_turns")
+        if type(turns) is not int or turns != 1:
+            raise ValueError("Antigravity did not report exactly one user turn")
+        return result
+
+    def read_result(self, output: Path, request: Invocation) -> dict:
+        return self._terminal(output, request).get("structured_output")
+
+    def validate_native_completion(self, output: Path, request: Invocation) -> None:
+        response = self._terminal(output, request).get("response")
+        if not isinstance(response, str) or not response.strip():
+            raise ValueError("Antigravity final response is empty")
+
+
+class DeepSeekCliBackend(_HeadlessCliBackend):
+    default_executable = "dsh"
+    guidance = ("Configure the default model and headless credentials in DeepSeek Harness.",
+                "The headless profile runs with workspace-write and uses the native approval policy.")
+
+    def command(self, request: Invocation) -> tuple[list[str], str]:
+        prompt = request.prompt
+        if request.schema is not None:
+            prompt += ("\n\nReturn only the final JSON object, without Markdown, matching this JSON Schema:\n"
+                       + json.dumps(request.schema, ensure_ascii=False))
+        # User profile layers can replace the runner's entire config row. Restore the original
+        # startup links in the final CLI overlay, keeping the other deployment rows selected.
+        overlay = request.protocol.resolve() / "dsh-headless.patch.yml"
+        overlay.write_text(
+            "- id: headless-runner\n"
+            "  inject: [headlessStartup]\n"
+            "  config:\n"
+            "    task: !!js ctx.headlessStartup.task\n"
+            "    sessionId: !!js ctx.headlessStartup.sessionId\n"
+            "    json: !!js ctx.headlessStartup.json\n",
+            encoding="utf-8", newline="\n",
+        )
+        return [self.executable(), "--profile", "headless", "--patch", str(overlay),
+                "--permission-mode", "workspace-write", "--json", "-"], prompt
+
+    @staticmethod
+    def _stream(output: Path) -> Iterator[object]:
+        session_opened = False
+        observed_turns: set[int] = set()
+        active_turn = None
+        last_reason = None
+        finished = False
+        for event in _events(output):
+            if not isinstance(event, dict):
+                raise ValueError("Headless output contains an invalid event")
+            kind = event.get("type")
+            if kind == "error":
+                raise ValueError("DeepSeek CLI reported a fatal error; see native stdout and stderr")
+            if finished:
+                raise ValueError("DeepSeek CLI reported data after the final event")
+            if kind == "session":
+                session_opened = True
+            elif kind == "status":
+                if not session_opened:
+                    raise ValueError("DeepSeek CLI reported status before opening the native session")
+                phase, turn = event.get("phase"), event.get("turn")
+                if phase == "turn_start":
+                    if active_turn is not None or type(turn) is not int or turn in observed_turns:
+                        raise ValueError("DeepSeek CLI reported an unexpected turn start")
+                    observed_turns.add(turn)
+                    active_turn = turn
+                elif phase == "turn_end":
+                    if active_turn is None or type(turn) is not int or turn != active_turn:
+                        raise ValueError("DeepSeek CLI reported an unexpected turn end")
+                    active_turn = None
+                    last_reason = event.get("reason")
+            elif kind == "final":
+                if active_turn is not None or not isinstance(last_reason, dict) or event.get("reason") != last_reason:
+                    raise ValueError("DeepSeek CLI final reason disagrees with the last completed native turn")
+                finished = True
+            yield event
+
+    @staticmethod
+    def _answer(output: Path, request: Invocation) -> str:
+        opening, terminal = _headless_turn(DeepSeekCliBackend._stream(output), "type", "session", "final")
+        _check_headless_cwd(opening.get("cwd"), request.cwd)
+        identity = opening.get("sessionId")
+        if not isinstance(identity, str) or not identity or terminal.get("sessionId") != identity:
+            raise ValueError("DeepSeek CLI result belongs to an unknown session")
+        reason = terminal.get("reason")
+        if not isinstance(reason, dict) or reason.get("kind") != "completed":
+            raise ValueError("DeepSeek CLI did not report a completed turn; see native stdout and stderr")
+        answer = terminal.get("text")
+        if not isinstance(answer, str) or not answer.strip():
+            raise ValueError("DeepSeek CLI final response is empty")
+        return answer
+
+    def read_result(self, output: Path, request: Invocation) -> dict:
+        return parse_json(self._answer(output, request), "DeepSeek CLI final response", finite=True, bounded=True)
+
+    def validate_native_completion(self, output: Path, request: Invocation) -> None:
+        self._answer(output, request)
+
+
 _BACKENDS = {"codex": CodexBackend, "claude-code": ClaudeCodeBackend,
-             "mini-swe-agent": MiniSweBackend, "deepseek-harness": DeepSeekHarnessBackend, "command": CommandBackend}
+             "mini-swe-agent": MiniSweBackend, "deepseek-harness": DeepSeekHarnessBackend, "command": CommandBackend,
+             "antigravity-cli": AntigravityBackend, "deepseek-cli": DeepSeekCliBackend}
 
 
 def supports_mode(tool: str, mode: str) -> bool:
