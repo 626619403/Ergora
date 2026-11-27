@@ -208,6 +208,31 @@ ergora campaign status my-project fixed-check-plan --online --task-id verify-bas
 
 Read a verified guarded result in `readback_completion`. If an identical manual Update lost the race, its terminal entry in `task_observation_history` retains the original Run and Update IDs, the accepted and completed event IDs, `status: failed`, `reason: readback_already_admitted` and `receipt: null`. The Activity still supplies the original result. Neither a status read nor a repeated observation delivers a second continuation.
 
+### Give the same assigned role one independent task
+
+The local operator can include one optional `assignment` in the same confirmed plan. Select the original timed fixed-check task with `waiting_task_id` and give `next_task` a distinct task ID. Both native sessions must use the same registered role and permission generation. Read that role's generation from `native_authority_revisions` in `ergora project show PROJECT`, or use the project revision when the role has no separate value. Select a separately authorized native session and its latest stopped parent for the independent task. Its prompt, timeout, role settings and saved context govern that turn.
+
+```json
+{
+  "assignee": {"role": "performance-analyst", "generation": 7},
+  "waiting_task_id": "existing-fixed-check",
+  "next_task": {
+    "task_id": "review-independent-input",
+    "recipient": {
+      "session_id": "independent-session",
+      "parent_run_id": "independent-parent",
+      "intent_id": "review-independent-input-once",
+      "prompt": "Review the prepared independent input.",
+      "timeout_seconds": 30
+    }
+  }
+}
+```
+
+When the original waiting Update is accepted and its receipt is verified, the standard Worker can claim the independent task after verifying the original stopped parent and acquiring its released native session lock. The independently authorized turn runs on its selected session with its own timeout inside the Campaign deadline. The original Job retains its authorization, clock and executor while its scheduled readback runs independently. With `wake_on_observe` enabled, the first verified passing source can supply the original result wake. A passing result resumes the original fixed-check recipient only after the shared Campaign assignment is available. The original fixed-check recipient still requires its exact stopped parent. A later use of the independent session can temporarily hold its native lock. Once that lock is free, the Campaign verifies the originally assigned turn and its own cleanup.
+
+Read `assignment.claim` for the independent task's original waiting and A1 release references. Online status reads `assignment.history` from the accepted waiting Update and the exact A2 Activity. Use `assignment.native_receipt` for A2 dispatch, payload start, usage and the original process outcome. `assignment.release` identifies the confirmed released native slot when available. An incomplete launch retains the shared assignment until the original evidence resolves it. Worker replacement and repeated observations reconcile the original attempt. STOP and expiry fence both Campaign recipients. The assignment covers these two selected tasks in one Campaign under the local operator's authority.
+
 ### Read one managed training full result
 
 A record-only plan can include one root task whose source is `{"kind":"training_full_result","locator":{...}}` and whose readback specifies `due_at` and `deadline_at`. The locator requires `experiment_id`, `workflow_id`, `run_id`, `job_id`, `native_request_sha256` and `attempt_sha256` from the same project's original managed full verification. Bind Temporal before authorizing that training attempt so its registration and project revision match the Campaign.

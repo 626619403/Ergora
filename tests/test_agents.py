@@ -896,6 +896,8 @@ def test_campaign_recipient_requires_original_parent_before_reporting_revocation
                         lambda *args: parent if args[-1] == 'parent' else None)
     monkeypatch.setattr(runs.RecipientGate, 'load', lambda *args: gate)
     monkeypatch.setattr(runs, 'file_lock', lambda *args, **kwargs: nullcontext())
+    # This proof uses an inert slot, so supply the boot sample without a host clock.
+    monkeypatch.setattr(runs.budget_clock, '_clock', lambda: ('00000000-0000-4000-8000-000000000001', 1))
     monkeypatch.setattr(runs, '_session_turns', lambda *args: turns)
     monkeypatch.setattr(runs, '_read_session_context', lambda *args: {'role': altered.get('role', 'implementer')})
     monkeypatch.setattr(runs, '_validate_session_authority', observe_authority)
@@ -905,6 +907,108 @@ def test_campaign_recipient_requires_original_parent_before_reporting_revocation
                               timeout=20, wait_for_slot=True, campaign_recipient={'original': True})
     assert authority_reads == ([] if altered.keys() & {'context_digest', 'role'} else [True])
     assert type(caught.value) is (ValueError if altered else runs._SessionAuthorityRevoked)
+    assert not (tmp_path / 'runs').exists()
+
+
+@pytest.mark.parametrize('route', ['ordinary', 'campaign-result', 'campaign-assignment'])
+def test_native_continuation_forwards_original_context_to_inert_reservation(tmp_path, monkeypatch, route):
+    from contextlib import nullcontext
+    from types import SimpleNamespace
+
+    from ergora.agents import runs
+    from ergora.campaigns import recipient_gate
+
+    state = SimpleNamespace(root=tmp_path)
+    session, parent_id, intent_id = f'{route}-session', f'{route}-parent', 'original-intent'
+    native_id, revision, timeout = f'{route}-native', 7, 23
+    prompt = 'Use the frozen original evidence'
+    digest = {'ordinary': 'a', 'campaign-result': 'b', 'campaign-assignment': 'c'}[route] * 64
+    native_run_id = runs._continuation_run_id(session, intent_id)
+    root = {'id': session, 'context_digest': digest}
+    parent = {'id': parent_id, 'session': {'id': session}, 'status': 'succeeded', 'execution_stopped': True,
+              'native_session': {'id': native_id}}
+    context = {'role': 'implementer', 'repo': str(tmp_path), 'binding': {'tool': 'codex'}}
+    wait_for_slot = route != 'ordinary'
+    reference = {'campaign': 'original', 'attempt_sha256': 'd' * 64} if wait_for_slot else None
+    clock, lock = {'original-clock': True}, object()
+    gate = None
+    order = []
+    calls = []
+    frozen_binding = {'role': 'implementer', 'context_digest': digest, 'native_id': native_id}
+    if wait_for_slot:
+        gate = object.__new__(runs.RecipientGate)
+        gate.reference = reference
+        gate.binding = frozen_binding
+        gate.attempt = {'native_run_id': native_run_id}
+        gate.declaration = {'session_id': session, 'parent_run_id': parent_id, 'intent_id': intent_id,
+                            'prompt': prompt, 'timeout_seconds': timeout}
+        gate.independent = route == 'campaign-assignment'
+        gate.opening = {'project_revision': revision, 'plan': {'assignment': {
+            'assignee': {'role': 'implementer', 'generation': 4}, 'next_task': {'task_id': 'independent'}}}}
+        gate.require_open = lambda: None
+        expected_opening = gate.opening
+
+        def read_campaign_authority(actual_state, opening):
+            assert actual_state is state and opening is expected_opening
+            order.append('campaign-authority')
+            return {'revision': revision, 'native_authority_revisions': {'implementer': 4}}
+
+        def load_gate(home, project, submitted_reference):
+            assert (home, project, submitted_reference) == (tmp_path, 'demo', reference)
+            return gate
+
+        original_context_check = gate.require_turn_context
+
+        def check_context(actual_digest, actual_role):
+            original_context_check(actual_digest, actual_role)
+            order.append('frozen-context')
+
+        monkeypatch.setattr(recipient_gate, 'require_check_project', read_campaign_authority)
+        monkeypatch.setattr(runs.RecipientGate, 'load', load_gate)
+        monkeypatch.setattr(gate, 'require_turn_context', check_context)
+
+    def read_context(actual_state, selected_root):
+        assert actual_state is state and selected_root is root
+        return context
+
+    def read_authority(actual_state, actual_context):
+        assert actual_state is state and actual_context is context
+        order.append('native-authority')
+
+    submitted = {'parent_run': parent_id, 'prompt': prompt, 'expected_revision': revision,
+                 'timeout': timeout, 'intent_id': intent_id}
+    if reference is not None:
+        submitted['campaign_recipient'] = reference
+
+    expected_args = (state, 'demo', session, parent, native_run_id, 2, prompt, timeout, clock, context,
+                     digest, submitted, lock)
+    admitted = {'id': native_run_id, 'context_digest': digest}
+
+    def reserve(*args, check_admission_deadline, gate):
+        assert args == expected_args and args[3] is parent and args[9] is context
+        assert check_admission_deadline is wait_for_slot
+        if wait_for_slot:
+            assert gate.binding is frozen_binding and gate.submission() == submitted
+            assert gate.independent is (route == 'campaign-assignment')
+        else:
+            assert gate is None
+        calls.append(args)
+        order.append('inert-reserve')
+        return admitted
+
+    monkeypatch.setattr(runs.native_sources, 'find_run', lambda *args: parent if args[-1] == parent_id else None)
+    monkeypatch.setattr(runs, 'file_lock', lambda *args, **kwargs: nullcontext(lock))
+    monkeypatch.setattr(runs, '_session_turns', lambda *args: [root, parent])
+    monkeypatch.setattr(runs, '_read_session_context', read_context)
+    monkeypatch.setattr(runs, '_validate_session_authority', read_authority)
+    monkeypatch.setattr(runs.budget_clock, 'authorize', lambda _timeout: clock)
+    monkeypatch.setattr(runs, '_reserve_session_turn', reserve)
+    actual = runs.continue_session(state, 'demo', session, parent_id, prompt, expected_revision=revision,
+                                   intent_id=intent_id, timeout=timeout, wait_for_slot=wait_for_slot,
+                                   campaign_recipient=reference)
+    assert actual is admitted and calls == [expected_args]
+    assert order == (['frozen-context', 'native-authority', 'frozen-context', 'campaign-authority', 'inert-reserve']
+                     if wait_for_slot else ['native-authority', 'inert-reserve'])
     assert not (tmp_path / 'runs').exists()
 
 

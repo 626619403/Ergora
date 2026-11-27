@@ -7,11 +7,13 @@ import time
 from uuid import uuid4
 
 from ergora.campaigns.records import (
-    FIXED_CHECK_TERMINAL, FIXED_TASK_LOCATOR, FIXED_TASK_UPDATE_PREFIX, PENDING_JOB_STATES, READBACK_ALREADY_ADMITTED,
+    ASSIGNMENT_ATTEMPT, FIXED_CHECK_TERMINAL, FIXED_TASK_LOCATOR, FIXED_TASK_UPDATE_PREFIX,
+    PENDING_JOB_STATES, READBACK_ALREADY_ADMITTED,
     ROLLOVER_UPDATE_PREFIX, TRAINING_RESULT_SOURCE, WORKFLOW_TYPE,
-    CampaignFiles, attempt_document, check_intent, check_record_name, identity, local_readback_stop,
+    CampaignFiles, assignment_task, attempt_document, check_intent, check_record_name, identity, local_readback_stop,
     original_check_evidence, project_selection, read_plan, readback_task,
-    recipient_task, require_check_project, result_document, rollover_intent, rollover_task, sha256, stop_intent,
+    recipient_task, require_assignment_bindings, require_check_project, result_document, rollover_intent,
+    rollover_task, sha256, stop_intent,
     tasks_by_id, training_readback_task, update_attempt, uuid_text, verify_registration,
     worker_queue, workflow_id,
 )
@@ -28,25 +30,35 @@ def _temporal():
     return workflow
 
 
-def _opening(files, revision, plan, plan_sha, selection, binding=None):
+def _opening(files, revision, plan, plan_sha, selection, bindings=None):
     creation_id = str(uuid4())
     result = {'schema_version': 1, 'mode': 'record_only', 'control_home': str(files.home), 'project': files.project,
             'project_revision': revision, 'campaign': files.campaign, 'actor': files.actor, 'plan': plan,
             'plan_sha256': plan_sha, 'plan_document_sha256': identity(plan), 'creation_id': creation_id,
             'task_queue': worker_queue(files.project, files.campaign, selection['scheduler'], creation_id),
             'workflow_id': workflow_id(files.project, files.campaign), 'workflow_type': WORKFLOW_TYPE, **selection}
-    if binding is not None:
-        result.update(mode='codex_recipient', recipient_binding=binding)
+    if bindings:
+        result.update(mode='codex_recipient', **bindings)
     return result
 
 
-def _freeze_recipient(state, files, revision, plan):
+def _freeze_recipients(state, files, revision, plan):
     task = recipient_task({'plan': plan})
     if task is None:
-        return None
+        return {}
     from ergora.agents.runs import prepare_campaign_recipient
+    from ergora.configuration.projects import native_authority_revision
 
-    return prepare_campaign_recipient(state, files.project, revision, task['recipient'])
+    bindings = {'recipient_binding': prepare_campaign_recipient(state, files.project, revision, task['recipient'])}
+    assigned = assignment_task({'plan': plan})
+    if assigned is not None:
+        selected = prepare_campaign_recipient(state, files.project, revision, assigned['recipient'])
+        grant = plan['assignment']['assignee']
+        require_assignment_bindings(bindings['recipient_binding'], selected, grant['role'])
+        if native_authority_revision(state.project(files.project), grant['role']) != grant['generation']:
+            raise ValueError('Campaign recipients must use the same original assignee permission generation')
+        bindings['assignment_binding'] = selected
+    return bindings
 
 
 def _future(opening):
@@ -178,16 +190,16 @@ async def _read_original(runtime, output, opening, attempt, run_id, *, client=No
         try:
             async with asyncio.timeout(runtime.RPC_SECONDS):
                 if successor is None:
-                    updates, completion, wake, terminal, followup_terminal = await runtime.read_task_history(
+                    updates, completion, wake, terminal, followup_terminal, assignment = await runtime.read_task_history(
                         client, handle, opening, check_commands)
                 else:
                     by_run = {}
                     for command in check_commands:
                         target = _command_handle(client, handle, successor, command)
                         by_run.setdefault(target.run_id, (target, []))[1].append(command)
-                    updates, completion, wake, terminal, followup_terminal = {}, None, None, None, None
+                    updates, completion, wake, terminal, followup_terminal, assignment = {}, None, None, None, None, None
                     for target, commands in by_run.values():
-                        decisions, _, _, _, _ = await runtime.read_task_history(client, target, opening, commands)
+                        decisions, _, _, _, _, _ = await runtime.read_task_history(client, target, opening, commands)
                         updates.update(decisions)
         except (TimeoutError, ConnectionError, runtime.RPCError):
             if full_result:
@@ -207,6 +219,7 @@ async def _read_original(runtime, output, opening, attempt, run_id, *, client=No
             if include_wake_conflict:
                 observed['_wake_history_conflict'] = True
             updates, completion, terminal, followup_terminal = before_wake
+            assignment = error.assignment
             wake = None
         if check_commands:
             observed['task_observation_history'] = _task_observation_history(check_commands, updates)
@@ -224,6 +237,8 @@ async def _read_original(runtime, output, opening, attempt, run_id, *, client=No
             observed['readback_followup_terminal'] = followup_terminal
         if wake is not None and (completion is None or 'recipient' not in completion):
             observed['recipient_history'] = wake
+        if assignment is not None:
+            observed['assignment_history'] = assignment
     return observed
 
 
@@ -242,10 +257,58 @@ def _task_observation_history(commands, updates=None, *, unobserved='unavailable
     return history
 
 
+def _assignment_status(state, files, opening, start, result, *, history=None):
+    from ergora.agents import runs
+    from ergora.campaigns.recipient_gate import RecipientGate, assignment_refusal, stopped_receipt
+
+    plan = opening['plan']['assignment']
+    claim = files._read(ASSIGNMENT_ATTEMPT) if start is not None else None
+    selected = plan['next_task']['recipient']
+    original_id = runs._continuation_run_id(selected['session_id'], selected['intent_id'])
+    if history is not None and 'outcome' in history and history['outcome'].get('native_run_id') != original_id:
+        raise ValueError('Campaign independent task History names a different native turn')
+    output = {'assignee': plan['assignee'], 'waiting_task_id': plan['waiting_task_id'],
+              'task_id': plan['next_task']['task_id'], 'claim': None, 'native_receipt': None,
+              'slot_status': 'unclaimed', 'release': None, 'history': history}
+    if claim is None:
+        return output
+    gate = RecipientGate(files, opening, start, result, claim)
+    if history is not None and 'intent' in history and history['intent'] != gate.intent:
+        raise ValueError('Saved Campaign independent task claim differs from its original History')
+    # A visible A1 release depends on stopped A2. Observe A2 after that dependent record.
+    resumed = files._read('recipient-attempt')
+    refusal = assignment_refusal(files, claim)
+    native = runs.campaign_recipient_receipt(state, gate)
+    release = None
+    if resumed is not None:
+        RecipientGate(files, opening, start, result, resumed)
+        release = resumed['slot_release']
+        if 'run_id' in release and (not stopped_receipt(native)
+                or release['request_sha256'] != native['run']['request_sha256']):
+            raise ValueError('Campaign assignment release differs from its original stopped native request')
+    elif refusal is not None and native['dispatch'] == 'unrecorded':
+        release = {'status': 'refused', 'attempt_sha256': identity(claim)}
+    elif stopped_receipt(native):
+        try:
+            with runs.released_campaign_slot(state, files.project, gate.declaration['session_id'], native['run_id'],
+                                             gate.binding, require_latest=False) as observed:
+                release = observed
+        except BlockingIOError:
+            pass
+        except (OSError, ValueError) as error:
+            output['release_error'] = str(error)
+    return {**output, 'claim': claim, 'native_receipt': native,
+            'slot_status': 'released' if release is not None else 'claimed', 'release': release,
+            **({'refusal': refusal} if refusal is not None else {})}
+
+
 def _recipient_status(state, files, opening, attempt, result, output):
     wake_conflict = output.pop('_wake_history_conflict', False)
     if opening is None or recipient_task(opening) is None:
         return output
+    if assignment_task(opening) is not None:
+        output['assignment'] = _assignment_status(state, files, opening, attempt, result,
+                                                  history=output.pop('assignment_history', None))
     original = output.pop('recipient_history', None) or output.get('readback_completion', {}).get('recipient')
     local_attempt = files._read('recipient-attempt') if attempt is not None else None
     selected = recipient_task(opening)['recipient']
@@ -410,7 +473,7 @@ async def create(state: State, project: str, campaign: str, path: Path, revision
     if opening is None:
         # Reject unsupported or stale authorization before creating the campaign namespace.
         selected = project_selection(state, state.project(project), revision, plan=plan)
-        preview = _opening(files, revision, plan, plan_sha, selected, _freeze_recipient(state, files, revision, plan))
+        preview = _opening(files, revision, plan, plan_sha, selected, _freeze_recipients(state, files, revision, plan))
         _future(preview)
     files.ensure_directory()
     with file_lock(files.lock, blocking=False):
@@ -419,7 +482,7 @@ async def create(state: State, project: str, campaign: str, path: Path, revision
             with State(state.root).connect() as db:
                 db.execute('BEGIN IMMEDIATE')
                 selected = project_selection(state, state.project(project), revision, plan=plan)
-                opening = _opening(files, revision, plan, plan_sha, selected, _freeze_recipient(state, files, revision, plan))
+                opening = _opening(files, revision, plan, plan_sha, selected, _freeze_recipients(state, files, revision, plan))
                 _future(opening)
                 files.write('start-intent', opening)
         elif (opening['project_revision'] != revision or opening['plan_sha256'] != plan_sha
@@ -441,7 +504,8 @@ async def create(state: State, project: str, campaign: str, path: Path, revision
                 selected = project_selection(state, state.project(project), revision, plan=plan)
                 if any(opening[key] != value for key, value in selected.items()):
                     raise ValueError('Original project registration or scheduler changed before attempt')
-                if 'recipient_binding' in opening and _freeze_recipient(state, files, revision, plan) != opening['recipient_binding']:
+                bindings = {key: opening[key] for key in ('recipient_binding', 'assignment_binding') if key in opening}
+                if bindings and _freeze_recipients(state, files, revision, plan) != bindings:
                     raise ValueError('Frozen Campaign recipient changed before the original attempt')
                 _future(opening)
                 attempt = attempt_document(opening, str(uuid4()))
@@ -629,7 +693,7 @@ def _readback_admitted(task):
 async def _readback_check_response(runtime, client, handle, opening, view, waiting):
     if waiting is None:
         raise ValueError('Campaign guarded result lacks its original waiting attempt')
-    _, completion, _, _, _ = await runtime.read_task_history(client, handle, opening, [waiting])
+    _, completion, _, _, _, _ = await runtime.read_task_history(client, handle, opening, [waiting])
     if completion is None or any(completion.get(key) != value for key, value in view['readback_observation'].items()
                                  if key != 'status'):
         raise ValueError('Campaign guarded result does not match its original completed Activity')
@@ -649,7 +713,7 @@ async def _check_attempt_response(runtime, client, handle, files, opening, attem
         if waiting is not None:
             try:
                 async with asyncio.timeout(runtime.RPC_SECONDS):
-                    updates, completion, _, _, _ = await runtime.read_task_history(client, handle, opening, [waiting, command])
+                    updates, completion, _, _, _, _ = await runtime.read_task_history(client, handle, opening, [waiting, command])
             except (TimeoutError, ConnectionError, runtime.RPCError):
                 return _check_response(opening, task, command, None)
             update_id = command['attempt']['update_id']

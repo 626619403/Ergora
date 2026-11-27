@@ -1,7 +1,7 @@
 """Independent Agent invocations, frozen context and durable run records."""
 
 import asyncio
-from contextlib import ExitStack, nullcontext
+from contextlib import ExitStack, contextmanager, nullcontext
 import hashlib
 import json
 import os
@@ -1036,8 +1036,11 @@ class _SessionAuthorityRevoked(ValueError):
     """The verified native session's original role authority generation changed."""
 
 
-def _validate_session_authority(state, context):
-    project = state.project(context['project'])
+def _validate_session_authority(state, context, *, project=None):
+    if project is None:
+        project = state.project(context['project'])
+    elif project['id'] != context['project']:
+        raise ValueError('Native session belongs to another project')
     repo = Path(project['repo'])
     details = repo.stat(follow_symlinks=False)
     current_revision = projects.native_authority_revision(project, context['role'])
@@ -1255,6 +1258,67 @@ def prepare_campaign_recipient(state: State, project_id: str, revision: int, dec
             'device': details.st_dev, 'inode': details.st_ino, 'size': details.st_size}
 
 
+@contextmanager
+def _existing_campaign_session_lock(state, session_id):
+    import fcntl
+
+    path = state.root / 'runs' / (native_sources.session_id(session_id) + '.session.lock')
+    descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    with os.fdopen(descriptor, 'rb') as lock:
+        opened = os.fstat(lock.fileno())
+        if not stat.S_ISREG(opened.st_mode):
+            raise ValueError('Original Campaign native slot is unavailable')
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        selected = path.stat(follow_symlinks=False)
+        if (selected.st_dev, selected.st_ino) != (opened.st_dev, opened.st_ino):
+            raise ValueError('Original Campaign native slot changed during observation')
+        yield
+
+
+@contextmanager
+def released_campaign_slot(state, project_id, session_id, run_id, binding, *, require_latest=True):
+    """Verify an exact stopped turn while holding the available original native slot."""
+    with _existing_campaign_session_lock(state, session_id):
+        if require_latest:
+            turn = _session_turns(state, project_id, session_id)[-1]
+            if turn['id'] != run_id:
+                raise RecipientBlocked('stale_parent')
+        else:
+            record = native_sources.record(state, project_id, run_id)
+            if record.get('kind') != 'native-agent-run' or record.get('session', {}).get('id') != session_id:
+                raise ValueError('Historical Campaign turn belongs to a different native slot')
+            turn, verified = _session_outcome(state, record)
+            if not verified:
+                raise ValueError('Historical Campaign turn lacks a durable final')
+        folder = native_sources.turn_folder(state, run_id)
+        native_id = turn.get('native_session', {}).get('id')
+        if native_id is None and turn['session']['parent_run'] is not None:
+            # A stopped continuation can have a confirmed no-payload outcome.
+            native_id = _session_request(folder, turn)['native_id']
+        if (turn.get('execution_stopped') is not True or turn.get('status') == 'unknown'
+                or native_id != binding['native_id'] or turn['context_digest'] != binding['context_digest']
+                or turn['role'] != binding['role']):
+            raise ValueError('Campaign native slot has no matching stopped turn')
+        if not require_latest and 'output' in turn:
+            _require_campaign_cleanup(state, folder, turn)
+        yield {'session_id': session_id, 'run_id': run_id, 'request_sha256': turn['request_sha256'],
+               'context_digest': turn['context_digest'], 'native_id': binding['native_id']}
+
+
+def _require_campaign_cleanup(state, folder, turn):
+    owner = _dispatch_packet(folder, 'owner', turn['request_sha256'])
+    raw = native_sources.artifact(state.root / 'runs' / turn['id'], 'process-cleanup.json',
+                                  native_sources.PACKET_BYTES, confirm_durable=True)
+    cleanup = parse_json(raw.decode('utf-8'), 'Original Campaign turn cleanup', finite=True, bounded=True)
+    payload = turn.get('payload_exec')
+    if (owner is None or not isinstance(cleanup, dict) or cleanup.get('kind') != 'supervised-process-cleanup'
+            or cleanup.get('owner') != owner.get('identity') or cleanup.get('remaining_children') != []
+            or cleanup.get('returncode') != turn.get('returncode')
+            or cleanup.get('model_waited') is not (turn.get('returncode') is not None)
+            or payload is not None and cleanup.get('model') != payload['direct_child']):
+        raise ValueError('Historical Campaign turn lacks its original process cleanup')
+
+
 def _dispatch_packet(folder: Path, name: str, request_digest: str) -> dict | None:
     path = folder / name
     try:
@@ -1379,8 +1443,99 @@ def continuation_receipt(state: State, project_id: str, session_id: str, parent_
     return receipt
 
 
+def campaign_recipient_receipt(state, gate):
+    selected = gate.declaration
+    receipt = continuation_receipt(state, gate.files.project, selected['session_id'], selected['parent_run_id'],
+                                   selected['intent_id'])
+    run = receipt['run']
+    if (receipt['run_id'] != gate.attempt['native_run_id'] or run is not None
+            and (run['submitted'] != gate.submission() or run['context_digest'] != gate.binding['context_digest'])):
+        raise ValueError('Campaign native receipt does not bind the original selected recipient')
+    return receipt
+
+
 class _SessionSlotTimeout(TimeoutError):
     """The selected continuation expired before admission."""
+
+
+def _continuation_parent(state, project_id, session_id, parent_run_id, ident, submitted, gate, *,
+                         revocation_project=None):
+    turns = _session_turns(state, project_id, session_id)
+    if len(turns) >= _MAX_SESSION_TURNS:
+        raise ValueError(f'This session reached its {_MAX_SESSION_TURNS}-turn limit; no new turn was reserved')
+    latest = turns[-1]
+    root = turns[0]
+    context = _read_session_context(state, root)
+    context_digest = root['context_digest']
+    if gate is not None:
+        gate.require_turn_context(context_digest, context['role'])
+    revocation = None
+    try:
+        if revocation_project is None:
+            _validate_session_authority(state, context)
+        else:
+            generation = context.get('authority_revision', context['project_revision'])
+            if generation != gate.opening['plan']['assignment']['assignee']['generation']:
+                raise ValueError('Frozen Campaign expert generation differs from its native context')
+            _validate_session_authority(state, context, project=revocation_project)
+    except _SessionAuthorityRevoked as error:
+        if gate is None:
+            raise
+        revocation = error
+    try:
+        native_sources.turn_folder(state, ident).lstat()
+    except FileNotFoundError:
+        pass
+    else:
+        raise ValueError('Original continuation evidence has no verified reservation; read its continuation receipt')
+    if gate is not None and latest['id'] != parent_run_id and revocation is None:
+        raise RecipientBlocked('stale_parent')
+    if (latest['id'] != parent_run_id or latest.get('status') in ('unknown', 'reserved', 'running')
+            or latest.get('execution_stopped') is not True
+            or not latest.get('native_session', {}).get('id')):
+        raise ValueError('Select the latest stopped turn with its saved native UUID; consumed or unknown parents cannot be dispatched')
+    if gate is not None:
+        selected = (ident, session_id, context_digest, context['role'], latest['native_session']['id'], submitted)
+        if revocation is not None:
+            gate.require_turn_identity(*selected)
+            raise revocation
+        gate.require_turn(state, *selected)
+    return latest, len(turns), context, context_digest
+
+
+def _continuation_submission(parent_run_id, prompt, revision, intent_id, timeout, campaign_recipient):
+    submitted = {'parent_run': parent_run_id, 'prompt': prompt, 'expected_revision': revision,
+                 'timeout': timeout, 'intent_id': intent_id}
+    if campaign_recipient is not None:
+        submitted['campaign_recipient'] = campaign_recipient
+    return submitted
+
+
+def campaign_preclaim_revoked(state, gate, selected):
+    """Establish a no-effect refusal from the original native slot and frozen submission."""
+    from ergora.configuration import registrations
+
+    project_id, session_id = gate.files.project, selected['session_id']
+    parent_run_id, intent_id = selected['parent_run_id'], selected['intent_id']
+    try:
+        with _existing_campaign_session_lock(state, session_id):
+            project = state.project(project_id)
+            assignee = gate.opening['plan']['assignment']['assignee']
+            if (registrations.publication_identity(state.root, project) != gate.opening['registration']
+                    or projects.native_authority_revision(project, assignee['role']) <= assignee['generation']):
+                return False
+            original = continuation_receipt(state, project_id, session_id, parent_run_id, intent_id)
+            if original['dispatch'] != 'unrecorded' or original['run_id'] != gate.attempt['native_run_id']:
+                return False
+            submitted = _continuation_submission(parent_run_id, selected['prompt'], gate.opening['project_revision'],
+                                                intent_id, selected['timeout_seconds'], gate.reference)
+            _continuation_parent(state, project_id, session_id, parent_run_id, original['run_id'],
+                                 submitted, gate, revocation_project=project)
+    except _SessionAuthorityRevoked:
+        return True
+    except (OSError, ValueError, TypeError, KeyError):
+        return False
+    return False
 
 
 def continue_session(state: State, project_id: str, session_id: str, parent_run_id: str, prompt: str, *,
@@ -1389,10 +1544,8 @@ def continue_session(state: State, project_id: str, session_id: str, parent_run_
     ident = _continuation_run_id(session_id, intent_id)
     native_sources.session_id(parent_run_id, 'Parent run')
     _session_prompt(prompt, timeout)
-    submitted = {'parent_run': parent_run_id, 'prompt': prompt, 'expected_revision': expected_revision,
-                 'timeout': timeout, 'intent_id': intent_id}
-    if campaign_recipient is not None:
-        submitted['campaign_recipient'] = campaign_recipient
+    submitted = _continuation_submission(parent_run_id, prompt, expected_revision, intent_id, timeout,
+                                        campaign_recipient)
 
     def observe_existing():
         existing = native_sources.find_run(state, project_id, ident)
@@ -1434,41 +1587,10 @@ def continue_session(state: State, project_id: str, session_id: str, parent_run_
         observed = observe_existing()
         if observed is not None:
             return observed
-        turns = _session_turns(state, project_id, session_id)
-        if len(turns) >= _MAX_SESSION_TURNS:
-            raise ValueError(f'This session reached its {_MAX_SESSION_TURNS}-turn limit; no new turn was reserved')
-        latest = turns[-1]
-        context = _read_session_context(state, turns[0])
-        if gate is not None:
-            gate.require_turn_context(turns[0]['context_digest'], context['role'])
-        revocation = None
-        try:
-            _validate_session_authority(state, context)
-        except _SessionAuthorityRevoked as error:
-            if gate is None:
-                raise
-            revocation = error
-        try:
-            native_sources.turn_folder(state, ident).lstat()
-        except FileNotFoundError:
-            pass
-        else:
-            raise ValueError('Original continuation evidence has no verified reservation; read its continuation receipt')
-        if gate is not None and latest['id'] != parent_run_id and revocation is None:
-            raise RecipientBlocked('stale_parent')
-        if (latest['id'] != parent_run_id or latest.get('status') in ('unknown', 'reserved', 'running')
-                or latest.get('execution_stopped') is not True
-                or not latest.get('native_session', {}).get('id')):
-            raise ValueError('Select the latest stopped turn with its saved native UUID; consumed or unknown parents cannot be dispatched')
-        if gate is not None:
-            selected = (ident, session_id, turns[0]['context_digest'], context['role'],
-                        latest['native_session']['id'], submitted)
-            if revocation is not None:
-                gate.require_turn_identity(*selected)
-                raise revocation
-            gate.require_turn(state, *selected)
-        return _reserve_session_turn(state, project_id, session_id, latest, ident, len(turns), prompt, timeout,
-                                     clock or budget_clock.authorize(timeout), context, turns[0]['context_digest'],
+        latest, ordinal, context, context_digest = _continuation_parent(
+            state, project_id, session_id, parent_run_id, ident, submitted, gate)
+        return _reserve_session_turn(state, project_id, session_id, latest, ident, ordinal, prompt, timeout,
+                                     clock or budget_clock.authorize(timeout), context, context_digest,
                                      submitted, lock, check_admission_deadline=wait_for_slot, gate=gate)
 
 

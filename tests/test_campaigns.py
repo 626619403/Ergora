@@ -976,6 +976,94 @@ def test_campaign_one_pending_readback_window_is_frozen():
             validate_plan({**plan, 'tasks': [{**task, 'recipient': {**recipient, **change}}]})
 
 
+def test_campaign_assignment_binds_one_generation_and_two_explicit_tasks():
+    from copy import deepcopy
+
+    from ergora.campaigns.records import FIXED_TASK_LOCATOR, assignment_intent, validate_plan
+
+    source = dict.fromkeys(FIXED_TASK_LOCATOR, 'a' * 64)
+    source.update(project_revision=7, candidate_sha='b' * 40, operation_id='check', pending=True,
+                  job_id='check-' + 'a' * 40 + '-' + 'b' * 24)
+    recipient = {'session_id': 'first', 'parent_run_id': 'first', 'intent_id': 'result',
+                 'prompt': 'Read the result', 'timeout_seconds': 60}
+    waiting = {'task_id': 'wait', 'depends_on': [], 'source': source, 'recipient': recipient,
+               'readback': {'due_at': 99, 'deadline_at': 100}}
+    independent = {'task_id': 'next', 'recipient': {**recipient, 'session_id': 'second',
+                   'parent_run_id': 'second', 'intent_id': 'independent', 'timeout_seconds': 10}}
+    assignee = {'role': 'performance-analyst', 'generation': 3}
+    plan = {'schema_version': 1, 'goal': 'Hold the original Job', 'acceptance': 'Do independent work',
+            'baseline_commit': 'c' * 40, 'evidence_format': 'fixed-check', 'limits': {'expires_at': 100},
+            'tasks': [waiting], 'assignment': {'assignee': assignee, 'waiting_task_id': 'wait', 'next_task': independent}}
+    validate_plan(plan)
+    original = assignment_intent({'workflow_id': 'original', 'plan': plan}, 'run', {'task_id': 'wait'})
+    assert original['task_id'] == 'next' and original['source']['waiting_task_id'] == 'wait'
+    assert original['expires_at'] == plan['limits']['expires_at']
+    for key, values, message in (
+        ('assignment', {'waiting_task_id': 'missing'}, 'original selected waiting task'),
+        ('assignee', {'generation': True}, 'permission generation'),
+        ('next_task', {'task_id': 'wait'}, 'distinct independent task ID'),
+        ('recipient', {'session_id': 'first'}, 'separately selected native session'),
+        ('recipient', {'timeout_seconds': 0}, 'bounded timeout'),
+    ):
+        changed = deepcopy(plan)
+        node = {'assignment': changed['assignment'], 'assignee': changed['assignment']['assignee'],
+                'next_task': changed['assignment']['next_task'],
+                'recipient': changed['assignment']['next_task']['recipient']}[key]
+        node.update(values)
+        with pytest.raises(ValueError, match=message):
+            validate_plan(changed)
+
+
+def test_campaign_assignment_rejects_two_registrations_for_one_native_thread():
+    from ergora.campaigns.records import require_assignment_bindings
+
+    role = 'performance-analyst'
+    first = {'role': role, 'native_id': '00000000-0000-4000-8000-000000000001',
+             'context_digest': 'a'*64, 'payload_sha256': 'b'*64, 'source_executable': '/source',
+             'payload_executable': '/payload', 'device': 1, 'inode': 2, 'size': 3}
+    second = {**first, 'native_id': '00000000-0000-4000-8000-000000000002'}
+    require_assignment_bindings(first, second, role)
+    with pytest.raises(ValueError, match='distinct native threads'):
+        require_assignment_bindings(first, {**first, 'context_digest': 'c'*64}, role)
+    with pytest.raises(ValueError, match='one frozen assignee'):
+        require_assignment_bindings(first, {**second, 'role': 'reviewer'}, role)
+
+
+@pytest.mark.parametrize('history', ('absent', 'contradictory', 'different', 'exact'))
+def test_assignment_recipient_requires_its_original_wait_and_schedule_before_reservation(monkeypatch, history):
+    pytest.importorskip('temporalio')
+    from ergora.campaigns import recipient
+
+    first = {'task_id': 'waiting', 'source': {'pending': True}, 'readback': {}, 'recipient': {}}
+    next_task = {'task_id': 'independent'}
+    opening = {'plan': {'tasks': [first], 'assignment': {'next_task': next_task}}}
+    intent = {'source': {}, 'task_id': 'independent', 'wake_id': 'codex-assignment:original'}
+    wait = {'intent': {'task_id': 'waiting'}, 'attempt': {'update_id': 'original-wait'}}
+    delivered = []
+    files = object()
+
+    def saved_wait(selected, original_opening, start, run_id):
+        assert (selected, original_opening, start, run_id) == (files, opening, 'attempt', 'run')
+        return wait
+
+    async def read_history(commands, *, independent):
+        assert independent and commands == (wait,)
+        return {'absent': None, 'contradictory': {'status': 'contradictory'},
+                'different': {'intent': {**intent, 'wake_id': 'codex-assignment:another'}},
+                'exact': {'intent': intent, 'status': 'scheduled'}}[history]
+
+    worker = recipient.CodexRecipient(files, opening, 'attempt', 'run', read_wake_history=read_history)
+    monkeypatch.setattr(recipient, 'assignment_wait', saved_wait)
+    monkeypatch.setattr(worker, '_deliver', delivered.append)
+    if history == 'exact':
+        asyncio.run(worker._deliver_verified(intent))
+        assert delivered == [intent]
+    else:
+        with pytest.raises(ValueError, match='lacks its verified original waiting Update and schedule'):
+            asyncio.run(worker._deliver_verified(intent))
+        assert not delivered
+
+
 @pytest.mark.parametrize('kind', ['completed', 'lost', 'changed', 'duplicate', 'untimed', 'skewed',
                                  'unstarted', 'foreign-terminal', 'out-of-order', 'duplicate-terminal',
                                  'negative-reuses-start-id', 'wrong-schedule-type', 'wrong-started-type',
@@ -1101,6 +1189,80 @@ def test_recipient_gate_obeys_the_same_native_cutoff_during_campaign_lock_conten
                 pytest.fail('A contended launch cannot enter after its native turn cutoff')
 
 
+def test_assignment_launch_refuses_authority_changed_during_executable_preparation(tmp_path, monkeypatch):
+    import fcntl
+    from contextlib import contextmanager
+
+    from ergora.campaigns import recipient_gate
+    from ergora.runtime import budget_clock
+    from ergora.storage.state import file_lock
+
+    home = tmp_path
+    storage = home / 'runs'
+    storage.mkdir()
+    folder = storage / 'original.session-turn'
+    owner = {'pid': os.getpid(), 'boot_id': 'test-boot', 'start_ticks': '1'}
+    executable = home / 'inert-file'
+    executable.write_bytes(b'ordinary data for the inert launch hook')
+    details = executable.stat()
+    state = SimpleNamespace(root=home)
+    gate = recipient_gate.RecipientGate.__new__(recipient_gate.RecipientGate)
+    gate.binding = {'role': 'performance-analyst', 'native_id': 'original-thread', 'context_digest': 'original-context',
+                    'source_executable': str(executable), 'payload_executable': str(executable),
+                    'device': details.st_dev, 'inode': details.st_ino}
+    role = gate.binding['role']
+    gate.opening = {'project_revision': 10, 'plan': {'assignment': {'assignee': {'role': role, 'generation': 7},
+                                                                  'next_task': {'task_id': 'assigned'}}}}
+    gate.declaration = {'session_id': 'old-session', 'parent_run_id': 'parent', 'intent_id': 'old-intent',
+                        'prompt': 'use original result', 'timeout_seconds': 30}
+    gate.reference = {'campaign': 'original-campaign'}
+    gate.attempt = {'native_run_id': 'original'}
+    gate.files = SimpleNamespace(lock=home / 'campaign.lock')
+    request = {'session': {'id': gate.declaration['session_id']}, 'native_id': gate.binding['native_id'],
+               'context_digest': gate.binding['context_digest'], 'submitted': gate.submission(),
+               'clock': budget_clock.authorize(30), 'timeout': 30}
+    saved = {'request_sha256': recipient_gate.native_sources.sha(request), 'role': role}
+    recorded = {'request_sha256': saved['request_sha256'], 'identity': owner}
+    generations = []
+    current = 7
+    effects = []
+
+    def project(actual_state, opening):
+        assert actual_state is state and opening is gate.opening
+        generations.append(current)
+        return {'revision': 10, 'native_authority_revisions': {role: current}}
+
+    @contextmanager
+    def prepare_payload(clock, timeout):
+        nonlocal current
+        assert clock is request['clock'] and timeout == request['timeout']
+        current = 8
+        with executable.open('rb') as data:
+            yield data.fileno()
+
+    def inert_exec(*args):
+        effects.append(args)
+        pytest.fail('A stale assignment reached the inert launch hook')
+
+    monkeypatch.setattr(recipient_gate, 'State', lambda root, *, read_only: state)
+    monkeypatch.setattr(recipient_gate.native_sources, 'record', lambda *args: saved)
+    monkeypatch.setattr(recipient_gate.native_sources, 'turn_folder', lambda *args: folder)
+    monkeypatch.setattr(recipient_gate.native_sources, 'packet', lambda path, *args: request if path == folder else recorded)
+    monkeypatch.setattr(recipient_gate.processes, 'identity', lambda pid: owner)
+    monkeypatch.setattr(recipient_gate.RecipientGate, 'load', lambda *args: gate)
+    monkeypatch.setattr(recipient_gate, 'require_check_project', project)
+    monkeypatch.setattr(gate, 'leased_payload', prepare_payload)
+    monkeypatch.setattr(gate, 'blocker', lambda: None)
+    monkeypatch.setattr(fcntl, 'fcntl', lambda fd, command: fcntl.F_RDLCK)
+    monkeypatch.setattr(os, 'execve', inert_exec)
+    monkeypatch.setattr(os, 'supports_fd', os.supports_fd | {inert_exec})
+    with file_lock(storage / 'old-session.session.lock', blocking=False) as lock:
+        with pytest.raises(ValueError, match='permission generation changed'):
+            recipient_gate._exec(str(home), 'demo', 'original', lock.fileno(),
+                                 [str(executable), 'resume', request['native_id'], '-'])
+    assert generations == [7, 8] and effects == []
+
+
 def test_recipient_write_open_breaks_the_lease_and_kills_its_original_gate(tmp_path):
     import select
 
@@ -1163,6 +1325,7 @@ def test_recipient_status_retains_a_proven_blocker_and_separates_partial_publica
         assert output['status'] == 'unknown' and 'reason' not in output
 
 
+@pytest.mark.parametrize('independent', [False, True])
 @pytest.mark.parametrize(('failure', 'dispatch', 'veto', 'status', 'reason'), [
     ('revoked', 'unrecorded', None, 'blocked', 'recipient_authority_revoked'),
     ('revoked', 'incomplete', None, 'unknown', None),
@@ -1174,31 +1337,39 @@ def test_recipient_status_retains_a_proven_blocker_and_separates_partial_publica
     ('io', 'unrecorded', None, None, None),
 ])
 def test_campaign_recipient_reports_revocation_only_before_native_reservation(monkeypatch, failure, dispatch, veto,
-                                                                           status, reason):
+                                                                           status, reason, independent):
     from contextlib import nullcontext
 
     pytest.importorskip('temporalio')
     from ergora.agents import runs
     from ergora.campaigns import recipient as delivery
+    from ergora.campaigns.recipient_gate import assignment_refusal
+    from ergora.campaigns.records import ASSIGNMENT_ATTEMPT, ASSIGNMENT_REFUSAL, identity
 
     selected = {'session_id': 'session', 'parent_run_id': 'parent', 'intent_id': 'original',
                 'prompt': 'Read the original result.', 'timeout_seconds': 20}
     intent = {'wake_id': 'original-wake'}
     opening = {'project_revision': 1, 'plan': {'tasks': [{'recipient': selected, 'readback': {}}]}}
+    if independent:
+        intent['task_id'] = 'independent'
+        opening['plan']['assignment'] = {'next_task': {'task_id': 'independent', 'recipient': selected}}
     attempt = {'intent': intent, 'native_run_id': 'original-run'}
     saved = {}
 
-    def write(name, value, *, before_publish):
-        before_publish()
+    def write(name, value, *, before_publish=None):
+        if before_publish is not None:
+            before_publish()
         saved[name] = value
 
     files = SimpleNamespace(home=None, project='demo', load=lambda: (opening, 'start', 'run'),
                             _read=saved.get, write=write)
-    gate = SimpleNamespace(admission=nullcontext, require_open=lambda: None, reference={}, blocker=lambda: veto)
+    gate = SimpleNamespace(admission=nullcontext, require_open=lambda: None, require_authority=lambda _: None,
+                           reference={}, blocker=lambda: veto)
     monkeypatch.setattr(delivery, 'verify_wake_intent', lambda *args: None)
     monkeypatch.setattr(delivery, 'State', lambda *args: None)
     monkeypatch.setattr(delivery, 'attempt_record', lambda *args: attempt)
-    monkeypatch.setattr(delivery, 'RecipientGate', lambda *args: gate)
+    monkeypatch.setattr(delivery, 'RecipientGate', lambda *args, **kwargs: gate)
+    monkeypatch.setattr(delivery.CodexRecipient, '_first_slot', lambda *args: {'status': 'controlled'})
     reads = iter(('unrecorded', dispatch))
 
     def read_receipt(*args):
@@ -1228,7 +1399,216 @@ def test_campaign_recipient_reports_revocation_only_before_native_reservation(mo
         if reason is not None:
             expected['reason'] = reason
         assert observed == expected
-    assert saved == {'recipient-attempt': attempt}
+    name = ASSIGNMENT_ATTEMPT if independent else 'recipient-attempt'
+    expected = {name: attempt}
+    if independent and status == 'blocked':
+        expected[ASSIGNMENT_REFUSAL] = {'attempt_sha256': identity(attempt), 'reason': reason}
+        assert assignment_refusal(files, attempt) == expected[ASSIGNMENT_REFUSAL]
+    assert saved == expected
+
+
+@pytest.mark.parametrize(('case', 'result_task'), [
+    ('revoked', 'next'), ('revoked', 'wait'), ('stale-parent', 'next'), ('unrelated', 'next'),
+    ('moved-repository', 'next'), ('missing-lock', 'next'), ('busy-lock', 'next'), ('partial-native', 'next'),
+    ('different-native-id', 'next'), ('stop-during-proof', 'next'), ('expiry-during-proof', 'next'),
+    ('stop-during-final-read', 'next'), ('expiry-during-final-read', 'next'),
+])
+def test_assignment_proves_preclaim_revocation_without_native_effects(registration, monkeypatch, case, result_task):
+    from contextlib import nullcontext
+    from uuid import uuid4
+
+    pytest.importorskip('temporalio')
+    from ergora.agents import runs
+    from ergora.campaigns import recipient
+    from ergora.campaigns.records import (
+        ASSIGNMENT_ATTEMPT, ASSIGNMENT_REFUSAL, FIXED_TASK_LOCATOR, CampaignFiles, assignment_intent,
+        attempt_document, check_intent, check_receipt, identity, manual_wake_source, project_selection,
+        result_document, stop_intent, update_attempt, wake_intent,
+    )
+    from ergora.storage.assets import inventory_tree
+    from ergora.storage.state import file_lock
+
+    state, definition = registration
+    registered = registrations.register(state, definition, 0)
+    scheduler = {'tool': 'temporal', 'address': '127.0.0.1:1', 'namespace': 'default', 'task_queue': 'test'}
+    project = projects.bind(state, 'demo', 'scheduler', scheduler, registered['revision'])
+    role = 'implementer'
+    revision = project['revision']
+    generation = projects.native_authority_revision(project, role)
+    now = int(time.time())
+    turns = {}
+    bindings = {}
+    declarations = {}
+    context_path = Path(project['repo'])
+    repo = context_path.stat()
+    (state.root / 'runs').mkdir()
+    for stage in ('wait', 'next'):
+        session = f'{stage}-session'
+        declared = {'session_id': session, 'parent_run_id': session, 'intent_id': f'{stage}-intent',
+                    'prompt': f'Use original {stage} evidence', 'timeout_seconds': 20}
+        declarations[stage] = declared
+        context = {'project': 'demo', 'project_revision': revision, 'role': role, 'authority_revision': generation,
+                   'repo': str(context_path), 'repo_identity': [repo.st_dev, repo.st_ino],
+                   'requested_binding': projects.effective_configuration(project)['layers'][role]['binding']}
+        folder = runs.native_sources.session_folder(state, session) / 'context'
+        folder.mkdir(parents=True)
+        (folder / 'context.json').write_bytes(runs.native_sources.encode(context))
+        digest = inventory_tree(folder)[0]
+        native = str(uuid4())
+        turns[session] = {'id': session, 'kind': 'native-agent-run', 'session': {'id': session, 'ordinal': 0,
+                          'parent_run': None}, 'context_digest': digest, 'execution_stopped': True,
+                          'native_session': {'id': native}, 'role': role, 'request_sha256': 'd' * 64, 'status': 'succeeded'}
+        bindings[stage] = {'role': role, 'native_id': native, 'context_digest': digest, 'source_executable': '/inert',
+                           'payload_executable': '/inert', 'payload_sha256': 'e' * 64, 'device': 1, 'inode': 2, 'size': 3}
+        (state.root / 'runs' / f'{session}.session.lock').touch()
+
+    source = dict.fromkeys(FIXED_TASK_LOCATOR, 'a' * 64)
+    source.update(project_revision=revision, candidate_sha='b' * 40, operation_id='check', pending=True,
+                  job_id='check-' + 'a' * 40 + '-' + 'b' * 24)
+    waiting_task = {'task_id': 'wait', 'depends_on': [], 'source': source, 'recipient': declarations['wait'],
+                    'readback': {'due_at': now + 10, 'deadline_at': now + 30}, 'wake_on_observe': True}
+    plan = {'schema_version': 1, 'goal': 'Original assignment', 'acceptance': 'Separate authorized work',
+            'baseline_commit': 'a' * 40, 'evidence_format': 'receipts', 'limits': {'expires_at': now + 60},
+            'tasks': [waiting_task], 'assignment': {'assignee': {'role': role, 'generation': generation},
+                'waiting_task_id': 'wait', 'next_task': {'task_id': 'next', 'recipient': declarations['next']}}}
+    owner = CampaignFiles(state.root, 'demo', 'preclaim-revocation')
+    owner.ensure_directory()
+    opening = application._opening(owner, revision, plan, 'f' * 64, project_selection(state, project, revision),
+                                   {'recipient_binding': bindings['wait'], 'assignment_binding': bindings['next']})
+    start = attempt_document(opening, str(uuid4()))
+    run_id = str(uuid4())
+    owner.write('start-intent', opening)
+    owner.write('start-attempt', start)
+    owner.write('start-result', result_document(opening, start, run_id))
+    waiting = check_intent(opening, identity(start), run_id, 'wait', 'a' * 64, job={'status': 'attempted'})
+    waiting = {'intent': waiting, 'attempt': update_attempt(waiting, 'ergora-campaign-check:' + str(uuid4()))}
+    owner.write('wait-check-wait', waiting)
+    if result_task == 'wait':
+        result = {'status': 'succeeded', 'receipt_sha256': 'd' * 64, 'fixed_results_sha256': 'e' * 64,
+                  'waiting_receipt_sha256': identity(check_receipt(waiting))}
+        terminal = check_intent(opening, identity(start), run_id, 'wait', 'c' * 64, job=result)
+        terminal = {'intent': terminal, 'attempt': update_attempt(terminal, 'ergora-campaign-check:' + str(uuid4()))}
+        owner.write('check-wait', terminal)
+        intent = wake_intent(opening, run_id, waiting_task,
+                             manual_wake_source(waiting_task, check_receipt(waiting), check_receipt(terminal)))
+    else:
+        intent = assignment_intent(opening, run_id, check_receipt(waiting))
+
+    if case == 'unrelated':
+        changed = projects.bind(state, 'demo', 'scheduler', {**scheduler, 'task_queue': 'changed'}, revision)
+    else:
+        changed = projects.bind(state, 'demo', role, {'tool': 'codex', 'model': 'gpt-6.1-sol',
+                                                      'reasoning_effort': 'high'}, revision)
+    assert changed['revision'] > revision
+    assert (projects.native_authority_revision(changed, role) > generation) is (case != 'unrelated')
+    if case == 'moved-repository':
+        context_path.rename(context_path.with_name('original-repo'))
+        context_path.mkdir()
+
+    selected = declarations[result_task]
+    native_id = runs._continuation_run_id(selected['session_id'], selected['intent_id'])
+    session_lock = state.root / 'runs' / f"{selected['session_id']}.session.lock"
+    if case == 'missing-lock':
+        session_lock.unlink()
+
+    def advance_fence():
+        if case.startswith('stop-'):
+            owner.write('stop-intent', stop_intent(opening, identity(start), run_id))
+        else:
+            delay = 61 * 10**9
+            wall = time.time_ns()
+            boot, ticks = runs.budget_clock._clock()
+            monkeypatch.setattr(time, 'time_ns', lambda: wall + delay)
+            monkeypatch.setattr(runs.budget_clock, '_clock', lambda: (boot, ticks + delay))
+
+    dispatch_reads = []
+    original_receipt = runs.continuation_receipt
+
+    def read_dispatch(*selection):
+        observed = original_receipt(*selection)
+        dispatch_reads.append(observed['dispatch'])
+        if len(dispatch_reads) == 3 and case.endswith('-final-read'):
+            assert observed['run_id'] == native_id and observed['dispatch'] == 'unrecorded'
+            advance_fence()
+        return observed
+
+    def stopped_turns(_state, project_id, session):
+        assert _state.root == state.root and project_id == 'demo'
+        parent = turns[session]
+        if session != selected['session_id']:
+            return [parent]
+        if case == 'stale-parent':
+            return [parent, {**parent, 'id': 'later-turn'}]
+        if case == 'partial-native':
+            runs.native_sources.turn_folder(state, native_id).mkdir()
+        if case == 'different-native-id':
+            return [{**parent, 'native_session': {'id': str(uuid4())}}]
+        if case.endswith('-proof'):
+            advance_fence()
+        return [parent]
+
+    monkeypatch.setattr(runs, '_session_turns', stopped_turns)
+    monkeypatch.setattr(runs.native_sources, 'find_run', lambda _state, _project, ident: turns.get(ident))
+    monkeypatch.setattr(runs, 'continue_session', lambda *args, **kwargs: pytest.fail('Native continuation attempted'))
+    monkeypatch.setattr(runs, 'continuation_receipt', read_dispatch)
+    delivery = recipient.CodexRecipient(owner, opening, start, run_id, read_wake_history=None)
+    with (file_lock(session_lock, blocking=False) if case == 'busy-lock' else nullcontext()):
+        reasons = {'revoked': 'recipient_authority_revoked', 'stop-during-proof': 'stopped',
+                   'expiry-during-proof': 'expired', 'stop-during-final-read': 'stopped',
+                   'expiry-during-final-read': 'expired'}
+        if case in reasons:
+            reason = reasons[case]
+            assert delivery._deliver(intent) == {'status': 'blocked', 'native_run_id': native_id, 'reason': reason}
+        else:
+            with pytest.raises(ValueError, match='Project revision changed'):
+                delivery._deliver(intent)
+    if case.endswith('-final-read'):
+        assert dispatch_reads == ['unrecorded'] * 3
+    for record in (ASSIGNMENT_ATTEMPT, ASSIGNMENT_REFUSAL, 'recipient-attempt'):
+        assert owner._read(record) is None
+    assert runs.native_sources.turn_folder(state, native_id).is_dir() is (case == 'partial-native')
+    if case == 'missing-lock':
+        assert not session_lock.exists()
+
+
+@pytest.mark.parametrize('contradiction', [False, True])
+def test_assignment_status_reads_dependent_release_before_native_snapshot(monkeypatch, contradiction):
+    from ergora.agents import runs
+    from ergora.campaigns import recipient_gate
+    from ergora.campaigns.records import ASSIGNMENT_ATTEMPT
+
+    selected = {'session_id': 'next-session', 'intent_id': 'next-intent'}
+    native_id = runs._continuation_run_id(selected['session_id'], selected['intent_id'])
+    opening = {'plan': {'assignment': {'assignee': {'role': 'implementer', 'generation': 1},
+                'waiting_task_id': 'wait', 'next_task': {'task_id': 'next', 'recipient': selected}}}}
+    claim = {'native_run_id': native_id}
+    release = {'run_id': native_id, 'request_sha256': 'd' * 64}
+    resumed = {'slot_release': release}
+    published = False
+
+    def read_record(name):
+        nonlocal published
+        if name == ASSIGNMENT_ATTEMPT:
+            return claim
+        if name == 'recipient-attempt':
+            published = True
+            return resumed
+
+    def read_native(_state, _gate):
+        return {'dispatch': 'accepted', 'run': {'status': 'succeeded' if published else 'running',
+                'execution_stopped': published, 'request_sha256': 'e' * 64 if contradiction else 'd' * 64}}
+
+    monkeypatch.setattr(recipient_gate, 'RecipientGate', lambda *args: object())
+    monkeypatch.setattr(runs, 'campaign_recipient_receipt', read_native)
+    files = SimpleNamespace(_read=read_record)
+    if contradiction:
+        with pytest.raises(ValueError, match='release differs'):
+            application._assignment_status(None, files, opening, {}, None)
+    else:
+        output = application._assignment_status(None, files, opening, {}, None)
+        assert output['native_receipt']['run']['execution_stopped'] is True
+        assert output['release'] == release and output['slot_status'] == 'released'
+
 
 @pytest.mark.parametrize(('fence', 'wake_conflict', 'local', 'expected'), (
     ('stopped', True, False, 'unknown'),
@@ -1286,7 +1666,7 @@ def test_campaign_status_keeps_wake_conflict_separate_from_stop_and_native_recei
         if wake_conflict:
             raise workflow.WakeHistoryConflict(ValueError('Wake History contradicts its original start'),
                                                ({}, original_completion, original_terminal, None))
-        return {}, None, None, None, None
+        return {}, None, None, None, None, None
 
     runtime = SimpleNamespace(connect=connect, current=current, read_stop=read_stop, runtime_status=runtime_status,
                               read_task_history=read_task_history, RPC_SECONDS=1, RPCError=RuntimeError)
@@ -2336,7 +2716,7 @@ def test_opted_fixed_check_shares_manual_and_guarded_readiness(tmp_path):
         accepted = await send(later)
         assert accepted['decision'] == 'observed'
         commands.append(later)
-        updates, readback, wake, terminal, followup_terminal = await runtime.read_task_history(client, handle, opening, commands)
+        updates, readback, wake, terminal, followup_terminal, _ = await runtime.read_task_history(client, handle, opening, commands)
         assert terminal is None and followup_terminal is None
         selected_wake, = deliveries[workflow_id]
         assert wake['intent'] == selected_wake
@@ -2347,7 +2727,7 @@ def test_opted_fixed_check_shares_manual_and_guarded_readiness(tmp_path):
             assert selected_wake['source']['activity_id'] == readback['activity_id']
             late = command(selected, succeeded, wait)
             assert await send(late) is None and await send(late) is None
-            updates, completion, original_wake, terminal, followup_terminal = await runtime.read_task_history(client, handle, opening, [*commands, late])
+            updates, completion, original_wake, terminal, followup_terminal, _ = await runtime.read_task_history(client, handle, opening, [*commands, late])
             assert terminal is None and followup_terminal is None
             failed = updates[late['attempt']['update_id']]
             assert failed['status'] == 'failed' and failed['receipt'] is None
@@ -3113,7 +3493,7 @@ def test_training_task_view_retains_verified_history_without_live_admission(view
             from ergora.campaigns.workflow import WakeHistoryConflict
 
             raise WakeHistoryConflict(ValueError('Wake start is contradictory'), ({}, completion, terminal, None))
-        return {}, None if view == 'missing' else completion, None, None, None
+        return {}, None if view == 'missing' else completion, None, None, None, None
 
     runtime = SimpleNamespace(RPC_SECONDS=1, original=original, runtime_status=state,
                               read_task_history=history, RPCError=RuntimeError)

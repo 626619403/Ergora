@@ -26,7 +26,8 @@ with workflow.unsafe.imports_passed_through():
     from ergora.campaigns.records import (
         ATTEMPT_MEMO, OPENING_MEMO, READBACK_ALREADY_ADMITTED, READBACK_CLEANUP_SECONDS,
         RECIPIENT_ACTIVITY, TRAINING_RESULT_SOURCE, WORKFLOW_TYPE,
-        check_receipt, checked_readback, fixed_task_state, has_pending_checks, identity, manual_wake_source,
+        assignment_intent, assignment_task, check_receipt, checked_readback, fixed_task_state, has_pending_checks,
+        identity, manual_wake_source,
         readback_activity, readback_grant, readback_id, readback_proof, readback_ready_tasks, readback_reference,
         readback_followup_activity, readback_followup_id, readback_followup_result, readback_result, readback_task,
         recipient_task, reobservation_task,
@@ -127,25 +128,39 @@ class Campaign:
         grant = readback_grant(self.opening, workflow.info().run_id, task, self.check_waits.get(task_id))
         activity_id = readback_id(grant)
         self.readback = {'status': 'armed', 'activity_id': activity_id, **readback_reference(grant)}
+        assigned = None
+        if assignment_task(self.opening) is not None:
+            intent = assignment_intent(self.opening, workflow.info().run_id, self.check_waits[task_id])
+            assigned = asyncio.create_task(self._deliver_recipient(intent))
+        try:
+            await self._time_readback(task, grant, activity_id, shared, assigned)
+            if assigned is not None:
+                await assigned
+        finally:
+            if assigned is not None and not assigned.done():
+                assigned.cancel()
+                await asyncio.gather(assigned, return_exceptions=True)
+
+    async def _time_readback(self, task, grant, activity_id, shared, assigned):
         delay = grant['due_at'] - workflow.time()
         if delay > 0:
             await workflow.sleep(delay)
         remaining = grant['deadline_at'] - workflow.time()
         if shared:
-            await self._run_shared_intake(task, grant, activity_id, remaining)
+            await self._run_shared_intake(task, grant, activity_id, remaining, assigned)
             return
         if self.stop_decision is not None:
             self._readback_unknown('campaign_closed')
-        elif task_id in self.check_receipts:
+        elif task['task_id'] in self.check_receipts:
             self._readback_unknown('task_already_observed')
         elif remaining <= READBACK_CLEANUP_SECONDS:
             self._readback_unknown('read_window_expired')
         else:
             await self._observe_readback(task, grant, activity_id, remaining)
         if 'recipient' in task and self.readback['status'] == 'available':
-            await self._deliver_recipient(task, self.readback)
+            await self._deliver_result(task, self.readback, assigned)
 
-    async def _run_shared_intake(self, task, grant, activity_id, remaining):
+    async def _run_shared_intake(self, task, grant, activity_id, remaining, assigned):
         if self.stop_decision is not None:
             self._readback_unknown('campaign_closed')
             return
@@ -165,7 +180,7 @@ class Campaign:
                         self._readback_unknown('read_window_expired')
                     return
             if self.ready_source is not None and self.stop_decision is None and workflow.time() < grant['deadline_at']:
-                await self._deliver_recipient(task, self.ready_source)
+                await self._deliver_result(task, self.ready_source, assigned)
             if read is not None:
                 await read
         finally:
@@ -228,8 +243,12 @@ class Campaign:
             elif not same_check_observation(self.ready_source, self.readback):
                 self._readback_unknown('contradictory_evidence')
 
-    async def _deliver_recipient(self, task, source):
-        intent = wake_intent(self.opening, workflow.info().run_id, task, source)
+    async def _deliver_result(self, task, source, assigned):
+        if assigned is not None:
+            await assigned
+        await self._deliver_recipient(wake_intent(self.opening, workflow.info().run_id, task, source))
+
+    async def _deliver_recipient(self, intent):
         allowance = intent['expires_at'] - workflow.time()
         if allowance > 0 and self.stop_decision is None:
             try:
@@ -495,9 +514,10 @@ class FollowupHistoryConflict(ValueError):
 class WakeHistoryConflict(ValueError):
     """A contradictory wake after verification of its independent read evidence."""
 
-    def __init__(self, error, verified_before_wake):
+    def __init__(self, error, verified_before_wake, assignment=None):
         super().__init__(str(error))
         self.verified_before_wake = verified_before_wake
+        self.assignment = assignment
 
 
 async def read_task_history(client, handle, opening, commands):
@@ -515,10 +535,9 @@ async def read_task_history(client, handle, opening, commands):
                        and command['intent']['operation'] == 'wait_check'), None)
     training = training_readback_task(task)
     full_result = training and task['source']['kind'] == TRAINING_RESULT_SOURCE
-    grant = None
-    if training or timer_wait is not None:
-        waiting = check_receipt(timer_wait) if timer_wait is not None else None
-        grant = readback_grant(opening, handle.run_id, task, waiting)
+    waiting = check_receipt(timer_wait) if timer_wait is not None else None
+    wait_entry = entries[timer_wait['attempt']['update_id']] if timer_wait is not None else None
+    grant = readback_grant(opening, handle.run_id, task, waiting) if training or waiting is not None else None
     activity_id = readback_id(grant) if grant is not None else None
     recovery_id = readback_followup_id(task, grant) if readback_followup_activity(task) is not None else None
     recovery_events = []
@@ -528,22 +547,15 @@ async def read_task_history(client, handle, opening, commands):
     cancel_requests = []
     schedule_ids = set()
     wake_events = []
-    wake_ids = set()
+    assignment_events = []
+    recipient_schedules = {}
     recipient = recipient_task(opening)
+    assigned = assignment_task(opening) is not None
     converter = client.data_converter.with_context(WorkflowSerializationContext(client.namespace, handle.id))
     async for event in handle.fetch_history_events(rpc_timeout=RPC_TIMEOUT):
         await _read_update_event(converter, event, entries, CHECK_UPDATE, require_check_receipt)
-        if recipient is not None and len(wake_events) < 4:
-            if (event.HasField('activity_task_scheduled_event_attributes')
-                    and event.activity_task_scheduled_event_attributes.activity_type.name == RECIPIENT_ACTIVITY):
-                wake_ids.add(event.event_id)
-                wake_events.append(event)
-            else:
-                for kind in ('started', 'completed', 'failed', 'timed_out', 'canceled'):
-                    field = f'activity_task_{kind}_event_attributes'
-                    if event.HasField(field) and getattr(event, field).scheduled_event_id in wake_ids:
-                        wake_events.append(event)
-                        break
+        if recipient is not None:
+            _collect_recipient_event(event, assigned, wake_events, assignment_events, recipient_schedules)
         if recovery_id is not None and len(recovery_events) < 4:
             if (event.HasField('activity_task_scheduled_event_attributes')
                     and event.activity_task_scheduled_event_attributes.activity_id == recovery_id):
@@ -589,7 +601,7 @@ async def read_task_history(client, handle, opening, commands):
                                   'receipt': entry['receipt'],
                                   'status': 'failed' if entry.get('failed') else 'verified'}
     completion = readback_terminal = followup_terminal = None
-    if training or (timer_wait is not None and entries[timer_wait['attempt']['update_id']].get('receipt') is not None):
+    if training or (wait_entry is not None and wait_entry.get('receipt') is not None):
         completion, readback_terminal = await _readback_history(
             converter, activity_events, opening, task, grant, activity_id, cancel_requests)
     if recovery_events:
@@ -618,6 +630,18 @@ async def read_task_history(client, handle, opening, commands):
                 or not same_check_observation(completion, source)):
             raise ValueError('Campaign readback refusal lacks its earlier identical guarded result')
         updates[update_id]['reason'] = READBACK_ALREADY_ADMITTED
+    assignment = None
+    if assignment_events:
+        try:
+            if wait_entry is None or wait_entry.get('receipt') is None:
+                raise ValueError('Campaign independent task History lacks its verified original waiting Update')
+            intent = assignment_intent(opening, handle.run_id, wait_entry['receipt'])
+            assignment = await _read_recipient_history(converter, assignment_events, opening, intent,
+                                                       wait_entry['completed_event'])
+            assignment.update(waiting_accepted_event_id=wait_entry['accepted_event_id'],
+                              waiting_completed_event_id=wait_entry['completed_event_id'])
+        except ValueError as error:
+            assignment = {'status': 'contradictory', 'error': str(error)}
     wake = None
     if wake_events:
         try:
@@ -651,8 +675,31 @@ async def read_task_history(client, handle, opening, commands):
             if claimed.get('kind') != 'manual_update':
                 completion['recipient'] = wake
         except ValueError as error:
-            raise WakeHistoryConflict(error, (updates, completion, readback_terminal, followup_terminal)) from error
-    return updates, completion, wake, readback_terminal, followup_terminal
+            raise WakeHistoryConflict(error, (updates, completion, readback_terminal, followup_terminal),
+                                      assignment) from error
+    return updates, completion, wake, readback_terminal, followup_terminal, assignment
+
+
+def _collect_recipient_event(event, assigned, wake_events, assignment_events, schedules):
+    if event.HasField('activity_task_scheduled_event_attributes'):
+        scheduled = event.activity_task_scheduled_event_attributes
+        if assigned and scheduled.activity_id.startswith('codex-assignment:'):
+            events = assignment_events
+        elif scheduled.activity_type.name == RECIPIENT_ACTIVITY:
+            events = wake_events
+        else:
+            return
+        if len(events) < 4:
+            schedules[event.event_id] = events
+            events.append(event)
+        return
+    for kind in ('started', 'completed', 'failed', 'timed_out', 'canceled'):
+        field = f'activity_task_{kind}_event_attributes'
+        if event.HasField(field):
+            events = schedules.get(getattr(event, field).scheduled_event_id)
+            if events is not None and len(events) < 4:
+                events.append(event)
+            return
 
 
 def _history_timestamp_ns(event):
@@ -1187,12 +1234,17 @@ async def run_worker(client, handle, opening, files, attempt, *, poller_identity
         if recipient_task(opening) is not None:
             from ergora.campaigns.recipient import CodexRecipient
 
-            async def read_wake_history(commands):
+            async def read_wake_history(commands, *, independent=False):
                 async with asyncio.timeout(RPC_SECONDS):
                     history_client = await connect(opening)
                     original = history_client.get_workflow_handle(opening['workflow_id'], run_id=handle.run_id)
-                    _, _, wake, _, _ = await read_task_history(history_client, original, opening, commands)
-                return wake
+                    try:
+                        _, _, wake, _, _, assignment = await read_task_history(history_client, original, opening, commands)
+                    except WakeHistoryConflict as error:
+                        if not independent:
+                            raise
+                        assignment = error.assignment
+                return assignment if independent else wake
 
             activities.append(CodexRecipient(
                 files, opening, attempt, handle.run_id, read_wake_history=read_wake_history).deliver)

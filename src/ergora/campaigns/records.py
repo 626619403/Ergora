@@ -47,6 +47,8 @@ TRAINING_GPU_RELEASE_SOURCE = 'training_gpu_release'
 RELEASE_RECOVERY_ACTIVITY = 'ergora_campaign_recover_training_gpu_release'
 READBACK_ALREADY_ADMITTED = 'readback_already_admitted'
 RECIPIENT_ACTIVITY = 'ergora_campaign_codex_recipient'
+ASSIGNMENT_ATTEMPT = 'assignment-attempt'
+ASSIGNMENT_REFUSAL = 'assignment-refusal'
 # Last whole UTC second supported by both Python datetime and protobuf Timestamp.
 MAX_EXPIRY = 253_402_300_799
 
@@ -117,7 +119,7 @@ def require_check_project(state, opening):
 
 def validate_plan(plan):
     required = {'schema_version', 'goal', 'acceptance', 'baseline_commit', 'evidence_format', 'limits'}
-    if (not isinstance(plan, dict) or set(plan) - {'tasks', 'rollover'} != required
+    if (not isinstance(plan, dict) or set(plan) - {'tasks', 'rollover', 'assignment'} != required
             or type(plan['schema_version']) is not int or plan['schema_version'] != 1):
         raise ValueError('Campaign plan requires schema_version 1 and the complete record-only fields')
     for name in ('goal', 'acceptance', 'evidence_format'):
@@ -137,6 +139,8 @@ def validate_plan(plan):
             raise ValueError('Campaign readback window exceeds the original expiry')
     if 'rollover' in plan and (plan['rollover'] is not True or rollover_task({'plan': plan}) is None):
         raise ValueError('Campaign rollover requires one manually observed pending fixed check')
+    if 'assignment' in plan:
+        validate_assignment(plan)
     # Also rejects unpaired Unicode surrogates before an intent can be saved.
     identity(plan)
 
@@ -291,6 +295,29 @@ def recipient_task(opening):
     return task if task is not None and 'recipient' in task else None
 
 
+def assignment_task(opening):
+    return opening['plan'].get('assignment', {}).get('next_task')
+
+
+def validate_assignment(plan):
+    assignment = plan['assignment']
+    first = recipient_task({'plan': plan})
+    if (first is None or training_readback_task(first) or 'rollover' in plan or not isinstance(assignment, dict)
+            or assignment.keys() != {'assignee', 'waiting_task_id', 'next_task'}
+            or assignment['waiting_task_id'] != first['task_id']):
+        raise ValueError('Campaign assignment requires the original selected waiting task')
+    assignee, task = assignment['assignee'], assignment['next_task']
+    if (not isinstance(assignee, dict) or assignee.keys() != {'role', 'generation'}
+            or not safe_id(assignee['role']) or type(assignee['generation']) is not int or assignee['generation'] < 1):
+        raise ValueError('Campaign assignment requires one exact role and permission generation')
+    if (not isinstance(task, dict) or task.keys() != {'task_id', 'recipient'} or not safe_id(task['task_id'])
+            or task['task_id'] in tasks_by_id({'plan': plan})):
+        raise ValueError('Campaign assignment requires a distinct independent task ID')
+    validate_recipient(task['recipient'])
+    if task['recipient']['session_id'] == first['recipient']['session_id']:
+        raise ValueError('Campaign independent task requires a separately selected native session')
+
+
 def require_recipient_binding(binding):
     paths = ('source_executable', 'payload_executable')
     if (not isinstance(binding, dict)
@@ -306,6 +333,24 @@ def wake_intent(opening, run_id, task, readback):
     scope = {'opening_sha256': identity(opening), 'workflow_id': opening['workflow_id'], 'run_id': run_id,
              'task_id': task['task_id'], 'source': readback, 'expires_at': opening['plan']['limits']['expires_at']}
     return {'wake_id': 'codex-recipient:' + identity(scope), **scope}
+
+
+def require_assignment_bindings(first, independent, role):
+    require_recipient_binding(first)
+    require_recipient_binding(independent)
+    if first['role'] != role or independent['role'] != role:
+        raise ValueError('Campaign assignment bindings differ from the one frozen assignee')
+    if first['native_id'] == independent['native_id']:
+        raise ValueError('Campaign assignment requires two distinct native threads')
+
+
+def assignment_intent(opening, run_id, waiting):
+    assignment = opening['plan']['assignment']
+    source = {'waiting_task_id': assignment['waiting_task_id'], 'waiting_receipt_sha256': identity(waiting)}
+    scope = {'opening_sha256': identity(opening), 'workflow_id': opening['workflow_id'], 'run_id': run_id,
+             'task_id': assignment['next_task']['task_id'], 'source': source,
+             'expires_at': opening['plan']['limits']['expires_at']}
+    return {'wake_id': 'codex-assignment:' + identity(scope), **scope}
 
 
 def manual_wake_source(task, waiting, receipt):
@@ -769,7 +814,8 @@ class CampaignFiles:
         fields = {'schema_version', 'mode', 'control_home', 'project', 'project_revision', 'registration',
                   'configuration_sha256', 'campaign', 'actor', 'scheduler', 'creation_id', 'plan', 'plan_sha256',
                   'plan_document_sha256', 'task_queue', 'workflow_id', 'workflow_type'}
-        if (set(opening) - {'recipient_binding'} != fields or type(opening['schema_version']) is not int or opening['schema_version'] != 1
+        if (set(opening) - {'recipient_binding', 'assignment_binding'} != fields
+                or type(opening['schema_version']) is not int or opening['schema_version'] != 1
                 or opening['control_home'] != str(self.home)
                 or opening['project'] != self.project or opening['campaign'] != self.campaign
                 or identity(opening['actor']) != identity(self.actor)
@@ -788,6 +834,11 @@ class CampaignFiles:
             if opening['mode'] != 'codex_recipient':
                 raise ValueError('Campaign opening does not authorize its frozen Codex recipient')
             require_recipient_binding(opening.get('recipient_binding'))
+        if assignment_task(opening) is not None:
+            role = opening['plan']['assignment']['assignee']['role']
+            require_assignment_bindings(opening['recipient_binding'], opening.get('assignment_binding'), role)
+        elif 'assignment_binding' in opening:
+            raise ValueError('Campaign lacks an original assignment for the frozen independent recipient')
         if opening['plan_document_sha256'] != identity(opening['plan']):
             raise ValueError('Campaign intent does not bind its saved plan document')
         scheduler = opening['scheduler']

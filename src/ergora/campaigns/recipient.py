@@ -1,13 +1,19 @@
-"""Deliver one original successful timed readback to its authorized local Codex recipient."""
+"""Deliver original result and assignment wake intents to their authorized local recipients."""
 
 import asyncio
+from contextlib import ExitStack
+import time
 
 from temporalio import activity
 
 from ergora.agents import runs
-from ergora.campaigns.records import RECIPIENT_ACTIVITY, recipient_task, training_readback_task
+from ergora.campaigns.records import (
+    ASSIGNMENT_ATTEMPT, ASSIGNMENT_REFUSAL, RECIPIENT_ACTIVITY, assignment_task, identity, recipient_task,
+    training_readback_task,
+)
 from ergora.campaigns.recipient_gate import (
-    RecipientBlocked, RecipientGate, attempt_record, manual_commands, verify_wake_intent,
+    RecipientBlocked, RecipientGate, assignment_refusal, assignment_wait, attempt_record, manual_commands,
+    stopped_receipt, verify_wake_intent,
 )
 from ergora.storage.state import State
 
@@ -17,9 +23,69 @@ class CodexRecipient:
         self.files, self.opening, self.start, self.run_id = files, opening, start, run_id
         self.read_wake_history = read_wake_history
 
+    def _first_slot(self, state, gate, held):
+        first = recipient_task(self.opening)['recipient']
+        while True:
+            gate.require_open()
+            try:
+                return held.enter_context(runs.released_campaign_slot(state, self.files.project,
+                    first['session_id'], first['parent_run_id'], self.opening['recipient_binding']))
+            except BlockingIOError:
+                time.sleep(min(.05, max(0.0, gate.remaining())))
+
+    def _next_slot(self, state, result, held):
+        claim = self.files._read(ASSIGNMENT_ATTEMPT)
+        if claim is None:
+            return {'status': 'unclaimed'}
+        assigned = RecipientGate(self.files, self.opening, self.start, result, claim)
+        native = runs.campaign_recipient_receipt(state, assigned)
+        if native['dispatch'] == 'unrecorded' and assignment_refusal(self.files, claim) is not None:
+            return {'status': 'refused', 'attempt_sha256': identity(claim)}
+        if not stopped_receipt(native):
+            return None
+        try:
+            return held.enter_context(runs.released_campaign_slot(state, self.files.project,
+                assigned.declaration['session_id'], native['run_id'], assigned.binding, require_latest=False))
+        except (BlockingIOError, FileNotFoundError):
+            return None
+
+    def _claim(self, state, result, attempt, name, independent, declaration):
+        files, opening, start = self.files, self.opening, self.start
+        gate = RecipientGate(files, opening, start, result, attempt, sealing=True)
+        with ExitStack() as held:
+            if independent:
+                attempt['slot_release'] = self._first_slot(state, gate, held)
+            while True:
+                with gate.admission():
+                    if files._read(name) is not None:
+                        return None, False
+                    if independent and files._read('recipient-attempt') is not None:
+                        raise RecipientBlocked('assignment_already_resumed')
+                    if assignment_task(opening) is not None and not independent:
+                        attempt['slot_release'] = self._next_slot(state, result, held)
+                    if attempt.get('slot_release') is not None or assignment_task(opening) is None:
+                        gate = RecipientGate(files, opening, start, result, attempt)
+                        if assignment_task(opening) is not None:
+                            try:
+                                gate.require_authority(state)
+                            except ValueError as error:
+                                authority_error = error
+                                break
+                        files.write(name, attempt, before_publish=gate.require_open)
+                        return gate, False
+                time.sleep(min(.15, max(0.0, gate.remaining())))
+        # Observe the selected native slot only after dropping the claim and prior-slot locks.
+        if runs.campaign_preclaim_revoked(state, gate, declaration):
+            return gate, True
+        raise authority_error
+
     def _deliver(self, intent):
         files, opening, start, run_id = self.files, self.opening, self.start, self.run_id
         task = recipient_task(opening)
+        assigned = assignment_task(opening)
+        independent = assigned is not None and intent.get('task_id') == assigned['task_id']
+        if independent:
+            task = assigned
         verify_wake_intent(files, opening, start, run_id, task, intent)
         current, current_start, result = files.load()
         if current != opening or current_start != start:
@@ -28,24 +94,25 @@ class CodexRecipient:
         state = State(files.home)
         selection = (state, files.project, recipient['session_id'], recipient['parent_run_id'], recipient['intent_id'])
         original = runs.continuation_receipt(*selection)
-        prior = files._read('recipient-attempt')
+        name = ASSIGNMENT_ATTEMPT if independent else 'recipient-attempt'
+        prior = files._read(name)
         if prior is not None:
             gate = RecipientGate(files, opening, start, result, prior)
             if gate.intent != intent or prior['native_run_id'] != original['run_id']:
                 raise ValueError('Saved Campaign delivery belongs to a different original wake')
-            recorded = original['run']
-            observed = (recorded is not None and recorded['submitted'] == gate.submission()
-                        and original['dispatch'] not in ('unrecorded', 'incomplete'))
+            reserved = runs.campaign_recipient_receipt(state, gate)
+            observed = reserved['dispatch'] not in ('unrecorded', 'incomplete')
             return {'status': 'observed' if observed else 'unknown', 'native_run_id': original['run_id']}
         if original['dispatch'] != 'unrecorded':
             return {'status': 'blocked', 'native_run_id': original['run_id'], 'reason': 'original_native_intent_occupied'}
+        attempt = None
         try:
             attempt = attempt_record(intent, original['run_id'])
-            gate = RecipientGate(files, opening, start, result, attempt)
-            with gate.admission():
-                if files._read('recipient-attempt') is not None:
-                    return {'status': 'unknown', 'native_run_id': original['run_id']}
-                files.write('recipient-attempt', attempt, before_publish=gate.require_open)
+            gate, preclaim_revoked = self._claim(state, result, attempt, name, independent, recipient)
+            if gate is None:
+                return {'status': 'unknown', 'native_run_id': original['run_id']}
+            if preclaim_revoked:
+                raise runs._SessionAuthorityRevoked('Original Campaign expert permission generation changed')
             runs.continue_session(state, files.project, recipient['session_id'], recipient['parent_run_id'],
                                   recipient['prompt'], expected_revision=opening['project_revision'],
                                   intent_id=recipient['intent_id'], timeout=recipient['timeout_seconds'],
@@ -59,15 +126,25 @@ class CodexRecipient:
                 reason = 'session_slot_timeout'
             else:
                 reason = str(error)
+            if independent and attempt is not None and files._read(ASSIGNMENT_ATTEMPT) == attempt:
+                files.write(ASSIGNMENT_REFUSAL, {'attempt_sha256': identity(attempt), 'reason': reason})
             return {'status': 'blocked', 'native_run_id': original['run_id'], 'reason': reason}
-        outcome = runs.continuation_receipt(*selection)
-        return {'status': 'observed', 'native_run_id': outcome['run_id']}
+        outcome = runs.campaign_recipient_receipt(state, gate)
+        observed = outcome['dispatch'] not in ('unrecorded', 'incomplete')
+        return {'status': 'observed' if observed else 'unknown', 'native_run_id': outcome['run_id']}
 
     async def _deliver_verified(self, intent):
         opening = self.opening
         task = recipient_task(opening)
+        assigned = assignment_task(opening)
+        independent = assigned is not None and intent.get('task_id') == assigned['task_id']
         manual = intent['source'].get('kind') == 'manual_update'
-        if manual or training_readback_task(task):
+        if independent:
+            wait = assignment_wait(self.files, opening, self.start, self.run_id)
+            wake = await self.read_wake_history((wait,), independent=True)
+            if wake is None or wake.get('intent') != intent:
+                raise ValueError('Campaign independent task lacks its verified original waiting Update and schedule')
+        elif manual or training_readback_task(task):
             commands = manual_commands(self.files, opening, self.start, self.run_id, task) if manual else ()
             wake = await self.read_wake_history(commands)
             if wake is None or wake['intent'] != intent:

@@ -11,8 +11,9 @@ import time
 
 from ergora.agents import native_sources
 from ergora.campaigns.records import (
-    CampaignFiles, check_receipt, identity, manual_wake_source, readback_grant, readback_id, readback_proof,
-    readback_reference, readback_result, receipt_recovery_activity, receipt_recovery_id, receipt_recovery_proof, recipient_task,
+    ASSIGNMENT_ATTEMPT, ASSIGNMENT_REFUSAL, CampaignFiles, assignment_intent, assignment_task, check_receipt,
+    identity, manual_wake_source, readback_grant, readback_id, readback_proof, readback_reference, readback_result,
+    receipt_recovery_activity, receipt_recovery_id, receipt_recovery_proof, recipient_task,
     reobservation_id, reobservation_task, require_check_project, sha256, training_readback_task, wake_intent,
 )
 from ergora.runtime import budget_clock, processes
@@ -128,7 +129,23 @@ def verified_reobservation_source(files, opening, start, run_id, task):
             'reobservation_interruption_sha256': interruption}
 
 
+def assignment_wait(files, opening, start, run_id):
+    task = recipient_task(opening)
+    waiting = files.load_check(opening, start, run_id, task, waiting=True)
+    if waiting is None:
+        raise ValueError('Independent task requires the original waiting attempt')
+    return waiting
+
+
 def verify_wake_intent(files, opening, start, run_id, task, intent):
+    if task is None:
+        raise ValueError('Campaign recipient attempt lacks its declared task')
+    if task == assignment_task(opening):
+        waiting = check_receipt(assignment_wait(files, opening, start, run_id))
+        expected = assignment_intent(opening, run_id, waiting)
+        if intent != expected:
+            raise ValueError('Independent task Activity differs from its original waiting receipt')
+        return expected
     claimed = intent.get('source')
     if not isinstance(claimed, dict):
         raise ValueError('Campaign recipient attempt lacks its original result source')
@@ -156,23 +173,54 @@ def attempt_record(intent, native_run_id):
 
 
 class RecipientGate:
-    def __init__(self, files, opening, start, result, attempt):
+    def __init__(self, files, opening, start, result, attempt, *, sealing=False):
         self.files, self.opening, self.start, self.result, self.attempt = files, opening, start, result, attempt
         task = recipient_task(opening)
         if (task is None or start is None or not isinstance(attempt, dict)
-                or attempt.keys() != {'intent', 'native_run_id', 'boot_id', 'boottime_ns', 'wall_ns'}
+                or attempt.keys() - {'slot_release'} != {'intent', 'native_run_id', 'boot_id', 'boottime_ns', 'wall_ns'}
                 or not isinstance(attempt['intent'], dict) or not isinstance(attempt['native_run_id'], str)
                 or not all(type(attempt[key]) is int and attempt[key] > 0 for key in ('boottime_ns', 'wall_ns'))):
             raise ValueError('Campaign recipient attempt lacks its original durable binding')
         run_id = attempt['intent'].get('run_id')
         if result is not None and result['run_id'] != run_id:
             raise ValueError('Campaign recipient attempt differs from the saved first Run')
+        assigned = assignment_task(opening)
+        self.independent = assigned is not None and attempt['intent'].get('task_id') == assigned['task_id']
+        if self.independent:
+            task = assigned
         self.intent = verify_wake_intent(files, opening, start, run_id, task, attempt['intent'])
-        if attempt['wall_ns'] >= self.intent['expires_at'] * 10**9:
-            raise ValueError('Campaign recipient attempt differs from its original result and deadline')
+        if attempt['intent'] != self.intent or attempt['wall_ns'] >= self.intent['expires_at'] * 10**9:
+            raise ValueError('Campaign recipient attempt differs from its original source and deadline')
         self.declaration = task['recipient']
-        self.binding = opening['recipient_binding']
+        self.binding = opening['assignment_binding' if self.independent else 'recipient_binding']
+        slot = attempt.get('slot_release')
+        if (assigned is None and 'slot_release' in attempt
+                or assigned is not None and not sealing and not isinstance(slot, dict)):
+            raise ValueError('Campaign recipient attempt has no original expert slot release')
+        if isinstance(slot, dict):
+            if self.independent:
+                first = recipient_task(opening)['recipient']
+                self.require_slot(slot, first['session_id'], first['parent_run_id'], opening['recipient_binding'])
+            else:
+                original = files._read(ASSIGNMENT_ATTEMPT)
+                if original is None and slot != {'status': 'unclaimed'}:
+                    raise ValueError('Campaign continuation lacks the independent task claim')
+                if original is not None:
+                    refused = slot == {'status': 'refused', 'attempt_sha256': identity(original)}
+                    if refused and assignment_refusal(files, original) is None:
+                        raise ValueError('Campaign continuation lacks the original independent task refusal')
+                    if not refused:
+                        self.require_slot(slot, assigned['recipient']['session_id'], original['native_run_id'],
+                                          opening['assignment_binding'])
         self.reference = {'campaign': files.campaign, 'attempt_sha256': identity(attempt)}
+
+    @staticmethod
+    def require_slot(slot, session_id, run_id, binding):
+        if (slot.keys() != {'session_id', 'run_id', 'request_sha256', 'context_digest', 'native_id'}
+                or slot['session_id'] != session_id or slot['run_id'] != run_id
+                or slot['context_digest'] != binding['context_digest'] or slot['native_id'] != binding['native_id']
+                or not sha256(slot['request_sha256'])):
+            raise ValueError('Campaign expert slot release names a different native turn')
 
     @classmethod
     def load(cls, home, project, reference):
@@ -182,6 +230,8 @@ class RecipientGate:
         files = CampaignFiles(home, project, reference['campaign'])
         opening, start, result = files.load()
         attempt = files._read('recipient-attempt')
+        if attempt is None or identity(attempt) != reference['attempt_sha256']:
+            attempt = files._read(ASSIGNMENT_ATTEMPT) if opening is not None and assignment_task(opening) else None
         if opening is None or attempt is None or identity(attempt) != reference['attempt_sha256']:
             raise ValueError('Native turn has no matching original Campaign recipient attempt')
         return cls(files, opening, start, result, attempt)
@@ -244,7 +294,17 @@ class RecipientGate:
 
     def require_turn(self, state, ident, session, digest, role, native_id, submitted):
         self.require_turn_identity(ident, session, digest, role, native_id, submitted)
-        require_check_project(state, self.opening)
+        self.require_authority(state)
+
+    def require_authority(self, state):
+        project = require_check_project(state, self.opening)
+        if assignment_task(self.opening) is not None:
+            from ergora.configuration.projects import native_authority_revision
+
+            role = self.binding['role']
+            assignee = self.opening['plan']['assignment']['assignee']
+            if assignee != {'role': role, 'generation': native_authority_revision(project, role)}:
+                raise ValueError('Original Campaign expert permission generation changed')
 
     @contextmanager
     def leased_payload(self, clock, timeout):
@@ -280,6 +340,22 @@ class RecipientGate:
         return self.binding['device'], self.binding['inode']
 
 
+def assignment_refusal(files, attempt):
+    refusal = files._read(ASSIGNMENT_REFUSAL)
+    if refusal is not None and (refusal.keys() != {'attempt_sha256', 'reason'}
+            or refusal['attempt_sha256'] != identity(attempt)
+            or refusal['reason'] not in ('stale_parent', 'session_slot_timeout', 'stopped', 'expired',
+                                         'native_turn_expired', 'recipient_authority_revoked')):
+        raise ValueError('Campaign independent task refusal differs from its original claim')
+    return refusal
+
+
+def stopped_receipt(native):
+    run = native['run']
+    return (native['dispatch'] not in ('unrecorded', 'incomplete') and run is not None
+            and run.get('execution_stopped') is True and run['status'] != 'unknown')
+
+
 def _exec(home, project, ident, lock_fd, argv):
     import fcntl
 
@@ -310,6 +386,8 @@ def _exec(home, project, ident, lock_fd, argv):
             raise ValueError('Campaign recipient executable lease was broken before launch')
         with gate.admission(**native_budget):
             # Both the local Campaign STOP and a direct native STOP use this lock.
+            if assignment_task(gate.opening) is not None:
+                gate.require_authority(state)
             if (folder / 'stop').exists():
                 raise RecipientBlocked('stopped')
             original_path = Path(gate.binding['payload_executable']).stat(follow_symlinks=False)
