@@ -769,7 +769,8 @@ async def _readback_history(converter, events, opening, task, grant, activity_id
         if event.HasField('activity_task_scheduled_event_attributes'):
             scheduled = event.activity_task_scheduled_event_attributes
             values = await converter.decode(scheduled.input.payloads)
-            if (scheduled_id is not None or scheduled.activity_type.name != readback_activity(task)
+            if (scheduled_id is not None or event.event_type != EventType.EVENT_TYPE_ACTIVITY_TASK_SCHEDULED
+                    or event.event_id <= 0 or scheduled.activity_type.name != readback_activity(task)
                     or scheduled.task_queue.name != opening['task_queue'] or scheduled.retry_policy.maximum_attempts != 1
                     or identity(values) != identity([grant])):
                 raise ValueError('Campaign readback Activity differs from its original grant')
@@ -778,14 +779,18 @@ async def _readback_history(converter, events, opening, task, grant, activity_id
         elif event.HasField('activity_task_started_event_attributes'):
             started = event.activity_task_started_event_attributes
             if started.scheduled_event_id == scheduled_id:
-                if started_id is not None or started.attempt != 1 or full_result and event.event_id <= scheduled_id:
+                if (started_id is not None or started.attempt != 1
+                        or event.event_type != EventType.EVENT_TYPE_ACTIVITY_TASK_STARTED
+                        or event.event_id <= scheduled_id):
                     raise ValueError('Campaign readback differs from its original Activity attempt')
                 started_id = event.event_id
                 timing_events['worker_started'] = event
         elif event.HasField('activity_task_completed_event_attributes'):
             result_event = event.activity_task_completed_event_attributes
             if result_event.scheduled_event_id == scheduled_id:
-                if completed is not None or started_id is None or result_event.started_event_id != started_id:
+                if (completed is not None or started_id is None
+                        or event.event_type != EventType.EVENT_TYPE_ACTIVITY_TASK_COMPLETED
+                        or event.event_id <= started_id or result_event.started_event_id != started_id):
                     raise ValueError('Campaign readback completion does not bind its original Activity attempt')
                 completed = event
         elif full_result:
@@ -805,6 +810,9 @@ async def _readback_history(converter, events, opening, task, grant, activity_id
         return None, terminal
     if completed is None:
         return None, None
+    completion_ns = _history_timestamp_ns(completed)
+    if completion_ns is not None and completion_ns >= grant['deadline_at'] * 1_000_000_000:
+        raise ValueError('Campaign readback completion reached its original cutoff')
     values = await converter.decode(completed.activity_task_completed_event_attributes.result.payloads)
     if len(values) != 1 or not isinstance(values[0], dict):
         raise ValueError('Campaign original readback Activity has an invalid result')

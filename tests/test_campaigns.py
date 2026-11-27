@@ -1142,6 +1142,7 @@ def test_recipient_status_retains_a_proven_blocker_and_separates_partial_publica
                                      'timed', 'timed-missing', 'timed-bad', 'timed-bad-seconds', 'timed-reversed'])
 def test_status_recovers_original_task_history_without_worker(registration, tmp_path, monkeypatch, outcome):
     pytest.importorskip('temporalio')
+    from temporalio.api.enums.v1 import EventType
     from temporalio.api.history.v1 import HistoryEvent
     from temporalio.converter import DataConverter
     from temporalio.service import RPCError, RPCStatusCode
@@ -1257,12 +1258,15 @@ def test_status_recovers_original_task_history_without_worker(registration, tmp_
             activity_result = {'activity_id': activity_id, 'observation': observation, 'reader_cleanup_sha256': 'f' * 64}
             scheduled_grant = {**grant, 'deadline_at': now + 61} if outcome == 'changed-grant' else grant
             events.extend([
-                HistoryEvent(event_id=4, activity_task_scheduled_event_attributes={
+                HistoryEvent(event_id=4, event_type=EventType.EVENT_TYPE_ACTIVITY_TASK_SCHEDULED,
+                             activity_task_scheduled_event_attributes={
                     'activity_id': activity_id, 'activity_type': {'name': READBACK_ACTIVITY},
                     'task_queue': {'name': opening['task_queue']}, 'retry_policy': {'maximum_attempts': 1},
                     'input': {'payloads': await converter.encode([scheduled_grant])}}),
-                HistoryEvent(event_id=5, activity_task_started_event_attributes={'scheduled_event_id': 4, 'attempt': 1}),
-                HistoryEvent(event_id=6, activity_task_completed_event_attributes={
+                HistoryEvent(event_id=5, event_type=EventType.EVENT_TYPE_ACTIVITY_TASK_STARTED,
+                             activity_task_started_event_attributes={'scheduled_event_id': 4, 'attempt': 1}),
+                HistoryEvent(event_id=6, event_type=EventType.EVENT_TYPE_ACTIVITY_TASK_COMPLETED,
+                             activity_task_completed_event_attributes={
                     'scheduled_event_id': 99 if outcome == 'unrelated' else 4, 'started_event_id': 5,
                     'result': {'payloads': await converter.encode([activity_result])}}),
             ])
@@ -2341,6 +2345,79 @@ def test_training_gpu_release_requires_an_exact_accepted_original_lease():
             readback_result(opening, task, activity_id, {**raw, 'observation': {**observation, 'local_gpu_lease': bad}})
         with pytest.raises(ValueError, match='original evidence'):
             checked_readback(opening, run_id, None, {**readback, 'local_gpu_lease': bad})
+
+
+@pytest.mark.parametrize('kind', ('fixed_check', 'training_full_result', 'training_screen_result', 'training_gpu_release'))
+@pytest.mark.parametrize(('case', 'stamp', 'error'), (
+    ('before-cutoff', (39, 999_999_999), None),
+    ('at-cutoff', (40, 0), 'original cutoff'),
+    ('after-cutoff', (40, 1), 'original cutoff'),
+    ('missing-clock', None, None),
+    ('invalid-clock', (40, -1), None),
+    ('wrong-schedule-type', (39, 0), 'original grant'),
+    ('wrong-start-type', (39, 0), 'original Activity attempt'),
+    ('wrong-completed-type', (39, 0), 'original Activity attempt'),
+    ('nonpositive-schedule', (39, 0), 'original grant'),
+    ('start-before-schedule', (39, 0), 'original Activity attempt'),
+    ('completion-shares-start', (39, 0), 'original Activity attempt'),
+))
+def test_original_completion_history_checks_ancestry_and_known_cutoff(monkeypatch, kind, case, stamp, error):
+    pytest.importorskip('temporalio')
+    from temporalio.api.enums.v1 import EventType
+    from temporalio.api.history.v1 import HistoryEvent
+    from temporalio.converter import DataConverter
+    from ergora.campaigns import records, workflow as runtime
+
+    task = {'task_id': 'read', 'source': {'kind': kind}, 'readback': {'due_at': 20, 'deadline_at': 40}}
+    opening = {'task_queue': 'original-queue', 'plan': {'tasks': [task]}}
+    grant = records.readback_grant(opening, 'original-run', task, None)
+    activity = records.readback_id(grant)
+    result = {'reader_cleanup_sha256': 'a'*64}
+    validated = []
+
+    def accept(opened, selected, activity_id, payload):
+        assert (opened, selected, activity_id, payload) == (opening, task, activity, result)
+        validated.append(payload)
+        return 'b'*64, {'status': 'succeeded'}
+
+    monkeypatch.setattr(runtime, 'readback_result', accept)
+
+    async def exercise():
+        converter = DataConverter.default
+        schedule_id = 0 if case == 'nonpositive-schedule' else 11
+        start_id = 10 if case == 'start-before-schedule' else 12
+        finish_id = start_id if case == 'completion-shares-start' else 13
+        events = [
+            HistoryEvent(event_id=schedule_id, event_type=EventType.EVENT_TYPE_ACTIVITY_TASK_SCHEDULED,
+                         event_time={'seconds': 20}, activity_task_scheduled_event_attributes={
+                             'activity_id': activity, 'activity_type': {'name': records.readback_activity(task)},
+                             'task_queue': {'name': opening['task_queue']}, 'retry_policy': {'maximum_attempts': 1},
+                             'input': {'payloads': await converter.encode([grant])}}),
+            HistoryEvent(event_id=start_id, event_type=EventType.EVENT_TYPE_ACTIVITY_TASK_STARTED,
+                         event_time={'seconds': 21}, activity_task_started_event_attributes={
+                             'scheduled_event_id': schedule_id, 'attempt': 1}),
+            HistoryEvent(event_id=finish_id, event_type=EventType.EVENT_TYPE_ACTIVITY_TASK_COMPLETED,
+                         activity_task_completed_event_attributes={
+                             'scheduled_event_id': schedule_id, 'started_event_id': start_id,
+                             'result': {'payloads': await converter.encode([result])}}),
+        ]
+        wrong_types = {'wrong-schedule-type': 0, 'wrong-start-type': 1, 'wrong-completed-type': 2}
+        if case in wrong_types:
+            events[wrong_types[case]].event_type = EventType.EVENT_TYPE_TIMER_FIRED
+        if stamp is not None:
+            events[-1].event_time.seconds, events[-1].event_time.nanos = stamp
+        return await runtime._readback_history(converter, events, opening, task, grant, activity, [])
+
+    if error is not None:
+        with pytest.raises(ValueError, match=error):
+            asyncio.run(exercise())
+        assert validated == []
+    else:
+        completion, terminal = asyncio.run(exercise())
+        assert terminal is None and validated == [result]
+        assert completion['scheduled_event_id'] == 11 and completion['completed_event_id'] == 13
+        assert completion['observation_sha256'] == 'b'*64
+        assert ('completed' in completion['timing']['events']) is (case == 'before-cutoff')
 
 
 @pytest.mark.parametrize(('timestamp', 'fault'), (
