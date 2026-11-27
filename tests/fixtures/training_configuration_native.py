@@ -54,7 +54,7 @@ def install():
             return original_track(*args)
         if failure == 'service':
             raise RuntimeError('Test tracking service unavailable after local archive')
-        if failure == 'lost-after-send':
+        if failure in ('lost-after-send', 'existing-run'):
             _, folder, _, _ = args
 
             class TrackingClient:
@@ -65,6 +65,9 @@ def install():
                     return SimpleNamespace(experiment_id='isolated-tracking')
 
                 def search_runs(self, *args, **kwargs):
+                    assert kwargs['run_view_type'] == 3  # MLflow ViewType.ALL
+                    if failure == 'existing-run':
+                        return [SimpleNamespace(info=SimpleNamespace(run_id='original-private-run'))]
                     return []
 
                 def create_run(self, experiment_id, *, tags):
@@ -77,6 +80,9 @@ def install():
             mlflow = ModuleType('mlflow')
             mlflow.MlflowClient = TrackingClient
             sys.modules['mlflow'] = mlflow
+            entities = ModuleType('mlflow.entities')
+            entities.ViewType = SimpleNamespace(ALL=3)
+            sys.modules['mlflow.entities'] = entities
             return original_track(*args)
         return 'test-only-tracking-leaf-not-a-service'
 

@@ -2,5 +2,5 @@
   "schema_version": 1,
   "protocol_id": "training-executor-admission-v3",
   "reference_version": "2.2",
-  "reference_manifest_sha256": "c6725552d1cf51bbed4a0e7caac9bc69b9b50c3b9e865f2f55ef828eccd0648b"
+  "reference_manifest_sha256": "298df62bd3205e0d2f3ad82222767bb86dffad80aba7bfe91086cf81211c6a5c"
 }

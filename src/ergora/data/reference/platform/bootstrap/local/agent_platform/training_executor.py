@@ -16,19 +16,21 @@ from .training import TRAINING, binding_from, fence_path, perf_root
 
 def track(record: dict, folder: Path, manifest: dict, gate: dict | None, screen: dict | None = None) -> str:
     from mlflow import MlflowClient
+    from mlflow.entities import ViewType
+
     client = MlflowClient(tracking_uri='http://127.0.0.1:5000')
     project = record['runner']['project']
     experiment = client.get_experiment_by_name('training-' + project)
     exp_id = experiment.experiment_id if experiment else client.create_experiment('training-' + project)
     binding = record['experiment']['binding']
-    runs = client.search_runs([exp_id], filter_string="tags.manifest_sha = '" + binding['manifest_sha'] + "'", max_results=2)
+    runs = client.search_runs([exp_id], filter_string="tags.manifest_sha = '" + binding['manifest_sha'] + "'",
+                              run_view_type=ViewType.ALL, max_results=2)
     require(len(runs) <= 1, 'Multiple MLflow runs bind this manifest; reconcile tracking records')
-    if runs: run_id = runs[0].info.run_id
-    else:
-        run_id = client.create_run(exp_id, tags={'manifest_sha': binding['manifest_sha'],
-            'experiment_id': binding['experiment_id'], 'baseline_sha': binding['baseline_sha'],
-            'candidate_sha': binding['candidate_sha'], 'runner_job_id': record['job_id'],
-            'purpose': 'screen' if screen is not None else 'paired-comparison', 'trust_model': 'trusted-current-container'}).info.run_id
+    require(not runs, 'An MLflow run already binds this manifest; reconcile tracking records')
+    run_id = client.create_run(exp_id, tags={'manifest_sha': binding['manifest_sha'],
+        'experiment_id': binding['experiment_id'], 'baseline_sha': binding['baseline_sha'],
+        'candidate_sha': binding['candidate_sha'], 'runner_job_id': record['job_id'],
+        'purpose': 'screen' if screen is not None else 'paired-comparison', 'trust_model': 'trusted-current-container'}).info.run_id
     for key in ('baseline_id', 'workload_fingerprint', 'environment_fingerprint', 'dataset_manifest_sha256',
                 'initial_checkpoint_sha256', 'base_config_sha256', 'candidate_config_sha256', 'validation_contract_sha256'):
         client.log_param(run_id, key, manifest[key])

@@ -1573,6 +1573,7 @@ def test_managed_archive_retains_an_exact_evaluated_negative_gate(configuration_
     ('missing-module', None, 1, 'raised', 'ModuleNotFoundError'),
     ('service', 'FAILED', 0, 'raised', 'RuntimeError'),
     ('lost-after-send', None, 79, 'unknown', None),
+    ('existing-run', 'FAILED', 0, 'raised', 'Blocked'),
 ])
 def test_training_evidence_verifies_retained_archive_after_tracking_failure(
         configuration_execution, monkeypatch, failure, native_state, executor_returncode, tracking_status, error_type):
@@ -1587,7 +1588,7 @@ def test_training_evidence_verifies_retained_archive_after_tracking_failure(
     else:
         saved = json.loads(terminal.read_bytes())
         assert saved['state'] == native_state and saved['gate'] is None
-        assert 'tracking service unavailable' in saved['detail']
+        assert ('reconcile tracking records' if failure == 'existing-run' else 'tracking service unavailable') in saved['detail']
 
     gate = json.loads((job / 'gate-report.json').read_bytes())
     assert gate['passed'] is True
