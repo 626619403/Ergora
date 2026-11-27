@@ -63,7 +63,8 @@ def test_campaign_timeline_reads_and_exposes_only_the_selected_original_task(con
         return {"project": project, "campaign": campaign, "run_id": "original", "current_run_id": "successor",
                 "workflow_state_status": "observed",
                 "plan": {"acceptance": "Inspect original evidence", "limits": {"expires_at": 100},
-                         "tasks": [{"task_id": "selected", "source": {}}, {"task_id": "other-private"}]},
+                         "tasks": [{"task_id": "selected", "depends_on": [], "source": {}},
+                                   {"task_id": "other-private"}]},
                 "tasks": {"selected": selected, "other-private": {}},
                 "task_observation_history": {"selected": attempt, "other-private": {}},
                 "task_evidence": {"task_id": task_id, "correlation": "unavailable"},
@@ -84,11 +85,54 @@ def test_campaign_timeline_reads_and_exposes_only_the_selected_original_task(con
     assert observed["task_state"] == selected and observed["task_observation_history"] == attempt
     assert observed["task_evidence"]["correlation"] == "unavailable"
     assert "training_task" not in observed
+    assert "direct_dependencies" not in observed
     assert observed["stop"] == {"status": "unknown", "remote_status": "unavailable", "update_id": "original-stop",
                                 "decision": None, "receipt_run_id": None, "local_fence_saved": True}
     assert observed["rollover"] == {"status": "unresolved", "update_id": "original-rollover"}
     assert observed["readback_completion"] == completion
     assert "other-private" not in response.text
+
+
+@pytest.mark.parametrize("source", ["workflow", "history", "unavailable"])
+def test_campaign_timeline_projects_only_direct_dependency_state(console, monkeypatch, source):
+    from ergora.campaigns import application
+
+    client, state, _ = console
+    selected = {"task_id": "selected", "depends_on": ["full", "parent"], "source": {}}
+    parent = {"task_id": "parent", "depends_on": ["grandparent-private"], "source": {"secret": "parent-source-private"}}
+    frozen = [selected, {"task_id": "full"}, parent, {"task_id": "grandparent-private"}, {"task_id": "other-private"}]
+    selected_state = {**selected, "status": "waiting_dependencies", "eligible": False}
+    original_receipt = {"terminal": {"status": "unresolved", "update_id": "selected-original-update"}}
+    full = {"status": "observed", "eligible": False, "source": {"locator": "full-source-private"},
+            "readback": {"grant": "full-grant-private"}, "recipient": {"prompt": "full-recipient-private"}}
+    parent_state = {**parent, "status": "waiting_job", "receipt": {"proof": "parent-receipt-private"}}
+    if source == "workflow":
+        tasks = {"full": full, "parent": parent_state, "selected": selected_state,
+                 "grandparent-private": {"status": "observed"}, "other-private": {"status": "ready"}}
+    else:
+        tasks = {"full": {**full, "state_source": "history"}} if source == "history" else {}
+
+    async def status(store, project, campaign, *, online, task_id):
+        assert (store.root, project, campaign, online, task_id) == (state.root, "demo", "record", True, "selected")
+        return {"plan": {"acceptance": "Inspect original dependency", "limits": {"expires_at": 100}, "tasks": frozen},
+                "workflow_state_status": "observed" if source == "workflow" else "unavailable",
+                "tasks": tasks, "task_evidence": selected,
+                "stop": {"status": "not_recorded", "remote_status": "not_requested", "update_id": None, "receipt": None},
+                "task_observation_history": {"selected": original_receipt, "parent": {"private": "parent-history-private"}},
+                "readback_completion": {"task_id": "full", "native_result_sha256": "full-result-private"}}
+
+    monkeypatch.setattr(application, "status", status)
+    response = client.get("/api/projects/demo/campaigns/record/tasks/selected/timeline")
+    assert response.status_code == 200, response.text
+    projected = response.json()
+    assert projected["direct_dependencies"] == [
+        {"task_id": "full", "state_source": source, "status": None if source == "unavailable" else "observed"},
+        {"task_id": "parent", "state_source": "workflow" if source == "workflow" else "unavailable",
+         "status": "waiting_job" if source == "workflow" else None},
+    ]
+    assert projected["task_state"] == (selected_state if source == "workflow" else None)
+    assert projected["task_observation_history"] == original_receipt and projected["readback_completion"] is None
+    assert "-private" not in response.text
 
 
 @pytest.mark.parametrize("workflow_observed", [True, False])

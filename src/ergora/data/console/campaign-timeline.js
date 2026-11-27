@@ -1,10 +1,15 @@
 import { api } from "./api.js";
-import { $, node, pre, panel, empty, field, form, modal } from "./ui.js";
+import { $, node, pre, panel, empty, field, form, modal, table } from "./ui.js";
 
 const facts = (rows) => node("dl", { className: "task-facts" },
   rows.map(([name, value]) => [node("dt", {}, name), node("dd", {}, String(value ?? "未返回"))]));
 const record = (title, value) => value == null ? null :
   node("details", {}, node("summary", {}, title), pre(value));
+const dependencySources = {
+  workflow: "已核对的 Workflow",
+  history: "原 History",
+  unavailable: "未读取到",
+};
 
 function trainingEvidence({ locator, recipient, source_kind }, completion, conflict) {
   const lease = completion?.local_gpu_lease;
@@ -105,12 +110,15 @@ function timeline(result) {
         ["项目", result.project],
         ["原 Campaign ID", result.campaign],
         ["原任务 ID", selected.task_id],
-        ["依赖任务 ID", selected.depends_on.join("、") || "无"],
         ["原计划 SHA256", result.plan_sha256],
         ["原项目修订", result.project_revision],
         ["原操作者 EUID", result.operator_euid],
         ["原截止时间（UTC）", new Date(result.expires_at * 1000).toISOString()],
       ])),
+    result.direct_dependencies?.length ? panel("直属依赖", null,
+      table(["原任务 ID", "状态", "证据来源"], result.direct_dependencies.map((dependency) => [
+        dependency.task_id, dependency.status ?? "未返回", dependencySources[dependency.state_source],
+      ]))) : null,
     panel("Workflow 读取状态", result.remote_error,
       facts([
         ["原 Workflow ID", result.workflow_id],

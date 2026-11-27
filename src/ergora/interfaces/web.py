@@ -1027,7 +1027,16 @@ def create_app(home: Path | None = None) -> FastAPI:
                   "task_observation_history_status", "task_observation_history_error", "task_evidence")
         plan = observed["plan"]
         selected = tasks_by_id(observed)[task_id]
-        task_state = observed.get("tasks", {}).get(task_id)
+        task_states = observed.get("tasks", {})
+        task_state = task_states.get(task_id)
+        direct_dependencies = []
+        for dependency_id in selected["depends_on"]:
+            dependency = task_states.get(dependency_id, {})
+            source = dependency.get("state_source")
+            if source is None:
+                source = "workflow" if dependency and observed["workflow_state_status"] == "observed" else "unavailable"
+            direct_dependencies.append({"task_id": dependency_id, "state_source": source,
+                                        "status": dependency.get("status") if source != "unavailable" else None})
         training_task = {}
         if training_readback_task(selected):
             training_task = {"task_id": task_id, "depends_on": selected["depends_on"],
@@ -1051,6 +1060,7 @@ def create_app(home: Path | None = None) -> FastAPI:
                 "acceptance": plan["acceptance"], "expires_at": plan["limits"]["expires_at"],
                 "workflow_phase": observed.get("workflow_state", {}).get("phase"),
                 "task_state": task_state,
+                **({"direct_dependencies": direct_dependencies} if direct_dependencies else {}),
                 **({"training_task": training_task} if training_task else {}),
                 "stop": {"status": stop["status"], "remote_status": stop["remote_status"],
                          "update_id": stop["update_id"], "local_fence_saved": stop.get("local_fence_saved"),
