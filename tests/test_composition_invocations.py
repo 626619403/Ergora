@@ -427,7 +427,7 @@ stamp('finished')
     monkeypatch.setattr(agent_backends.CodexBackend, 'command', command)
     monkeypatch.setattr(agent_backends.CodexBackend, 'check_invocation', lambda self: None)
 
-    def run(project_cap, root_cap, nested_cap, case='success'):
+    def run(project_cap, root_cap, nested_cap, case='success', *, setup_timeout=20):
         nested = {**definition, 'id': 'parallel-nested', 'limits': {**definition['limits'], 'concurrency': nested_cap},
                   'inputs': ['a', 'b'], 'outputs': {name: {'node': name, 'output': 'result'} for name in ('a', 'b')},
                   'nodes': [{**leaf, 'id': name, 'inputs': {'task': {'input': name}}} for name in ('a', 'b')]}
@@ -466,7 +466,8 @@ stamp('finished')
             if case == 'reservation-failure':
                 inputs['a']['trigger'] = 'failure'
         receipt = run_graph(state, 'demo', manifest, selected['digest'], inputs, directory, 50_000,
-                            5 if case == 'timed_out' else 20, stop_requested=lambda: (witnesses/'stop').exists())
+                            5 if case == 'timed_out' else setup_timeout,
+                            stop_requested=lambda: (witnesses/'stop').exists())
         assert receipt == json.loads((directory/'run.json').read_bytes())
         assert len({leaf['run_id'] for leaf in receipt['leaves']}) == len(receipt['leaves'])
         return receipt, witnesses, state
@@ -1360,7 +1361,8 @@ def test_nondurable_artifact_read_opens_an_ordinary_file_with_guarded_flags(tmp_
 
 
 def test_inspect_graph_joins_original_attempts_after_a_lost_reply(parallel_graph, tmp_path, monkeypatch, capsys):
-    receipt, witnesses, state = parallel_graph(2, 2, 1)
+    # Allow headroom for creating the successful receipt that this test inspects.
+    receipt, witnesses, state = parallel_graph(2, 2, 1, setup_timeout=60)
     directory = tmp_path / 'run'
     receipt_path = directory / 'run.json'
     raw = receipt_path.read_bytes()
