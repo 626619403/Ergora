@@ -33,6 +33,7 @@ READBACK_ACTIVITY = 'ergora_campaign_fixed_check_readback'
 TRAINING_READBACK_ACTIVITY = 'ergora_campaign_training_full_result_readback'
 TRAINING_RESULT_SOURCE = 'training_full_result'
 FULL_RESULT_RECOVERY_ACTIVITY = 'ergora_campaign_training_full_result_recover_receipt'
+FULL_RESULT_REOBSERVATION_ACTIVITY = 'ergora_campaign_training_full_result_reobserve'
 TRAINING_RESULT_DIGESTS = ('native_result_sha256', 'reap_record_sha256', 'terminal_output_sha256',
                            'gate_report_sha256', 'evidence_sha256', 'tracking_attempt_sha256')
 TRAINING_SCREEN_ACTIVITY = 'ergora_campaign_training_screen_result_readback'
@@ -146,7 +147,8 @@ def validate_tasks(tasks):
     dependencies = {}
     scheduled = False
     for task in tasks:
-        optional = {'readback', 'recipient', 'wake_on_observe', 'recover_release_receipt', 'recover_full_result_receipt'}
+        optional = {'readback', 'recipient', 'wake_on_observe', 'recover_release_receipt', 'recover_full_result_receipt',
+                    'reobserve_full_result_after_reader_loss'}
         if not isinstance(task, dict) or task.keys() - optional != {'task_id', 'depends_on', 'source'}:
             raise ValueError('Campaign task requires task_id, depends_on and an exact source')
         task_id, parents, source = task['task_id'], task['depends_on'], task['source']
@@ -200,6 +202,11 @@ def validate_tasks(tasks):
         if 'recover_full_result_receipt' in task and (task['recover_full_result_receipt'] is not True
                 or not training_readback_task(task) or source['kind'] != TRAINING_RESULT_SOURCE or 'recipient' not in task):
             raise ValueError('Campaign receipt recovery requires the selected original full training result and recipient')
+        if 'reobserve_full_result_after_reader_loss' in task and (not reobservation_task(task)
+                or not training_readback_task(task) or source['kind'] != TRAINING_RESULT_SOURCE
+                or source.get('wait_for_live') is not True or 'recipient' not in task
+                or 'recover_full_result_receipt' in task):
+            raise ValueError('Campaign re-observation requires a selected live full-result wait and recipient')
         dependencies[task_id] = parents
     if any(parent not in dependencies for parents in dependencies.values() for parent in parents):
         raise ValueError('Campaign task dependency is absent from the frozen plan')
@@ -367,6 +374,33 @@ def receipt_recovery_proof(grant, reply):
     return {field: reply[field] for field in ('recovery_activity_id', 'recovery_receipt_sha256')}
 
 
+def reobservation_task(task):
+    return task is not None and task.get('reobserve_full_result_after_reader_loss') is True
+
+
+def reobservation_id(grant):
+    return 'training-full-result-reobservation:' + identity(grant)
+
+
+def readback_followup_activity(task):
+    return FULL_RESULT_REOBSERVATION_ACTIVITY if reobservation_task(task) else receipt_recovery_activity(task)
+
+
+def readback_followup_id(task, grant):
+    return reobservation_id(grant) if reobservation_task(task) else receipt_recovery_id(grant)
+
+
+def readback_followup_result(task, grant, reply):
+    if not reobservation_task(task):
+        return receipt_recovery_proof(grant, reply), reply['original_result'], readback_id(grant)
+    activity_id = reobservation_id(grant)
+    fields = ('reobservation_activity_id', 'reobservation_interruption_sha256')
+    if (not isinstance(reply, dict) or reply.keys() != {*fields, 'reobserved_result'}
+            or reply['reobservation_activity_id'] != activity_id or not sha256(reply['reobservation_interruption_sha256'])):
+        raise ValueError('Campaign re-observation differs from the original read grant')
+    return {field: reply[field] for field in fields}, reply['reobserved_result'], activity_id
+
+
 def readback_reference(grant):
     field = 'source_sha256' if 'source_sha256' in grant else 'waiting_receipt_sha256'
     if 'source_kind' in grant:
@@ -508,6 +542,12 @@ def checked_readback(opening, run_id, waits, observation):
             fields.add('recovery_activity_id')
             digests.add('recovery_receipt_sha256')
             proof.add('recovery_receipt_sha256')
+        if 'reobservation_activity_id' in observation:
+            if (not reobservation_task(task) or observation['reobservation_activity_id'] != reobservation_id(grant)):
+                raise ValueError('Campaign re-observation differs from the original read grant')
+            fields.add('reobservation_activity_id')
+            digests.add('reobservation_interruption_sha256')
+            proof.add('reobservation_interruption_sha256')
         if (observation.keys() == fields | proof and all(sha256(observation[key]) for key in digests)
                 and (not screen or _screen_decision_matches(observation, task['source']['locator']))
                 and (not release or _training_gpu_release_matches(observation, task['source']['locator']))

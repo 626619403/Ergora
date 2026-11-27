@@ -2,6 +2,7 @@
 
 from contextlib import ExitStack, contextmanager
 import hashlib
+import math
 import os
 from pathlib import Path
 import signal
@@ -12,7 +13,7 @@ from ergora.agents import native_sources
 from ergora.campaigns.records import (
     CampaignFiles, check_receipt, identity, manual_wake_source, readback_grant, readback_id, readback_proof,
     readback_reference, readback_result, receipt_recovery_activity, receipt_recovery_id, receipt_recovery_proof, recipient_task,
-    require_check_project, sha256, training_readback_task, wake_intent,
+    reobservation_id, reobservation_task, require_check_project, sha256, training_readback_task, wake_intent,
 )
 from ergora.runtime import budget_clock, processes
 from ergora.storage.state import State, file_lock
@@ -33,16 +34,17 @@ def require_payload_support():
         raise ValueError('Campaign recipient requires Linux executable descriptor and read lease support')
 
 
-def verified_source(files, opening, start, run_id, task):
+def verified_source(files, opening, start, run_id, task, *, reobservation=False):
     training = training_readback_task(task)
     waiting = None if training else files.load_check(opening, start, run_id, task, waiting=True)
     if waiting is None and not training:
         raise ValueError('Campaign recipient is missing its original waiting attempt')
     grant = readback_grant(opening, run_id, task, check_receipt(waiting) if waiting else None)
-    activity = readback_id(grant)
-    readback = files._read('readback-result')
-    cleanup = files._read('readback-cleanup')
-    attempt = files._read('readback-attempt')
+    activity = reobservation_id(grant) if reobservation else readback_id(grant)
+    prefix = 'reobservation' if reobservation else 'readback'
+    readback = files._read(f'{prefix}-result')
+    cleanup = files._read(f'{prefix}-cleanup')
+    attempt = files._read(f'{prefix}-attempt')
     if (readback is None or cleanup is None or attempt is None or attempt.get('grant') != grant
             or attempt.get('activity_id') != activity or cleanup.get('activity_id') != activity
             or readback.get('reader_cleanup_sha256') != identity(cleanup)
@@ -50,7 +52,7 @@ def verified_source(files, opening, start, run_id, task):
             or cleanup['receipt'].get('remaining_children') != []):
         raise ValueError('Campaign recipient requires its exact original reader result and cleanup')
     if training:
-        guard = files._read('readback-guard')
+        guard = files._read(f'{prefix}-guard')
         if (guard is None or guard.get('activity_id') != activity or guard.get('worker') != attempt.get('worker')
                 or not isinstance(guard.get('guard'), dict) or cleanup['receipt'].get('owner') != guard['guard']):
             raise ValueError('Campaign training recipient requires cleanup by the original readback guard')
@@ -88,6 +90,43 @@ def verified_receipt_recovery(files, opening, start, run_id, task):
     return {**source, **receipt_recovery_proof(grant, reply)}, reply, guard, finished['model']
 
 
+def verified_interrupted_read(files, grant):
+    """Bind one original unsuccessful read and its completed child reap."""
+    names = ('readback-attempt', 'readback-guard', 'readback-cleanup')
+    documents = {name: files._read(name) for name in names}
+    attempt, guard, cleanup = documents.values()
+    activity = readback_id(grant)
+    if (attempt is None or guard is None or cleanup is None or files._read('readback-result') is not None
+            or attempt.keys() != {'grant', 'activity_id', 'worker'} or attempt['grant'] != grant
+            or any(row.get('activity_id') != activity for row in documents.values())
+            or guard.get('worker') != attempt['worker'] or not isinstance(guard.get('guard'), dict)):
+        raise ValueError('Campaign re-observation requires its original unpublished read and guard')
+    receipt = cleanup.get('receipt')
+    clocks = (cleanup.get('reaped_at_monotonic'), guard.get('work_cutoff_monotonic'), guard.get('deadline_monotonic'))
+    if (not isinstance(receipt, dict) or receipt.get('kind') != 'supervised-process-cleanup'
+            or receipt.get('schema_version') != 1 or receipt.get('owner') != guard['guard']
+            or receipt.get('model_waited') is not True or receipt.get('remaining_children') != []
+            or receipt.get('returncode') != -signal.SIGKILL or not isinstance(receipt.get('model'), dict)
+            or not all(type(clock) in (int, float) and math.isfinite(clock) for clock in clocks)
+            or not 0 <= clocks[0] < clocks[1] < clocks[2]
+            or any(files._read(name) != value for name, value in documents.items())):
+        raise ValueError('Campaign re-observation requires its original interrupted reader and confirmed reap')
+    return identity(documents), guard, receipt['model']
+
+
+def verified_reobservation_source(files, opening, start, run_id, task):
+    if not reobservation_task(task):
+        raise ValueError('Campaign re-observation was not selected')
+    grant = readback_grant(opening, run_id, task, None)
+    interruption, _, _ = verified_interrupted_read(files, grant)
+    attempt = files._read('reobservation-attempt')
+    if attempt is None or attempt.get('interruption_sha256') != interruption:
+        raise ValueError('Campaign re-observation differs from the original interrupted read')
+    source = verified_source(files, opening, start, run_id, task, reobservation=True)
+    return {**source, 'activity_id': readback_id(grant), 'reobservation_activity_id': source['activity_id'],
+            'reobservation_interruption_sha256': interruption}
+
+
 def verify_wake_intent(files, opening, start, run_id, task, intent):
     claimed = intent.get('source')
     if not isinstance(claimed, dict):
@@ -97,6 +136,8 @@ def verify_wake_intent(files, opening, start, run_id, task, intent):
         source = manual_wake_source(task, check_receipt(wait), check_receipt(terminal))
     elif 'recovery_activity_id' in claimed:
         source, _, _, _ = verified_receipt_recovery(files, opening, start, run_id, task)
+    elif 'reobservation_activity_id' in claimed:
+        source = verified_reobservation_source(files, opening, start, run_id, task)
     else:
         source = verified_source(files, opening, start, run_id, task)
     expected = wake_intent(opening, run_id, task, source)

@@ -2166,6 +2166,11 @@ def test_training_result_source_only_accepts_its_guarded_full_result():
         validate_tasks([{**task, 'source': {**task['source'], 'locator': {'experiment_id': 'alpha'}}}])
     live = {**task, 'source': {**task['source'], 'wait_for_live': True}}
     validate_tasks([{**live, 'recipient': recipient, 'recover_full_result_receipt': True}])
+    reobserve = {'recipient': recipient, 'reobserve_full_result_after_reader_loss': True}
+    validate_tasks([{**live, **reobserve}])
+    for unsupported in ({**task, **reobserve}, {**live, **reobserve, 'recover_full_result_receipt': True}):
+        with pytest.raises(ValueError, match='selected live full-result wait'):
+            validate_tasks([unsupported])
     for invalid in ({'recover_full_result_receipt': False, 'recipient': recipient}, {'recover_full_result_receipt': True}):
         with pytest.raises(ValueError, match='selected original full training result and recipient'):
             validate_tasks([{**live, **invalid}])
@@ -2372,11 +2377,12 @@ def test_receipt_recovery_history_requires_original_activity_lineage(monkeypatch
         grant['source_kind'] = 'training_gpu_release'
         recovery_type = records.RELEASE_RECOVERY_ACTIVITY
     recovery = records.receipt_recovery_id(grant)
+    original_id = records.readback_id(grant)
     original_result = {'reader_cleanup_sha256': 'b'*64}
     reply = {'original_result': original_result, 'recovery_activity_id': recovery, 'recovery_receipt_sha256': 'c'*64}
     old = [
         HistoryEvent(event_id=11, event_type=EventType.EVENT_TYPE_ACTIVITY_TASK_SCHEDULED,
-                     activity_task_scheduled_event_attributes={'activity_id': 'original'}),
+                     activity_task_scheduled_event_attributes={'activity_id': original_id}),
         HistoryEvent(event_id=12, event_type=EventType.EVENT_TYPE_ACTIVITY_TASK_STARTED,
                      activity_task_started_event_attributes={'scheduled_event_id': 11, 'attempt': 1}),
         HistoryEvent(event_id=13, event_type=EventType.EVENT_TYPE_ACTIVITY_TASK_TIMED_OUT,
@@ -2387,7 +2393,7 @@ def test_receipt_recovery_history_requires_original_activity_lineage(monkeypatch
     validated = []
 
     def readback_result(opened, selected, activity_id, result):
-        assert (opened, selected, activity_id, result) == (opening, task, 'original', original_result)
+        assert (opened, selected, activity_id, result) == (opening, task, original_id, original_result)
         if fault == 'malformed-result':
             raise KeyError('local_gpu_lease')
         validated.append(result)
@@ -2423,7 +2429,7 @@ def test_receipt_recovery_history_requires_original_activity_lineage(monkeypatch
             events[2].activity_task_completed_event_attributes.started_event_id = 18
         if fault == 'completion-before-start':
             events[2].event_id = 20
-        return await runtime._receipt_recovery_completion(converter, old, events, opening, task, grant, 'original')
+        return await runtime._readback_followup_completion(converter, old, events, opening, task, grant, original_id)
 
     if fault is None:
         completion = asyncio.run(exercise())
@@ -2561,6 +2567,121 @@ def test_receipt_recovery_only_accepts_original_receipt_and_reaped_processes(tmp
     else:
         with pytest.raises(ValueError):
             asyncio.run(call())
+
+
+@pytest.mark.parametrize('case', ('exact', 'success-without-result', 'published', 'live', 'foreign',
+                                 'unknown', 'boot', 'unreaped', 'stop', 'cancel', 'cutoff', 'duplicate',
+                                 'lock-release', 'lock-stop', 'lock-wall-cutoff', 'lock-monotonic-cutoff',
+                                 'lock-cancel', 'lock-changed-proof'))
+def test_full_result_reobservation_requires_a_closed_unpublished_reader(tmp_path, monkeypatch, case):
+    pytest.importorskip('temporalio')
+    from ergora.campaigns import readback, records
+    from ergora.storage.state import file_lock
+
+    original = {'run_id': 'original-run', 'due_at': 20, 'deadline_at': 40}
+    opening, start = {'identity': 'original-opening'}, {'identity': 'original-start'}
+    activity = records.readback_id(original)
+    worker, guard, model = [{'pid': pid, 'boot_id': 'current-boot', 'start_ticks': '42'}
+                            for pid in (10001, 10002, 10003)]
+    documents = {
+        'readback-attempt': {'grant': original, 'activity_id': activity, 'worker': worker},
+        'readback-guard': {'activity_id': activity, 'worker': worker, 'guard': guard,
+                           'deadline_monotonic': 40, 'work_cutoff_monotonic': 39},
+        'readback-cleanup': {'activity_id': activity, 'reaped_at_monotonic': 22, 'receipt': {
+            'kind': 'supervised-process-cleanup', 'schema_version': 1, 'owner': guard,
+            'model': model, 'model_waited': True, 'remaining_children': [], 'returncode': -signal.SIGKILL}},
+    }
+    if case == 'success-without-result':
+        documents['readback-cleanup']['receipt']['returncode'] = 0
+    elif case == 'published':
+        documents['readback-result'] = {'already': 'published'}
+    elif case == 'boot':
+        worker['boot_id'] = 'original-other-boot'
+    elif case == 'unreaped':
+        documents['readback-cleanup']['receipt']['model_waited'] = False
+    elif case == 'cancel':
+        documents['readback-cancel'] = {'activity_id': activity}
+    elif case == 'duplicate':
+        documents['reobservation-attempt'] = {'original': 'admission'}
+
+    def write(name, packet, *, before_publish):
+        before_publish()
+        if name in documents:
+            raise FileExistsError
+        documents[name] = packet
+
+    files = SimpleNamespace(lock=tmp_path / '.start.lock', _read=documents.get, write=write,
+                            load=lambda: (opening, start, {'run_id': original['run_id']}),
+                            load_stop=lambda *_: ({} if case == 'stop' else None, None, None))
+    clock = {'wall': 30, 'monotonic': 39 if case == 'cutoff' else 30}
+    monkeypatch.setattr(readback, 'time', SimpleNamespace(time=lambda: clock['wall'], monotonic=lambda: clock['monotonic']))
+
+    def observe_worker(pid):
+        assert pid == worker['pid']
+        if case == 'live':
+            return 'S', worker
+        if case == 'foreign':
+            return 'S', {**worker, 'start_ticks': '43'}
+        if case == 'unknown':
+            raise PermissionError('Original Worker state is unknown')
+        raise FileNotFoundError
+
+    def observe_other(pid):
+        if pid == os.getpid():
+            return {'pid': pid, 'boot_id': 'current-boot', 'start_ticks': '100'}
+        raise FileNotFoundError
+
+    monkeypatch.setattr(readback.processes, 'observe_process', observe_worker)
+    monkeypatch.setattr(readback.processes, 'identity', observe_other)
+    activity_runner = readback.CampaignReadback(files, opening, start, original['run_id'])
+    packet = {'grant': original, 'activity_id': records.reobservation_id(original)}
+    async def exercise():
+        if not case.startswith('lock-'):
+            return await activity_runner._admit_reobservation(original, packet)
+        heartbeat = asyncio.Event()
+
+        def observe_heartbeat(activity_id):
+            assert activity_id == packet['activity_id']
+            heartbeat.set()
+
+        monkeypatch.setattr(readback.activity, 'heartbeat', observe_heartbeat)
+        with file_lock(files.lock):
+            admission = asyncio.create_task(activity_runner._admit_reobservation(original, packet))
+            try:
+                await asyncio.wait_for(heartbeat.wait(), 2)
+                assert 'reobservation-attempt' not in documents and not admission.done()
+                if case == 'lock-stop':
+                    documents['stop-intent'] = {'original': 'stop'}
+                elif case == 'lock-wall-cutoff':
+                    clock['wall'] = 40
+                elif case == 'lock-monotonic-cutoff':
+                    clock['monotonic'] = 39
+                elif case == 'lock-cancel':
+                    admission.cancel()
+                elif case == 'lock-changed-proof':
+                    documents['readback-guard']['work_cutoff_monotonic'] = 38
+                if case in ('lock-stop', 'lock-wall-cutoff', 'lock-monotonic-cutoff', 'lock-cancel'):
+                    return await asyncio.wait_for(admission, 2)
+            except BaseException:
+                if not admission.done():
+                    admission.cancel()
+                    await asyncio.gather(admission, return_exceptions=True)
+                raise
+        return await asyncio.wait_for(admission, 2)
+
+    if case in ('exact', 'lock-release'):
+        before = records.identity(documents)
+        assert asyncio.run(exercise()) == before
+        assert documents['reobservation-attempt'] == {**packet, 'interruption_sha256': before}
+    else:
+        expected = asyncio.CancelledError if case == 'lock-cancel' else (ValueError, OSError)
+        message = {'lock-stop': 'no longer admits',
+                   'lock-wall-cutoff': 'original work cutoff',
+                   'lock-monotonic-cutoff': 'original work cutoff',
+                   'lock-changed-proof': 'proof changed while waiting'}.get(case)
+        with pytest.raises(expected, match=message):
+            asyncio.run(exercise())
+        assert documents.get('reobservation-attempt') == ({'original': 'admission'} if case == 'duplicate' else None)
 
 
 @pytest.mark.parametrize('phase', ('release', 'cutoff', 'stop_waiting', 'stop_acquired', 'stop_before_link', 'write_error'))

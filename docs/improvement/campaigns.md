@@ -224,6 +224,8 @@ When the original full-result read Activity failed, timed out or was cancelled, 
 
 On a full-result task with a declared recipient, set `"recover_full_result_receipt": true` at the task level to allow one read-only recovery after the original Activity's heartbeat timeout. Recovery verifies the saved result and original reader cleanup under the same read window and STOP fence. Status retains the timeout in `readback_terminal` and identifies the separate recovery in `readback_completion.recovery_history`. The original Job, reader and declared recipient keep their original identities.
 
+For the live full-result wait, a task with a recipient can instead select `"reobserve_full_result_after_reader_loss": true`. After the original heartbeat timeout, one distinct supervised reader may observe the same original Job within the original read window. Admission requires the original Worker and guard to have exited, the original reader to have been reaped after interruption, and the original result, cancellation and STOP to be absent. The re-observation uses the same six-field locator and can wake the declared recipient once. Status identifies its separate Activity and interruption proof. A missing receipt from a successful original reader leaves the result unavailable.
+
 If Workflow state is unavailable, a verified managed training readback still shows the original root task as `observed` with `state_source: history` and `eligible: false`. This also applies to managed screen and lease release observations. The current state and eligibility of dependent tasks require a live Workflow observation.
 
 ### Read one managed training screen decision
