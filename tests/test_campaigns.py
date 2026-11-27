@@ -1139,6 +1139,8 @@ def test_recipient_status_retains_a_proven_blocker_and_separates_partial_publica
                                      'history-unavailable', 'service-unavailable', 'no-timer',
                                      'changed-command', 'wrong-acceptance', 'changed-receipt', 'accepted-only',
                                      'offline', 'completed-failure', 'duplicate-id',
+                                     'wrong-accepted-type', 'wrong-completed-type', 'zero-accepted-id',
+                                     'reused-accepted-id', 'completion-before-acceptance', 'unrelated-malformed-update',
                                      'timed', 'timed-missing', 'timed-bad', 'timed-bad-seconds', 'timed-reversed'])
 def test_status_recovers_original_task_history_without_worker(registration, tmp_path, monkeypatch, outcome):
     pytest.importorskip('temporalio')
@@ -1243,10 +1245,12 @@ def test_status_recovers_original_task_history_without_worker(registration, tmp_
         async def update_events(command, receipt, event_id):
             update_id = command['attempt']['update_id']
             return [
-                HistoryEvent(event_id=event_id, workflow_execution_update_accepted_event_attributes={
+                HistoryEvent(event_id=event_id, event_type=EventType.EVENT_TYPE_WORKFLOW_EXECUTION_UPDATE_ACCEPTED,
+                             workflow_execution_update_accepted_event_attributes={
                     'protocol_instance_id': update_id, 'accepted_request': {'meta': {'update_id': update_id},
                         'input': {'name': runtime.CHECK_UPDATE, 'args': {'payloads': await converter.encode([command])}}}}),
-                HistoryEvent(event_id=event_id + 1, workflow_execution_update_completed_event_attributes={
+                HistoryEvent(event_id=event_id + 1, event_type=EventType.EVENT_TYPE_WORKFLOW_EXECUTION_UPDATE_COMPLETED,
+                             workflow_execution_update_completed_event_attributes={
                     'meta': {'update_id': update_id}, 'accepted_event_id': event_id,
                     'outcome': {'success': {'payloads': await converter.encode([receipt])}}}),
             ]
@@ -1276,6 +1280,27 @@ def test_status_recovers_original_task_history_without_worker(registration, tmp_
                         event.event_time.seconds, event.event_time.nanos = timestamp
         if outcome != 'unaccepted':
             accepted, completed = await update_events(terminal_command, terminal_receipt, 7)
+            if outcome == 'wrong-accepted-type':
+                accepted.event_type = EventType.EVENT_TYPE_TIMER_FIRED
+            elif outcome == 'wrong-completed-type':
+                completed.event_type = EventType.EVENT_TYPE_TIMER_FIRED
+            elif outcome == 'zero-accepted-id':
+                accepted.event_id = 0
+                completed.workflow_execution_update_completed_event_attributes.accepted_event_id = 0
+            elif outcome == 'reused-accepted-id':
+                completed.event_id = accepted.event_id
+            elif outcome == 'completion-before-acceptance':
+                completed.event_id = accepted.event_id - 1
+            elif outcome == 'unrelated-malformed-update':
+                foreign_accepted, foreign_completed = HistoryEvent(), HistoryEvent()
+                foreign_accepted.CopyFrom(accepted)
+                foreign_completed.CopyFrom(completed)
+                foreign_accepted.workflow_execution_update_accepted_event_attributes.protocol_instance_id = 'unrelated'
+                foreign_completed.workflow_execution_update_completed_event_attributes.meta.update_id = 'unrelated'
+                for foreign in (foreign_accepted, foreign_completed):
+                    foreign.event_type = EventType.EVENT_TYPE_TIMER_FIRED
+                    foreign.event_id = 0
+                events.extend((foreign_accepted, foreign_completed))
             if outcome == 'changed-command':
                 request = accepted.workflow_execution_update_accepted_event_attributes.accepted_request
                 request.input.args.payloads[0].data = (await converter.encode([command]))[0].data
@@ -1318,6 +1343,11 @@ def test_status_recovers_original_task_history_without_worker(registration, tmp_
         monkeypatch.setattr(runtime, 'original', original)
         refusals = {'changed-grant': 'Activity differs from its original grant',
                     'changed-command': 'changed or duplicate Update',
+                    'wrong-accepted-type': 'changed or duplicate Update',
+                    'zero-accepted-id': 'changed or duplicate Update',
+                    'wrong-completed-type': 'completion does not bind its original accepted Update',
+                    'reused-accepted-id': 'completion does not bind its original accepted Update',
+                    'completion-before-acceptance': 'completion does not bind its original accepted Update',
                     'wrong-acceptance': 'completion does not bind its original accepted Update',
                     'changed-receipt': 'receipt differs from its exact original Update'}
         if outcome in refusals:
@@ -1350,7 +1380,7 @@ def test_status_recovers_original_task_history_without_worker(registration, tmp_
             assert observations['wait']['waiting'] == {
                 'run_id': run_id, 'update_id': update_id, 'status': unresolved_status, 'receipt': None,
             }
-        if outcome in ('passing', 'accepted-only', 'completed-failure'):
+        if outcome in ('passing', 'accepted-only', 'completed-failure', 'unrelated-malformed-update'):
             expected_completion = {
                 'task_id': 'wait', 'activity_id': activity_id, 'waiting_receipt_sha256': identity(waiting),
                 'scheduled_event_id': 4, 'completed_event_id': 6, 'receipt_sha256': 'd' * 64,

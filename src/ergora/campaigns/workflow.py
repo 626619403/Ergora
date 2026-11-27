@@ -918,16 +918,20 @@ async def _read_update_event(converter, event, entries, update_name, require_rec
         entry = entries.get(selected.protocol_instance_id)
         if entry is not None:
             request = selected.accepted_request
-            values = await converter.decode(request.input.args.payloads)
-            if ('accepted_event_id' in entry or request.meta.update_id != selected.protocol_instance_id
-                    or request.input.name != update_name or identity(values) != identity([entry['command']])):
+            if (event.event_type != EventType.EVENT_TYPE_WORKFLOW_EXECUTION_UPDATE_ACCEPTED or event.event_id <= 0
+                    or 'accepted_event_id' in entry or request.meta.update_id != selected.protocol_instance_id
+                    or request.input.name != update_name
+                    or identity(await converter.decode(request.input.args.payloads)) != identity([entry['command']])):
                 raise ValueError('Campaign original History has a changed or duplicate Update')
             entry['accepted_event_id'] = event.event_id
     elif event.HasField('workflow_execution_update_completed_event_attributes'):
         completed = event.workflow_execution_update_completed_event_attributes
         entry = entries.get(completed.meta.update_id)
         if entry is not None:
-            if completed.accepted_event_id != entry.get('accepted_event_id') or 'completed_event_id' in entry:
+            accepted_id = entry.get('accepted_event_id')
+            if (event.event_type != EventType.EVENT_TYPE_WORKFLOW_EXECUTION_UPDATE_COMPLETED
+                    or accepted_id is None or not 0 < accepted_id < event.event_id
+                    or completed.accepted_event_id != accepted_id or 'completed_event_id' in entry):
                 raise ValueError('Campaign completion does not bind its original accepted Update')
             entry['completed_event_id'] = event.event_id
             entry['completed_event'] = event
