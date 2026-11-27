@@ -299,13 +299,24 @@ def assignment_task(opening):
     return opening['plan'].get('assignment', {}).get('next_task')
 
 
+def training_assignment_task(opening):
+    task = recipient_task(opening)
+    if task is not None and assignment_task(opening) is not None:
+        source = task['source']
+        if source.get('kind') == TRAINING_RESULT_SOURCE and source.get('wait_for_live') is True:
+            return task
+    return None
+
+
 def validate_assignment(plan):
     assignment = plan['assignment']
     first = recipient_task({'plan': plan})
-    if (first is None or training_readback_task(first) or 'rollover' in plan or not isinstance(assignment, dict)
+    if (first is None or 'rollover' in plan or not isinstance(assignment, dict)
             or assignment.keys() != {'assignee', 'waiting_task_id', 'next_task'}
             or assignment['waiting_task_id'] != first['task_id']):
         raise ValueError('Campaign assignment requires the original selected waiting task')
+    if training_readback_task(first) and training_assignment_task({'plan': plan}) is None:
+        raise ValueError('Campaign training assignment requires the selected managed full-result live wait')
     assignee, task = assignment['assignee'], assignment['next_task']
     if (not isinstance(assignee, dict) or assignee.keys() != {'role', 'generation'}
             or not safe_id(assignee['role']) or type(assignee['generation']) is not int or assignee['generation'] < 1):
@@ -344,8 +355,24 @@ def require_assignment_bindings(first, independent, role):
         raise ValueError('Campaign assignment requires two distinct native threads')
 
 
-def assignment_intent(opening, run_id, waiting):
+def require_training_assignment_wait(opening, receipt):
+    task = training_assignment_task(opening)
+    if task is None:
+        raise ValueError('Campaign did not select a managed training assignment wait')
+    expected = {'status': 'verified_pending', 'project': opening['project'],
+                'project_revision': opening['project_revision'],
+                'registration_sha256': opening['registration']['sha256'], 'locator': task['source']['locator']}
+    if (not isinstance(receipt, dict) or receipt.keys() != {*expected, 'launch_sha256', 'acknowledgement_sha256'}
+            or identity({key: receipt[key] for key in expected}) != identity(expected)
+            or not all(sha256(receipt[key]) for key in ('launch_sha256', 'acknowledgement_sha256'))):
+        raise ValueError('Campaign training assignment differs from its exact original pending attempt')
+    return receipt
+
+
+def assignment_intent(opening, run_id, waiting=None):
     assignment = opening['plan']['assignment']
+    if training_assignment_task(opening) is not None:
+        waiting = require_training_assignment_wait(opening, opening.get('training_wait'))
     source = {'waiting_task_id': assignment['waiting_task_id'], 'waiting_receipt_sha256': identity(waiting)}
     scope = {'opening_sha256': identity(opening), 'workflow_id': opening['workflow_id'], 'run_id': run_id,
              'task_id': assignment['next_task']['task_id'], 'source': source,
@@ -814,7 +841,7 @@ class CampaignFiles:
         fields = {'schema_version', 'mode', 'control_home', 'project', 'project_revision', 'registration',
                   'configuration_sha256', 'campaign', 'actor', 'scheduler', 'creation_id', 'plan', 'plan_sha256',
                   'plan_document_sha256', 'task_queue', 'workflow_id', 'workflow_type'}
-        if (set(opening) - {'recipient_binding', 'assignment_binding'} != fields
+        if (set(opening) - {'recipient_binding', 'assignment_binding', 'training_wait'} != fields
                 or type(opening['schema_version']) is not int or opening['schema_version'] != 1
                 or opening['control_home'] != str(self.home)
                 or opening['project'] != self.project or opening['campaign'] != self.campaign
@@ -853,6 +880,10 @@ class CampaignFiles:
                 or not isinstance(registration['operation_id'], str)
                 or re.fullmatch('[0-9a-f]{32}', registration['operation_id']) is None):
             raise ValueError('Campaign intent lacks its original published registration identity')
+        if training_assignment_task(opening) is not None:
+            require_training_assignment_wait(opening, opening.get('training_wait'))
+        elif 'training_wait' in opening:
+            raise ValueError('Campaign intent cannot carry an unselected managed training assignment wait')
 
 
 def attempt_document(opening, attempt_id):

@@ -96,7 +96,7 @@ def test_campaign_timeline_reads_and_exposes_only_the_selected_original_task(con
 
 @pytest.mark.parametrize("disposition", ["released", "unknown", "release-error", "refused", "completed-unknown", "timed-out",
                                          "invalid-terminal-status", "contradictory",
-                                         "reason-path", "reason-object", "native-blocker", "other-task"])
+                                         "reason-path", "reason-object", "native-blocker", "other-task", "training-wait"])
 def test_campaign_timeline_scopes_independent_assignment_evidence(console, monkeypatch, disposition):
     from errno import EACCES
     from os import strerror
@@ -153,6 +153,11 @@ def test_campaign_timeline_scopes_independent_assignment_evidence(console, monke
     elif disposition == "native-blocker":
         run = {"status": "cancelled", "execution_stopped": True, "returncode": -9,
                "campaign_recipient_blocker": "stopped"}
+    elif disposition == "training-wait":
+        task["source"] = {"kind": "training_full_result", "locator": {"experiment_id": "alpha"}}
+        history = {"status": "unknown", "training_wait_started_event_id": 1, "scheduled_event_id": 12,
+                   "started_event_id": 13}
+        original_history = {**history, "completed_event_id": 14}
     raw_run = None if run is None else {**run, "submitted": "private-value"}
     if raw_blocker is not None:
         raw_run["campaign_recipient_blocker"] = raw_blocker
@@ -180,7 +185,11 @@ def test_campaign_timeline_scopes_independent_assignment_evidence(console, monke
     response = client.get("/api/projects/demo/campaigns/record/tasks/fixed/timeline")
     assert response.status_code == 200
     projected = response.json()
-    assert projected["task_state"] is None and projected["task_evidence"] == task
+    assert projected["task_state"] is None
+    if disposition == "training-wait":
+        assert projected["training_task"]["locator"] == task["source"]["locator"]
+    else:
+        assert projected["task_evidence"] == task
     assert "private-value" not in response.text and "other-private" not in response.text
     assert str(private_lock) not in response.text
     if disposition == "other-task":

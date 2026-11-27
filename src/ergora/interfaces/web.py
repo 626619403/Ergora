@@ -531,7 +531,7 @@ def _training_timeline_recipient(recipient: dict) -> dict:
 
 _ASSIGNMENT_HISTORY_REASONS = frozenset({
     "original_native_intent_occupied", "assignment_already_resumed", "stale_parent", "session_slot_timeout",
-    "stopped", "expired", "native_turn_expired", "recipient_authority_revoked",
+    "stopped", "expired", "native_turn_expired", "recipient_authority_revoked", "training_pending_unavailable",
 })
 _ASSIGNMENT_NATIVE_BLOCKERS = frozenset({"stopped", "expired", "authority_unavailable"})
 
@@ -549,7 +549,8 @@ def _assignment_timeline(assignment: dict) -> dict:
     projected_history = None
     if history is not None:
         projected_history = {key: history[key] for key in ("status", "waiting_accepted_event_id",
-                             "waiting_completed_event_id", "scheduled_event_id", "started_event_id") if key in history}
+                             "waiting_completed_event_id", "training_wait_started_event_id",
+                             "scheduled_event_id", "started_event_id") if key in history}
         if "error" in history:
             projected_history["verification_failed"] = True
         # The History owner supplies an outcome only for a verified completed Activity.
@@ -1105,7 +1106,7 @@ def create_app(home: Path | None = None) -> FastAPI:
         stop_receipt = stop["receipt"] or {}
         rollover = observed.get("rollover")
         assignment = observed.get("assignment")
-        assignment_evidence = (_assignment_timeline(assignment) if assignment is not None and not training_task
+        assignment_evidence = (_assignment_timeline(assignment) if assignment is not None
                                and assignment["waiting_task_id"] == task_id else None)
         completion = observed.get("readback_completion")
         if completion is not None and completion.get("task_id") == task_id:

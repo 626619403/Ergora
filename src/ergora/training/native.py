@@ -55,23 +55,38 @@ def _stop_training_reader(process):
         pass  # The original wait must still confirm the concurrent exit.
 
 
-def _training_reader(project: dict, entrypoint: str, payload: dict, *, timeout: int = 30) -> dict:
+def _training_reader(project: dict, entrypoint: str, payload: dict, *, timeout: int = 30,
+                     deadline: float | None = None, stop_requested=None, on_reaped=None) -> dict:
     """A synchronous caller owns its actual child/wait until reap, even after T."""
     import selectors
 
     started = time.monotonic()
+    if deadline is not None:
+        timeout = min(timeout, deadline - started)
     deadline = started + timeout
     read_deadline = deadline - min(5, timeout / 4)
     execution = project['registration']['definition']['execution']
     environment, encoded = _training_reader_request(execution['state_directory'], execution['config_directory'], payload)
     if timeout <= 0:
         raise ValueError('Training record reader has no remaining allowance')
+
+    def require_unstopped():
+        if stop_requested is not None and stop_requested():
+            raise ValueError('Training record reader was stopped')
+
+    require_unstopped()
+    owner = processes.identity(os.getpid()) if on_reaped is not None else None
+    if stop_requested is not None and time.monotonic() >= read_deadline:
+        raise ValueError('Training record reader has no remaining allowance')
+    model = None
     process, selected = None, None
     stdout, stderr, offset, failure = bytearray(), bytearray(), 0, None
     pumps = []
     try:
         process = subprocess.Popen([sys.executable, '-P', '-S', '-c', entrypoint], stdin=subprocess.PIPE,
             stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=environment)
+        if owner is not None:
+            model = processes.identity(process.pid)
         selected = selectors.DefaultSelector()
         if os.name == 'nt':
             # Windows does not select anonymous pipes. These synchronous pipe
@@ -102,6 +117,7 @@ def _training_reader(project: dict, entrypoint: str, payload: dict, *, timeout: 
             for pump_thread in pumps:
                 pump_thread.start()
             while any(pump_thread.is_alive() for pump_thread in pumps) or process.poll() is None:
+                require_unstopped()
                 if problems:
                     raise problems[0]
                 remaining = read_deadline-time.monotonic()
@@ -113,6 +129,7 @@ def _training_reader(project: dict, entrypoint: str, payload: dict, *, timeout: 
                 os.set_blocking(stream.fileno(), False)
                 selected.register(stream, event)
             while selected.get_map() or process.poll() is None:
+                require_unstopped()
                 remaining = read_deadline - time.monotonic()
                 if remaining <= 0:
                     raise TimeoutError('Training record reader timed out; native execution state was not queried')
@@ -174,6 +191,9 @@ def _training_reader(project: dict, entrypoint: str, payload: dict, *, timeout: 
             for stream in (process.stdin, process.stdout, process.stderr):
                 if not stream.closed:
                     stream.close()
+    if on_reaped is not None and model is not None:
+        on_reaped({'schema_version': 1, 'kind': 'training-record-reader-cleanup', 'owner': owner,
+                   'model': model, 'model_waited': True, 'returncode': process.returncode})
     elapsed = time.monotonic() - started
     if failure is not None:
         detail = f'; reader elapsed={elapsed:.6f}s T={timeout}s overrun={max(0, elapsed-timeout):.6f}s returncode={process.returncode}'
@@ -181,6 +201,7 @@ def _training_reader(project: dict, entrypoint: str, payload: dict, *, timeout: 
             raise failure
         raise ValueError(str(failure) + detail) from failure
     result = _training_reader_response(bytes(stdout), bytes(stderr), process.returncode)
+    require_unstopped()
     if time.monotonic() > deadline:
         raise ValueError(f'Training record reader timed out during decoding; elapsed={time.monotonic()-started:.6f}s overrun={time.monotonic()-deadline:.6f}s returncode={process.returncode}')
     return result
@@ -338,6 +359,22 @@ def training_full_result(project: dict, home: Path, locator: dict, *, deadline: 
         raise ValueError('Training full-result live wait requires an explicit Boolean')
     return _managed_training_observation(project, home, locator, 'managed-full-result', 'full-result',
                                          deadline, stop_requested, supervised_cleanup, wait_for_live=wait_for_live)
+
+
+def training_pending_execution(project: dict, home: Path, locator: dict, *, deadline: float,
+                               stop_requested, supervised_cleanup) -> dict:
+    """Read one original live attempt in a child owned by this caller alone."""
+    if sys.platform != 'linux':
+        raise ValueError('Pending training execution observation requires Linux')
+    if (type(deadline) not in (int, float) or not math.isfinite(deadline)
+            or not callable(stop_requested) or not callable(supervised_cleanup)):
+        raise ValueError('Pending training execution requires its original reader deadline, STOP and cleanup owner')
+    if project.get('_original_registration') is not None:
+        raise ValueError('Pending training execution requires the selected current registration')
+    payload = {'operation': 'managed-pending-execution', 'project': project, 'control_home': str(home),
+               'locator': locator, 'reader_deadline': deadline, 'reader_parent': processes.identity(os.getpid())}
+    return _training_reader(project, 'from ergora.training.runtime.evidence import main;main()', payload,
+                            timeout=20, deadline=deadline, stop_requested=stop_requested, on_reaped=supervised_cleanup)
 
 
 def training_screen_decision(project: dict, home: Path, locator: dict, *, deadline: float,

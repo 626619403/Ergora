@@ -14,9 +14,10 @@ from ergora.campaigns.records import (
     ASSIGNMENT_ATTEMPT, ASSIGNMENT_REFUSAL, CampaignFiles, assignment_intent, assignment_task, check_receipt,
     identity, manual_wake_source, readback_grant, readback_id, readback_proof, readback_reference, readback_result,
     receipt_recovery_activity, receipt_recovery_id, receipt_recovery_proof, recipient_task,
-    reobservation_id, reobservation_task, require_check_project, sha256, training_readback_task, wake_intent,
+    reobservation_id, reobservation_task, require_check_project, require_training_assignment_wait, sha256,
+    training_assignment_task, training_readback_task, wake_intent,
 )
-from ergora.runtime import budget_clock, processes
+from ergora.runtime import action_observations, budget_clock, processes
 from ergora.storage.state import State, file_lock
 
 
@@ -25,6 +26,7 @@ _SET_LEASE = 1024
 _GET_LEASE = 1025
 _SET_LEASE_SIGNAL = 10  # F_SETSIG
 _TURN_MISMATCH = 'Native turn does not match the frozen Campaign recipient, context and submission'
+TRAINING_PENDING_UNAVAILABLE = 'training_pending_unavailable'
 
 
 class RecipientBlocked(ValueError):
@@ -141,7 +143,8 @@ def verify_wake_intent(files, opening, start, run_id, task, intent):
     if task is None:
         raise ValueError('Campaign recipient attempt lacks its declared task')
     if task == assignment_task(opening):
-        waiting = check_receipt(assignment_wait(files, opening, start, run_id))
+        waiting = None if training_assignment_task(opening) is not None else check_receipt(
+            assignment_wait(files, opening, start, run_id))
         expected = assignment_intent(opening, run_id, waiting)
         if intent != expected:
             raise ValueError('Independent task Activity differs from its original waiting receipt')
@@ -263,18 +266,58 @@ class RecipientGate:
             raise RecipientBlocked('native_turn_expired')
 
     @contextmanager
-    def admission(self, *, native_clock=None, native_timeout=None):
+    def admission(self, *, native_clock=None, native_timeout=None, wait=True):
         with ExitStack() as stack:
             while True:
                 self.require_open(native_clock=native_clock, native_timeout=native_timeout)
                 try:
                     stack.enter_context(file_lock(self.files.lock, blocking=False))
                 except BlockingIOError:
+                    if not wait:
+                        raise
                     time.sleep(min(.025, max(0.0, self.remaining())))
                 else:
                     break
             self.require_open(native_clock=native_clock, native_timeout=native_timeout)
             yield
+
+    def _observe_training_wait(self, state, task, *, native_clock, native_timeout):
+        self.require_open(native_clock=native_clock, native_timeout=native_timeout)
+
+        def native_remaining():
+            return budget_clock.remaining(native_clock, native_timeout) if native_clock is not None else math.inf
+
+        try:
+            selected = require_check_project(state, self.opening)
+            action = action_observations.TrainingPendingExecution(**task['source']['locator'])
+            receipt = action_observations.observe(action, selected, state.root,
+                deadline=time.monotonic() + min(self.remaining(), native_remaining()),
+                stop_requested=lambda: self.blocker() is not None or native_remaining() <= 0,
+                supervised_cleanup=lambda _: None)
+            return require_training_assignment_wait(self.opening, receipt)
+        except (OSError, ValueError):
+            return None
+
+    @contextmanager
+    def training_pending_admission(self, state, *, native_clock=None, native_timeout=None):
+        """Observe the original training owner before a typed A2 effect and fence its commit."""
+        scope = {'native_clock': native_clock, 'native_timeout': native_timeout}
+        task = training_assignment_task(self.opening) if 'training_wait' in self.opening and self.independent else None
+        if task is None:
+            with self.admission(**scope):
+                yield True
+            return
+        while True:
+            receipt = self._observe_training_wait(state, task, **scope)
+            with ExitStack() as held:
+                try:
+                    held.enter_context(self.admission(**scope, wait=False))
+                except BlockingIOError:
+                    # Wait for the STOP lock without taking an owner sample under it.
+                    with self.admission(**scope):
+                        continue
+                yield receipt == self.opening['training_wait'] and self.files._read('readback-result') is None
+                return
 
     def submission(self):
         selected = self.declaration
@@ -345,7 +388,8 @@ def assignment_refusal(files, attempt):
     if refusal is not None and (refusal.keys() != {'attempt_sha256', 'reason'}
             or refusal['attempt_sha256'] != identity(attempt)
             or refusal['reason'] not in ('stale_parent', 'session_slot_timeout', 'stopped', 'expired',
-                                         'native_turn_expired', 'recipient_authority_revoked')):
+                                         'native_turn_expired', 'recipient_authority_revoked',
+                                         TRAINING_PENDING_UNAVAILABLE)):
         raise ValueError('Campaign independent task refusal differs from its original claim')
     return refusal
 
@@ -384,7 +428,7 @@ def _exec(home, project, ident, lock_fd, argv):
     with gate.leased_payload(request['clock'], request['timeout']) as payload:
         if fcntl.fcntl(payload, _GET_LEASE) != fcntl.F_RDLCK:
             raise ValueError('Campaign recipient executable lease was broken before launch')
-        with gate.admission(**native_budget):
+        with gate.training_pending_admission(state, **native_budget) as training_pending:
             # Both the local Campaign STOP and a direct native STOP use this lock.
             if assignment_task(gate.opening) is not None:
                 gate.require_authority(state)
@@ -395,6 +439,8 @@ def _exec(home, project, ident, lock_fd, argv):
                     or fcntl.fcntl(payload, _GET_LEASE) != fcntl.F_RDLCK):
                 raise ValueError('Campaign recipient executable path or lease changed before launch')
             gate.require_open(**native_budget)
+            if not training_pending:
+                raise RecipientBlocked(TRAINING_PENDING_UNAVAILABLE)
             os.execve(payload, [gate.binding['payload_executable'], *argv[1:]], os.environ)
 
 

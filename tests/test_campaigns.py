@@ -1029,6 +1029,164 @@ def test_campaign_assignment_rejects_two_registrations_for_one_native_thread():
         require_assignment_bindings(first, {**second, 'role': 'reviewer'}, role)
 
 
+@pytest.mark.parametrize('decision', ['missing', 'changed', 'accepted'])
+def test_campaign_training_assignment_dispatch_uses_one_original_pending_proof(registration, tmp_path, monkeypatch,
+                                                                        decision):
+    from ergora.campaigns.records import assignment_intent, identity, require_training_assignment_wait, validate_plan
+
+    state, definition = registration
+    registrations.register(state, definition, 0)
+    projects.bind(state, 'demo', 'scheduler', {'tool': 'temporal', 'address': 'localhost:1',
+                                             'namespace': 'default', 'task_queue': 'research'}, 1)
+    project = state.project('demo')
+    expiry = int(time.time()) + 60
+    locator = {'experiment_id': 'alpha', 'workflow_id': 'perf-experiment/alpha', 'run_id': 'original-run',
+               'job_id': 'local-perf-alpha', 'native_request_sha256': 'a' * 64, 'attempt_sha256': 'b' * 64}
+    first = {'session_id': 'first', 'parent_run_id': 'first', 'intent_id': 'result',
+             'prompt': 'Read the result', 'timeout_seconds': 20}
+    independent = {'task_id': 'next', 'recipient': {**first, 'session_id': 'second', 'parent_run_id': 'second',
+                                                  'intent_id': 'independent'}}
+    assignee = {'role': 'performance-analyst', 'generation': 2}
+    task = {'task_id': 'wait', 'depends_on': [], 'recipient': first,
+            'source': {'kind': 'training_full_result', 'locator': locator, 'wait_for_live': True},
+            'readback': {'due_at': expiry - 20, 'deadline_at': expiry}}
+    path = tmp_path / 'plan.json'
+    digest = plan_file(path, expiry, tasks=[task], assignment={'assignee': assignee, 'waiting_task_id': 'wait',
+                                                               'next_task': independent})
+    plan = json.loads(path.read_bytes())
+    with pytest.raises(ValueError, match='managed full-result live wait'):
+        validate_plan({**plan, 'tasks': [{**task, 'source': {key: value for key, value in task['source'].items()
+                                                           if key != 'wait_for_live'}}]})
+    binding = {'role': assignee['role'], 'native_id': '00000000-0000-4000-8000-000000000001',
+               'context_digest': 'a'*64, 'payload_sha256': 'b'*64, 'source_executable': '/source',
+               'payload_executable': '/payload', 'device': 1, 'inode': 2, 'size': 3}
+    bindings = {'recipient_binding': binding,
+                'assignment_binding': {**binding, 'native_id': '00000000-0000-4000-8000-000000000002'}}
+    monkeypatch.setattr(application, '_freeze_recipients', lambda *_: bindings)
+    checked = []
+    receipt = {'status': 'verified_pending', 'project': 'demo', 'project_revision': project['revision'],
+               'registration_sha256': project['registration']['sha256'], 'locator': locator,
+               'launch_sha256': 'c' * 64, 'acknowledgement_sha256': 'd' * 64}
+    starts = []
+    run_id = '00000000-0000-4000-8000-000000000003'
+
+    async def verify_pending(_, __, opening, original_task):
+        assert original_task == task
+        checked.append(opening)
+        if decision == 'missing':
+            raise ValueError('Original attempt has no acknowledged executor')
+        if decision == 'changed' and len(checked) == 2:
+            return {**receipt, 'acknowledgement_sha256': 'e' * 64}
+        return receipt
+
+    async def connect(opening):
+        assert opening['training_wait'] == receipt
+        return object()
+
+    async def start(_, opening, attempt):
+        assert attempt['opening_sha256'] == identity(opening)
+        assert opening['training_wait'] == receipt
+        assert assignment_intent(opening, run_id)['source']['waiting_receipt_sha256'] == identity(receipt)
+        starts.append(attempt)
+        return run_id
+
+    async def original(_, output, opening, attempt, acknowledged, **_options):
+        assert opening['training_wait'] == receipt and acknowledged == run_id and attempt == starts[0]
+        return {**output, 'run_id': run_id, 'remote_status': 'original_observed'}
+
+    runtime = SimpleNamespace(RPC_SECONDS=2, RPCError=RuntimeError, connect=connect, start=start)
+    monkeypatch.setattr(application, '_temporal', lambda: runtime)
+    monkeypatch.setattr(application, '_read_training_assignment_wait', verify_pending)
+    monkeypatch.setattr(application, '_read_original', original)
+
+    async def create():
+        return await application.create(state, 'demo', 'training', path, project['revision'], digest, confirm=True)
+
+    directory = state.root / 'campaigns' / 'demo' / 'training'
+    if decision == 'missing':
+        with pytest.raises(ValueError, match='no acknowledged executor'):
+            asyncio.run(create())
+        assert len(checked) == 1 and not directory.exists() and not starts
+    elif decision == 'changed':
+        with pytest.raises(ValueError, match='pending training proof changed'):
+            asyncio.run(create())
+        assert len(checked) == 2 and not (directory / 'start-attempt.json').exists() and not starts
+    else:
+        assert asyncio.run(create())['status'] == 'created'
+        assert asyncio.run(create())['status'] == 'observed'
+        assert len(checked) == 2 and len(starts) == 1
+        opening = json.loads((directory / 'start-intent.json').read_bytes())
+        assert opening['training_wait'] == receipt
+        for changed in ({'locator': {**locator, 'attempt_sha256': '0' * 64}}, {'project_revision': True},
+                        {'launch_sha256': '../foreign'}, {'status': 'succeeded'}):
+            with pytest.raises(ValueError, match='exact original pending attempt'):
+                require_training_assignment_wait(opening, {**receipt, **changed})
+
+
+@pytest.mark.parametrize('fault', ['none', 'missing-start', 'other-memo', 'changed-wait'])
+def test_training_assignment_history_requires_the_exact_original_started_event(fault):
+    pytest.importorskip('temporalio')
+    from temporalio.api.enums.v1 import EventType
+    from temporalio.api.history.v1 import HistoryEvent
+    from temporalio.converter import DataConverter
+    from ergora.campaigns import records, workflow
+
+    pending = {'status': 'verified_pending', 'project': 'original', 'project_revision': 1,
+               'registration_sha256': 'a'*64, 'locator': {'experiment_id': 'alpha'},
+               'launch_sha256': 'b'*64, 'acknowledgement_sha256': 'c'*64}
+    task = {'task_id': 'wait', 'source': {'kind': 'training_full_result', 'wait_for_live': True,
+                                        'locator': pending['locator']},
+            'readback': {'due_at': 10, 'deadline_at': 20}, 'recipient': {}}
+    plan = {'limits': {'expires_at': 30}, 'tasks': [task],
+            'assignment': {'waiting_task_id': 'wait', 'next_task': {'task_id': 'independent'}}}
+    opening = {'project': 'original', 'project_revision': 1, 'registration': {'sha256': 'a'*64},
+               'workflow_id': 'campaign-original', 'task_queue': 'queue-original', 'scheduler': {'namespace': 'default'},
+               'plan': plan, 'training_wait': pending}
+    run_id = 'original-run'
+    attempt = records.attempt_document(opening, 'original-attempt')
+    converter = DataConverter.default
+
+    async def exercise():
+        started = HistoryEvent(event_id=1, event_type=EventType.EVENT_TYPE_WORKFLOW_EXECUTION_STARTED)
+        attributes = started.workflow_execution_started_event_attributes
+        attributes.workflow_type.name = records.WORKFLOW_TYPE
+        attributes.task_queue.name = opening['task_queue']
+        attributes.first_execution_run_id = attributes.original_execution_run_id = run_id
+        attributes.attempt = 1
+        snapshot = {**opening, 'training_wait': {**pending, 'launch_sha256': 'd'*64}} if fault == 'changed-wait' else opening
+        attributes.input.payloads.extend(await converter.encode([snapshot]))
+        for key, value in workflow.memo(opening, attempt).items():
+            selected = 'e'*64 if fault == 'other-memo' and key == records.ATTEMPT_MEMO else value
+            attributes.memo.fields[key].CopyFrom((await converter.encode([selected]))[0])
+
+        intent = records.assignment_intent(opening, run_id)
+        scheduled = HistoryEvent(event_id=3, event_type=EventType.EVENT_TYPE_ACTIVITY_TASK_SCHEDULED)
+        activity = scheduled.activity_task_scheduled_event_attributes
+        activity.activity_type.name = records.RECIPIENT_ACTIVITY
+        activity.task_queue.name = opening['task_queue']
+        activity.activity_id = intent['wake_id']
+        activity.retry_policy.maximum_attempts = 1
+        activity.input.payloads.extend(await converter.encode([intent]))
+
+        async def history(**_):
+            if fault != 'missing-start':
+                yield started
+            yield scheduled
+
+        client = SimpleNamespace(namespace='default', data_converter=converter)
+        handle = SimpleNamespace(id=opening['workflow_id'], run_id=run_id, fetch_history_events=history)
+        updates, _, _, _, _, assignment = await workflow.read_task_history(client, handle, opening, (),
+                                                                              start_attempt=attempt)
+        assert not updates
+        if fault == 'none':
+            assert assignment['intent'] == intent and assignment['training_wait_started_event_id'] == 1
+            assert 'waiting_completed_event_id' not in assignment
+        else:
+            assert assignment['status'] == 'contradictory' and 'intent' not in assignment
+
+    asyncio.run(exercise())
+
+
 @pytest.mark.parametrize('history', ('absent', 'contradictory', 'different', 'exact'))
 def test_assignment_recipient_requires_its_original_wait_and_schedule_before_reservation(monkeypatch, history):
     pytest.importorskip('temporalio')
@@ -1372,7 +1530,8 @@ def test_campaign_recipient_reports_revocation_only_before_native_reservation(mo
     selected = {'session_id': 'session', 'parent_run_id': 'parent', 'intent_id': 'original',
                 'prompt': 'Read the original result.', 'timeout_seconds': 20}
     intent = {'wake_id': 'original-wake'}
-    opening = {'project_revision': 1, 'plan': {'tasks': [{'recipient': selected, 'readback': {}}]}}
+    opening = {'project_revision': 1, 'plan': {'tasks': [{'recipient': selected, 'readback': {},
+                                                         'source': {'pending': True}}]}}
     if independent:
         intent['task_id'] = 'independent'
         opening['plan']['assignment'] = {'next_task': {'task_id': 'independent', 'recipient': selected}}

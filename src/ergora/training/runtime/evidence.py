@@ -171,6 +171,127 @@ def _selected_managed_result(project, locator, label):
     return chain, actual
 
 
+def _pending_training_authority(project, chain, inventory):
+    """Recover the native compute window from the authority bound by the launch."""
+    request, launch = (chain.records[name] for name in ('request', 'launch'))
+    binding = chain.intent['budget']
+    capability = chain.owner['execution_capability']
+    protocol.validate_budget_binding(binding)
+    cycle = Path(chain.home) / 'training-cycles' / request['project'] / binding['cycle_id']
+    authorization = decode_record(inventory.read(cycle, 'authorization.json', 'authorization', evidence=False))
+    version = authorization['schema_version']
+    if type(version) is not int or version not in (1, 5) or (version == 5) != ('controller' in binding):
+        raise ValueError('Pending training execution requires its supported original training authorization')
+    clock = authorization['clock']
+    protocol._exact(clock, budget_clock.FIELDS, 'Original training clock')
+    original = {'kind': 'training-cycle-authorization', 'control_home': chain.home,
+                'project': request['project'], 'project_revision': request['project_revision'],
+                'cycle_id': binding['cycle_id'], 'execution': chain.execution}
+    protocol._match({key: authorization[key] for key in original}, original, 'Original training authorization')
+    authorization_sha = chain.sha({key: value for key, value in authorization.items() if key != 'sha256'})
+    if (authorization_sha != authorization['sha256'] or authorization_sha != request['authorization_sha256']
+            or chain.sha(clock) != launch['clock_sha256'] or capability['installation'] != chain.execution['installation']
+            or authorization['registration']['operation_id'] != project.project['registration']['operation_id']):
+        raise ValueError('Original training authorization, installation or clock changed')
+    plan = decode_record(inventory.read(cycle, 'cycle.json', 'authorization', authorization['input_sha256'],
+                                       protocol.ARTIFACT_LIMIT, evidence=False))
+    protocol._match(plan['project'], project.project, 'Original training project')
+    candidates = [item for item in plan['admissions'] if item['experiment_id'] == chain.ident]
+    if (plan['control_home'] != chain.home or len(candidates) != 1
+            or chain.sha(candidates[0]['observation']) != chain.sha(chain.intent['observation'])):
+        raise ValueError('Original training plan does not admit the selected attempt')
+    ready = decode_record(inventory.read(cycle, 'ready.json', 'authorization', evidence=False))
+    if (chain.sha(ready) != capability['cycle_ready_sha256'] or ready['authorization_sha256'] != authorization_sha):
+        raise ValueError('Original training ready record changed')
+    policy = plan['definition']['budget']
+    budget_clock.validate(clock, policy['wall_seconds'])
+    parent = protocol.CycleAdmission(cycle, authorization) if version == 5 else None
+    if parent is not None and request['actor_id'] != authorization['controller']['actor_id']:
+        raise ValueError('Original training request differs from its authorized controller actor')
+    return clock, policy, parent
+
+
+def _managed_pending_execution(payload):
+    """Verify one live acknowledged attempt without reading its result or lease."""
+    import ctypes
+    import signal
+
+    from ergora.runtime import processes
+    from ergora.training.materials import confirm_file
+    from ergora.training.runtime.context import _TrainingProject
+
+    caller = payload['reader_parent']
+    protocol._process(caller)
+    libc = ctypes.CDLL(None, use_errno=True)
+    if libc.prctl(1, signal.SIGKILL, 0, 0, 0) != 0:  # Linux PR_SET_PDEATHSIG
+        raise OSError(ctypes.get_errno(), 'Cannot bind the pending training reader to its caller')
+    if os.getppid() != caller['pid'] or processes.identity(caller['pid']) != caller:
+        raise ValueError('Pending training reader lost its original caller')
+    deadline = payload['reader_deadline']
+    if type(deadline) not in (int, float) or not math.isfinite(deadline) or time.monotonic() >= deadline:
+        raise ValueError('Pending training execution requires an open original reader deadline')
+
+    project = _TrainingProject(payload)
+    chain, locator = _selected_managed_result(project, payload['locator'], 'pending training')
+    if (type(project.project_revision) is not int or not chain.requires_tracking_checkpoint()
+            or protocol.managed_operation(chain.intent) != 'full-verify'):
+        raise ValueError('Pending training execution requires original managed full verification and tracking capability')
+    if chain.records['ack'] is None:
+        raise ValueError('Original training attempt has no recorded acknowledgement')
+    if chain.records['stopped'] is not None:
+        raise ValueError('Pending training execution refused: original executor has a terminal observation')
+
+    inventory = _Inventory()
+    project.registration(inventory)
+    clock, policy, parent = _pending_training_authority(project, chain, inventory)
+    attempt = chain.records['attempt']
+
+    def require_live():
+        if not protocol.owner_active(chain.budget / 'owner.json', chain.owner):
+            raise ValueError('Original training budget owner is no longer active')
+        for role in ('supervisor', 'executor'):
+            original = attempt[role]
+            try:
+                state, current = processes.observe_process(original['pid'])
+            except (OSError, ValueError) as error:
+                raise ValueError('Original training ' + role + ' is unavailable') from error
+            if state in ('Z', 'X', 'x') or current != original:
+                raise ValueError('Original training ' + role + ' is no longer active')
+        if parent is not None:
+            parent.check()
+        protocol.require_not_skipped(chain.execution, chain.ident)
+        # A terminal or fence publication can arrive during the process and source reads.
+        for path, reason in ((chain.folder / 'stopped.json', 'original executor has a terminal observation'),
+                             (chain.folder.parent / 'result.json', 'original job has a terminal result'),
+                             (chain.budget / 'final.json', 'original budget owner has finished'),
+                             (chain.root / 'training/fences' / (chain.ident + '.json'), 'original job is fenced')):
+            selected = chain.adapter.safe_file(chain.root, path.relative_to(chain.root).as_posix())
+            try:
+                selected.lstat()
+            except FileNotFoundError:
+                continue
+            raise ValueError('Pending training execution refused: ' + reason)
+        if (budget_clock.remaining(clock, policy['wall_seconds'], policy['cleanup_seconds']) <= 0
+                or time.monotonic() >= deadline):
+            raise ValueError('Original pending training observation has exhausted its window')
+
+    require_live()
+    protocol.validate_sources(chain.owner['execution_capability'])
+    for path, raw in chain.originals.items():
+        inventory.read(chain.root, path.relative_to(chain.root).as_posix(), 'execution',
+                       hashlib.sha256(raw).hexdigest(), 16 * protocol.LIMIT, evidence=False)
+    for name in ('request', 'launch', 'attempt', 'ack'):
+        path = chain.folder / (name + '.json')
+        confirm_file(path, chain.originals[path], chain.root)
+    inventory.confirm()
+    require_live()
+    return {'status': 'verified_pending', 'project': project.project['id'],
+            'project_revision': project.project_revision, 'registration_sha256': chain.records['request']['registration_sha256'],
+            'locator': locator,
+            'launch_sha256': hashlib.sha256(chain.originals[chain.folder / 'launch.json']).hexdigest(),
+            'acknowledgement_sha256': hashlib.sha256(chain.originals[chain.folder / 'ack.json']).hexdigest()}
+
+
 def _wait_for_managed_full_result(project, locator, chain, deadline):
     """Observe the original supervisor through the executor's terminal publication."""
     from ergora.runtime import processes
@@ -2104,7 +2225,8 @@ def main() -> None:
             raise ValueError('capacity_exceeded: complete training reader request')
         payload = decode_record(raw)
         if payload['operation'] not in ('inspect', 'baseline-reference', 'native-poll', 'collect-screen',
-                                        'managed-full-result', 'managed-screen-decision', 'managed-gpu-release'):
+                                        'managed-full-result', 'managed-screen-decision', 'managed-gpu-release',
+                                        'managed-pending-execution'):
             raise ValueError('Unsupported training evidence operation')
         if payload['operation'] in ('native-poll', 'collect-screen'):
             result = _native_screen_read(payload)
@@ -2114,6 +2236,8 @@ def main() -> None:
             result = _managed_screen_decision(payload)
         elif payload['operation'] == 'managed-gpu-release':
             result = _managed_gpu_release(payload)
+        elif payload['operation'] == 'managed-pending-execution':
+            result = _managed_pending_execution(payload)
         else:
             result = inspect(payload) if payload['operation'] == 'inspect' else baseline_reference(payload)
         sys.stdout.write(_native_bytes(result, 'Training evidence response', 8_388_608).decode('utf-8'))

@@ -9,10 +9,11 @@ from temporalio import activity
 from ergora.agents import runs
 from ergora.campaigns.records import (
     ASSIGNMENT_ATTEMPT, ASSIGNMENT_REFUSAL, RECIPIENT_ACTIVITY, assignment_task, identity, recipient_task,
-    training_readback_task,
+    training_assignment_task, training_readback_task,
 )
 from ergora.campaigns.recipient_gate import (
-    RecipientBlocked, RecipientGate, assignment_refusal, assignment_wait, attempt_record, manual_commands,
+    TRAINING_PENDING_UNAVAILABLE, RecipientBlocked, RecipientGate,
+    assignment_refusal, assignment_wait, attempt_record, manual_commands,
     stopped_receipt, verify_wake_intent,
 )
 from ergora.storage.state import State
@@ -52,11 +53,13 @@ class CodexRecipient:
     def _claim(self, state, result, attempt, name, independent, declaration):
         files, opening, start = self.files, self.opening, self.start
         gate = RecipientGate(files, opening, start, result, attempt, sealing=True)
+        training = training_assignment_task(opening) if independent else None
         with ExitStack() as held:
             if independent:
                 attempt['slot_release'] = self._first_slot(state, gate, held)
             while True:
-                with gate.admission():
+                admission = gate.admission() if training is None else gate.training_pending_admission(state)
+                with admission as pending:
                     if files._read(name) is not None:
                         return None, False
                     if independent and files._read('recipient-attempt') is not None:
@@ -71,6 +74,8 @@ class CodexRecipient:
                             except ValueError as error:
                                 authority_error = error
                                 break
+                        if training is not None and not pending:
+                            raise RecipientBlocked(TRAINING_PENDING_UNAVAILABLE)
                         files.write(name, attempt, before_publish=gate.require_open)
                         return gate, False
                 time.sleep(min(.15, max(0.0, gate.remaining())))
@@ -140,9 +145,12 @@ class CodexRecipient:
         independent = assigned is not None and intent.get('task_id') == assigned['task_id']
         manual = intent['source'].get('kind') == 'manual_update'
         if independent:
-            wait = assignment_wait(self.files, opening, self.start, self.run_id)
-            wake = await self.read_wake_history((wait,), independent=True)
+            training = training_assignment_task(opening) is not None
+            commands = () if training else (assignment_wait(self.files, opening, self.start, self.run_id),)
+            wake = await self.read_wake_history(commands, independent=True)
             if wake is None or wake.get('intent') != intent:
+                if training:
+                    raise ValueError('Campaign independent task lacks its verified original training wait and schedule')
                 raise ValueError('Campaign independent task lacks its verified original waiting Update and schedule')
         elif manual or training_readback_task(task):
             commands = manual_commands(self.files, opening, self.start, self.run_id, task) if manual else ()

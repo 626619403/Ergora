@@ -13,8 +13,8 @@ from ergora.campaigns.records import (
     CampaignFiles, assignment_task, attempt_document, check_intent, check_record_name, identity, local_readback_stop,
     original_check_evidence, project_selection, read_plan, readback_task,
     recipient_task, require_assignment_bindings, require_check_project, result_document, rollover_intent,
-    rollover_task, sha256, stop_intent,
-    tasks_by_id, training_readback_task, update_attempt, uuid_text, verify_registration,
+    require_training_assignment_wait, rollover_task, sha256, stop_intent,
+    tasks_by_id, training_assignment_task, training_readback_task, update_attempt, uuid_text, verify_registration,
     worker_queue, workflow_id,
 )
 from ergora.storage.state import State, file_lock
@@ -66,6 +66,29 @@ def _future(opening):
     if remaining <= 0:
         raise ValueError('Original campaign plan expiry has passed')
     return remaining
+
+
+async def _read_training_assignment_wait(state, files, opening, task):
+    from ergora.runtime.action_observations import TrainingPendingExecution, observe
+
+    project = state.project(opening['project'])
+    if project['revision'] != opening['project_revision']:
+        raise ValueError('Original Campaign project revision changed before its training wait was observed')
+    remaining = min(opening['plan']['limits']['expires_at'], task['readback']['deadline_at']) - time.time()
+    if remaining <= 0:
+        raise ValueError('Original Campaign training assignment window has passed')
+    deadline = time.monotonic() + remaining
+    selection = TrainingPendingExecution(**task['source']['locator'])
+
+    def read(stopped):
+        try:
+            return observe(selection, project, state.root, deadline=deadline,
+                           stop_requested=lambda: stopped() or files._read('stop-intent') is not None,
+                           supervised_cleanup=lambda _: None)
+        except (KeyboardInterrupt, TimeoutError):
+            raise ValueError('Original Campaign training wait observation ended before confirmation') from None
+
+    return require_training_assignment_wait(opening, await _run_original_reader(read))
 
 
 def _snapshot(files, opening, attempt, result):
@@ -190,8 +213,9 @@ async def _read_original(runtime, output, opening, attempt, run_id, *, client=No
         try:
             async with asyncio.timeout(runtime.RPC_SECONDS):
                 if successor is None:
+                    history_scope = {'start_attempt': attempt} if training_assignment_task(opening) is not None else {}
                     updates, completion, wake, terminal, followup_terminal, assignment = await runtime.read_task_history(
-                        client, handle, opening, check_commands)
+                        client, handle, opening, check_commands, **history_scope)
                 else:
                     by_run = {}
                     for command in check_commands:
@@ -427,7 +451,7 @@ async def _task_evidence(registration, home, task, terminal, readback):
     evidence = {'task_id': task['task_id'], 'depends_on': task['depends_on'], 'source': source,
                 'native_job': None, 'correlation': 'unavailable'}
     try:
-        job = await _run_check_reader(read)
+        job = await _run_original_reader(read)
     except FixedCheckJobIdentityError as error:
         return {**evidence, 'correlation': 'contradictory', 'different_fields': ['job_sha256'],
                 'native_read_error': str(error)}
@@ -470,11 +494,15 @@ async def create(state: State, project: str, campaign: str, path: Path, revision
     plan = read_plan(path, plan_sha)
     runtime = _temporal()
     opening, _, _ = files.load()
+    training_wait = None
     if opening is None:
         # Reject unsupported or stale authorization before creating the campaign namespace.
         selected = project_selection(state, state.project(project), revision, plan=plan)
         preview = _opening(files, revision, plan, plan_sha, selected, _freeze_recipients(state, files, revision, plan))
         _future(preview)
+        task = training_assignment_task(preview)
+        if task is not None:
+            training_wait = await _read_training_assignment_wait(state, files, preview, task)
     files.ensure_directory()
     with file_lock(files.lock, blocking=False):
         opening, attempt, result = files.load()
@@ -483,6 +511,8 @@ async def create(state: State, project: str, campaign: str, path: Path, revision
                 db.execute('BEGIN IMMEDIATE')
                 selected = project_selection(state, state.project(project), revision, plan=plan)
                 opening = _opening(files, revision, plan, plan_sha, selected, _freeze_recipients(state, files, revision, plan))
+                if training_wait is not None:
+                    opening['training_wait'] = require_training_assignment_wait(opening, training_wait)
                 _future(opening)
                 files.write('start-intent', opening)
         elif (opening['project_revision'] != revision or opening['plan_sha256'] != plan_sha
@@ -499,6 +529,11 @@ async def create(state: State, project: str, campaign: str, path: Path, revision
                     client = await runtime.connect(opening)
             except (TimeoutError, ConnectionError, runtime.RPCError):
                 return {**output, 'remote_status': 'unavailable', 'remote_error': 'connection_before_attempt'}
+            task = training_assignment_task(opening)
+            if task is not None:
+                current_wait = await _read_training_assignment_wait(state, files, opening, task)
+                if current_wait != opening['training_wait']:
+                    raise ValueError('Original Campaign pending training proof changed before its first attempt')
             with State(state.root).connect() as db:
                 db.execute('BEGIN IMMEDIATE')
                 selected = project_selection(state, state.project(project), revision, plan=plan)
@@ -761,10 +796,10 @@ async def _read_original_check(state, project, source, expires_at, stop_requeste
         except TimeoutError:
             raise ValueError('Original fixed-check observation reached its deadline') from None
 
-    return await _run_check_reader(read)
+    return await _run_original_reader(read)
 
 
-async def _run_check_reader(read):
+async def _run_original_reader(read):
     cancelled = Event()
     reader = asyncio.create_task(asyncio.to_thread(read, cancelled.is_set))
     try:

@@ -31,7 +31,7 @@ with workflow.unsafe.imports_passed_through():
         readback_activity, readback_grant, readback_id, readback_proof, readback_ready_tasks, readback_reference,
         readback_followup_activity, readback_followup_id, readback_followup_result, readback_result, readback_task,
         recipient_task, reobservation_task,
-        tasks_by_id, training_readback_task,
+        tasks_by_id, training_assignment_task, training_readback_task,
         require_check_receipt, require_rollover_receipt, require_stop_receipt, restore_rollover, rollover_checkpoint,
         rollover_task, same_check_observation,
         safe_id, sha256, stop_intent, update_receipt, validate_check_command, validate_rollover_command,
@@ -125,12 +125,13 @@ class Campaign:
         if (self.stop_decision is not None or (not training and task_id not in self.check_waits)
                 or (task_id in self.check_receipts and not shared)):
             return
-        grant = readback_grant(self.opening, workflow.info().run_id, task, self.check_waits.get(task_id))
+        waiting = self.check_waits.get(task_id)
+        grant = readback_grant(self.opening, workflow.info().run_id, task, waiting)
         activity_id = readback_id(grant)
         self.readback = {'status': 'armed', 'activity_id': activity_id, **readback_reference(grant)}
         assigned = None
         if assignment_task(self.opening) is not None:
-            intent = assignment_intent(self.opening, workflow.info().run_id, self.check_waits[task_id])
+            intent = assignment_intent(self.opening, workflow.info().run_id, waiting)
             assigned = asyncio.create_task(self._deliver_recipient(intent))
         try:
             await self._time_readback(task, grant, activity_id, shared, assigned)
@@ -520,7 +521,7 @@ class WakeHistoryConflict(ValueError):
         self.assignment = assignment
 
 
-async def read_task_history(client, handle, opening, commands):
+async def read_task_history(client, handle, opening, commands, *, start_attempt=None):
     """Read saved task Updates and the opted-in Activity from one pinned History."""
     entries = {}
     for command in commands:
@@ -551,8 +552,12 @@ async def read_task_history(client, handle, opening, commands):
     recipient_schedules = {}
     recipient = recipient_task(opening)
     assigned = assignment_task(opening) is not None
+    training_assignment = training_assignment_task(opening) is not None
+    first_event = None
     converter = client.data_converter.with_context(WorkflowSerializationContext(client.namespace, handle.id))
     async for event in handle.fetch_history_events(rpc_timeout=RPC_TIMEOUT):
+        if training_assignment and first_event is None:
+            first_event = event
         await _read_update_event(converter, event, entries, CHECK_UPDATE, require_check_receipt)
         if recipient is not None:
             _collect_recipient_event(event, assigned, wake_events, assignment_events, recipient_schedules)
@@ -633,13 +638,24 @@ async def read_task_history(client, handle, opening, commands):
     assignment = None
     if assignment_events:
         try:
-            if wait_entry is None or wait_entry.get('receipt') is None:
-                raise ValueError('Campaign independent task History lacks its verified original waiting Update')
-            intent = assignment_intent(opening, handle.run_id, wait_entry['receipt'])
-            assignment = await _read_recipient_history(converter, assignment_events, opening, intent,
-                                                       wait_entry['completed_event'])
-            assignment.update(waiting_accepted_event_id=wait_entry['accepted_event_id'],
-                              waiting_completed_event_id=wait_entry['completed_event_id'])
+            if training_assignment:
+                if (start_attempt is None or first_event is None or handle.id != opening['workflow_id']
+                        or client.namespace != opening['scheduler']['namespace']):
+                    raise ValueError('Campaign independent task History lacks its saved original training wait and Start')
+                await _verify_start_event(converter, first_event, opening, handle.run_id, memo(opening, start_attempt))
+                ready = first_event
+                receipt = None
+                ancestry = {'training_wait_started_event_id': first_event.event_id}
+            else:
+                if wait_entry is None or wait_entry.get('receipt') is None:
+                    raise ValueError('Campaign independent task History lacks its verified original waiting Update')
+                ready = wait_entry['completed_event']
+                receipt = wait_entry['receipt']
+                ancestry = {'waiting_accepted_event_id': wait_entry['accepted_event_id'],
+                            'waiting_completed_event_id': wait_entry['completed_event_id']}
+            intent = assignment_intent(opening, handle.run_id, receipt)
+            assignment = await _read_recipient_history(converter, assignment_events, opening, intent, ready)
+            assignment.update(ancestry)
         except ValueError as error:
             assignment = {'status': 'contradictory', 'error': str(error)}
     wake = None
@@ -1024,6 +1040,25 @@ async def _read_update(client, handle, command, update_name, require_receipt):
     return None
 
 
+async def _verify_start_event(converter, event, opening, run_id, expected_memo):
+    if (event.event_id != 1 or event.event_type != EventType.EVENT_TYPE_WORKFLOW_EXECUTION_STARTED
+            or not event.HasField('workflow_execution_started_event_attributes')):
+        raise ValueError('Campaign original start History is missing its first event')
+    started = event.workflow_execution_started_event_attributes
+    if (started.workflow_type.name != WORKFLOW_TYPE or started.task_queue.name != opening['task_queue']
+            or started.first_execution_run_id != run_id or started.original_execution_run_id != run_id
+            or started.continued_execution_run_id or started.initiator != 0 or started.attempt != 1):
+        raise ValueError('Campaign History type, queue or first start differs')
+    if set(started.memo.fields) != set(expected_memo):
+        raise ValueError('Campaign History does not have its original dispatch memo')
+    for key, digest in expected_memo.items():
+        if await converter.decode([started.memo.fields[key]], [str]) != [digest]:
+            raise ValueError('Campaign History dispatch memo differs')
+    values = await converter.decode(started.input.payloads)
+    if len(values) != 1 or not isinstance(values[0], dict) or identity(values[0]) != identity(opening):
+        raise ValueError('Campaign History complete plan input differs')
+
+
 async def original(client, opening, attempt, run_id):
     """Verify the first start event on a pinned run, without following resets or successors."""
     if client.namespace != opening['scheduler']['namespace']:
@@ -1039,22 +1074,7 @@ async def original(client, opening, attempt, run_id):
     if description.id != opening['workflow_id'] or await description.memo() != expected_memo:
         raise ValueError('Campaign workflow ID or original dispatch memo differs')
     async for event in handle.fetch_history_events(page_size=1, rpc_timeout=RPC_TIMEOUT):
-        if (event.event_id != 1 or event.event_type != EventType.EVENT_TYPE_WORKFLOW_EXECUTION_STARTED
-                or not event.HasField('workflow_execution_started_event_attributes')):
-            break
-        started = event.workflow_execution_started_event_attributes
-        if (started.workflow_type.name != WORKFLOW_TYPE or started.task_queue.name != opening['task_queue']
-                or started.first_execution_run_id != run_id or started.original_execution_run_id != run_id
-                or started.continued_execution_run_id or started.initiator != 0 or started.attempt != 1):
-            raise ValueError('Campaign History type, queue or first start differs')
-        if set(started.memo.fields) != set(expected_memo):
-            raise ValueError('Campaign History does not have its original dispatch memo')
-        for key, digest in expected_memo.items():
-            if await client.data_converter.decode([started.memo.fields[key]], [str]) != [digest]:
-                raise ValueError('Campaign History dispatch memo differs')
-        values = await client.data_converter.decode(started.input.payloads)
-        if len(values) != 1 or not isinstance(values[0], dict) or identity(values[0]) != identity(opening):
-            raise ValueError('Campaign History complete plan input differs')
+        await _verify_start_event(client.data_converter, event, opening, run_id, expected_memo)
         return handle, description
     raise ValueError('Campaign original start History is missing its first event')
 
@@ -1247,7 +1267,8 @@ async def run_worker(client, handle, opening, files, attempt, *, poller_identity
                     history_client = await connect(opening)
                     original = history_client.get_workflow_handle(opening['workflow_id'], run_id=handle.run_id)
                     try:
-                        _, _, wake, _, _, assignment = await read_task_history(history_client, original, opening, commands)
+                        _, _, wake, _, _, assignment = await read_task_history(
+                            history_client, original, opening, commands, start_attempt=attempt)
                     except WakeHistoryConflict as error:
                         if not independent:
                             raise

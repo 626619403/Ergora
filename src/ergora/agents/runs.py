@@ -26,7 +26,9 @@ import ergora.agents.mcp as task_mcp
 import ergora.definitions.workflows as workflow_definitions
 import ergora.improvement.document_corrections as document_corrections
 from ergora.runtime import budget_clock
-from ergora.campaigns.recipient_gate import RecipientBlocked, RecipientGate, require_payload_support
+from ergora.campaigns.recipient_gate import (
+    TRAINING_PENDING_UNAVAILABLE, RecipientBlocked, RecipientGate, require_payload_support,
+)
 from ergora.campaigns.records import CampaignFiles
 from ergora.configuration import catalog as components
 from ergora.configuration import validation as contracts
@@ -1710,8 +1712,12 @@ def _reserve_session_turn(state, project, root, parent, ident, ordinal, prompt, 
     except ValueError as error:
         raise SessionRejected(str(error), submitted['intent_id']) from error
     folder = native_sources.turn_folder(state, ident)
-    with (gate.admission(native_clock=clock, native_timeout=timeout) if gate is not None else nullcontext()):
+    admission = (gate.training_pending_admission(state, native_clock=clock, native_timeout=timeout)
+                 if gate is not None else nullcontext(True))
+    with admission as training_pending:
         admit()
+        if not training_pending:
+            raise RecipientBlocked(TRAINING_PENDING_UNAVAILABLE)
         _publish_session_packet(folder, {'request.json': encoded_request})
         document = {'id': ident, 'project': project, 'kind': 'native-agent-run', 'role': context['role'],
                     'binding': context['binding'], 'project_revision': selected['revision'],

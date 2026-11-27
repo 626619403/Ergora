@@ -123,6 +123,9 @@ function assignmentEvidence({ task_id, assignee, slot_status, claim, history, na
       ["原独立任务认领 Run ID", claim?.native_run_id],
       ["原独立任务唤醒 ID", claim?.wake_id],
       ["独立任务 History 状态", history?.status],
+      ...(history?.training_wait_started_event_id == null ? [] : [
+        ["训练等待绑定的 Workflow 启动事件 ID", history.training_wait_started_event_id],
+      ]),
       ...(history?.reason ? [["原独立任务 History 原因", history.reason]] : []),
       ["独立任务 Activity 调度事件 ID", history?.scheduled_event_id],
       ["独立任务 Activity 开始事件 ID", history?.started_event_id],
@@ -246,8 +249,8 @@ function timeline(result) {
         ]),
         record("冻结的原 Job 选择", evidence.source),
         record("原 Job 所有者返回的证据", job)),
-      ...(result.assignment ? [assignmentEvidence(result.assignment)] : []),
     ]),
+    ...(result.assignment ? [assignmentEvidence(result.assignment)] : []),
   ];
 }
 

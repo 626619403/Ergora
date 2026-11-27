@@ -30,7 +30,7 @@ class TrainingExecutionStatus:
 
 @dataclass(frozen=True)
 class _ManagedTrainingLocator:
-    """Bind one managed result to the original native Run and raw attempt."""
+    """Bind one managed observation to the original native Run and raw attempt."""
 
     experiment_id: str
     workflow_id: str
@@ -41,7 +41,8 @@ class _ManagedTrainingLocator:
 
     def __post_init__(self):
         label = {TrainingFullResult: 'Training full-result', TrainingScreenDecision: 'Training screen-decision',
-                 TrainingGpuRelease: 'Training GPU release'}[type(self)]
+                 TrainingGpuRelease: 'Training GPU release',
+                 TrainingPendingExecution: 'Pending training execution'}[type(self)]
         if (not isinstance(self.experiment_id, str)
                 or re.fullmatch('[A-Za-z0-9][A-Za-z0-9_-]{0,79}', self.experiment_id) is None
                 or self.workflow_id != 'perf-experiment/' + self.experiment_id
@@ -82,6 +83,11 @@ class TrainingGpuRelease(_ManagedTrainingLocator):
         if (not isinstance(self.session_id, str) or re.fullmatch('[a-f0-9]{32}', self.session_id) is None
                 or not isinstance(self.lease_id, str) or re.fullmatch('[a-f0-9]{64}', self.lease_id) is None):
             raise ValueError('Training GPU release requires the exact original pool session and lease')
+
+
+@dataclass(frozen=True)
+class TrainingPendingExecution(_ManagedTrainingLocator):
+    """Observe the durably acknowledged original full-verification attempt while it is live."""
 
 
 def _require_identity(receipt, expected, description):
@@ -127,13 +133,16 @@ def _training_execution(action, project, home, *, deadline, stop_requested, supe
     return receipt
 
 
-def _managed_training_result(action, project, home, *, deadline, stop_requested, supervised_cleanup):
-    from ergora.training.native import training_full_result, training_gpu_release, training_screen_decision
+def _managed_training(action, project, home, *, deadline, stop_requested, supervised_cleanup):
+    from ergora.training.native import (
+        training_full_result, training_gpu_release, training_pending_execution, training_screen_decision,
+    )
 
     reader, description = {
         TrainingFullResult: (training_full_result, 'Training full-result receipt'),
         TrainingScreenDecision: (training_screen_decision, 'Training screen-decision receipt'),
         TrainingGpuRelease: (training_gpu_release, 'Training GPU release receipt'),
+        TrainingPendingExecution: (training_pending_execution, 'Pending training execution receipt'),
     }[type(action)]
     locator = asdict(action)
     options = {}
@@ -144,15 +153,23 @@ def _managed_training_result(action, project, home, *, deadline, stop_requested,
     _require_identity(receipt, {'project': project['id'], 'project_revision': project['revision'],
                                 'registration_sha256': project['registration']['sha256'], 'locator': locator},
                       description)
+    if isinstance(action, TrainingPendingExecution):
+        fields = ('launch_sha256', 'acknowledgement_sha256')
+        if (receipt.keys() != {'status', 'project', 'project_revision', 'registration_sha256', 'locator', *fields}
+                or receipt['status'] != 'verified_pending'
+                or any(not isinstance(receipt[key], str) or re.fullmatch('[a-f0-9]{64}', receipt[key]) is None
+                       for key in fields)):
+            raise ValueError('Pending training execution requires its exact launch and acknowledgement receipt')
     return receipt
 
 
 _OBSERVERS = {FixedCheckStatus: _fixed_check, TrainingExecutionStatus: _training_execution,
-              TrainingFullResult: _managed_training_result, TrainingScreenDecision: _managed_training_result,
-              TrainingGpuRelease: _managed_training_result}
+              TrainingFullResult: _managed_training, TrainingScreenDecision: _managed_training,
+              TrainingGpuRelease: _managed_training, TrainingPendingExecution: _managed_training}
 
 
-def observe(action: FixedCheckStatus | TrainingExecutionStatus | TrainingFullResult | TrainingScreenDecision | TrainingGpuRelease,
+def observe(action: FixedCheckStatus | TrainingExecutionStatus | TrainingFullResult | TrainingScreenDecision
+            | TrainingGpuRelease | TrainingPendingExecution,
             project: dict, home: Path, *, deadline: float | None = None,
             stop_requested=None, supervised_cleanup=None) -> dict:
     """Read the original owner receipt under an already selected project registration.

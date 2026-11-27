@@ -1116,6 +1116,27 @@ def configuration_execution(configuration_project, cycle_selection, service, tmp
     state, definition, runtime, prefix, write, selection = cycle_selection
     options = dict(getattr(request, 'param', {}))
     minimum_saving = options.pop('test_minimum_saving', .001)
+    if options.pop('test_hold_cpu', False):
+        from ergora.training.configuration import source_reference
+
+        item['cpu_held'] = tmp_path / 'cpu-held'
+        item['cpu_release'] = tmp_path / 'cpu-release'
+        driver = item['source'] / 'driver.py'
+        with driver.open('a') as stream:
+            stream.write(f'''
+_run_original_cpu = run
+
+def run(context, request, output):
+    cutoff = time.monotonic() + 18
+    Path({str(item['cpu_held'])!r}).touch()
+    while not Path({str(item['cpu_release'])!r}).exists():
+        if time.monotonic() >= cutoff:
+            raise TimeoutError('Original CPU witness was not released')
+        time.sleep(.02)
+    return _run_original_cpu(context, request, output)
+''')
+        source_commit = item['commit'](item['source'], 'hold original test CPU work for one read')
+        item['runner']['configuration_readback']['source'] = source_reference(item['source'], source_commit, 'driver.py')
     config = json.loads(item['candidate_raw'])
     config.update(options)
     item['configuration'].write_text(json.dumps(config) + '\n')
@@ -1271,6 +1292,66 @@ def test_configuration_driver_runs_actual_cpu_work_and_original_managed_archive(
             item['submission']['run_id'], item['native_sha256'], confirm=True)
     assert all(path.read_bytes() == raw for path, raw in before.items())
     assert len((item['markers'] / 'first-work.jsonl').read_text().splitlines()) == 1
+    assert json.loads(item['service'][1].read_bytes())['starts'] == 1
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Pending execution uses its original Linux live owner')
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('configuration_execution', [{'test_hold_cpu': True}], indirect=True)
+def test_observe_original_pending_managed_execution_during_cpu_work(configuration_execution):
+    from ergora.runtime import action_observations
+
+    item = configuration_execution
+    project = item['state'].project('demo')
+    cleanup = []
+
+    def observe(locator, *, selected=project, stop=lambda: False):
+        action = action_observations.TrainingPendingExecution(**locator)
+        return action_observations.observe(action, selected, item['state'].root, deadline=time.monotonic() + 5,
+                                           stop_requested=stop, supervised_cleanup=cleanup.append)
+
+    locator = {}
+
+    def while_cpu_is_held(selected):
+        cutoff = time.monotonic() + 15
+        while not selected['cpu_held'].exists() and time.monotonic() < cutoff:
+            time.sleep(.02)
+        assert selected['cpu_held'].exists()
+        managed = item['job'] / 'managed-execution'
+        originals = {name: (managed / (name + '.json')).read_bytes() for name in ('request', 'launch', 'attempt', 'ack')}
+        request = json.loads(originals['request'])
+        locator.update({key: request[key] for key in ('experiment_id', 'workflow_id', 'run_id', 'job_id',
+                                                     'native_request_sha256')})
+        locator['attempt_sha256'] = hashlib.sha256(originals['attempt']).hexdigest()
+        expected = {'status': 'verified_pending', 'project': 'demo', 'project_revision': project['revision'],
+                    'registration_sha256': project['registration']['sha256'], 'locator': locator,
+                    'launch_sha256': hashlib.sha256(originals['launch']).hexdigest(),
+                    'acknowledgement_sha256': hashlib.sha256(originals['ack']).hexdigest()}
+        try:
+            with subprocess.Popen([sys.executable, '-c', 'import sys; sys.stdin.read()'], stdin=subprocess.PIPE) as peer:
+                assert observe(locator) == observe(locator) == expected
+                with pytest.raises(ValueError, match='differs'):
+                    observe({**locator, 'attempt_sha256': '0' * 64})
+                with pytest.raises(ValueError, match='selected registration revision'):
+                    observe(locator, selected={**project, 'revision': project['revision'] + 1})
+                stops = iter((False, True))
+                with pytest.raises(ValueError, match='was stopped'):
+                    observe(locator, stop=lambda: next(stops, True))
+                assert peer.poll() is None
+            assert len(cleanup) == 5 and cleanup[-1]['returncode'] != 0
+            for receipt in cleanup:
+                assert receipt['kind'] == 'training-record-reader-cleanup' and receipt['model_waited']
+                assert not Path('/proc', str(receipt['model']['pid'])).exists()
+            assert not (item['job'] / 'result.json').exists()
+            assert all((managed / (name + '.json')).read_bytes() == raw for name, raw in originals.items())
+        finally:
+            selected['cpu_release'].touch()
+
+    terminal = run_configuration_execution(item, on_requested=while_cpu_is_held)
+    assert terminal['executor_stop_confirmed'] is True
+    assert json.loads((item['job'] / 'result.json').read_bytes())['state'] == 'SUCCEEDED'
+    with pytest.raises(ValueError, match='terminal observation'):
+        observe(locator)
     assert json.loads(item['service'][1].read_bytes())['starts'] == 1
 
 
