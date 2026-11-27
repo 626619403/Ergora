@@ -233,6 +233,8 @@ When the original waiting Update is accepted and its receipt is verified, the st
 
 Read `assignment.claim` for the independent task's original waiting and A1 release references. Online status reads `assignment.history` from the accepted waiting Update and the exact A2 Activity. Use `assignment.native_receipt` for A2 dispatch, payload start, usage and the original process outcome. `assignment.release` identifies the confirmed released native slot when available. An incomplete launch retains the shared assignment until the original evidence resolves it. Worker replacement and repeated observations reconcile the original attempt. STOP and expiry fence both Campaign recipients. The assignment covers these two selected tasks in one Campaign under the local operator's authority.
 
+In the read-only Formal Tasks Console, select the waiting fixed-check task to see its independent assignment. The assignment panel appears only for that task and links its evidence to the original waiting receipt. The panel shows Temporal Activity History, native execution and slot release separately, so verified native or release evidence can remain visible when History is unresolved. [Inspect direct dependencies in Formal Tasks](#inspect-direct-dependencies-in-formal-tasks)
+
 ### Read one managed training full result
 
 A record-only plan can include one root task whose source is `{"kind":"training_full_result","locator":{...}}` and whose readback specifies `due_at` and `deadline_at`. The locator requires `experiment_id`, `workflow_id`, `run_id`, `job_id`, `native_request_sha256` and `attempt_sha256` from the same project's original managed full verification. Bind Temporal before authorizing that training attempt so its registration and project revision match the Campaign.

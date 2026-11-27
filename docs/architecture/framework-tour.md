@@ -4,7 +4,7 @@ English · [Documentation](../README.md) · [Architecture contract](current.md)
 
 Ergora is a control plane for project-bound specialist Agents, workflow composition, formal software delivery, training experiments and reusable improvements. Definitions describe reusable behavior. Each operation freezes its own inputs, checks its execution authority and produces evidence under its original identity.
 
-This tour uses runtime revision `a58b6e7c98d0b361565d778be99c7751e5c42772` and its `src` tree `d6b6df490aa2e17a050d99e80ea65c931f1624aa` as the exact source reference. Packages, installed applications and local definition libraries have separate identities. The [current plan](../PLAN.md) and its delivery records track review, CI and installation status.
+This tour uses runtime revision `2bb1290419cdfdb6385d2ad002406a95633fe7f4` and its `src` tree `0688a39e99bfaa52a2939e98d21c106640985bf5` as the exact source reference. Packages, installed applications and local definition libraries have separate identities. The [current plan](../PLAN.md) and its delivery records track review, CI and installation status.
 
 ## The whole system
 
@@ -59,7 +59,10 @@ flowchart TB
   Campaign --> Worker["Local record-only Worker service<br/>Poll health and original STOP fence"]
   Worker -. "original queue" .-> CampaignRun
   CampaignRun -. "confirmed record-only rollover" .-> Rollover["One verified successor Run<br/>Original Job and deadline"]
-  CampaignRun --> CampaignRead["Optional timer or immediate due read<br/>One guarded status Activity"]
+  CampaignRun -->|typed training root| CampaignRead["Optional timer or immediate due read<br/>One guarded status Activity"]
+  CampaignRun --> CampaignWait["Accepted fixed-check waiting Update<br/>Same original Job and executor"]
+  CampaignWait --> CampaignRead
+  CampaignWait -->|opt-in assignment| Assignment["Independent native task A2<br/>Same role, separate authorization"]
   CampaignRead -->|fixed-check wake| Ready["One verified original readiness<br/>Guarded result or opted-in observation"]
   CampaignRead -. "managed full result with optional live wait" .-> TrainingRoot["Observed training root<br/>Result and separate lease evidence"]
   CampaignRead -. "heartbeat timeout with durable full-result receipt" .-> FullResultRecovery["Opt-in full-result receipt-only Activity<br/>Same Run, read window and STOP"]
@@ -73,7 +76,10 @@ flowchart TB
   TrainingRoot -. "recorded prerequisite result" .-> DependentCheck["Dependent fixed-check observation<br/>Live eligibility and pre-authorized Job"]
   CheckJob -. "own original Job evidence" .-> DependentCheck
   CampaignRun -. "confirmed passing observation" .-> Ready
-  Ready --> Wake["Opt-in Codex wake<br/>One original attempt and owned STOP"]
+  Ready -->|single recipient| Wake["Opt-in Codex wake<br/>One original attempt and owned STOP"]
+  Ready -->|with assignment| AssignmentResume["A1 result continuation<br/>Verify original slot availability"]
+  Assignment -. "original release evidence" .-> AssignmentResume
+  AssignmentResume --> Wake
   TrainingRoot -. "opt-in verified training readiness" .-> Wake
   ScreenRoot -. "opt-in verified screen decision" .-> Wake
   ReleaseRoot -. "opt-in verified owner release" .-> Wake
@@ -107,6 +113,7 @@ flowchart TB
   DependentCheck -. "saved observation Update" .-> CampaignStatus
   Ready -. "original readiness evidence" .-> CampaignStatus
   Wake -. "same native receipt" .-> CampaignStatus
+  Assignment -. "claim, History, native receipt and slot release" .-> CampaignStatus
   CampaignStatus -. "selected task and direct dependency states" .-> ConsoleTimeline["Formal Tasks timeline<br/>Selected eligibility and original evidence"]
   ConsoleTimeline -.-> Recover
   CampaignStatus -.-> Recover
@@ -179,11 +186,15 @@ For a fixed-check task, `campaign status --online --task-id TASK` reads its orig
 
 The read-only Formal Tasks Console selects one original task by Campaign and task ID. Each frozen direct dependency has a row with its original ID, available status and evidence source. The selected task keeps its own eligibility and evidence. For a fixed-check task the Console shows the current Workflow Activity, verified original History and separately owned Job evidence. A failed terminal Update shows its saved reason, when supplied, with its original Run, Update and event IDs. A typed training root displays its frozen locator and reader guard cleanup. Full and screen roots show the verified original result and training reap. A selected screen root also shows its original native screen state, literal decision and screen result SHA-256. A release root shows the original pool session, lease, release sequence and stopped-guard proof digest. The separate lease panel uses the observation saved in verified History. When the root has a recipient, the timeline shows its original wake Activity and native continuation receipt separately. A recorded Activity timeout can coexist with a verified native success. [Inspect direct dependencies](../improvement/campaigns.md#inspect-direct-dependencies-in-formal-tasks) · [Formal Tasks Campaign timeline](../../src/ergora/data/console/campaign-timeline.js)
 
+When the operator selects the assigned waiting task, the timeline shows its original waiting Update and Job evidence alongside the independent task's claim, verified Temporal Activity History, native receipt with actual payload start when recorded, and slot release evidence. Each is reported from its own source. Verified native start or release can remain visible when the Activity History is unresolved. [Read-only timeline projection](../../src/ergora/interfaces/web.py) · [Assignment status](../../src/ergora/campaigns/application.py)
+
 The confirmed plan can explicitly authorize one existing local Codex recipient for the timed task. After the original waiting receipt, `wake_on_observe` lets the first verified passing guarded result or confirmed terminal observation admit one original readiness under the same readback window, deadline and STOP fence. The guarded result can also make dependents eligible. `recipient.history.intent.source` identifies the guarded Activity by `activity_id`, or a `manual_update` by its original `update_id`. If a matching terminal Update loses the race to a guarded result, History preserves its failed disposition, original events and `readback_already_admitted` reason with a null receipt. [Admit the guarded result or a confirmed observation](../improvement/campaigns.md#admit-the-guarded-result-or-a-confirmed-observation)
 
 The Worker schedules one original wake from the admitted source. The native session owner reserves the same turn and protects the selected installed ELF through the launch using a Linux read lease. The original Campaign expiry, native turn deadline and STOP fence bind launch and cleanup. Unknown delivery is read back through the pinned wake History and the same native receipt. [Authorize one local Codex recipient](../improvement/campaigns.md#authorize-one-local-codex-recipient) · [Recipient Activity](../../src/ergora/campaigns/recipient.py) · [Launch gate](../../src/ergora/campaigns/recipient_gate.py)
 
 `recipient.history.timing` links the original readiness event, wake scheduling, Worker start and delivery termination by original event ID and Temporal timestamp. Intervals use nanoseconds on that History clock. Missing or reversed timestamps leave the affected interval null. The original native receipt reports actual payload start and cleanup. [Campaign timing and receipts](../improvement/campaigns.md#authorize-one-local-codex-recipient)
+
+The plan can also opt in to one independent native task (A2) with separate authorization for the same role and permission generation. The accepted waiting Update and its exact receipt admit the handoff while the original Job and guarded readback proceed independently. When A2 starts, the native owner must verify that its original turn stopped and its slot is available before the waiting recipient (A1) can resume from the original passing result. Both Campaign turns and the guarded readback use the Campaign's original STOP fence and deadline. The fixed-check executor retains the original Job's own authority and lifetime. [Independent assignment](../improvement/campaigns.md#give-the-same-assigned-role-one-independent-task) · [Scheduling](../../src/ergora/campaigns/workflow.py) · [Native slot verification](../../src/ergora/campaigns/recipient.py)
 
 A plan can bind one root to `training_full_result` for an already authorized managed full verification. The locator pins the original experiment, Workflow, Run, Job and raw request and attempt digests under the same registered project revision. The original Campaign Run schedules one guarded read. A verified successful native result and archive evidence make the root observed. The readback reports the result digest and the resource owner's lease observation separately. A dependent fixed-check task uses confirmed `campaign observe-check` on its own pre-authorized Job.
 
