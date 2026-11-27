@@ -769,15 +769,21 @@ async def _read_recipient_history(converter, events, opening, intent, readback_c
         elif following.HasField('activity_task_scheduled_event_attributes'):
             raise ValueError('Campaign recipient History scheduled a second delivery')
         else:
-            result.update(status='unknown', completed_event_id=following.event_id)
+            result['status'] = 'unknown'
         terminals.append((following, start_id))
     if len(terminals) == 1:
         terminal, original_start_id = terminals[0]
         if original_start_id == start_id and terminal.event_id > (start_id or event.event_id):
             for kind in ('completed', 'failed', 'timed_out', 'canceled'):
                 field = f'activity_task_{kind}_event_attributes'
-                if terminal.HasField(field) and getattr(terminal, field).started_event_id == (start_id or 0):
-                    timing_events['delivery_terminal'] = terminal
+                if terminal.HasField(field):
+                    attributes = getattr(terminal, field)
+                    if (terminal.event_type == EventType.Value('EVENT_TYPE_ACTIVITY_TASK_' + kind.upper())
+                            and attributes.scheduled_event_id == event.event_id
+                            and attributes.started_event_id == (start_id or 0)
+                            and (kind != 'failed' or start_id is not None)):
+                        result['completed_event_id'] = terminal.event_id
+                        timing_events['delivery_terminal'] = terminal
                     break
     result['timing'] = _history_timing(timing_events, (
         ('ready', 'scheduled'), ('scheduled', 'worker_started'), ('worker_started', 'delivery_terminal')))

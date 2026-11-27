@@ -1068,7 +1068,9 @@ def test_assignment_recipient_requires_its_original_wait_and_schedule_before_res
                                  'unstarted', 'foreign-terminal', 'out-of-order', 'duplicate-terminal',
                                  'negative-reuses-start-id', 'wrong-schedule-type', 'wrong-started-type',
                                  'wrong-completion-type', 'start-reuses-schedule-id', 'completion-reuses-start-id',
-                                 'foreign-start-schedule', 'foreign-completion-schedule'])
+                                 'foreign-start-schedule', 'foreign-completion-schedule',
+                                 'negative-wrong-type', 'negative-foreign-schedule', 'negative-failed',
+                                 'negative-failed-before-start', 'negative-canceled', 'negative-untimed'])
 def test_recipient_history_retains_the_original_wake_and_unknown_delivery(kind):
     pytest.importorskip('temporalio')
     from temporalio.api.enums.v1 import EventType
@@ -1103,14 +1105,22 @@ def test_recipient_history_retains_the_original_wake_and_unknown_delivery(kind):
             ending.event_time.seconds = 6
             ending.event_time.nanos = 140
         unknown_delivery = kind in ('lost', 'unstarted', 'foreign-terminal', 'out-of-order', 'duplicate-terminal',
-                                    'negative-reuses-start-id')
+                                    'negative-reuses-start-id', 'negative-wrong-type', 'negative-foreign-schedule',
+                                    'negative-failed', 'negative-failed-before-start', 'negative-canceled',
+                                    'negative-untimed')
         if unknown_delivery:
-            ending.event_type = EventType.EVENT_TYPE_ACTIVITY_TASK_TIMED_OUT
-            timed_out = ending.activity_task_timed_out_event_attributes
-            timed_out.scheduled_event_id = 22
-            timed_out.started_event_id = {
-                'lost': 23, 'unstarted': 0, 'foreign-terminal': 19, 'out-of-order': 23, 'duplicate-terminal': 0,
-                'negative-reuses-start-id': 23}[kind]
+            terminal_kind = {'negative-failed': 'failed', 'negative-failed-before-start': 'failed',
+                             'negative-canceled': 'canceled'}.get(kind, 'timed_out')
+            ending.event_type = EventType.Value('EVENT_TYPE_ACTIVITY_TASK_' + terminal_kind.upper())
+            terminal = getattr(ending, f'activity_task_{terminal_kind}_event_attributes')
+            terminal.scheduled_event_id = 99 if kind == 'negative-foreign-schedule' else 22
+            terminal.started_event_id = {
+                'unstarted': 0, 'foreign-terminal': 19, 'duplicate-terminal': 0,
+                'negative-failed-before-start': 0}.get(kind, 23)
+            if kind == 'negative-wrong-type':
+                ending.event_type = EventType.EVENT_TYPE_TIMER_FIRED
+            elif kind == 'negative-untimed':
+                ending.ClearField('event_time')
         elif kind == 'duplicate':
             ending.event_type = EventType.EVENT_TYPE_ACTIVITY_TASK_SCHEDULED
             ending.activity_task_scheduled_event_attributes.CopyFrom(attrs)
@@ -1132,7 +1142,8 @@ def test_recipient_history_retains_the_original_wake_and_unknown_delivery(kind):
         elif kind == 'foreign-completion-schedule':
             completed.scheduled_event_id = 99
         events = {
-            'unstarted': [schedule, ending], 'out-of-order': [schedule, ending, started],
+            'unstarted': [schedule, ending], 'negative-failed-before-start': [schedule, ending],
+            'out-of-order': [schedule, ending, started],
             'duplicate-terminal': [schedule, ending, ending],
         }.get(kind, [schedule, started, ending])
         args = (converter, events, {'task_queue': 'original-queue'}, intent, ready)
@@ -1147,16 +1158,24 @@ def test_recipient_history_retains_the_original_wake_and_unknown_delivery(kind):
         else:
             result = await _read_recipient_history(*args)
             assert result['intent'] == intent and result['scheduled_event_id'] == 22
-            assert result['completed_event_id'] == ending.event_id
+            uncorroborated = ('foreign-terminal', 'out-of-order', 'duplicate-terminal', 'negative-reuses-start-id',
+                              'negative-wrong-type', 'negative-foreign-schedule', 'negative-failed-before-start')
+            if kind in uncorroborated:
+                assert 'completed_event_id' not in result
+            else:
+                assert result['completed_event_id'] == ending.event_id
             assert result['status'] == ('unknown' if unknown_delivery else 'observed')
             timing = result['timing']
             assert timing['clock'] == 'temporal_history'
             assert timing['intervals_ns']['scheduled_to_worker_started'] == (
-                None if kind in ('untimed', 'skewed', 'unstarted', 'duplicate-terminal') else 20)
+                None if kind in ('untimed', 'skewed', 'unstarted', 'duplicate-terminal',
+                                 'negative-failed-before-start') else 20)
             assert timing['intervals_ns']['ready_to_scheduled'] == (None if kind == 'untimed' else 1_000_000_010)
-            if kind in ('unstarted', 'foreign-terminal', 'out-of-order', 'duplicate-terminal', 'negative-reuses-start-id'):
+            if kind in (*uncorroborated, 'unstarted', 'negative-untimed'):
                 assert timing['intervals_ns']['worker_started_to_delivery_terminal'] is None
                 assert ('delivery_terminal' in timing['events']) is (kind == 'unstarted')
+            elif unknown_delivery:
+                assert timing['events']['delivery_terminal']['event_id'] == ending.event_id
             if kind != 'untimed':
                 assert timing['events']['scheduled'] == {'event_id': 22, 'seconds': 5, 'nanos': 100}
             else:

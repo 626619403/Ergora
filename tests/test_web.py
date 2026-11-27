@@ -85,12 +85,107 @@ def test_campaign_timeline_reads_and_exposes_only_the_selected_original_task(con
     assert observed["task_state"] == selected and observed["task_observation_history"] == attempt
     assert observed["task_evidence"]["correlation"] == "unavailable"
     assert "training_task" not in observed
+    assert "assignment" not in observed
     assert "direct_dependencies" not in observed
     assert observed["stop"] == {"status": "unknown", "remote_status": "unavailable", "update_id": "original-stop",
                                 "decision": None, "receipt_run_id": None, "local_fence_saved": True}
     assert observed["rollover"] == {"status": "unresolved", "update_id": "original-rollover"}
     assert observed["readback_completion"] == completion
     assert "other-private" not in response.text
+
+
+@pytest.mark.parametrize("disposition", ["released", "unknown", "release-error", "refused", "completed-unknown", "contradictory",
+                                         "reason-path", "reason-object", "native-blocker", "other-task"])
+def test_campaign_timeline_scopes_independent_assignment_evidence(console, monkeypatch, disposition):
+    from errno import EACCES
+    from os import strerror
+
+    from ergora.campaigns import application
+
+    client, state, _ = console
+    task = {"task_id": "fixed", "depends_on": [], "source": {}}
+    assignee = {"role": "performance-analyst", "generation": 8}
+    claim = {"native_run_id": "original-a2-run", "wake_id": "original-a2-wake", "waiting_receipt_sha256": "a" * 64}
+    history = {"status": "unknown", "waiting_accepted_event_id": 9, "waiting_completed_event_id": 10,
+               "scheduled_event_id": 12, "started_event_id": 13}
+    original_history = {**history, "completed_event_id": 14}
+    native = {"session_id": "a2-session", "parent_run_id": "a2-parent", "intent_id": "a2-intent",
+              "run_id": claim["native_run_id"], "dispatch": "accepted"}
+    run = {"status": "succeeded", "result_sha256": "b" * 64, "execution_stopped": True, "returncode": 0}
+    start_status = "started"
+    release = {"session_id": native["session_id"], "run_id": native["run_id"], "request_sha256": "c" * 64}
+    private_lock = state.root / "runs/a2-session.session.lock"
+    scoped_error = str(PermissionError(EACCES, strerror(EACCES), str(private_lock)))
+    projected_extra, raw_extra = {}, {}
+    raw_blocker = None
+    if disposition == "unknown":
+        run = None
+        start_status = native["dispatch"] = "unrecorded"
+        release = None
+    elif disposition == "release-error":
+        release = None
+        raw_extra["release_error"] = scoped_error
+        projected_extra["release_observation_failed"] = True
+    elif disposition == "refused":
+        run = None
+        start_status = native["dispatch"] = "unrecorded"
+        history.update(status="blocked", completed_event_id=14, reason="stale_parent")
+        original_history.update(status="blocked", outcome={"status": "blocked", "reason": "stale_parent"})
+        raw_extra["refusal"] = projected_extra["refusal"] = {"attempt_sha256": "d" * 64, "reason": "stale_parent"}
+        release = {"status": "refused", "attempt_sha256": projected_extra["refusal"]["attempt_sha256"]}
+    elif disposition == "completed-unknown":
+        history["completed_event_id"] = 14
+        original_history["outcome"] = {"status": "unknown"}
+    elif disposition == "contradictory":
+        history = {"status": "contradictory", "verification_failed": True}
+        original_history = {"status": "contradictory", "error": f"Invalid decoded payload at {private_lock}"}
+    elif disposition in ("reason-path", "reason-object"):
+        history.update(status="blocked", completed_event_id=14)
+        reason = scoped_error if disposition == "reason-path" else {"error": scoped_error}
+        original_history.update(status="blocked", outcome={"status": "blocked", "reason": reason})
+        raw_blocker = reason
+    elif disposition == "native-blocker":
+        run = {"status": "cancelled", "execution_stopped": True, "returncode": -9,
+               "campaign_recipient_blocker": "stopped"}
+    raw_run = None if run is None else {**run, "submitted": "private-value"}
+    if raw_blocker is not None:
+        raw_run["campaign_recipient_blocker"] = raw_blocker
+    assignment = {"waiting_task_id": "other-private" if disposition == "other-task" else task["task_id"],
+                  "task_id": "independent", "assignee": {**assignee, "context": "private-value"},
+                  "slot_status": "claimed" if release is None else "released",
+                  "claim": {"native_run_id": claim["native_run_id"],
+                            "intent": {"wake_id": claim["wake_id"], "source": {
+                                "waiting_receipt_sha256": claim["waiting_receipt_sha256"], "grant": "private-value"}},
+                            "slot_release": {"context_digest": "private-value"}},
+                  "history": {**original_history, "intent": "private-value"},
+                  "native_receipt": {**native, "native_start": {"status": start_status, "process": "private-value"},
+                                     "run": raw_run},
+                  "release": {**release, "context_digest": "private-value"} if release is not None else None, **raw_extra}
+
+    async def status(store, project, campaign, *, online, task_id):
+        assert (store.root, project, campaign, online, task_id) == (state.root, "demo", "record", True, "fixed")
+        return {"workflow_state_status": "unavailable", "task_evidence": task,
+                "plan": {"acceptance": "Inspect original independent assignment", "limits": {"expires_at": 100},
+                         "tasks": [task]},
+                "stop": {"status": "not_recorded", "remote_status": "not_requested", "update_id": None, "receipt": None},
+                "assignment": assignment}
+
+    monkeypatch.setattr(application, "status", status)
+    response = client.get("/api/projects/demo/campaigns/record/tasks/fixed/timeline")
+    assert response.status_code == 200
+    projected = response.json()
+    assert projected["task_state"] is None and projected["task_evidence"] == task
+    assert "private-value" not in response.text and "other-private" not in response.text
+    assert str(private_lock) not in response.text
+    if disposition == "other-task":
+        assert "assignment" not in projected
+    else:
+        assert projected["assignment"] == {
+            "waiting_task_id": "fixed", "task_id": "independent", "assignee": assignee,
+            "slot_status": assignment["slot_status"], "claim": claim, "history": history,
+            "native_receipt": {**native, "start_status": start_status, **(run or {})},
+            "release": release, **projected_extra,
+        }
 
 
 @pytest.mark.parametrize("source", ["workflow", "history", "unavailable"])

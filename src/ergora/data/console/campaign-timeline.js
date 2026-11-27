@@ -112,6 +112,38 @@ function trainingEvidence({ locator, recipient, source_kind },
   ];
 }
 
+function assignmentEvidence({ task_id, assignee, slot_status, claim, history, native_receipt: native, release, refusal,
+  release_observation_failed }) {
+  return panel("原独立任务分配", null,
+    facts([
+      ["独立任务 ID", task_id],
+      ["原分配角色", assignee.role],
+      ["原权限代次", assignee.generation],
+      ["原共享分配槽状态", slot_status],
+      ["原独立任务认领 Run ID", claim?.native_run_id],
+      ["原独立任务唤醒 ID", claim?.wake_id],
+      ["独立任务 History 状态", history?.status],
+      ...(history?.reason ? [["原独立任务 History 原因", history.reason]] : []),
+      ["独立任务 Activity 调度事件 ID", history?.scheduled_event_id],
+      ["独立任务 Activity 开始事件 ID", history?.started_event_id],
+      ...(history?.completed_event_id == null ? [] : [["独立任务 Activity 完成事件 ID", history.completed_event_id]]),
+      ["原独立任务原生 Run ID", native?.run_id],
+      ["原独立任务原生派发", native?.dispatch],
+      ["原独立任务原生启动", native?.start_status],
+      ["原独立任务原生结果", native?.status],
+      ...(native?.campaign_recipient_blocker ? [["原独立任务原生阻塞原因", native.campaign_recipient_blocker]] : []),
+      ...(refusal ? [["原独立任务拒绝原因", refusal.reason]] : []),
+      ...(release?.status ? [["原独立任务释放状态", release.status]] : []),
+      ["原独立任务释放 Run ID", release?.run_id],
+    ]),
+    history?.verification_failed ? node("p", { className: "form-note", role: "status" },
+      "原独立任务 History 核验失败。") : null,
+    release_observation_failed ? node("p", { className: "form-note", role: "status" },
+      "原独立任务释放读回失败。") : null,
+    record("原独立任务认领", claim),
+    record("原独立任务释放证据", release));
+}
+
 function timeline(result) {
   const evidence = result.task_evidence;
   const training = result.training_task;
@@ -210,6 +242,7 @@ function timeline(result) {
         ]),
         record("冻结的原 Job 选择", evidence.source),
         record("原 Job 所有者返回的证据", job)),
+      ...(result.assignment ? [assignmentEvidence(result.assignment)] : []),
     ]),
   ];
 }

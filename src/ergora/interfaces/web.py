@@ -508,24 +508,71 @@ class CompositionFreezePayload(CompositionSelectionPayload):
     preview_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
 
 
+def _timeline_native_receipt(receipt: dict | None) -> dict | None:
+    if receipt is None:
+        return None
+    run = receipt["run"] or {}
+    return {**{key: receipt[key] for key in ("session_id", "parent_run_id", "intent_id", "run_id", "dispatch")},
+            "start_status": receipt["native_start"]["status"],
+            **{key: run[key] for key in ("status", "result_sha256", "execution_stopped", "returncode",
+                                       "campaign_recipient_blocker") if key in run}}
+
+
 def _training_timeline_recipient(recipient: dict) -> dict:
     history = recipient["history"]
     intent = recipient["intent"]
-    receipt = recipient["native_receipt"]
-    native = None
-    if receipt is not None:
-        run = receipt["run"] or {}
-        native = {key: receipt[key] for key in ("session_id", "parent_run_id", "intent_id", "run_id", "dispatch")}
-        native.update(start_status=receipt["native_start"]["status"],
-                      **{key: run[key] for key in ("status", "result_sha256", "execution_stopped", "returncode",
-                                                   "campaign_recipient_blocker")
-                         if key in run})
     return {"status": recipient["status"], "reason": recipient.get("reason"),
             "wake_id": intent["wake_id"] if intent is not None else None,
             "history": ({key: history[key] for key in ("status", "scheduled_event_id", "started_event_id",
                                                       "completed_event_id") if key in history}
                         if history is not None else None),
-            "native_receipt": native}
+            "native_receipt": _timeline_native_receipt(recipient["native_receipt"])}
+
+
+_ASSIGNMENT_HISTORY_REASONS = frozenset({
+    "original_native_intent_occupied", "assignment_already_resumed", "stale_parent", "session_slot_timeout",
+    "stopped", "expired", "native_turn_expired", "recipient_authority_revoked",
+})
+_ASSIGNMENT_NATIVE_BLOCKERS = frozenset({"stopped", "expired", "authority_unavailable"})
+
+
+def _assignment_timeline(assignment: dict) -> dict:
+    claim = assignment["claim"]
+    history = assignment["history"]
+    release = assignment["release"]
+    refusal = assignment.get("refusal")
+    native = _timeline_native_receipt(assignment["native_receipt"])
+    if native is not None:
+        blocker = native.get("campaign_recipient_blocker")
+        if not isinstance(blocker, str) or blocker not in _ASSIGNMENT_NATIVE_BLOCKERS:
+            native.pop("campaign_recipient_blocker", None)
+    projected_history = None
+    if history is not None:
+        projected_history = {key: history[key] for key in ("status", "waiting_accepted_event_id",
+                             "waiting_completed_event_id", "scheduled_event_id", "started_event_id") if key in history}
+        if "error" in history:
+            projected_history["verification_failed"] = True
+        # The History owner supplies an outcome only for a verified completed Activity.
+        outcome = history.get("outcome")
+        if isinstance(outcome, dict) and outcome.get("status") in ("observed", "blocked", "unknown"):
+            if "completed_event_id" in history:
+                projected_history["completed_event_id"] = history["completed_event_id"]
+            reason = outcome.get("reason")
+            if outcome["status"] == "blocked" and isinstance(reason, str) and reason in _ASSIGNMENT_HISTORY_REASONS:
+                projected_history["reason"] = reason
+    return {"waiting_task_id": assignment["waiting_task_id"], "task_id": assignment["task_id"],
+            "assignee": {key: assignment["assignee"][key] for key in ("role", "generation")},
+            "slot_status": assignment["slot_status"],
+            "claim": ({"native_run_id": claim["native_run_id"], "wake_id": claim["intent"]["wake_id"],
+                       "waiting_receipt_sha256": claim["intent"]["source"]["waiting_receipt_sha256"]}
+                      if claim is not None else None),
+            "history": projected_history,
+            "native_receipt": native,
+            "release": ({key: release[key] for key in ("status", "session_id", "run_id", "request_sha256",
+                                                        "attempt_sha256") if key in release}
+                        if release is not None else None),
+            **({"refusal": {key: refusal[key] for key in ("attempt_sha256", "reason")}} if refusal is not None else {}),
+            **({"release_observation_failed": True} if "release_error" in assignment else {})}
 
 
 def create_app(home: Path | None = None) -> FastAPI:
@@ -1051,6 +1098,9 @@ def create_app(home: Path | None = None) -> FastAPI:
         stop = observed["stop"]
         stop_receipt = stop["receipt"] or {}
         rollover = observed.get("rollover")
+        assignment = observed.get("assignment")
+        assignment_evidence = (_assignment_timeline(assignment) if assignment is not None and not training_task
+                               and assignment["waiting_task_id"] == task_id else None)
         completion = observed.get("readback_completion")
         if completion is not None and completion.get("task_id") == task_id:
             completion = {name: value for name, value in completion.items() if name != "recipient"}
@@ -1068,6 +1118,7 @@ def create_app(home: Path | None = None) -> FastAPI:
                 "task_state": task_state,
                 **({"direct_dependencies": direct_dependencies} if direct_dependencies else {}),
                 **({"training_task": training_task} if training_task else {}),
+                **({"assignment": assignment_evidence} if assignment_evidence is not None else {}),
                 **terminal_evidence,
                 "stop": {"status": stop["status"], "remote_status": stop["remote_status"],
                          "update_id": stop["update_id"], "local_fence_saved": stop.get("local_fence_saved"),
