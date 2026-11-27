@@ -10,15 +10,49 @@ const dependencySources = {
   history: "原 History",
   unavailable: "未读取到",
 };
+const readbackFollowupLabels = {
+  ergora_campaign_training_full_result_reobserve: "守卫重读",
+  ergora_campaign_training_full_result_recover_receipt: "回执核对",
+};
 
-function trainingEvidence({ locator, recipient, source_kind }, completion, conflict) {
+function readbackTerminal(label, terminal) {
+  const cause = terminal.cause;
+  const disposition = terminal.status === "timed_out" ? "超时" : "终止";
+  return panel(`${label} Activity 终态`, null,
+    facts([
+      [`${label}状态`, terminal.status],
+      [`${label}所属 Run ID`, terminal.run_id],
+      [`${label} Activity ID`, terminal.activity_id],
+      ...(terminal.activity_type ? [[`${label} Activity 类型`, terminal.activity_type]] : []),
+      [`${label} Activity 调度事件 ID`, terminal.scheduled_event_id],
+      [`${label} Activity 开始事件 ID`, terminal.started_event_id],
+      [`${label} Activity ${disposition}事件 ID`, terminal.terminal_event_id],
+      ...(terminal.original_timeout_event_id == null ? [] :
+        [["关联原读取 Activity 超时事件 ID", terminal.original_timeout_event_id]]),
+      ...(terminal.cancel_requested_event_id == null ? [] :
+        [[`${label} Activity 取消请求事件 ID`, terminal.cancel_requested_event_id]]),
+      ...(cause ? [
+        [`${label}原因类别`, cause.kind],
+        ...(cause.type ? [[`${label}原因类型`, cause.type]] : []),
+        ...(cause.non_retryable == null ? [] : [[`${label}原因不可重试`, cause.non_retryable]]),
+      ] : []),
+    ]),
+    record(`History 核对的${label}终态`, terminal));
+}
+
+function trainingEvidence({ locator, recipient, source_kind },
+  { readback_completion: completion, readback_terminal: terminal, readback_followup_terminal: followup }, conflict) {
   const lease = completion?.local_gpu_lease;
   const history = recipient?.history;
   const native = recipient?.native_receipt;
   const recovery = completion?.recovery_history;
+  const recoveryCompletionLabel = completion?.reobservation_activity_id ?
+    "守卫重读 Activity 完成事件 ID" : "回执核对 Activity 完成事件 ID";
   const screen = source_kind === "training_screen_result";
   const gpuRelease = source_kind === "training_gpu_release";
   return [
+    ...(terminal ? [readbackTerminal("原读取", terminal)] : []),
+    ...(followup ? [readbackTerminal(readbackFollowupLabels[followup.activity_type] ?? "后续读取", followup)] : []),
     panel(gpuRelease ? "原资源释放" : screen ? "原筛选决定" : "原训练结果", null,
       conflict,
       facts([
@@ -44,8 +78,8 @@ function trainingEvidence({ locator, recipient, source_kind }, completion, confl
         ...(!gpuRelease ? [["训练执行回收记录 SHA256", completion?.reap_record_sha256]] : []),
         ["读取守卫清理 SHA256", completion?.reader_cleanup_sha256],
         ...(recovery ? [
-          ["原读取 Activity 超时事件 ID", recovery.original_timeout_event_id],
-          ["回执核对 Activity 完成事件 ID", recovery.completed_event_id],
+          ...(terminal ? [] : [["原读取 Activity 超时事件 ID", recovery.original_timeout_event_id]]),
+          [recoveryCompletionLabel, recovery.completed_event_id],
         ] : [["训练读取 Activity 完成事件 ID", completion?.completed_event_id]]),
       ]),
       record("History 核对的原训练读取回执", completion)),
@@ -157,7 +191,7 @@ function timeline(result) {
         record("Workflow 返回的定时读取记录", currentReadback)) : null,
       record("Workflow 返回的原等待回执", current?.waiting_receipt),
       record("Workflow 返回的原终态回执", current?.receipt)),
-    ...(training ? trainingEvidence(training, completion, conflict) : [
+    ...(training ? trainingEvidence(training, result, conflict) : [
       panel("原 Update 与 History", null, conflict,
         history.waiting || history.terminal ? null : empty("该任务未返回已保存的 Update 尝试。"),
         update("等待 Update", history.waiting),

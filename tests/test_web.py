@@ -135,6 +135,45 @@ def test_campaign_timeline_projects_only_direct_dependency_state(console, monkey
     assert "-private" not in response.text
 
 
+@pytest.mark.parametrize("terminal_task", ["full", "other-private"])
+@pytest.mark.parametrize("activity_type", ["ergora_campaign_training_full_result_reobserve",
+                                         "ergora_campaign_training_full_result_recover_receipt"])
+def test_campaign_training_timeline_keeps_only_selected_history_terminals(console, monkeypatch, terminal_task,
+                                                                         activity_type):
+    from ergora.campaigns import application
+
+    client, state, _ = console
+    task = {"task_id": "full", "depends_on": [], "source": {"kind": "training_full_result", "locator": {}}}
+    terminal = {"task_id": terminal_task, "status": "timed_out", "run_id": "original-run",
+                "activity_id": "training-full-result-readback:original", "source_sha256": "a" * 64,
+                "scheduled_event_id": 11, "started_event_id": 12, "terminal_event_id": 13,
+                "cause": {"kind": "timeout", "type": "HEARTBEAT"}}
+    followup = {**terminal, "status": "cancelled", "activity_id": "original-followup",
+                "activity_type": activity_type, "original_timeout_event_id": 13,
+                "scheduled_event_id": 17, "started_event_id": 18, "cancel_requested_event_id": 19,
+                "terminal_event_id": 20}
+    del followup["cause"]
+
+    async def status(store, project, campaign, *, online, task_id):
+        assert (store.root, project, campaign, online, task_id) == (state.root, "demo", "record", True, "full")
+        return {"run_id": "original-run", "workflow_state_status": "unavailable",
+                "plan": {"acceptance": "Read the original result", "limits": {"expires_at": 100}, "tasks": [task]},
+                "stop": {"status": "not_recorded", "remote_status": "not_requested", "update_id": None, "receipt": None},
+                "readback_terminal": terminal, "readback_followup_terminal": followup}
+
+    monkeypatch.setattr(application, "status", status)
+    response = client.get("/api/projects/demo/campaigns/record/tasks/full/timeline")
+    assert response.status_code == 200, response.text
+    observed = response.json()
+    assert observed["task_state"] is None and observed["readback_completion"] is None
+    if terminal_task == task["task_id"]:
+        assert observed["readback_terminal"] == terminal
+        assert observed["readback_followup_terminal"] == followup
+    else:
+        assert "readback_terminal" not in observed and "readback_followup_terminal" not in observed
+        assert "other-private" not in response.text
+
+
 @pytest.mark.parametrize("workflow_observed", [True, False])
 @pytest.mark.parametrize("kind", ["training_full_result", "training_screen_result", "training_gpu_release"])
 def test_campaign_training_timeline_keeps_the_original_result_and_native_dispositions(console, monkeypatch,
@@ -191,6 +230,7 @@ def test_campaign_training_timeline_keeps_the_original_result_and_native_disposi
         **({"readback_observation": readback} if workflow_observed else {"state_source": "history"}),
     }
     assert observed["readback_completion"] == completion
+    assert "readback_terminal" not in observed and "readback_followup_terminal" not in observed
     assert observed["training_task"] == {
         "task_id": "full", "depends_on": [], "locator": locator, **scope,
         "recipient": {"status": "observed", "reason": None, "wake_id": "original-wake", "history": activity,

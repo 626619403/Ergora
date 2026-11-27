@@ -177,16 +177,16 @@ async def _read_original(runtime, output, opening, attempt, run_id, *, client=No
         try:
             async with asyncio.timeout(runtime.RPC_SECONDS):
                 if successor is None:
-                    updates, completion, wake, terminal = await runtime.read_task_history(
+                    updates, completion, wake, terminal, followup_terminal = await runtime.read_task_history(
                         client, handle, opening, check_commands)
                 else:
                     by_run = {}
                     for command in check_commands:
                         target = _command_handle(client, handle, successor, command)
                         by_run.setdefault(target.run_id, (target, []))[1].append(command)
-                    updates, completion, wake, terminal = {}, None, None, None
+                    updates, completion, wake, terminal, followup_terminal = {}, None, None, None, None
                     for target, commands in by_run.values():
-                        decisions, _, _, _ = await runtime.read_task_history(client, target, opening, commands)
+                        decisions, _, _, _, _ = await runtime.read_task_history(client, target, opening, commands)
                         updates.update(decisions)
         except (TimeoutError, ConnectionError, runtime.RPCError):
             if full_result:
@@ -195,6 +195,9 @@ async def _read_original(runtime, output, opening, attempt, run_id, *, client=No
         except ValueError as error:
             if not include_task_history and not full_result:
                 raise
+            original_terminal = getattr(error, 'verified_original_terminal', None)
+            if full_result and original_terminal is not None:
+                observed['readback_terminal'] = original_terminal
             return {**observed, 'task_observation_history_status': 'contradictory',
                     'task_observation_history_error': str(error)}
         if check_commands:
@@ -209,6 +212,8 @@ async def _read_original(runtime, output, opening, attempt, run_id, *, client=No
             observed['readback_terminal'] = terminal
         elif full_result and completion is None:
             observed['readback_history_status'] = 'unresolved'
+        if followup_terminal is not None:
+            observed['readback_followup_terminal'] = followup_terminal
         if wake is not None and (completion is None or 'recipient' not in completion):
             observed['recipient_history'] = wake
     return observed
@@ -614,7 +619,7 @@ def _readback_admitted(task):
 async def _readback_check_response(runtime, client, handle, opening, view, waiting):
     if waiting is None:
         raise ValueError('Campaign guarded result lacks its original waiting attempt')
-    _, completion, _, _ = await runtime.read_task_history(client, handle, opening, [waiting])
+    _, completion, _, _, _ = await runtime.read_task_history(client, handle, opening, [waiting])
     if completion is None or any(completion.get(key) != value for key, value in view['readback_observation'].items()
                                  if key != 'status'):
         raise ValueError('Campaign guarded result does not match its original completed Activity')
@@ -634,7 +639,7 @@ async def _check_attempt_response(runtime, client, handle, files, opening, attem
         if waiting is not None:
             try:
                 async with asyncio.timeout(runtime.RPC_SECONDS):
-                    updates, completion, _, _ = await runtime.read_task_history(client, handle, opening, [waiting, command])
+                    updates, completion, _, _, _ = await runtime.read_task_history(client, handle, opening, [waiting, command])
             except (TimeoutError, ConnectionError, runtime.RPCError):
                 return _check_response(opening, task, command, None)
             update_id = command['attempt']['update_id']

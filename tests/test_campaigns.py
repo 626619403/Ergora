@@ -2096,8 +2096,8 @@ def test_opted_fixed_check_shares_manual_and_guarded_readiness(tmp_path):
         accepted = await send(later)
         assert accepted['decision'] == 'observed'
         commands.append(later)
-        updates, readback, wake, terminal = await runtime.read_task_history(client, handle, opening, commands)
-        assert terminal is None
+        updates, readback, wake, terminal, followup_terminal = await runtime.read_task_history(client, handle, opening, commands)
+        assert terminal is None and followup_terminal is None
         selected_wake, = deliveries[workflow_id]
         assert wake['intent'] == selected_wake
         if manual_first or holds_read:
@@ -2107,8 +2107,8 @@ def test_opted_fixed_check_shares_manual_and_guarded_readiness(tmp_path):
             assert selected_wake['source']['activity_id'] == readback['activity_id']
             late = command(selected, succeeded, wait)
             assert await send(late) is None and await send(late) is None
-            updates, completion, original_wake, terminal = await runtime.read_task_history(client, handle, opening, [*commands, late])
-            assert terminal is None
+            updates, completion, original_wake, terminal, followup_terminal = await runtime.read_task_history(client, handle, opening, [*commands, late])
+            assert terminal is None and followup_terminal is None
             failed = updates[late['attempt']['update_id']]
             assert failed['status'] == 'failed' and failed['receipt'] is None
             assert failed['reason'] == runtime.READBACK_ALREADY_ADMITTED
@@ -2429,10 +2429,12 @@ def test_receipt_recovery_history_requires_original_activity_lineage(monkeypatch
             events[2].activity_task_completed_event_attributes.started_event_id = 18
         if fault == 'completion-before-start':
             events[2].event_id = 20
-        return await runtime._readback_followup_completion(converter, old, events, opening, task, grant, original_id)
+        return await runtime._readback_followup_history(
+            converter, old, events, opening, task, grant, original_id, include_terminal=full_result)
 
     if fault is None:
-        completion = asyncio.run(exercise())
+        completion, terminal = asyncio.run(exercise())
+        assert terminal is None
         assert completion['recovery_history']['completed_event_id'] == 21
         assert validated == [original_result]
     else:
@@ -2791,7 +2793,7 @@ def test_training_task_view_retains_verified_history_without_live_admission(view
 
     async def history(client, selected, plan, commands):
         assert (selected, plan, commands) == (handle, opening, ())
-        return {}, None if view == 'missing' else completion, None, None
+        return {}, None if view == 'missing' else completion, None, None, None
 
     runtime = SimpleNamespace(RPC_SECONDS=1, original=original, runtime_status=state,
                               read_task_history=history, RPCError=RuntimeError)
@@ -2938,6 +2940,138 @@ def test_full_result_history_exposes_only_exact_terminal_blocker(case):
             if detail is not None:
                 expected['cause'] = detail
             assert observed['readback_terminal'] == expected
+
+    asyncio.run(exercise())
+
+
+@pytest.mark.parametrize('case', ('heartbeat', 'scheduled-only', 'started-only', 'before-start', 'foreign-schedule',
+                                 'receipt-failure', 'cancelled', 'missing-cancel', 'wrong-grant', 'wrong-start',
+                                 'wrong-attempt', 'wrong-type', 'duplicate-terminal', 'wrong-original-timeout',
+                                 'wrong-original-start'))
+def test_full_result_followup_terminal_is_separate_read_only_history(case):
+    pytest.importorskip('temporalio')
+    from temporalio.api.enums.v1 import EventType, TimeoutType
+    from temporalio.api.history.v1 import HistoryEvent
+    from temporalio.converter import DataConverter
+    from ergora.campaigns import records, workflow
+
+    locator = {'experiment_id': 'alpha', 'workflow_id': 'perf-experiment/alpha',
+               'run_id': 'training-run', 'job_id': 'local-perf-alpha',
+               'native_request_sha256': 'a'*64, 'attempt_sha256': 'b'*64}
+    root = {'task_id': 'full', 'depends_on': [], 'source': {'kind': 'training_full_result', 'locator': locator},
+            'readback': {'due_at': 100, 'deadline_at': 120}}
+    option = 'recover_full_result_receipt' if case == 'receipt-failure' else 'reobserve_full_result_after_reader_loss'
+    root[option] = True
+    opening = {'workflow_id': 'campaign', 'task_queue': 'original-queue', 'plan': {'tasks': [root]}}
+    run = 'original-run'
+    grant = records.readback_grant(opening, run, root, None)
+    activity_id = records.readback_id(grant)
+    followup_id = records.readback_followup_id(root, grant)
+    followup_type = records.readback_followup_activity(root)
+    live_tasks = {'full': {'status': 'waiting_job', 'eligible': False}}
+
+    def event(event_id, kind, attributes, *, declared=None):
+        return HistoryEvent(event_id=event_id,
+                            event_type=EventType.Value('EVENT_TYPE_ACTIVITY_TASK_' + (declared or kind)),
+                            **{f'activity_task_{kind.lower()}_event_attributes': attributes})
+
+    async def exercise():
+        converter = DataConverter.default
+
+        async def scheduled(ident, action, payload):
+            return {'activity_id': ident, 'activity_type': {'name': action},
+                    'task_queue': {'name': opening['task_queue']}, 'retry_policy': {'maximum_attempts': 1},
+                    'input': {'payloads': await converter.encode([payload])}}
+
+        def timeout(scheduled_id, started_id, cause):
+            return {'scheduled_event_id': scheduled_id, 'started_event_id': started_id,
+                    'failure': {'timeout_failure_info': {'timeout_type': TimeoutType.Value('TIMEOUT_TYPE_' + cause)}}}
+
+        initial_cause = 'START_TO_CLOSE' if case == 'wrong-original-timeout' else 'HEARTBEAT'
+        initial_start = 98 if case == 'wrong-original-start' else 12
+        following_grant = {**grant, 'run_id': 'foreign'} if case == 'wrong-grant' else grant
+        events = [event(11, 'SCHEDULED', await scheduled(activity_id, records.TRAINING_READBACK_ACTIVITY, grant)),
+                  event(12, 'STARTED', {'scheduled_event_id': 11, 'attempt': 1}),
+                  event(13, 'TIMED_OUT', timeout(11, initial_start, initial_cause)),
+                  event(19, 'SCHEDULED', await scheduled(followup_id, followup_type, following_grant))]
+        start = None if case in ('scheduled-only', 'before-start') else 20
+        if start is not None:
+            events.append(event(start, 'STARTED', {'scheduled_event_id': 19, 'attempt': 2 if case == 'wrong-attempt' else 1}))
+        terminal_id, expected_status = 21, 'timed_out'
+        cause = {'kind': 'timeout', 'type': 'HEARTBEAT'}
+        if case == 'receipt-failure':
+            events.append(event(21, 'FAILED', {'scheduled_event_id': 19, 'started_event_id': start, 'failure': {
+                'message': 'private reader output', 'application_failure_info': {
+                    'type': '/private/unsanitized-type', 'non_retryable': True}}}))
+            expected_status, cause = 'failed', {'kind': 'application', 'non_retryable': True}
+        elif case in ('cancelled', 'missing-cancel'):
+            if case == 'cancelled':
+                events.append(event(21, 'CANCEL_REQUESTED', {'scheduled_event_id': 19,
+                                                              'workflow_task_completed_event_id': 18}))
+            terminal_id, expected_status, cause = 22, 'cancelled', None
+            events.append(event(22, 'CANCELED', {'scheduled_event_id': 19, 'started_event_id': start,
+                                                  'latest_cancel_requested_event_id': 21}))
+        elif case not in ('scheduled-only', 'started-only'):
+            if case == 'before-start':
+                cause = {'kind': 'timeout', 'type': 'SCHEDULE_TO_CLOSE'}
+            event_attributes = timeout(99 if case == 'foreign-schedule' else 19,
+                                       98 if case == 'wrong-start' else start or 0, cause['type'])
+            finished = event(21, 'TIMED_OUT', event_attributes, declared='FAILED' if case == 'wrong-type' else None)
+            # Terminal timeouts can be recorded after the configured success cutoff.
+            finished.event_time.seconds = 123
+            events.append(finished)
+            if case == 'duplicate-terminal':
+                events.append(event(22, 'TIMED_OUT', event_attributes))
+
+        class Handle:
+            id = opening['workflow_id']
+            run_id = run
+
+            async def fetch_history_events(self, *, rpc_timeout):
+                for entry in events:
+                    yield entry
+
+        async def original(*_):
+            return Handle(), SimpleNamespace(run_id=run, status=SimpleNamespace(name='RUNNING'))
+
+        async def state(*_, **__):
+            return {'workflow_state_status': 'observed', 'tasks': live_tasks}
+
+        runtime = SimpleNamespace(RPC_SECONDS=1, original=original, runtime_status=state,
+                                  read_task_history=workflow.read_task_history, RPCError=RuntimeError)
+        client = SimpleNamespace(data_converter=converter, namespace='default')
+        stop = {'status': 'observed', 'receipt': {'decision': 'accepted'}}
+        view = await application._read_original(runtime, {'attempt_sha256': 'original', 'stop': stop}, opening, {}, run,
+                                               client=client, read_state=True)
+        assert view['tasks'] == live_tasks and view['stop'] == stop
+        assert 'readback_completion' not in view and 'recipient_history' not in view
+        if case == 'wrong-original-start':
+            assert view['task_observation_history_status'] == 'contradictory'
+            assert 'readback_terminal' not in view and 'readback_followup_terminal' not in view
+            return
+        assert view['readback_terminal'] == {
+            'status': 'timed_out', 'run_id': run, 'task_id': 'full', 'activity_id': activity_id,
+            'source_sha256': grant['source_sha256'], 'scheduled_event_id': 11, 'started_event_id': 12,
+            'terminal_event_id': 13, 'cause': {'kind': 'timeout', 'type': initial_cause},
+        }
+        rejected = {'missing-cancel', 'wrong-grant', 'wrong-start', 'wrong-attempt', 'wrong-type',
+                    'duplicate-terminal', 'wrong-original-timeout'}
+        if case in rejected:
+            assert view['task_observation_history_status'] == 'contradictory'
+            assert 'readback_followup_terminal' not in view
+            return
+        if case in ('scheduled-only', 'started-only', 'foreign-schedule'):
+            assert 'readback_followup_terminal' not in view
+            return
+        expected = {'status': expected_status, 'run_id': run, 'task_id': 'full', 'activity_id': followup_id,
+                    'activity_type': followup_type, 'source_sha256': grant['source_sha256'],
+                    'original_timeout_event_id': 13, 'scheduled_event_id': 19, 'started_event_id': start,
+                    'terminal_event_id': terminal_id}
+        if cause is not None:
+            expected['cause'] = cause
+        if case == 'cancelled':
+            expected['cancel_requested_event_id'] = 21
+        assert view['readback_followup_terminal'] == expected
 
     asyncio.run(exercise())
 

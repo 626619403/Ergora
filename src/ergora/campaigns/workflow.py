@@ -484,6 +484,14 @@ async def read_check(client, handle, command):
     return await _read_update(client, handle, command, CHECK_UPDATE, require_check_receipt)
 
 
+class FollowupHistoryConflict(ValueError):
+    """A contradictory follow-up after verification of the original terminal."""
+
+    def __init__(self, error, original_terminal):
+        super().__init__(str(error))
+        self.verified_original_terminal = original_terminal
+
+
 async def read_task_history(client, handle, opening, commands):
     """Read saved task Updates and the opted-in Activity from one pinned History."""
     entries = {}
@@ -507,6 +515,7 @@ async def read_task_history(client, handle, opening, commands):
     recovery_id = readback_followup_id(task, grant) if readback_followup_activity(task) is not None else None
     recovery_events = []
     recovery_ids = set()
+    recovery_cancel_requests = []
     activity_events = []
     cancel_requests = []
     schedule_ids = set()
@@ -538,11 +547,14 @@ async def read_task_history(client, handle, opening, commands):
                     if event.HasField(field) and getattr(event, field).scheduled_event_id in recovery_ids:
                         recovery_events.append(event)
                         break
-        if (full_result and event.HasField('activity_task_cancel_requested_event_attributes')
-                and event.activity_task_cancel_requested_event_attributes.scheduled_event_id in schedule_ids):
-            if len(cancel_requests) < 2:
-                cancel_requests.append(event)
-            continue
+        if full_result and event.HasField('activity_task_cancel_requested_event_attributes'):
+            cancelled_schedule_id = event.activity_task_cancel_requested_event_attributes.scheduled_event_id
+            if cancelled_schedule_id in recovery_ids and len(recovery_cancel_requests) < 2:
+                recovery_cancel_requests.append(event)
+            if cancelled_schedule_id in schedule_ids:
+                if len(cancel_requests) < 2:
+                    cancel_requests.append(event)
+                continue
         # Keep one original Activity and a sentinel event to detect duplicates.
         if activity_id is None or len(activity_events) == 4:
             continue
@@ -568,15 +580,21 @@ async def read_task_history(client, handle, opening, commands):
                                   'completed_event_id': entry['completed_event_id'],
                                   'receipt': entry['receipt'],
                                   'status': 'failed' if entry.get('failed') else 'verified'}
-    completion = readback_terminal = None
+    completion = readback_terminal = followup_terminal = None
     if training or (timer_wait is not None and entries[timer_wait['attempt']['update_id']].get('receipt') is not None):
         completion, readback_terminal = await _readback_history(
             converter, activity_events, opening, task, grant, activity_id, cancel_requests)
     if recovery_events:
         if completion is not None:
             raise ValueError('Campaign receipt recovery conflicts with an original Activity completion')
-        completion = await _readback_followup_completion(
-            converter, activity_events, recovery_events, opening, task, grant, activity_id)
+        try:
+            completion, followup_terminal = await _readback_followup_history(
+                converter, activity_events, recovery_events, opening, task, grant, activity_id,
+                include_terminal=full_result, cancel_requests=recovery_cancel_requests)
+        except ValueError as error:
+            if readback_terminal is None:
+                raise
+            raise FollowupHistoryConflict(error, readback_terminal) from error
     for update_id, entry in entries.items():
         event = entry.get('completed_event')
         if event is None or not entry['failed']:
@@ -623,7 +641,7 @@ async def read_task_history(client, handle, opening, commands):
         wake = await _read_recipient_history(converter, wake_events, opening, intent, ready)
         if claimed.get('kind') != 'manual_update':
             completion['recipient'] = wake
-    return updates, completion, wake, readback_terminal
+    return updates, completion, wake, readback_terminal, followup_terminal
 
 
 def _history_timestamp_ns(event):
@@ -804,7 +822,8 @@ async def _readback_history(converter, events, opening, task, grant, activity_id
             **readback_proof(evidence, job, result), **({'timing': timing} if timing['events'] else {})}, None
 
 
-async def _readback_followup_completion(converter, original, events, opening, task, grant, activity_id):
+async def _readback_followup_history(converter, original, events, opening, task, grant, activity_id, *,
+                                     include_terminal, cancel_requests=()):
     if len(original) != 3 or not 1 <= len(events) <= 3:
         raise ValueError('Campaign receipt recovery requires one original timed-out Activity')
     original_schedule, original_start, timeout = original
@@ -821,26 +840,46 @@ async def _readback_followup_completion(converter, original, events, opening, ta
             or failed.scheduled_event_id != original_schedule.event_id or failed.started_event_id != original_start.event_id
             or failed.failure.timeout_failure_info.timeout_type != TimeoutType.TIMEOUT_TYPE_HEARTBEAT):
         raise ValueError('Campaign receipt recovery lacks an exact original heartbeat timeout')
-    sequence = events[0]
+    sequence, *subsequent = events
     scheduled = sequence.activity_task_scheduled_event_attributes
     if (not sequence.HasField('activity_task_scheduled_event_attributes')
             or sequence.event_type != EventType.EVENT_TYPE_ACTIVITY_TASK_SCHEDULED
             or sequence.event_id <= timeout.event_id or scheduled.activity_type.name != readback_followup_activity(task)
             or scheduled.task_queue.name != opening['task_queue'] or scheduled.retry_policy.maximum_attempts != 1
             or scheduled.activity_id != readback_followup_id(task, grant)
-            or await converter.decode(scheduled.input.payloads) != [grant]):
+            or identity(await converter.decode(scheduled.input.payloads)) != identity([grant])):
         raise ValueError('Campaign receipt recovery differs from the authorized original read')
-    if len(events) < 3 or not events[-1].HasField('activity_task_completed_event_attributes'):
-        return None
-    start, completed = events[1:]
-    started = start.activity_task_started_event_attributes
-    terminal = completed.activity_task_completed_event_attributes
-    completion_ns = _history_timestamp_ns(completed)
-    if (not start.HasField('activity_task_started_event_attributes')
-            or start.event_type != EventType.EVENT_TYPE_ACTIVITY_TASK_STARTED
-            or completed.event_type != EventType.EVENT_TYPE_ACTIVITY_TASK_COMPLETED
-            or not sequence.event_id < start.event_id < completed.event_id
-            or started.scheduled_event_id != sequence.event_id or started.attempt != 1
+    if not include_terminal and (len(events) < 3 or not events[-1].HasField('activity_task_completed_event_attributes')):
+        return None, None
+    start = None
+    if subsequent and subsequent[0].HasField('activity_task_started_event_attributes'):
+        start = subsequent.pop(0)
+        started = start.activity_task_started_event_attributes
+        if (start.event_type != EventType.EVENT_TYPE_ACTIVITY_TASK_STARTED or start.event_id <= sequence.event_id
+                or started.scheduled_event_id != sequence.event_id or started.attempt != 1):
+            raise ValueError('Campaign receipt recovery completion differs from its original attempt or cutoff')
+    if not subsequent:
+        return None, None
+    if len(subsequent) != 1:
+        raise ValueError('Campaign follow-up History has conflicting original Activity events')
+    finished, = subsequent
+    if not finished.HasField('activity_task_completed_event_attributes'):
+        for kind in ('failed', 'timed_out', 'canceled'):
+            field = f'activity_task_{kind}_event_attributes'
+            if finished.HasField(field):
+                attrs = getattr(finished, field)
+                if attrs.scheduled_event_id != sequence.event_id:
+                    break
+                ancestry = {'scheduled': sequence, 'worker_started': start}
+                terminal = _readback_terminal(
+                    task, grant, scheduled.activity_id, ancestry, finished, kind, attrs, cancel_requests)
+                return None, {**terminal, 'activity_type': scheduled.activity_type.name,
+                              'original_timeout_event_id': timeout.event_id}
+        raise ValueError('Campaign follow-up History has conflicting original Activity events')
+    terminal = finished.activity_task_completed_event_attributes
+    completion_ns = _history_timestamp_ns(finished)
+    if (start is None or finished.event_type != EventType.EVENT_TYPE_ACTIVITY_TASK_COMPLETED
+            or finished.event_id <= start.event_id
             or terminal.scheduled_event_id != sequence.event_id or terminal.started_event_id != start.event_id
             or completion_ns is None or completion_ns >= grant['deadline_at'] * 1_000_000_000):
         raise ValueError('Campaign receipt recovery completion differs from its original attempt or cutoff')
@@ -855,7 +894,7 @@ async def _readback_followup_completion(converter, original, events, opening, ta
     return {'task_id': task['task_id'], 'activity_id': activity_id, **readback_reference(grant),
             'scheduled_event_id': original_schedule.event_id, **readback_proof(evidence, job, result), **recovery,
             'recovery_history': {'original_timeout_event_id': timeout.event_id, 'scheduled_event_id': sequence.event_id,
-                                 'started_event_id': start.event_id, 'completed_event_id': completed.event_id}}
+                                 'started_event_id': start.event_id, 'completed_event_id': finished.event_id}}, None
 
 
 def _update_entry(handle, command):
@@ -1119,7 +1158,7 @@ async def run_worker(client, handle, opening, files, attempt, *, poller_identity
                 async with asyncio.timeout(RPC_SECONDS):
                     history_client = await connect(opening)
                     original = history_client.get_workflow_handle(opening['workflow_id'], run_id=handle.run_id)
-                    _, _, wake, _ = await read_task_history(history_client, original, opening, commands)
+                    _, _, wake, _, _ = await read_task_history(history_client, original, opening, commands)
                 return wake
 
             activities.append(CodexRecipient(

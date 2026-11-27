@@ -1056,12 +1056,19 @@ def create_app(home: Path | None = None) -> FastAPI:
             completion = {name: value for name, value in completion.items() if name != "recipient"}
         else:
             completion = None
+        terminal_evidence = {}
+        if training_task:
+            for name in ("readback_terminal", "readback_followup_terminal"):
+                terminal = observed.get(name)
+                if terminal is not None and terminal.get("task_id") == task_id:
+                    terminal_evidence[name] = terminal
         return {**{name: observed[name] for name in fields if name in observed},
                 "acceptance": plan["acceptance"], "expires_at": plan["limits"]["expires_at"],
                 "workflow_phase": observed.get("workflow_state", {}).get("phase"),
                 "task_state": task_state,
                 **({"direct_dependencies": direct_dependencies} if direct_dependencies else {}),
                 **({"training_task": training_task} if training_task else {}),
+                **terminal_evidence,
                 "stop": {"status": stop["status"], "remote_status": stop["remote_status"],
                          "update_id": stop["update_id"], "local_fence_saved": stop.get("local_fence_saved"),
                          "decision": stop_receipt.get("decision"), "receipt_run_id": stop_receipt.get("run_id")},
