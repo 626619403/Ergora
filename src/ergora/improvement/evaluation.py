@@ -1,5 +1,6 @@
 """Frozen evaluation inputs and candidate-bound evidence, independent of generators."""
 
+from decimal import Decimal
 import hashlib
 import errno
 import json
@@ -21,6 +22,32 @@ def manifest_sha256(value: dict) -> str:
     return hashlib.sha256(json.dumps(value, sort_keys=True, ensure_ascii=False, allow_nan=False).encode()).hexdigest()
 
 
+def _normalize_case_input(value):
+    """Compare numeric values as serialized JSON while preserving nonnumeric types."""
+    if isinstance(value, dict):
+        return {key: _normalize_case_input(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_normalize_case_input(item) for item in value]
+    if type(value) is float and value.is_integer():
+        return int(Decimal(str(value)))
+    return value
+
+
+def split_overlap(cases: list[dict]) -> str | None:
+    """Return the first shared input or declared lineage across evaluation splits."""
+    owners = {}
+    for case in cases:
+        keys = [("input", manifest_sha256({"input": _normalize_case_input(case["input"])}))]
+        if "lineage" in case:
+            keys.append(("lineage", case["lineage"]))
+        for kind, identity in keys:
+            first = owners.setdefault((kind, identity), case)
+            if case["split"] != first["split"]:
+                return (f"Evaluation split overlap for {kind} between case {first['id']} "
+                        f"({first['split']}) and case {case['id']} ({case['split']})")
+    return None
+
+
 def register(state: State, project_id: str, manifest: dict) -> dict:
     project = state.project(project_id)
     contracts.validate(manifest, contracts.EVALUATION_MANIFEST, "Evaluation manifest")
@@ -35,6 +62,8 @@ def register(state: State, project_id: str, manifest: dict) -> dict:
         ids.add(case["id"])
     if {case["split"] for case in cases} != {"train", "validation", "holdout"}:
         raise ValueError("Train, validation and holdout splits are required")
+    if overlap := split_overlap(cases):
+        raise ValueError(overlap)
     argv = list(argv)
     executable = processes.resolve_program(argv[0], Path(project["repo"]))
     argv[0] = str(Path(executable).resolve())
@@ -76,10 +105,15 @@ def suite(state: State, project_id: str, digest: str) -> dict:
     if row is None:
         raise ValueError("Unknown evaluation suite in this project")
     document = json.loads(row[0])
-    for filename, expected_target in document["manifest"]["path_bindings"].items():
+    if (not isinstance(document, dict) or document.get("project") != project_id
+            or document.get("digest") != digest or not isinstance(document.get("manifest"), dict)
+            or manifest_sha256(document["manifest"]) != digest):
+        raise ValueError("Saved evaluation suite differs from its registered digest or project")
+    manifest = document["manifest"]
+    for filename, expected_target in manifest["path_bindings"].items():
         if str(Path(filename).resolve(strict=True)) != expected_target:
             raise ValueError("Trusted evaluator path changed; register and rerun a new suite")
-    for filename, expected in document["manifest"]["file_sha256"].items():
+    for filename, expected in manifest["file_sha256"].items():
         with Path(filename).open("rb") as stream:
             actual = hashlib.file_digest(stream, "sha256").hexdigest()
         if actual != expected:
@@ -240,6 +274,8 @@ def compare(state: State, project_id: str, baseline_run: str, candidate_run: str
     for run in (baseline, candidate):
         skill_assets.get(state, project_id, run["skill"])
     reasons = []
+    if overlap := split_overlap(specification["cases"]):
+        reasons.append(overlap)
     if baseline["skill"] == candidate["skill"]:
         reasons.append("Candidate content is identical to the baseline")
     expected = {case["id"] for case in specification["cases"]}

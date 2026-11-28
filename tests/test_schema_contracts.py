@@ -98,7 +98,7 @@ def contract_project(tmp_path):
     scorer.write_text('print(\'{"score": 0.5, "cost": 0, "passed": true, "feedback": "fixture"}\')\n', encoding="utf-8")
     manifest = {"schema_version": 1, "evaluator_argv": [sys.executable, str(scorer)], "evaluator_files": [str(scorer)],
                 "timeout_seconds": 5, "minimum_gain": 0, "max_reported_cost": 1,
-                "cases": [{"id": split, "split": split, "input": {"request": "比较结果"}} for split in ("train", "validation", "holdout")]}
+                "cases": [{"id": split, "split": split, "input": {"request": f"比较 {split} 结果"}} for split in ("train", "validation", "holdout")]}
     return state, manifest
 
 

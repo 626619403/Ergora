@@ -97,7 +97,7 @@ def test_windows_evaluator_uses_project_relative_native_executable(tmp_path):
     projects.create(state, 'demo', repo)
     manifest = {'schema_version': 1, 'evaluator_argv': ['.\\tools\\scorer'], 'evaluator_files': [],
                 'timeout_seconds': 5, 'minimum_gain': 0.1, 'max_reported_cost': 1,
-                'cases': [{'id': split, 'split': split, 'input': 'fixture'}
+                'cases': [{'id': split, 'split': split, 'input': split}
                           for split in ('train', 'validation', 'holdout')]}
     registered = evaluation.register(state, 'demo', manifest)
     assert Path(registered['manifest']['evaluator_argv'][0]) == program

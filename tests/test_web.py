@@ -978,7 +978,7 @@ def test_skill_evidence_and_adoption_use_existing_business_gate(console, tmp_pat
     assert "+IMPROVED" in diff["diff"] and diff["changed_files"] == ["SKILL.md"]
     evaluator = repo / "evaluate.py"
     evaluator.write_text('import json,sys,pathlib\nr=json.load(sys.stdin)\ns=.9 if "IMPROVED" in pathlib.Path(r["skill_dir"],"SKILL.md").read_text() else .5\nprint(json.dumps({"score":s,"passed":True,"cost":0,"feedback":"fixture"}))\n')
-    manifest = {"schema_version": 1, "evaluator_argv": [sys.executable, str(evaluator)], "evaluator_files": [str(evaluator)], "timeout_seconds": 5, "minimum_gain": .1, "max_reported_cost": 1, "cases": [{"id": split, "split": split, "input": {}} for split in ("train", "validation", "holdout")]}
+    manifest = {"schema_version": 1, "evaluator_argv": [sys.executable, str(evaluator)], "evaluator_files": [str(evaluator)], "timeout_seconds": 5, "minimum_gain": .1, "max_reported_cost": 1, "cases": [{"id": split, "split": split, "input": {"task": split}} for split in ("train", "validation", "holdout")]}
     suite = client.post("/api/projects/demo/evaluations/suites", json=manifest).json()
     runs = [client.post("/api/projects/demo/evaluations/run", json={"digest": digest, "suite": suite["digest"]}).json() for digest in (baseline["digest"], candidate["digest"])]
     comparison = client.get("/api/projects/demo/evaluations/compare", params={"baseline": runs[0]["id"], "candidate": runs[1]["id"]}).json()
@@ -1003,7 +1003,7 @@ def test_reported_cost_failure_http_cli_and_dashboard_retain_subtotal(console, t
     evaluator.write_text("raise AssertionError('This source fixture must use its in-process port')\n")
     manifest = {"schema_version": 1, "evaluator_argv": [sys.executable, str(evaluator)], "evaluator_files": [str(evaluator)],
                 "timeout_seconds": 5, "minimum_gain": .1, "max_reported_cost": 1,
-                "cases": [{"id": split, "split": split, "input": {}} for split in ("train", "validation", "holdout")]}
+                "cases": [{"id": split, "split": split, "input": {"task": split}} for split in ("train", "validation", "holdout")]}
     suite = client.post("/api/projects/demo/evaluations/suites", json=manifest).json()
     calls = []
 

@@ -100,6 +100,87 @@ def test_holdout_regression_partial_evidence_and_mutation_are_rejected(skill_pro
         skill_assets.get(state, "demo", candidate["digest"])
 
 
+@pytest.mark.parametrize("overlap", ["input", "numeric-input", "lineage"])
+def test_register_rejects_evaluation_split_overlap(skill_project, overlap):
+    state, _, _, _, suite = skill_project
+    manifest = {key: value for key, value in suite["manifest"].items() if key not in ("file_sha256", "path_bindings")}
+    train, _, holdout = manifest["cases"]
+    if overlap == "input":
+        holdout["input"] = dict(reversed(list(train["input"].items())))
+    elif overlap == "numeric-input":
+        train["input"] = {"task": [{"positive": 1, "large": 10**30}, 0.0]}
+        holdout["input"] = {"task": [{"positive": 1.0, "large": 1e30}, -0.0]}
+    else:
+        train["lineage"] = holdout["lineage"] = "same-original-run"
+    before = evaluation.listing(state, "demo")
+    kind = "lineage" if overlap == "lineage" else "input"
+    with pytest.raises(ValueError, match=f"split overlap.*{kind}.*train.*holdout"):
+        evaluation.register(state, "demo", manifest)
+    assert evaluation.listing(state, "demo") == before
+    if overlap == "lineage":
+        holdout["lineage"] = "different-original-run"
+        saved = evaluation.register(state, "demo", manifest)
+        assert saved["manifest"]["cases"] == manifest["cases"]
+    if overlap == "numeric-input":
+        holdout["input"]["task"][0]["positive"] = True
+        saved = evaluation.register(state, "demo", manifest)
+        assert saved["manifest"]["cases"] == manifest["cases"]
+        holdout["input"]["task"][0] = {"positive": 1.0, "large": 10**30 + 1}
+        saved = evaluation.register(state, "demo", manifest)
+        assert saved["manifest"]["cases"] == manifest["cases"]
+
+
+def test_historical_split_overlap_remains_readable_but_cannot_support_adoption(skill_project):
+    state, _, source, baseline, suite = skill_project
+    manifest = suite["manifest"]
+    manifest["cases"][-1]["input"] = dict(manifest["cases"][0]["input"])
+    digest = evaluation.manifest_sha256(manifest)
+    retained = {**suite, "digest": digest}
+    with state.connect() as db:
+        db.execute("INSERT INTO evaluation_suites VALUES (?, ?, ?)", ("demo", digest, json.dumps(retained)))
+    assert evaluation.suite(state, "demo", digest) == retained
+    skill = source / "SKILL.md"
+    skill.write_text(skill.read_text().replace("BASELINE", "IMPROVED"))
+    candidate = skill_assets.import_bundle(state, "demo", source)
+    runs = [evaluation.evaluate(state, "demo", item["digest"], digest) for item in (baseline, candidate)]
+    assert all(run["status"] == "succeeded" and len(run["cases"]) == 3 for run in runs)
+    base_id, candidate_id = [run["id"] for run in runs]
+    comparison = evaluation.compare(state, "demo", base_id, candidate_id)
+    assert not comparison["eligible"] and "split overlap" in " ".join(comparison["reasons"])
+    with pytest.raises(ValueError, match="not eligible.*split overlap"):
+        skills.adopt(state, "demo", base_id, candidate_id, 1, "Duplicate train and holdout evidence")
+    assert skill_assets.versions(state, "demo")["active"][0]["digest"] == baseline["digest"]
+    assert evaluation.get(state, "demo", candidate_id) == runs[-1]
+
+
+def test_gepa_refuses_historical_split_overlap_before_evaluation(skill_project):
+    pytest.importorskip("gepa")
+    state, _, _, baseline, suite = skill_project
+    manifest = suite["manifest"]
+    manifest["cases"][-1]["input"] = manifest["cases"][0]["input"]
+    digest = evaluation.manifest_sha256(manifest)
+    with state.connect() as db:
+        db.execute("INSERT INTO evaluation_suites VALUES (?, ?, ?)",
+                   ("demo", digest, json.dumps({**suite, "digest": digest})))
+    projects.bind(state, "demo", "optimizer", {"tool": "gepa", "proposer_argv": [sys.executable]}, 1)
+    with pytest.raises(ValueError, match="split overlap"):
+        optimization.optimize(state, "demo", baseline["digest"], digest, "Select disjoint cases")
+    assert optimization.listing(state, "demo") == []
+    assert evaluation.listing(state, "demo")["runs"] == []
+
+
+def test_evaluation_suite_read_requires_frozen_manifest_identity(skill_project):
+    state, _, _, baseline, suite = skill_project
+    suite["manifest"]["minimum_gain"] = 0
+    digest = suite["digest"]
+    with state.connect() as db:
+        db.execute("UPDATE evaluation_suites SET document=? WHERE project=? AND digest=?",
+                   (json.dumps(suite), "demo", digest))
+    with pytest.raises(ValueError, match="differs from its registered digest"):
+        evaluation.evaluate(state, "demo", baseline["digest"], digest)
+    assert evaluation.listing(state, "demo")["runs"] == []
+
+
 @pytest.mark.parametrize("drift", [None, "provider", "model", "cost_unit", "missing"])
 def test_pinned_rsi_execution_identity_gates_adoption_and_cost_units(skill_project, drift):
     state, repo, source, baseline, _ = skill_project

@@ -40,6 +40,8 @@ def optimize(state: State, project_id: str, baseline_digest: str, suite_digest: 
 
     baseline = skill_assets.get(state, project_id, baseline_digest)
     specification = evaluation.suite(state, project_id, suite_digest)["manifest"]
+    if overlap := evaluation.split_overlap(specification["cases"]):
+        raise ValueError(overlap)
     cost_unit = specification.get("execution_identity", {}).get("cost_unit")
     visible = {case["id"]: case for case in specification["cases"] if case["split"] != "holdout"}
     train = [case["id"] for case in visible.values() if case["split"] == "train"]
