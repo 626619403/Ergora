@@ -1116,6 +1116,10 @@ def configuration_execution(configuration_project, cycle_selection, service, tmp
     state, definition, runtime, prefix, write, selection = cycle_selection
     options = dict(getattr(request, 'param', {}))
     minimum_saving = options.pop('test_minimum_saving', .001)
+    profile = options.pop('test_profile_policy', None)
+    if profile is not None:
+        item['runner']['configuration_readback']['profile'] = {
+            'protocol': 'training-profile-v1', 'operations': ['cpu-diagnostic-v1']}
     item['runner']['timeout_seconds'] = options.pop('test_runner_timeout_seconds', item['runner']['timeout_seconds'])
     if options.pop('test_hold_cpu', False):
         from ergora.training.configuration import source_reference
@@ -1164,6 +1168,8 @@ def run(context, request, output):
                      'statistics': {'min_pairs': 4, 'bootstrap_resamples': 1000, 'confidence': .95, 'seed': 73},
                      'thresholds': {'min_saved_seconds_at_normalization': minimum_saving,
                                     'min_speedup_percent': None, 'mode': 'all'}})
+    if profile is not None:
+        draft['execution']['profile'] = profile
     for path in (runtime / 'training/manifests/alpha.json', runtime / 'training/specs/alpha.json',
                  prefix / 'experiments/alpha/manifest.json'):
         path.unlink()
@@ -1294,6 +1300,136 @@ def test_configuration_driver_runs_actual_cpu_work_and_original_managed_archive(
     assert all(path.read_bytes() == raw for path, raw in before.items())
     assert len((item['markers'] / 'first-work.jsonl').read_text().splitlines()) == 1
     assert json.loads(item['service'][1].read_bytes())['starts'] == 1
+
+
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('configuration_execution', [{'test_profile_policy': {
+    'protocol': 'training-profile-v1', 'tool': 'cprofile-json', 'reader': 'cprofile-json-v1',
+    'source_operation': 'cpu-diagnostic-v1', 'phases': ['baseline'], 'ranks': [0],
+    'window': {'unit': 'source_samples', 'work': 17, 'warmup_work': 3}, 'captures': 1,
+    'maximum_seconds': 5, 'max_raw_bytes': 524_288, 'max_derived_bytes': 131_072, 'required': False}}],
+    indirect=True)
+def test_recover_original_profile_after_derived_publication_fails(configuration_execution, monkeypatch):
+    item = configuration_execution
+    monkeypatch.setenv('ERGORA_TEST_PROFILE_EXPORT_CONFLICT', '1')
+    execution = run_configuration_execution(item)
+    assert execution['executor_stop_confirmed'] is True
+    job = item['job']
+    output = job / 'run-output'
+    loose_profile = output / 'profile-receipt.json'
+    original_profile = json.loads(loose_profile.read_bytes())
+    assert original_profile['status'] == original_profile['readback'] == 'failed'
+    assert original_profile['captures'] == []
+    assert (output / 'profile/baseline-0-0.txt').is_dir()
+    original_native = json.loads((job / 'result.json').read_bytes())
+    assert original_native['state'] == 'SUCCEEDED'
+    primary = training.evidence(item['state'], 'demo', 'alpha')
+    assert primary['archive_status'] == 'recorded' and primary['recorded_gate_report']['passed'] is True
+    archive = Path(primary['archive']['path'])
+    archived_profile = archive / loose_profile.name
+    assert archived_profile.read_bytes() == loose_profile.read_bytes()
+    attempt = job / 'managed-execution/attempt.json'
+    raw_path = output / 'profile/baseline-0-0.json'
+    raw = raw_path.read_bytes()
+    attempt_sha = hashlib.sha256(attempt.read_bytes()).hexdigest()
+    capture_sha = hashlib.sha256(raw).hexdigest()
+    checkpoint = job / 'managed-execution/profile-captures' / (capture_sha + '.json')
+    assert checkpoint.is_file(), 'The original producer must pin its durable raw bytes before the derived write'
+    assert original_profile['attempts'][0]['capture'] == 'complete'
+    stopped = job / 'managed-execution/stopped.json'
+    _, expected_text = execution_evidence._profile_report(raw)
+    roots = (job, archive, item['markers'])
+    originals = {path: (path.stat().st_ino, path.read_bytes())
+                 for root in roots for path in root.rglob('*') if path.is_file()}
+    selection = {'profile_attempt_sha256': attempt_sha, 'profile_capture_sha256': capture_sha}
+    state = item['state']
+    recovered = training.evidence(state, 'demo', 'alpha', **selection)
+    profile = recovered['profile_recovery']
+    assert profile['status'] == 'derived_from_original_capture'
+    assert profile['run_id'] == item['submission']['run_id']
+    assert profile['job_id'] == original_native['job_id']
+    assert profile['native_result_state'] == original_native['state']
+    assert profile['capture_checkpoint_sha256'] == hashlib.sha256(checkpoint.read_bytes()).hexdigest()
+    assert profile['reap_record_sha256'] == hashlib.sha256(stopped.read_bytes()).hexdigest()
+    assert profile['original_profile_receipt']['status'] == 'failed'
+    assert profile['original_profile_receipt']['reason'] == original_profile['reason']
+    assert profile['original_profile_receipt']['sha256'] == hashlib.sha256(archived_profile.read_bytes()).hexdigest()
+    assert profile['derived']['text'] == expected_text and 'calculate' in expected_text
+    assert profile['derived']['sha256'] == hashlib.sha256(expected_text.encode()).hexdigest()
+    assert recovered['approval_status'] == 'not_evaluated'
+    page = training.evidence(state, 'demo', 'alpha', **selection, offset=4, limit=11)
+    assert page['profile_recovery']['derived']['text'] == expected_text[4:15]
+    args = ['--home', str(state.root), 'training', 'evidence', 'demo', 'alpha',
+            '--profile-attempt-sha256', attempt_sha, '--profile-capture-sha256', capture_sha]
+    for _ in range(2):
+        cli = subprocess.run([sys.executable, '-c', 'from ergora.interfaces.cli import main; raise SystemExit(main())',
+                              *args], capture_output=True, text=True, timeout=25, check=True)
+        assert json.loads(cli.stdout) == recovered
+    assert training.evidence(state, 'demo', 'alpha') == primary
+    with pytest.raises(ValueError, match='exact raw original attempt'):
+        training.evidence(state, 'demo', 'alpha', **{**selection, 'profile_attempt_sha256': 'f' * 64})
+    with pytest.raises(ValueError, match='capture checkpoint is missing'):
+        training.evidence(state, 'demo', 'alpha', **{**selection, 'profile_capture_sha256': 'f' * 64})
+
+    loose_profile.write_text(json.dumps({**original_profile, 'status': 'complete', 'readback': 'complete', 'reason': None}))
+    try:
+        assert training.evidence(state, 'demo', 'alpha', **selection) == recovered
+        native_result = job / 'result.json'
+        hidden_result = native_result.with_suffix('.hidden')
+        native_result.rename(hidden_result)
+        try:
+            unanchored = training.evidence(state, 'demo', 'alpha', **selection)['profile_recovery']
+            assert unanchored == {**profile, 'native_result_state': None, 'original_profile_receipt': None}
+        finally:
+            hidden_result.rename(native_result)
+    finally:
+        loose_profile.write_bytes(originals[loose_profile][1])
+    hidden_receipt = loose_profile.with_suffix('.hidden')
+    loose_profile.rename(hidden_receipt)
+    try:
+        assert training.evidence(state, 'demo', 'alpha', **selection) == recovered
+    finally:
+        hidden_receipt.rename(loose_profile)
+    hidden_archive = archived_profile.with_suffix('.hidden')
+    archived_profile.rename(hidden_archive)
+    try:
+        with pytest.raises(ValueError):
+            training.evidence(state, 'demo', 'alpha', **selection)
+    finally:
+        hidden_archive.rename(archived_profile)
+
+    malformed = [
+        (checkpoint, b'{}', 'invalid original ordinal'),
+        (job / 'configuration-request.json', b'[]', 'must be a JSON object'),
+        (archived_profile, b'{}', 'digest differs'),
+        (archived_profile, json.dumps({**original_profile, 'status': []}).encode(), 'digest differs'),
+    ]
+    for path, content, message in malformed:
+        path.write_bytes(content)
+        try:
+            with pytest.raises(ValueError, match=message):
+                training.evidence(state, 'demo', 'alpha', **selection)
+        finally:
+            path.write_bytes(originals[path][1])
+    raw_path.write_bytes(raw + b'\n')
+    try:
+        with pytest.raises(ValueError, match='digest differs'):
+            training.evidence(state, 'demo', 'alpha', **selection)
+    finally:
+        raw_path.write_bytes(raw)
+    hidden = raw_path.with_suffix('.hidden')
+    raw_path.rename(hidden)
+    try:
+        with pytest.raises(ValueError, match='capture bytes are missing'):
+            training.evidence(state, 'demo', 'alpha', **selection)
+    finally:
+        hidden.rename(raw_path)
+    assert not (job / 'managed-execution/gpu-lease.json').exists()
+    assert json.loads(item['service'][1].read_bytes())['starts'] == 1
+    assert all(len((item['markers'] / name).read_text().splitlines()) == 1
+               for name in ('first-work.jsonl', 'profile.jsonl'))
+    assert {path: (path.stat().st_ino, path.read_bytes())
+            for root in roots for path in root.rglob('*') if path.is_file()} == originals
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Pending execution uses its original Linux live owner')

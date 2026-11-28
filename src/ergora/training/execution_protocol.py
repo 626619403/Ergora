@@ -2914,6 +2914,19 @@ class ExecutionRecords:
     def requires_tracking_checkpoint(self):
         return (self.records['launch'] or {}).get('evidence_checkpoint') == FULL_TRACKING_CHECKPOINT
 
+    def profile_capture_checkpoint(self, configuration_sha256, capture_sha256, ordinal):
+        """Bind a saved diagnostic capture before the fixed renderer runs."""
+        if self.records['ack'] is None:
+            raise ValueError('Profile capture requires its original acknowledged managed attempt')
+        for digest in (configuration_sha256, capture_sha256):
+            _digest(digest)
+        if type(ordinal) is not int or not 0 <= ordinal < 32:
+            raise ValueError('Profile capture has an invalid original ordinal')
+        return {'schema_version': 1, 'kind': 'training-profile-capture-checkpoint',
+                'attempt_sha256': hashlib.sha256(self.originals[self.folder / 'attempt.json']).hexdigest(),
+                'configuration_request_sha256': configuration_sha256, 'capture_sha256': capture_sha256,
+                'capture_index': ordinal}
+
     def tracking_checkpoint(self, evidence_sha256, gate_report_sha256, archive_output_sha256):
         if self.records['ack'] is None or not self.requires_tracking_checkpoint():
             raise ValueError('Tracking checkpoint requires its original committed full verification launch and attempt')

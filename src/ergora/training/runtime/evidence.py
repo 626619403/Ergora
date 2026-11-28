@@ -14,6 +14,11 @@ from ergora.training.native import _training_records
 from ergora.training.materials import decode_record
 
 
+_PROFILE_RECEIPT_FIELDS = ('schema_version', 'kind', 'policy', 'policy_sha256', 'binding', 'managed', 'source',
+                           'configuration_request_sha256', 'phase', 'tool', 'reader', 'source_operation', 'status',
+                           'reason', 'captures', 'attempts', 'raw_bytes', 'derived_bytes', 'readback')
+
+
 def _accepted_archive(project, ident, binding, baseline_id, gate, read, *, max_artifacts=None):
     """Verify original accepted metadata for the diagnostic and full-inventory readers."""
     import perfctl
@@ -560,6 +565,134 @@ def _observe_tracking(payload):
             'tracking': checkpoint, 'provider': provider, 'retry_authorized': False}
 
 
+def _anchored_profile_receipt(project, experiment, output, read):
+    """Read the selected receipt through the original result's artifact pin."""
+    name = 'profile-receipt.json'
+    screen = experiment['screen_ref']
+    if screen is not None:
+        report = decode_record(read(output / 'screen-result.json', screen['report_sha256']))
+        item = _screen_artifact_index(report).get(name)
+        if item is None:
+            return None
+        raw = read(output / name, item['sha256'])
+        if len(raw) != item['bytes']:
+            raise ValueError('Screen artifact length differs from its raw index')
+        return raw
+
+    gate = experiment['gate_report']
+    if experiment['recorded_result_state'] != 'SUCCEEDED' or gate is None or gate['passed'] is not True:
+        return None
+    gate_ref = experiment['result']['gate']
+    gate = decode_record(read(output.parent / 'gate-report.json', gate_ref['report_sha256']))
+    archive, artifacts = _accepted_archive(project, experiment['experiment_id'], experiment['binding'],
+        experiment['baseline_id'], gate, lambda relative: read(project.root / relative), max_artifacts=256)
+    item = artifacts.get(name)
+    return read(Path(archive['path']) / name, item['sha256']) if item is not None else None
+
+
+def _recover_profile_capture(project, experiment, payload):
+    """Render one durable original CPU capture using only saved, bounded data."""
+    from ergora.training.materials import execution_plan, observation_sha256
+
+    attempt_sha256 = payload['profile_attempt_sha256']
+    capture_sha256 = payload['profile_capture_sha256']
+    for digest in (attempt_sha256, capture_sha256):
+        protocol._digest(digest)
+    chain = protocol.ExecutionRecords(project.project, experiment['experiment_id'], payload['control_home']).load()
+    if chain.records['stopped'] is None or chain.records['request']['project_revision'] != project.project_revision:
+        raise ValueError('Profile recovery requires the stopped original managed execution and registration')
+    original_attempt = hashlib.sha256(chain.originals[chain.folder / 'attempt.json']).hexdigest()
+    if original_attempt != attempt_sha256:
+        raise ValueError('Profile recovery requires the exact raw original attempt SHA-256')
+    inventory = _Inventory()
+    project.registration(inventory)
+
+    def read(path, expected=None, limit=protocol.LIMIT, *, optional=False):
+        return inventory.read(chain.root, path.relative_to(chain.root).as_posix(),
+                              'profile-recovery', expected, limit, evidence=False, optional=optional)
+
+    for path, raw in chain.originals.items():
+        read(path, hashlib.sha256(raw).hexdigest(), 16 * protocol.LIMIT)
+    job = chain.folder.parent
+    output = job / 'run-output'
+    for name in (chain.prefix + '/result.json', 'training/fences/' + chain.ident + '.json'):
+        expected = experiment['files'].get('state/' + name)
+        saved = read(chain.root / name, expected, optional=True)
+        if (saved is None) != (expected is None):
+            raise ValueError('Original result or fence changed during profile recovery')
+    config_raw = read(job / 'configuration-request.json', limit=16 * protocol.LIMIT)
+    config = decode_record(config_raw)
+    config_sha256 = hashlib.sha256(config_raw).hexdigest()
+    checkpoint_path = chain.folder / 'profile-captures' / (capture_sha256 + '.json')
+    checkpoint_raw = read(checkpoint_path, optional=True)
+    if checkpoint_raw is None:
+        raise ValueError('Original durable profile capture checkpoint is missing')
+    checkpoint = decode_record(checkpoint_raw)
+    ordinal = checkpoint.get('capture_index')
+    protocol._match(checkpoint, chain.profile_capture_checkpoint(config_sha256, capture_sha256, ordinal),
+                    'Original profile capture checkpoint')
+    runner = chain.native['runner']
+    binding = chain.native['experiment']['binding']
+    manifest = decode_record(read(chain.root / 'training/manifests' / (chain.ident + '.json'), binding['manifest_sha']))
+    plan = execution_plan(manifest, runner)
+    expected_config = {'binding': binding, 'native_request_sha256': chain.records['request']['native_request_sha256'],
+        'runner_sha256': chain.sha(runner), 'configuration_readback': runner['configuration_readback'],
+        'execution': plan, 'output': str(output), 'execution_phase_id': chain.records['launch']['execution_phase_id'],
+        'managed': {name + '_sha256': chain.sha(chain.records[name]) for name in ('request', 'launch', 'attempt', 'ack')}}
+    protocol._match({key: config.get(key) for key in expected_config}, expected_config, 'Original profile configuration request')
+    if chain.sha(config.get('context')) != chain.owner['context_sha256']:
+        raise ValueError('Original profile configuration has a different managed context')
+    policy = plan.get('profile')
+    phase = 'screen' if plan['operation'] == 'training-screen-v1' else 'baseline'
+    capability = (runner.get('configuration_readback') or {}).get('profile')
+    if (policy is None or not capability or ordinal >= policy['captures']
+            or (policy['tool'], policy['reader'], policy['source_operation'], policy['ranks'])
+            != ('cprofile-json', 'cprofile-json-v1', 'cpu-diagnostic-v1', [0])
+            or policy['source_operation'] not in capability['operations']):
+        raise ValueError('Original policy has no matching supported CPU profile capture')
+    identity = {'binding': binding, 'managed': config['managed'], 'source': runner['configuration_readback']['source'],
+                'configuration_request_sha256': config_sha256, 'phase': phase}
+    selection = _profile_selection(config_sha256, phase, policy, ordinal)
+    capture_path = output / f'profile/{phase}-0-{ordinal}.json'
+    original = read(capture_path, capture_sha256, policy['max_raw_bytes'], optional=True)
+    if original is None:
+        raise ValueError('Original durable profile capture bytes are missing')
+    capture, text = _checked_profile_capture(original, identity, selection, policy, config)
+    if capture['elapsed_seconds'] > policy['maximum_seconds']:
+        raise ValueError('Original profile capture exceeds its selected sub-cap')
+    derived = text.encode('utf-8')
+    if len(derived) > policy['max_derived_bytes']:
+        raise ValueError('capacity_exceeded: selected profile derived evidence')
+    profile_receipt_raw = _anchored_profile_receipt(project, experiment, output, read)
+    profile_receipt = None
+    if profile_receipt_raw is not None:
+        receipt = decode_record(profile_receipt_raw)
+        protocol._exact(receipt, _PROFILE_RECEIPT_FIELDS, 'Original profile receipt')
+        expected_receipt = {**identity, 'kind': 'training-profile-receipt', 'schema_version': 1,
+            'policy': policy, 'policy_sha256': observation_sha256(policy),
+            **{key: policy[key] for key in ('tool', 'reader', 'source_operation')}}
+        protocol._match({key: receipt[key] for key in expected_receipt}, expected_receipt, 'Original profile receipt')
+        states = {'complete': ('complete',), 'unavailable': ('not_run',), 'not_run': ('not_run',),
+                  'failed': ('failed', 'not_run')}
+        status, reason, readback = (receipt[key] for key in ('status', 'reason', 'readback'))
+        valid_reason = reason is None if status == 'complete' else isinstance(reason, str) and bool(reason)
+        if (not isinstance(status, str) or readback not in states.get(status, ()) or not valid_reason
+                or not isinstance(receipt['captures'], list) or not isinstance(receipt['attempts'], list)):
+            raise ValueError('Original profile receipt has invalid diagnostic status')
+        profile_receipt = {'sha256': hashlib.sha256(profile_receipt_raw).hexdigest(),
+                           'status': status, 'reason': reason, 'readback': readback}
+    inventory.confirm()
+    return {'status': 'derived_from_original_capture', 'native_result_state': experiment['recorded_result_state'],
+        'job_id': chain.records['request']['job_id'], 'run_id': chain.records['request']['run_id'],
+        'attempt_sha256': attempt_sha256, 'capture_sha256': capture_sha256,
+        'capture_checkpoint_sha256': hashlib.sha256(checkpoint_raw).hexdigest(), 'selection': selection,
+        'original_profile_receipt': profile_receipt,
+        'reap_record_sha256': hashlib.sha256(chain.originals[chain.folder / 'stopped.json']).hexdigest(),
+        'derived': _artifact_window(derived, {
+            'path': capture_path.with_suffix('.txt').relative_to(output).as_posix(),
+            'sha256': hashlib.sha256(derived).hexdigest()}, payload)}
+
+
 def inspect(payload: dict) -> dict:
     from ergora.training.runtime.context import _TrainingProject
     from ergora.training.materials import read_raw
@@ -594,6 +727,10 @@ def inspect(payload: dict) -> dict:
               'integration_ticket': None, 'files': files,
               'artifact_limit_bytes': 16_777_216, 'response_limit_bytes': 8_388_608,
               'scope': 'Saved native records only; no live phase, statistical re-evaluation, artifact-wide verification, authorization or integration completion claim'}
+    if payload.get('profile_capture_sha256') is not None:
+        return {**result, 'archive_status': 'not_evaluated', 'screen_status': 'not_evaluated',
+                'scope': 'Read-only rendering of one saved original CPU profile capture',
+                'profile_recovery': _recover_profile_capture(project, experiment, payload)}
     if payload.get('retained_archive'):
         retained, selected = _retained_archive(project, experiment, payload)
         result['retained_archive'] = retained
@@ -1032,6 +1169,15 @@ def cpu_reuse_identity(baseline, screen):
     return identities[0]
 
 
+def _profile_selection(configuration_sha256, phase, policy, ordinal):
+    from ergora.training.materials import observation_sha256
+
+    identity = observation_sha256({'request': configuration_sha256, 'phase': phase, 'rank': 0, 'capture': ordinal})
+    return {'phase': phase, 'rank': 0, 'capture_index': ordinal,
+            'window_id': 'profile-window-' + identity[:24], 'run_id': 'profile-run-' + identity[:24],
+            'window': policy['window'], 'source_operation': policy['source_operation']}
+
+
 def _profile_report(raw):
     """Fixed data-only reader for finite cProfile JSON; never load marshal/pickle/source."""
     from ergora.training.materials import _exact, observation_bytes
@@ -1073,6 +1219,40 @@ def _profile_report(raw):
     return capture, '\n'.join(lines) + '\n'
 
 
+def _checked_profile_capture(raw, receipt, selection, policy, request):
+    from ergora.training.materials import _exact, validate_cpu_window_identity
+
+    capture, text = _profile_report(raw)
+    for key in ('source', 'binding', 'managed', 'configuration_request_sha256'):
+        if capture[key] != receipt[key]:
+            raise ValueError('Profile raw capture differs from its managed receipt')
+    actual = capture['actual']
+    _exact(actual, ('phase', 'rank', 'window_id', 'run_id', 'window', 'input_identity', 'hardware',
+                    'work_completed', 'warmup_work_completed', 'measurement_mode'), 'Source profile observation')
+    if (capture['selection'] != selection or any(actual[key] != selection[key] for key in ('phase', 'rank', 'window_id', 'run_id', 'window'))
+            or type(actual['rank']) is not int or actual['measurement_mode'] != 'profiled' or not isinstance(actual['input_identity'], dict) or not actual['input_identity']
+            or not isinstance(actual['hardware'], dict)
+            or {key: actual['hardware'].get(key) for key in ('device', 'ranks', 'layout')} != {'device': 'CPU', 'ranks': [0], 'layout': 'single-process'}
+            or type(actual['work_completed']) is not int or type(actual['warmup_work_completed']) is not int
+            or actual['work_completed'] != policy['window']['work'] or actual['warmup_work_completed'] != policy['window']['warmup_work']):
+        raise ValueError('Profile raw source observation differs from its separate actual window')
+    hardware = actual['hardware']
+    _exact(hardware, ('device', 'ranks', 'layout', *(['cpu_execution'] if 'cpu_execution' in hardware else []),
+                      *(['core_cpu_execution'] if 'core_cpu_execution' in hardware else [])), 'Profile CPU hardware observation')
+    for key in ('cpu_execution', 'core_cpu_execution'):
+        if key in hardware:
+            proof = hardware[key]
+            if request is not None and key == 'core_cpu_execution':
+                _cpu_window_contract(proof, request)
+            validate_cpu_window_identity(proof, binding=receipt['binding'],
+                native_request_sha256=request['native_request_sha256'] if request is not None else proof['native_request_sha256'],
+                managed=receipt['managed'], source=receipt['source'],
+                execution_phase_id=request['execution_phase_id'] if request is not None else proof['execution_phase_id'],
+                phase=receipt['phase'], operation='profiled',
+                windows=[{field: selection[field] for field in ('run_id', 'window_id')}], require_complete=False)
+    return capture, text
+
+
 def _profile_contents(output, policy, *, request=None, inventory=None, receipt_raw=None):
     """The collector can validate pending receipt bytes before immutable publication."""
     from ergora.training.materials import _exact, validate_profile_policy, observation_sha256
@@ -1083,9 +1263,7 @@ def _profile_contents(output, policy, *, request=None, inventory=None, receipt_r
     if receipt_raw is None:
         receipt_raw = inventory.read(output, 'profile-receipt.json', 'profile')
     receipt = decode_record(receipt_raw)
-    _exact(receipt, ('schema_version', 'kind', 'policy', 'policy_sha256', 'binding', 'managed', 'source',
-                     'configuration_request_sha256', 'phase', 'tool', 'reader', 'source_operation', 'status',
-                     'reason', 'captures', 'attempts', 'raw_bytes', 'derived_bytes', 'readback'), 'Profile receipt')
+    _exact(receipt, _PROFILE_RECEIPT_FIELDS, 'Profile receipt')
     if (type(receipt['schema_version']) is not int or receipt['schema_version'] != 1 or receipt['kind'] != 'training-profile-receipt'
             or receipt['policy'] != policy or receipt['policy_sha256'] != observation_sha256(policy)
             or receipt['tool'] != policy['tool'] or receipt['reader'] != policy['reader']
@@ -1153,9 +1331,7 @@ def _profile_contents(output, policy, *, request=None, inventory=None, receipt_r
             selections.add((selection['rank'], ordinal))
             if not any(attempt['selection'] == selection and attempt['capture'] == 'complete' for attempt in receipt['attempts']):
                 raise ValueError('Profile raw capture lacks its original durable opportunity')
-            identity = observation_sha256({'request': receipt['configuration_request_sha256'],
-                'phase': receipt['phase'], 'rank': selection['rank'], 'capture': ordinal})
-            if selection['window_id'] != 'profile-window-' + identity[:24] or selection['run_id'] != 'profile-run-' + identity[:24]:
+            if selection != _profile_selection(receipt['configuration_request_sha256'], receipt['phase'], policy, ordinal):
                 raise ValueError('Profile IDs differ from the original separate diagnostic window')
             for key, suffix in (('raw_ref', '.json'), ('derived_ref', '.txt')):
                 ref = item[key]
@@ -1167,42 +1343,9 @@ def _profile_contents(output, policy, *, request=None, inventory=None, receipt_r
             derived = inventory.read(output, item['derived_ref']['path'], 'profile', item['derived_ref']['sha256'], policy['max_derived_bytes'])
             if len(raw) != item['raw_ref']['bytes'] or len(derived) != item['derived_ref']['bytes']:
                 raise ValueError('Profile original raw/derived bytes differ from their complete receipt')
-            capture, text = _profile_report(raw)
+            capture, text = _checked_profile_capture(raw, receipt, selection, policy, request)
             if derived != text.encode('utf-8'):
                 raise ValueError('Profile fixed-reader readback differs from exact derived text')
-            for key in ('source', 'binding', 'managed', 'configuration_request_sha256'):
-                if capture[key] != receipt[key]:
-                    raise ValueError('Profile raw capture differs from its managed receipt')
-            actual = capture['actual']
-            _exact(actual, ('phase', 'rank', 'window_id', 'run_id', 'window', 'input_identity', 'hardware', 'work_completed', 'warmup_work_completed', 'measurement_mode'), 'Source profile observation')
-            if (capture['selection'] != selection or any(actual[key] != selection[key] for key in ('phase', 'rank', 'window_id', 'run_id', 'window'))
-                    or type(actual['rank']) is not int or actual['measurement_mode'] != 'profiled' or not isinstance(actual['input_identity'], dict) or not actual['input_identity']
-                    or not isinstance(actual['hardware'], dict)
-                    or {key: actual['hardware'].get(key) for key in ('device', 'ranks', 'layout')} != {'device': 'CPU', 'ranks': [0], 'layout': 'single-process'}
-                    or type(actual['work_completed']) is not int or type(actual['warmup_work_completed']) is not int
-                    or actual['work_completed'] != policy['window']['work'] or actual['warmup_work_completed'] != policy['window']['warmup_work']):
-                raise ValueError('Profile raw source observation differs from its separate actual window')
-            hardware = actual['hardware']
-            _exact(hardware, ('device', 'ranks', 'layout', *(['cpu_execution'] if 'cpu_execution' in hardware else []), *(['core_cpu_execution'] if 'core_cpu_execution' in hardware else [])), 'Profile CPU hardware observation')
-            if 'cpu_execution' in hardware:
-                from ergora.training.materials import validate_cpu_window_identity
-                proof = hardware['cpu_execution']
-                validate_cpu_window_identity(proof, binding=receipt['binding'],
-                    native_request_sha256=request['native_request_sha256'] if request is not None else proof['native_request_sha256'],
-                    managed=receipt['managed'], source=receipt['source'],
-                    execution_phase_id=request['execution_phase_id'] if request is not None else proof['execution_phase_id'],
-                    phase=receipt['phase'], operation='profiled',
-                    windows=[{key: selection[key] for key in ('run_id', 'window_id')}], require_complete=False)
-            if 'core_cpu_execution' in hardware:
-                proof = hardware['core_cpu_execution']
-                if request is not None:
-                    _cpu_window_contract(proof, request)
-                from ergora.training.materials import validate_cpu_window_identity
-                validate_cpu_window_identity(proof, binding=receipt['binding'],
-                    native_request_sha256=request['native_request_sha256'] if request else proof['native_request_sha256'],
-                    managed=receipt['managed'], source=receipt['source'],
-                    execution_phase_id=request['execution_phase_id'] if request else proof['execution_phase_id'],
-                    phase=receipt['phase'], operation='profiled', windows=[{key: selection[key] for key in ('run_id', 'window_id')}], require_complete=False)
             total_raw += len(raw)
             total_derived += len(derived)
             elapsed += capture['elapsed_seconds']
@@ -2037,6 +2180,19 @@ def _screen_data(data, request, manifest, read, first_failure):
         'reasons': data['reasons'] + ([] if comparable else [_reason('comparison_unavailable', 'performance')])}
 
 
+def _screen_artifact_index(result):
+    """Index the bounded artifact declarations in a selected screen report."""
+    indexed = {}
+    if not isinstance(result['artifacts'], list) or not 0 < len(result['artifacts']) <= 256:
+        raise ValueError('capacity_exceeded: screen artifact index')
+    for item in result['artifacts']:
+        protocol._exact(item, ('path', 'sha256', 'bytes'), 'Screen artifact')
+        if item['path'] == 'screen-result.json' or item['path'] in indexed or type(item['bytes']) is not int or not 0 <= item['bytes'] <= 16 * 1_048_576:
+            raise ValueError('Screen artifact index is duplicate, recursive or exceeds capacity')
+        indexed[item['path']] = item
+    return indexed
+
+
 def _screen_bundle(output, request, manifest, *, inventory=None):
     """Read the same immutable typed content for executor and complete historical readers."""
     import ergora.training.execution_protocol as protocol
@@ -2056,17 +2212,11 @@ def _screen_bundle(output, request, manifest, *, inventory=None):
         'runner_sha256': request['runner_sha256'], 'managed': request['managed'], 'source': request['configuration_readback']['source'],
         'execution_plan_sha256': protocol.CycleAdmission._sha(request['execution']['plan'])}
     protocol._match({key: result[key] for key in expected}, expected, 'Screen result envelope')
-    indexed = {}
-    if not isinstance(result['artifacts'], list) or not 0 < len(result['artifacts']) <= 256:
-        raise ValueError('capacity_exceeded: screen artifact index')
-    for item in result['artifacts']:
-        protocol._exact(item, ('path', 'sha256', 'bytes'), 'Screen artifact')
-        if item['path'] == 'screen-result.json' or item['path'] in indexed or type(item['bytes']) is not int or not 0 <= item['bytes'] <= 16 * 1_048_576:
-            raise ValueError('Screen artifact index is duplicate, recursive or exceeds capacity')
+    indexed = _screen_artifact_index(result)
+    for item in indexed.values():
         original = inventory.read(output, item['path'], 'screen', item['sha256'], 16 * 1_048_576)
         if len(original) != item['bytes']:
             raise ValueError('Screen artifact length differs from its raw index')
-        indexed[item['path']] = item
 
     projection_path = output / 'baseline-reference-projection.json'
     if projection_path not in inventory.originals:

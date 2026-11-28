@@ -769,7 +769,7 @@ def _record_profile(driver, context, request, output, request_raw, *, first_fail
     import signal
     import time
     import ergora.training.materials as materials
-    from ergora.training.runtime.evidence import _Inventory, _profile_report, _profile_contents, profile_bundle
+    from ergora.training.runtime.evidence import _Inventory, _profile_report, _profile_contents, _profile_selection, profile_bundle
 
     policy = request['execution'].get('profile')
     if policy is None:
@@ -821,11 +821,7 @@ def _record_profile(driver, context, request, output, request_raw, *, first_fail
                 remaining = policy['maximum_seconds'] - (time.monotonic() - started)
                 if remaining <= 0:
                     raise TimeoutError('Profile diagnostic exhausted its original selected sub-cap')
-                identity = materials.observation_sha256({'request': hashlib.sha256(request_raw).hexdigest(),
-                    'phase': phase, 'rank': 0, 'capture': ordinal})
-                selection = {'phase': phase, 'rank': 0, 'capture_index': ordinal,
-                    'window_id': 'profile-window-' + identity[:24], 'run_id': 'profile-run-' + identity[:24],
-                    'window': policy['window'], 'source_operation': policy['source_operation']}
+                selection = _profile_selection(receipt['configuration_request_sha256'], phase, policy, ordinal)
                 receipt['attempts'].append({'selection': selection, 'capture': 'attempted', 'readback': 'not_run', 'reason': None})
                 profiler = cProfile.Profile()
                 previous_handler = signal.getsignal(signal.SIGALRM)
@@ -865,22 +861,35 @@ def _record_profile(driver, context, request, output, request_raw, *, first_fail
                     'elapsed_seconds': time.monotonic() - capture_started,
                     'functions': sorted(functions, key=lambda entry: entry['function'])}
                 raw = materials.observation_bytes(capture, policy['max_raw_bytes']) + b'\n'
+                if receipt['raw_bytes'] + len(raw) > policy['max_raw_bytes']:
+                    raise ValueError('capacity_exceeded: complete profile raw evidence')
+                capture_path = output / f'profile/{phase}-0-{ordinal}.json'
+                raw_ref = ref(capture_path, raw)
+                chain, _ = _inputs(request, request_raw)
+                materials.publish_material(capture_path, raw, chain.root)
+                guards.read(output, raw_ref['path'], 'profile', raw_ref['sha256'], 16 * LIMIT)
+                chain, _ = _inputs(request, request_raw)
+                if time.monotonic() - started > policy['maximum_seconds']:
+                    raise TimeoutError('Profile diagnostic exhausted its original selected sub-cap before capture readback')
+                checkpoint = chain.profile_capture_checkpoint(receipt['configuration_request_sha256'], raw_ref['sha256'], ordinal)
+                _publish_receipt(chain.folder / 'profile-captures' / (raw_ref['sha256'] + '.json'), checkpoint, chain)
+                receipt['attempts'][-1]['capture'] = 'complete'
+
                 _, text = _profile_report(raw)
                 derived = text.encode('utf-8')
-                if receipt['raw_bytes'] + len(raw) > policy['max_raw_bytes'] or receipt['derived_bytes'] + len(derived) > policy['max_derived_bytes']:
-                    raise ValueError('capacity_exceeded: complete profile raw/derived evidence')
-                capture_path = output / f'profile/{phase}-0-{ordinal}.json'
+                if receipt['derived_bytes'] + len(derived) > policy['max_derived_bytes']:
+                    raise ValueError('capacity_exceeded: complete profile derived evidence')
                 derived_path = capture_path.with_suffix('.txt')
-                for path, original in ((capture_path, raw), (derived_path, derived)):
-                    _inputs(request, request_raw)
-                    materials.publish_material(path, original, chain.root)
-                    originals[path] = original
-                    guards.read(output, path.relative_to(output).as_posix(), 'profile', hashlib.sha256(original).hexdigest(), 16 * LIMIT)
-                    _inputs(request, request_raw)
-                receipt['captures'].append({'raw_ref': ref(capture_path, raw), 'derived_ref': ref(derived_path, derived), 'selection': selection})
+                derived_ref = ref(derived_path, derived)
+                _inputs(request, request_raw)
+                materials.publish_material(derived_path, derived, chain.root)
+                guards.read(output, derived_ref['path'], 'profile', derived_ref['sha256'], 16 * LIMIT)
+                _inputs(request, request_raw)
+                originals.update({capture_path: raw, derived_path: derived})
+                receipt['captures'].append({'raw_ref': raw_ref, 'derived_ref': derived_ref, 'selection': selection})
                 receipt['raw_bytes'] += len(raw)
                 receipt['derived_bytes'] += len(derived)
-                receipt['attempts'][-1].update(capture='complete', readback='complete')
+                receipt['attempts'][-1]['readback'] = 'complete'
                 guards.confirm()
                 _inputs(request, request_raw)
             _profile_contents(output, policy, request={**request, '_raw_sha256': hashlib.sha256(request_raw).hexdigest()},

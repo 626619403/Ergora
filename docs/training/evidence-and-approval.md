@@ -64,6 +64,18 @@ The command uses the original loopback MLflow route. It verifies the pinned Run 
 
 The metric rows and current artifact are separate observations. Matching rows do not identify which attempt wrote them, and matching artifact bytes can survive multiple uploads. Missing data does not rule out an earlier write. Every observation leaves retry authorization false.
 
+### Read the derived text from a retained CPU profile capture
+
+After the original managed executor is reaped, select the raw SHA-256 of its original `managed-execution/attempt.json` and the SHA-256 of one captured CPU profile. The attempt digest is available under `raw_sha256` in `training execution`. The original Job's `managed-execution/profile-captures` directory names each durable checkpoint by its capture digest.
+
+```bash
+ergora training evidence my-project EXPERIMENT_ID \
+  --profile-attempt-sha256 ORIGINAL_RAW_ATTEMPT_SHA256 \
+  --profile-capture-sha256 ORIGINAL_RAW_CAPTURE_SHA256
+```
+
+The command verifies the original Job, profile policy, capture checkpoint and exact raw capture. It uses the fixed cProfile reader to return `profile_recovery.derived` as a bounded text window with a digest. Use `--offset` and `--limit` for subsequent windows. The original profile receipt is available when the native result declares it in a full archive or screen artifact index. With no such declaration, `original_profile_receipt` is null and the checkpoint still supports rendering. Rendering is read-only and leaves the original failure, comparison, cleanup and progression unchanged. A capture missing its original checkpoint or raw bytes is unavailable.
+
 ## Multi-round evidence index
 
 First select this project's existing original experiments with `ergora training list my-project`. This entry point collects original records only; it neither runs experiments nor advances baselines. Collection uses the original training entry point, requiring a registered training project and `ergora[temporal]`; it connects to neither Temporal nor models. Offline index reads need only the core installation.

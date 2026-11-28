@@ -699,6 +699,8 @@ def profile(context, request, output, *, selection):
     marker('profile', {'pid': os.getpid(), 'identity': context['identity'], 'phase': selection['phase'],
         'window_id': selection['window_id'], 'run_id': selection['run_id'],
         'rank': selection['rank'], 'source_samples': len(inputs)})
+    if os.environ.get('ERGORA_TEST_PROFILE_EXPORT_CONFLICT') == '1':
+        (Path(output) / 'profile' / f"{selection['phase']}-{selection['rank']}-{selection['capture_index']}.txt").mkdir(parents=True)
     result = {key: deepcopy(selection[key]) for key in ('phase', 'rank', 'window_id', 'run_id', 'window')}
     result.update(input_identity={'scheme': 'fixture-independent-profile-integers-v1',
         'inputs': inputs, 'inputs_sha256': canonical_sha(inputs), 'output_sha256': canonical_sha(values),

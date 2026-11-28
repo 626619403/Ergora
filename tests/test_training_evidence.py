@@ -989,6 +989,7 @@ def cpu_profile_capture(tmp_path, monkeypatch):
     from types import SimpleNamespace
     import ergora.training.configuration as wrapper
     import ergora.training.materials as materials
+    from ergora.training.execution_protocol import ExecutionRecords
 
     policy = {'protocol': 'training-profile-v1', 'tool': 'cprofile-json', 'reader': 'cprofile-json-v1',
         'source_operation': 'cpu-diagnostic-v1', 'phases': ['baseline', 'screen'], 'ranks': [0],
@@ -1008,10 +1009,16 @@ def cpu_profile_capture(tmp_path, monkeypatch):
         'strategy': 'closed-form', 'fault': None} for arm in ('baseline', 'candidate')}, 'identity': 'same-source-context'}
     driver = runpy.run_path(str(Path(__file__).parent / 'fixtures/training_configuration_driver.py'))
     checks = []
+    chain = ExecutionRecords.__new__(ExecutionRecords)
+    chain.root = tmp_path
+    chain.folder = output.parent / 'managed-execution'
+    chain.records = {'ack': {}}
+    chain.originals = {chain.folder / 'attempt.json': b'original CPU profile fixture attempt'}
+
     def active(current, original):
         assert current == request and original == raw
         checks.append('original-chain-admission')
-        return SimpleNamespace(root=tmp_path), {}
+        return chain, {}
     monkeypatch.setattr(wrapper, '_inputs', active)
     def publish(path, value, chain):
         original = materials.observation_bytes(value) + b'\n'
@@ -1261,6 +1268,31 @@ def test_managed_cpu_wrapper_freezes_one_baseline_and_independent_screen_profile
         assert all(result['execution'][key] is True for key in ('durable_stop_confirmed', 'executor_stop_confirmed'))
         observed = training.evidence(item['state'], 'demo', result['experiment_id'])
         assert observed['screen_status'] == 'complete'
+    screen = results[0]
+    output = screen['job'] / 'run-output'
+    managed = screen['job'] / 'managed-execution'
+    original_receipt = output / 'profile-receipt.json'
+    original_raw = original_receipt.read_bytes()
+    raw_capture = output / 'profile/screen-0-0.json'
+    selection = {'profile_attempt_sha256': hashlib.sha256((managed / 'attempt.json').read_bytes()).hexdigest(),
+                 'profile_capture_sha256': hashlib.sha256(raw_capture.read_bytes()).hexdigest()}
+    profile = training.evidence(item['state'], 'demo', screen['experiment_id'], **selection)['profile_recovery']
+    assert profile['original_profile_receipt']['sha256'] == hashlib.sha256(original_raw).hexdigest()
+    assert profile['native_result_state'] == 'SCREEN_COMPLETED'
+    assert profile['derived']['text'] == (output / 'profile/screen-0-0.txt').read_text()
+    original_receipt.write_bytes(original_raw + b'\n')
+    try:
+        with pytest.raises(ValueError, match='digest differs'):
+            training.evidence(item['state'], 'demo', screen['experiment_id'], **selection)
+    finally:
+        original_receipt.write_bytes(original_raw)
+    hidden = original_receipt.with_suffix('.hidden')
+    original_receipt.rename(hidden)
+    try:
+        with pytest.raises(ValueError):
+            training.evidence(item['state'], 'demo', screen['experiment_id'], **selection)
+    finally:
+        hidden.rename(original_receipt)
     markers = [json.loads(line) for line in (item['markers'] / 'profile.jsonl').read_text().splitlines()]
     assert [entry['phase'] for entry in markers] == ['baseline', 'screen', 'screen']
     assert len({entry['run_id'] for entry in markers}) == 3

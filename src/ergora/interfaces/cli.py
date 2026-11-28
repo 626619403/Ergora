@@ -892,6 +892,8 @@ def parser() -> argparse.ArgumentParser:
     evidence.add_argument("--screen-result-sha256", help="Exact observed screen result digest; use with a screen artifact")
     evidence.add_argument("--retained-archive", action="store_true",
                           help="Verify the local archive retained by an unsuccessful managed experiment")
+    evidence.add_argument("--profile-attempt-sha256", help="Exact raw original managed attempt SHA-256 for profile recovery")
+    evidence.add_argument("--profile-capture-sha256", help="Exact original raw CPU profile capture SHA-256")
     evidence.add_argument("--offset", type=int, default=0, help="Unicode character offset in the selected text artifact")
     evidence.add_argument("--limit", type=int, default=12_000, help="Text window size, at most 65,536 characters")
     tracking = operations.add_parser("tracking-observe", help="Read selected effects on a previously observed local MLflow Run")
@@ -1893,10 +1895,13 @@ def main(argv: list[str] | None = None) -> int:
             elif args.operation == "status":
                 output = training.status(State(args.home), args.project, args.experiment_id, run_id=args.run_id, timeout=args.timeout)
             elif args.operation == "evidence":
-                output = training.evidence(State(args.home, read_only=args.retained_archive), args.project, args.experiment_id,
+                read_only = args.retained_archive or args.profile_attempt_sha256 is not None or args.profile_capture_sha256 is not None
+                output = training.evidence(State(args.home, read_only=read_only), args.project, args.experiment_id,
                                            artifact=args.artifact, evidence_sha256=args.evidence_sha256,
                                            screen_result_sha256=args.screen_result_sha256, offset=args.offset,
-                                           limit=args.limit, retained_archive=args.retained_archive)
+                                           limit=args.limit, retained_archive=args.retained_archive,
+                                           profile_attempt_sha256=args.profile_attempt_sha256,
+                                           profile_capture_sha256=args.profile_capture_sha256)
             elif args.operation == "tracking-observe":
                 output = training.observe_tracking(State(args.home, read_only=True), args.project, args.experiment_id,
                     evidence_sha256=args.evidence_sha256, tracking_attempt_sha256=args.tracking_attempt_sha256,
