@@ -96,6 +96,65 @@ def test_campaign_timeline_reads_and_exposes_only_the_selected_original_task(con
     assert "other-private" not in response.text and "selected-private-prompt" not in response.text
 
 
+@pytest.mark.parametrize("case", ["observed", "blocked", "local-stop", "scheduled", "unknown", "awaiting", "absent", "other-task"])
+def test_campaign_fixed_timeline_scopes_original_recipient(console, monkeypatch, case):
+    from ergora.campaigns import application
+
+    client, state, _ = console
+    label = "other" if case == "other-task" else "fixed"
+    recipient = {"session_id": "original-session", "parent_run_id": "original-parent", "intent_id": "original-intent",
+                 "prompt": "private-prompt", "timeout_seconds": 20}
+    selected = {"task_id": "fixed", "depends_on": [], "source": {}, "readback": {}, "recipient": recipient}
+    other = {"task_id": "other", "depends_on": ["fixed"], "source": {}}
+    private_intent = {"task_id": "fixed", "wake_id": "original-owner-wake", "source": "private-wake-source"}
+    timing = {"clock": "temporal_history", "intervals_ns": {"ready_to_scheduled": 521}}
+    history = {"status": "observed", "scheduled_event_id": 18, "started_event_id": 19,
+               "completed_event_id": 20, "timing": timing}
+    run = {"status": "succeeded", "execution_stopped": True, "result_sha256": "f" * 64, "returncode": 0}
+    links = {"session_id": "original-session", "parent_run_id": "original-parent", "intent_id": "original-intent",
+             "run_id": "original-native-run", "dispatch": "accepted"}
+    wake = {"status": "observed", "intent": private_intent,
+            "native_receipt": {**links, "native_start": {"status": "started", "process": "private-process"},
+                               "run": {**run, "submitted": "private-prompt"}},
+            "history": {**history, "intent": private_intent, "outcome": {"private-field": "private-outcome"}}}
+    expected = {"status": "observed", "reason": None, "wake_id": "original-owner-wake", "history": history,
+                "native_receipt": {**links, **run, "start_status": "started"}}
+    if case == "blocked":
+        wake.update(status="blocked", reason="stopped", history={**history, "status": "blocked"}, native_receipt=None)
+        expected.update(status="blocked", reason="stopped", history={**history, "status": "blocked"}, native_receipt=None)
+    elif case == "local-stop":
+        wake = {"status": "blocked", "reason": "stopped", "intent": None, "history": None, "native_receipt": None}
+        expected = {"status": "blocked", "reason": "stopped", "wake_id": None, "history": None, "native_receipt": None}
+    elif case == "scheduled":
+        scheduled = {"status": "scheduled", "scheduled_event_id": 18}
+        wake.update(status="scheduled", history=scheduled, native_receipt=None)
+        expected.update(status="scheduled", history=scheduled, native_receipt=None)
+    elif case == "unknown":
+        wake.update(status="unknown", history=None,
+                    native_receipt={**links, "dispatch": "incomplete", "native_start": {"status": "unrecorded"}, "run": None})
+        expected.update(status="unknown", history=None, native_receipt={**links, "dispatch": "incomplete", "start_status": "unrecorded"})
+    elif case == "awaiting":
+        wake = {"status": "awaiting_readback", "intent": None, "history": None, "native_receipt": None}
+
+    async def status(store, project, campaign, *, online, task_id):
+        assert (store.root, store._read_only, project, campaign, online, task_id) == (state.root, True, "demo", "record", True, label)
+        return {"workflow_state_status": "observed",
+                "plan": {"acceptance": "Verify original wake", "limits": {"expires_at": 100}, "tasks": [selected, other]},
+                "tasks": {"fixed": {**selected, "status": "observed"}, "other": other},
+                "stop": {"status": "not_recorded", "remote_status": "not_requested", "update_id": None, "receipt": None},
+                **({"recipient": wake} if case != "absent" else {})}
+
+    monkeypatch.setattr(application, "status", status)
+    response = client.get(f"/api/projects/demo/campaigns/record/tasks/{label}/timeline")
+    assert response.status_code == 200, response.text
+    observed = response.json()
+    assert "recipient" not in observed["task_state"] and "private-" not in response.text
+    if case in ("awaiting", "absent", "other-task"):
+        assert "recipient" not in observed and "original-owner-wake" not in response.text
+    else:
+        assert observed["recipient"] == expected
+
+
 @pytest.mark.parametrize("disposition", ["released", "unknown", "release-error", "refused", "completed-unknown", "timed-out",
                                          "invalid-terminal-status", "contradictory",
                                          "reason-path", "reason-object", "native-blocker", "other-task", "training-wait",

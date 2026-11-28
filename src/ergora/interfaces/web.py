@@ -17,7 +17,7 @@ import ergora.training.application as training
 import ergora.definitions.agents as agent_definitions
 import ergora.agents.runs as agent_runs
 import ergora.campaigns.application as campaigns
-from ergora.campaigns.records import tasks_by_id, training_gpu_release_task, training_readback_task, training_screen_task
+from ergora.campaigns.records import recipient_task, tasks_by_id, training_gpu_release_task, training_readback_task, training_screen_task
 import ergora.definitions.bundles as definition_bundles
 import ergora.development.drafts as drafts
 import ergora.improvement.document_corrections as document_corrections
@@ -533,7 +533,7 @@ def _timeline_history_timing(history: dict) -> dict:
     return {"timing": {"clock": timing["clock"], "intervals_ns": selected}} if selected else {}
 
 
-def _training_timeline_recipient(recipient: dict) -> dict:
+def _timeline_recipient(recipient: dict) -> dict:
     history = recipient["history"]
     intent = recipient["intent"]
     projected_history = None
@@ -1112,6 +1112,7 @@ def create_app(home: Path | None = None) -> FastAPI:
             direct_dependencies.append({"task_id": dependency_id, "state_source": source,
                                         "status": dependency.get("status") if source != "unavailable" else None})
         training_task = {}
+        fixed_recipient = None
         if training_readback_task(selected):
             training_task = {"task_id": task_id, "depends_on": selected["depends_on"],
                              "locator": selected["source"]["locator"]}
@@ -1121,9 +1122,17 @@ def create_app(home: Path | None = None) -> FastAPI:
                 task_state = {key: task_state[key] for key in ("status", "eligible", "readback_observation", "state_source")
                               if key in task_state}
             if "recipient" in selected and "recipient" in observed:
-                training_task["recipient"] = _training_timeline_recipient(observed["recipient"])
-        elif task_state is not None and "recipient" in task_state:
-            task_state = {key: value for key, value in task_state.items() if key != "recipient"}
+                training_task["recipient"] = _timeline_recipient(observed["recipient"])
+        else:
+            if task_state is not None and "recipient" in task_state:
+                task_state = {key: value for key, value in task_state.items() if key != "recipient"}
+            owner_task = recipient_task(observed)
+            recipient = observed.get("recipient")
+            if owner_task is not None and owner_task["task_id"] == task_id and recipient is not None:
+                awaiting_evidence = recipient["status"] == "awaiting_readback" and all(
+                    recipient[key] is None for key in ("intent", "history", "native_receipt"))
+                if not awaiting_evidence:
+                    fixed_recipient = _timeline_recipient(recipient)
         stop = observed["stop"]
         stop_receipt = stop["receipt"] or {}
         rollover = observed.get("rollover")
@@ -1153,6 +1162,7 @@ def create_app(home: Path | None = None) -> FastAPI:
                 "task_state": task_state,
                 **({"direct_dependencies": direct_dependencies} if direct_dependencies else {}),
                 **({"training_task": training_task} if training_task else {}),
+                **({"recipient": fixed_recipient} if fixed_recipient is not None else {}),
                 **({"assignment": assignment_evidence} if assignment_evidence is not None else {}),
                 **terminal_evidence,
                 "stop": {"status": stop["status"], "remote_status": stop["remote_status"],

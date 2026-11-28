@@ -66,10 +66,8 @@ function readbackCompletionFacts(completion, terminal, label) {
   ];
 }
 
-function trainingEvidence({ locator, recipient, source_kind }, completion, terminal, conflict) {
+function trainingEvidence({ locator, source_kind }, completion, terminal, conflict) {
   const lease = completion?.local_gpu_lease;
-  const history = recipient?.history;
-  const native = recipient?.native_receipt;
   const screen = source_kind === "training_screen_result";
   const gpuRelease = source_kind === "training_gpu_release";
   return [
@@ -103,7 +101,14 @@ function trainingEvidence({ locator, recipient, source_kind }, completion, termi
     panel("原训练资源租约", null,
       facts([["本地 GPU 租约观测", lease === null ? "源记录返回 null" : lease?.status]]),
       record("源返回的原租约观测", lease)),
-    recipient ? panel("原接手唤醒", recipient.reason,
+  ];
+}
+
+function recipientEvidence(recipient) {
+  if (!recipient) return [];
+  const { history, native_receipt: native } = recipient;
+  return [
+    panel("原接手唤醒", recipient.reason,
       facts([
         ["唤醒读取状态", recipient.status],
         ["原唤醒 ID", recipient.wake_id],
@@ -112,8 +117,8 @@ function trainingEvidence({ locator, recipient, source_kind }, completion, termi
         ["唤醒 Activity 开始事件 ID", history?.started_event_id],
         ["唤醒 Activity 终止事件 ID", history?.completed_event_id],
         ...historyTimingFacts(history),
-      ])) : null,
-    recipient ? panel("原接手原生回执", null,
+      ])),
+    panel("原接手原生回执", null,
       native ? facts([
         ["原接手会话 ID", native?.session_id],
         ["原接手父 Run ID", native?.parent_run_id],
@@ -126,7 +131,7 @@ function trainingEvidence({ locator, recipient, source_kind }, completion, termi
         ["原接手执行已停止", native?.execution_stopped],
         ["原接手退出码", native?.returncode],
         ["原接手结果 SHA256", native?.result_sha256],
-      ]) : empty("未返回原接手原生回执。")) : null,
+      ]) : empty("未返回原接手原生回执。")),
   ];
 }
 
@@ -274,6 +279,7 @@ function timeline(result) {
         record("冻结的原 Job 选择", evidence.source),
         record("原 Job 所有者返回的证据", job)),
     ]),
+    ...recipientEvidence(training ? training.recipient : result.recipient),
     ...(result.assignment ? [assignmentEvidence(result.assignment)] : []),
   ];
 }
