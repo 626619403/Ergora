@@ -81,6 +81,8 @@ ergora --home "$CONTROL" state recovery-scope PROJECT --task ORIGINAL_TASK --exp
 
 保持写入停止，用备份前相同的任务参数执行比较。即使 tar 已保存符号链接，SQLite 目标缺失或变化仍会被拒绝。继续核对完整任务信封、原创建/提交/取消/对账记录、请求/回执/产物摘要、原 owner 批准及 lease。检查每个业务库、mirror 和 worktree 的原候选 SHA、refs 和未提交状态，并用原数据库工具检查 SQLite 完整性。数据库的逻辑数据与原任务身份应保持；控制库快照的物理页或启动后的日志字节可能改变。
 
+启动较早的备份前，先核对 Temporal 命名空间的留存期。服务按恢复库里的原时间戳判断留存，启动时就可能清理超期的已关闭 History。保留离线备份及所需的原始 History 导出。在恢复栈启动 Worker 前，先用兼容服务和能够保留所选 Run 的留存设置，在隔离副本上复验旧 History。
+
 由`ergora --home "$CONTROL" services start PROJECT temporal --revision N`先启动Temporal，再用同home的services start显式启动需要的worker等服务，然后查询每个原task/run。重复原`ergora --home "$CONTROL" task start ...`（同项目、task、revision及creation SHA）应沿原提交记录返回同一run，不应自动派生新任务；未确认的外部状态先对账，不重发副作用。原outcome、候选、批准及claim不因恢复改写。完成核对后再开放新写入；不要同时启动保留的旧栈和恢复栈。
 
 Windows原生控制home仍可用[Windows备份命令](../../install/windows.md#upgrade-back-up-and-uninstall)。本页GNU tar和Supervisor整栈配方用于Linux/WSL2；迁移远端Temporal、MLflow、ReMe、工单系统及跨路径迁移需要各系统自己的恢复流程与另外验收。ReMe检索投影可从控制库按[使用手册](../../install/upgrades.md#upgrades-and-persistent-data)显式重建。
