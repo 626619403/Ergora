@@ -970,6 +970,8 @@ def test_campaign_one_pending_readback_window_is_frozen():
     recipient = {'session_id': 'root', 'parent_run_id': 'parent', 'intent_id': 'next',
                  'prompt': 'Use the original evidence', 'timeout_seconds': 60}
     validate_plan({**plan, 'tasks': [{**task, 'recipient': recipient}]})
+    with pytest.raises(ValueError, match='requires the selected common fixed-check wake'):
+        validate_plan({**plan, 'tasks': [{**task, 'recipient': recipient, 'recover_fixed_check_receipt': True}]})
     with pytest.raises(ValueError, match='selected original timed readback'):
         validate_plan({**plan, 'tasks': [{key: value for key, value in task.items() if key != 'readback'} | {'recipient': recipient}]})
     for change in ({'timeout_seconds': True}, {'intent_id': '../other'}, {'prompt': ' '}):
@@ -2968,6 +2970,7 @@ def test_rollover_keeps_the_original_wait_and_fences_unverified_successor(regist
 @pytest.mark.skipif(not os.environ.get('ERGORA_TEST_TEMPORAL_BIN'), reason='Requires the optional local Temporal CLI')
 def test_opted_fixed_check_shares_manual_and_guarded_readiness(tmp_path):
     pytest.importorskip('temporalio')
+    from copy import deepcopy
     from uuid import uuid4
 
     from temporalio import activity
@@ -2975,8 +2978,9 @@ def test_opted_fixed_check_shares_manual_and_guarded_readiness(tmp_path):
     from temporalio.worker import Replayer, Worker
     from ergora.campaigns import workflow as runtime
     from ergora.campaigns.records import (
-        FIXED_TASK_UPDATE_PREFIX, READBACK_ACTIVITY, RECIPIENT_ACTIVITY, attempt_document,
-        check_intent, identity, original_check_evidence, readback_id, stop_intent, update_attempt, validate_plan,
+        FIXED_CHECK_RECOVERY_ACTIVITY, FIXED_TASK_UPDATE_PREFIX, READBACK_ACTIVITY, RECIPIENT_ACTIVITY, attempt_document,
+        check_intent, identity, original_check_evidence, readback_id, receipt_recovery_id, stop_intent, update_attempt,
+        validate_plan,
     )
 
     source = {'pending': True, 'project_revision': 1, 'operation_id': 'original',
@@ -2991,16 +2995,28 @@ def test_opted_fixed_check_shares_manual_and_guarded_readiness(tmp_path):
     deliveries = {}
     held_reads = {name: (asyncio.Event(), asyncio.Event()) for name in ('manual-held', 'conflict')}
 
+    def passing_result(grant):
+        return {'activity_id': readback_id(grant), 'reader_cleanup_sha256': 'b' * 64, 'observation': succeeded}
+
     @activity.defn(name=READBACK_ACTIVITY)
     async def original_result(grant: dict) -> dict:
         name = activity.info().workflow_id.rsplit(':', 1)[1]
+        if name == 'recovery-first':
+            # The runtime test substitutes the saved result but lets Temporal time out the original reply.
+            await asyncio.sleep(4)
         if name in held_reads:
             started, release = held_reads[name]
             started.set()
             while not release.is_set():
                 activity.heartbeat('original status read is held')
                 await asyncio.sleep(.04)
-        return {'activity_id': readback_id(grant), 'reader_cleanup_sha256': 'b' * 64, 'observation': succeeded}
+        return passing_result(grant)
+
+    @activity.defn(name=FIXED_CHECK_RECOVERY_ACTIVITY)
+    async def recover_result(grant: dict) -> dict:
+        assert activity.info().activity_id == receipt_recovery_id(grant)
+        return {'recovery_activity_id': activity.info().activity_id, 'recovery_receipt_sha256': 'd' * 64,
+                'original_result': passing_result(grant)}
 
     @activity.defn(name=RECIPIENT_ACTIVITY)
     async def recipient(intent: dict) -> dict:
@@ -3014,6 +3030,9 @@ def test_opted_fixed_check_shares_manual_and_guarded_readiness(tmp_path):
                     'wake_on_observe': True, 'readback': {'due_at': due, 'deadline_at': due + 12},
                     'recipient': {'session_id': 'session', 'parent_run_id': 'parent', 'intent_id': 'original',
                                   'prompt': 'Use the original check result.', 'timeout_seconds': 8}}
+        recovery_first = campaign == 'recovery-first'
+        if recovery_first:
+            selected['recover_fixed_check_receipt'] = True
         child = {'task_id': 'dependent', 'depends_on': ['fixed'], 'source': source}
         plan = {'schema_version': 1, 'goal': 'Verify one fixed check', 'acceptance': 'One original result',
                 'evidence_format': 'Native History', 'baseline_commit': source['candidate_sha'],
@@ -3025,6 +3044,8 @@ def test_opted_fixed_check_shares_manual_and_guarded_readiness(tmp_path):
         attempt = attempt_document(opening, str(uuid4()))
         run_id = await runtime.start(client, opening, attempt)
         handle = client.get_workflow_handle(workflow_id, run_id=run_id)
+        if recovery_first:
+            assert await runtime.read_task_history(client, handle, opening, []) == ({}, None, None, None, None, None)
 
         def command(task, observation, wait=None):
             evidence, job = original_check_evidence(opening, task, observation)
@@ -3079,7 +3100,15 @@ def test_opted_fixed_check_shares_manual_and_guarded_readiness(tmp_path):
         assert accepted['decision'] == 'observed'
         commands.append(later)
         updates, readback, wake, terminal, followup_terminal, _ = await runtime.read_task_history(client, handle, opening, commands)
-        assert terminal is None and followup_terminal is None
+        assert followup_terminal is None
+        if recovery_first:
+            assert terminal['cause'] == {'kind': 'timeout', 'type': 'HEARTBEAT'}
+            assert readback['recovery_history']['original_timeout_event_id'] == terminal['terminal_event_id']
+            waiting_history = updates[waiting['attempt']['update_id']]
+            assert wake['waiting_accepted_event_id'] == waiting_history['accepted_event_id']
+            assert wake['waiting_completed_event_id'] == waiting_history['completed_event_id']
+        else:
+            assert terminal is None
         selected_wake, = deliveries[workflow_id]
         assert wake['intent'] == selected_wake
         if manual_first or holds_read:
@@ -3090,11 +3119,14 @@ def test_opted_fixed_check_shares_manual_and_guarded_readiness(tmp_path):
             late = command(selected, succeeded, wait)
             assert await send(late) is None and await send(late) is None
             updates, completion, original_wake, terminal, followup_terminal, _ = await runtime.read_task_history(client, handle, opening, [*commands, late])
-            assert terminal is None and followup_terminal is None
+            assert followup_terminal is None
+            assert (terminal is not None) is recovery_first
             failed = updates[late['attempt']['update_id']]
             assert failed['status'] == 'failed' and failed['receipt'] is None
             assert failed['reason'] == runtime.READBACK_ALREADY_ADMITTED
-            assert completion['completed_event_id'] < failed['completed_event_id'] and original_wake['intent'] == selected_wake
+            evidence_event = completion['recovery_history'] if recovery_first else completion
+            assert evidence_event['completed_event_id'] < failed['completed_event_id']
+            assert original_wake['intent'] == selected_wake
             conflicting = command(selected, {**succeeded, 'detail': 'different observation'}, wait)
             assert await send(conflicting) is None
             assert (await handle.query(runtime.Campaign.state))['check_receipts'].keys() == {'dependent'}
@@ -3105,9 +3137,36 @@ def test_opted_fixed_check_shares_manual_and_guarded_readiness(tmp_path):
         history = await handle.fetch_history()
         scheduled = [event.activity_task_scheduled_event_attributes.activity_type.name for event in history.events
                      if event.HasField('activity_task_scheduled_event_attributes')]
-        expected = [RECIPIENT_ACTIVITY] if manual_first else [READBACK_ACTIVITY, RECIPIENT_ACTIVITY]
+        expected = [] if manual_first else [READBACK_ACTIVITY]
+        if recovery_first:
+            expected.append(FIXED_CHECK_RECOVERY_ACTIVITY)
+        expected.append(RECIPIENT_ACTIVITY)
         assert scheduled == expected
         await Replayer(workflows=[runtime.Campaign], namespace=client.namespace).replay_workflow(history)
+        if recovery_first:
+            accepted_id, completed_id = (waiting_history[key] for key in ('accepted_event_id', 'completed_event_id'))
+            original_schedule = readback['scheduled_event_id']
+
+            async def read_changed(events):
+                async def fetch_history_events(**options):
+                    for event in events:
+                        yield event
+
+                changed = SimpleNamespace(id=workflow_id, run_id=run_id, fetch_history_events=fetch_history_events)
+                return await runtime.read_task_history(client, changed, opening, [waiting])
+
+            for missing in ({accepted_id, completed_id}, {completed_id}):
+                with pytest.raises(ValueError, match='verified original waiting Update'):
+                    await read_changed([event for event in history.events if event.event_id not in missing])
+            changed = deepcopy(list(history.events))
+            changed[original_schedule - 1].activity_task_scheduled_event_attributes.activity_type.name = 'unrelated'
+            with pytest.raises(ValueError, match='differs from its original grant'):
+                await read_changed(changed)
+            changed = deepcopy(list(history.events))
+            postponed = changed.pop(completed_id - 1)
+            postponed.event_id = history.events[-1].event_id + 1
+            with pytest.raises(ValueError, match='original wait to precede its read schedule'):
+                await read_changed([*changed, postponed])
 
     async def exercise():
         async with await WorkflowEnvironment.start_local(
@@ -3116,9 +3175,10 @@ def test_opted_fixed_check_shares_manual_and_guarded_readiness(tmp_path):
         ) as service:
             queue = 'fixed-check-intake'
             async with Worker(service.client, task_queue=queue, workflows=[runtime.Campaign],
-                              activities=[original_result, recipient]):
+                              activities=[original_result, recover_result, recipient]):
                 await asyncio.gather(*(check(service.client, queue, name)
-                                       for name in ('manual-first', 'timer-first', 'manual-held', 'conflict')))
+                                       for name in ('manual-first', 'timer-first', 'manual-held', 'conflict',
+                                                    'recovery-first')))
 
     asyncio.run(exercise())
 
@@ -3503,14 +3563,17 @@ def test_receipt_recovery_history_requires_original_activity_lineage(monkeypatch
         assert validated == []
 
 
-@pytest.mark.parametrize(('case', 'full_result'), (
-    *((case, False) for case in ('exact', 'stop', 'expired', 'missing', 'foreign_guard', 'foreign_attempt',
-                                 'unknown_lease', 'unreaped_child', 'original_worker_live')),
-    ('exact', True), ('original_worker_live', True), ('original_worker_extra', True),
-    ('original_worker_exited', True), ('original_worker_unknown', True), ('original_reader_exited_unreaped', True),
-    ('original_worker_padded_ticks', True), ('original_worker_unicode_ticks', True), ('original_worker_zero_ticks', True),
+@pytest.mark.parametrize(('case', 'source_kind'), (
+    *((case, 'release') for case in ('exact', 'stop', 'expired', 'missing', 'foreign_guard', 'foreign_attempt',
+                                     'unknown_lease', 'unreaped_child', 'original_worker_live')),
+    *((case, 'full-result') for case in ('exact', 'original_worker_live', 'original_worker_extra',
+                                          'original_worker_exited', 'original_worker_unknown',
+                                          'original_reader_exited_unreaped', 'original_worker_padded_ticks',
+                                          'original_worker_unicode_ticks', 'original_worker_zero_ticks')),
+    *((case, 'fixed-check') for case in ('exact', 'stop', 'expired', 'foreign_guard', 'original_worker_live',
+                                          'missing_wait', 'pending')),
 ))
-def test_receipt_recovery_only_accepts_original_receipt_and_reaped_processes(tmp_path, monkeypatch, case, full_result):
+def test_receipt_recovery_only_accepts_original_receipt_and_reaped_processes(tmp_path, monkeypatch, case, source_kind):
     from dataclasses import replace
     pytest.importorskip('temporalio')
 
@@ -3523,7 +3586,14 @@ def test_receipt_recovery_only_accepts_original_receipt_and_reaped_processes(tmp
     task = {'task_id': 'result', 'depends_on': [], 'readback': {'due_at': 20, 'deadline_at': 40},
             'recipient': {'session_id': 'session', 'parent_run_id': 'parent', 'intent_id': 'notice',
                           'prompt': 'Read the original training observation.', 'timeout_seconds': 20}}
-    if full_result:
+    fixed = source_kind == 'fixed-check'
+    full_result = source_kind == 'full-result'
+    if fixed:
+        task.update(source={'pending': True, 'project_revision': 1, 'operation_id': 'original',
+            'job_id': 'check-' + 'a' * 40 + '-' + 'b' * 24, 'authorization_sha256': 'a' * 64,
+            'verification_sha256': 'b' * 64, 'request_file_sha256': 'c' * 64, 'job_sha256': 'd' * 64,
+            'candidate_sha': 'a' * 40}, wake_on_observe=True, recover_fixed_check_receipt=True)
+    elif full_result:
         task.update(source={'kind': 'training_full_result', 'locator': locator}, recover_full_result_receipt=True)
     else:
         locator.update(session_id='c'*32, lease_id='d'*64)
@@ -3533,7 +3603,13 @@ def test_receipt_recovery_only_accepts_original_receipt_and_reaped_processes(tmp
                'registration': {'sha256': 'e'*64}, 'plan': {'tasks': [task]}}
     run = 'original-run'
     start = {'attempt': 'original'}
-    grant = records.readback_grant(opening, run, task, None)
+    waiting = None
+    if fixed:
+        intent = records.check_intent(opening, records.identity(start), run, task['task_id'], 'f' * 64,
+                                      job={'status': 'queued'})
+        waiting = {'intent': intent, 'attempt': records.update_attempt(intent,
+                    'ergora-campaign-check:00112233-4455-4677-8899-001122334455')}
+    grant = records.readback_grant(opening, run, task, records.check_receipt(waiting) if waiting else None)
     activity_id = records.readback_id(grant)
     worker, guard, model = [{'pid': process, 'boot_id': 'current-boot', 'start_ticks': '42'}
                             for process in (10001, 10002, 10003)]
@@ -3542,7 +3618,13 @@ def test_receipt_recovery_only_accepts_original_receipt_and_reaped_processes(tmp
                            'model': model, 'model_waited': True, 'remaining_children': [], 'returncode': 0}}
     observation = {'status': 'verified', 'project': 'demo', 'project_revision': 1,
                    'registration_sha256': 'e'*64, 'locator': locator, 'local_gpu_lease': None}
-    if full_result:
+    if fixed:
+        observation = {key: value for key, value in task['source'].items() if key != 'pending'}
+        observation.update(project='demo', status='succeeded', stop_requested=False, cleanup_confirmed=True,
+                           receipt_sha256='e' * 64, fixed_results_sha256='f' * 64)
+        if case == 'pending':
+            observation.update(status='attempted', cleanup_confirmed=None, receipt_sha256=None, fixed_results_sha256=None)
+    elif full_result:
         observation.update(native_result_state='SUCCEEDED', **{field: 'f'*64 for field in records.TRAINING_RESULT_DIGESTS})
     else:
         observation['local_gpu_lease'] = {
@@ -3577,6 +3659,7 @@ def test_receipt_recovery_only_accepts_original_receipt_and_reaped_processes(tmp
         cleanup['receipt']['model_waited'] = False
         result['reader_cleanup_sha256'] = records.identity(cleanup)
     files = SimpleNamespace(home=tmp_path, _read=documents.get, load=lambda: (opening, start, {'run_id': run}),
+                            load_check=lambda *_, **__: waiting if case != 'missing_wait' else None,
                             load_stop=lambda *_: ({} if case == 'stop' else None, None, None))
     State(tmp_path)
     monkeypatch.setattr(readback, 'require_check_project', lambda *_: None)
@@ -3742,7 +3825,7 @@ def test_full_result_reobservation_requires_a_closed_unpublished_reader(tmp_path
 
 
 @pytest.mark.parametrize('phase', ('release', 'cutoff', 'stop_waiting', 'stop_acquired', 'stop_before_link', 'write_error'))
-def test_training_publication_waits_only_for_its_original_lock_and_window(monkeypatch, phase):
+def test_guarded_result_publication_waits_only_for_its_original_lock_and_window(monkeypatch, phase):
     from contextlib import contextmanager
 
     pytest.importorskip('temporalio')
@@ -3784,18 +3867,18 @@ def test_training_publication_waits_only_for_its_original_lock_and_window(monkey
     files = SimpleNamespace(lock='original-lock', write=write)
     result = {'activity_id': 'original'}
     if phase == 'release':
-        readback._publish_training_result(files, result, .05, stopped)
+        readback._publish_guarded_result(files, result, .05, stopped)
         assert published == [('readback-result', result)]
     elif phase == 'cutoff':
         with pytest.raises(TimeoutError, match='publication cutoff'):
-            readback._publish_training_result(files, result, .05, stopped)
+            readback._publish_guarded_result(files, result, .05, stopped)
         assert clock[0] == .05 and not prepared
     elif phase == 'write_error':
         with pytest.raises(BlockingIOError, match='original write failure'):
-            readback._publish_training_result(files, result, .05, stopped)
+            readback._publish_guarded_result(files, result, .05, stopped)
     else:
         with pytest.raises(ValueError, match='no longer admits'):
-            readback._publish_training_result(files, result, .05, stopped)
+            readback._publish_guarded_result(files, result, .05, stopped)
         assert prepared is (phase == 'stop_before_link')
     assert len(accesses) == (1 if phase == 'stop_waiting' else 2)
     if phase != 'release':
@@ -4167,5 +4250,36 @@ def test_training_recipient_binds_original_wake_history_before_reservation(monke
         assert delivered == [intent]
     else:
         with pytest.raises(ValueError, match='lacks its verified original result and schedule'):
+            asyncio.run(worker._deliver_verified(intent))
+        assert not delivered
+
+
+@pytest.mark.parametrize('waiting_events', ({}, {'waiting_accepted_event_id': 9, 'waiting_completed_event_id': 35},
+                                               {'waiting_accepted_event_id': 9, 'waiting_completed_event_id': 10}))
+def test_fixed_receipt_recovery_recipient_requires_the_verified_wait(monkeypatch, waiting_events):
+    pytest.importorskip('temporalio')
+    from ergora.campaigns.recipient import CodexRecipient
+
+    task = {'source': {'pending': True}, 'readback': {}, 'recipient': {}, 'recover_fixed_check_receipt': True}
+    opening = {'plan': {'tasks': [task]}}
+    waiting = {'attempt': 'original-wait'}
+    intent = {'source': {'recovery_activity_id': 'original-recovery'}, 'wake_id': 'original-wake'}
+    delivered = []
+
+    def load_check(selected_opening, start, run, selected_task, **options):
+        assert (selected_opening, start, run, selected_task, options) == (opening, 'start', 'run', task, {'waiting': True})
+        return waiting
+
+    async def history_read(commands):
+        assert commands == (waiting,)
+        return {'intent': intent, 'scheduled_event_id': 32, **waiting_events}
+
+    worker = CodexRecipient(SimpleNamespace(load_check=load_check), opening, 'start', 'run', read_wake_history=history_read)
+    monkeypatch.setattr(worker, '_deliver', delivered.append)
+    if waiting_events.get('waiting_completed_event_id') == 10:
+        asyncio.run(worker._deliver_verified(intent))
+        assert delivered == [intent]
+    else:
+        with pytest.raises(ValueError, match='lacks its verified original waiting Update'):
             asyncio.run(worker._deliver_verified(intent))
         assert not delivered

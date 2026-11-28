@@ -11,7 +11,8 @@ import time
 
 from ergora.agents import native_sources
 from ergora.campaigns.records import (
-    ASSIGNMENT_ATTEMPT, ASSIGNMENT_REFUSAL, CampaignFiles, assignment_intent, assignment_task, check_receipt,
+    ASSIGNMENT_ATTEMPT, ASSIGNMENT_REFUSAL, FIXED_CHECK_RECOVERY_ACTIVITY,
+    CampaignFiles, assignment_intent, assignment_task, check_receipt,
     identity, manual_wake_source, readback_grant, readback_id, readback_proof, readback_reference, readback_result,
     receipt_recovery_activity, receipt_recovery_id, receipt_recovery_proof, recipient_task,
     reobservation_id, reobservation_task, require_check_project, require_training_assignment_wait, sha256,
@@ -55,11 +56,11 @@ def verified_source(files, opening, start, run_id, task, *, reobservation=False)
             or cleanup.get('receipt', {}).get('model_waited') is not True
             or cleanup['receipt'].get('remaining_children') != []):
         raise ValueError('Campaign recipient requires its exact original reader result and cleanup')
-    if training:
+    if training or receipt_recovery_activity(task) == FIXED_CHECK_RECOVERY_ACTIVITY:
         guard = files._read(f'{prefix}-guard')
         if (guard is None or guard.get('activity_id') != activity or guard.get('worker') != attempt.get('worker')
                 or not isinstance(guard.get('guard'), dict) or cleanup['receipt'].get('owner') != guard['guard']):
-            raise ValueError('Campaign training recipient requires cleanup by the original readback guard')
+            raise ValueError('Campaign recipient requires cleanup by the original readback guard')
     evidence, job = readback_result(opening, task, activity, readback)
     if job['status'] != 'succeeded':
         raise ValueError('Campaign recipient requires a passing original fixed check')
@@ -88,7 +89,7 @@ def verified_receipt_recovery(files, opening, start, run_id, task):
             or not guard['deadline_monotonic'] >= guard['work_cutoff_monotonic'] >= cleanup['reaped_at_monotonic']
             or any(files._read(name) != value for name, value in documents.items())):
         raise ValueError('Campaign receipt recovery requires unchanged original guard and reaped reader proof')
-    grant = readback_grant(opening, run_id, task, None)
+    grant = documents['readback-attempt']['grant']
     reply = {'recovery_activity_id': receipt_recovery_id(grant), 'recovery_receipt_sha256': identity(documents),
              'original_result': documents['readback-result']}
     return {**source, **receipt_recovery_proof(grant, reply)}, reply, guard, finished['model']

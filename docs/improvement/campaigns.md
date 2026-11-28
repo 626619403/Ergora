@@ -208,6 +208,10 @@ ergora campaign status my-project fixed-check-plan --online --task-id verify-bas
 
 Read a verified guarded result in `readback_completion`. If an identical manual Update lost the race, its terminal entry in `task_observation_history` retains the original Run and Update IDs, the accepted and completed event IDs, `status: failed`, `reason: readback_already_admitted` and `receipt: null`. The Activity still supplies the original result. Neither a status read nor a repeated observation delivers a second continuation.
 
+Set `"recover_fixed_check_receipt": true` on the same fixed-check task with `"wake_on_observe": true` to allow one receipt-only recovery after the original guarded Activity starts and then times out on heartbeat. The Worker verifies the saved passing receipt and original reader cleanup under the same waiting receipt, Job and Campaign Run, within the original read deadline and STOP fence. A verified recovery can supply the one original wake.
+
+Online status preserves the verified timeout in `readback_terminal` and links a verified recovery to it through `readback_completion.recovery_history.original_timeout_event_id`. A verified unsuccessful recovery appears in `readback_followup_terminal`. If History cannot be read or verifies neither a completion nor a terminal event, `readback_history_status` can report `unavailable` or `unresolved`, respectively. If a receipt cannot be verified, the live task's `readback_observation.status` can remain `unknown`.
+
 ### Give the same assigned role one independent task
 
 The local operator can include one optional `assignment` in the same confirmed plan. Select the original timed fixed-check task with `waiting_task_id` and give `next_task` a distinct task ID. Both native sessions must use the same registered role and permission generation. Read that role's generation from `native_authority_revisions` in `ergora project show PROJECT`, or use the project revision when the role has no separate value. Select a separately authorized native session and its latest stopped parent for the independent task. Its prompt, timeout, role settings and saved context govern that turn.

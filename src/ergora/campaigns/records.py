@@ -30,6 +30,7 @@ FIXED_TASK_SOURCE = (*FIXED_TASK_LOCATOR, *FIXED_CHECK_TERMINAL)
 PENDING_JOB_STATES = ('queued', 'attempted')
 READBACK_CLEANUP_SECONDS = 0.8
 READBACK_ACTIVITY = 'ergora_campaign_fixed_check_readback'
+FIXED_CHECK_RECOVERY_ACTIVITY = 'ergora_campaign_fixed_check_receipt_recovery'
 TRAINING_READBACK_ACTIVITY = 'ergora_campaign_training_full_result_readback'
 TRAINING_RESULT_SOURCE = 'training_full_result'
 FULL_RESULT_RECOVERY_ACTIVITY = 'ergora_campaign_training_full_result_recover_receipt'
@@ -151,8 +152,8 @@ def validate_tasks(tasks):
     dependencies = {}
     scheduled = False
     for task in tasks:
-        optional = {'readback', 'recipient', 'wake_on_observe', 'recover_release_receipt', 'recover_full_result_receipt',
-                    'reobserve_full_result_after_reader_loss'}
+        optional = {'readback', 'recipient', 'wake_on_observe', 'recover_fixed_check_receipt',
+                    'recover_release_receipt', 'recover_full_result_receipt', 'reobserve_full_result_after_reader_loss'}
         if not isinstance(task, dict) or task.keys() - optional != {'task_id', 'depends_on', 'source'}:
             raise ValueError('Campaign task requires task_id, depends_on and an exact source')
         task_id, parents, source = task['task_id'], task['depends_on'], task['source']
@@ -200,6 +201,9 @@ def validate_tasks(tasks):
                 raise ValueError('Campaign Codex recipient requires the selected original timed readback')
         if 'wake_on_observe' in task and (task['wake_on_observe'] is not True or 'recipient' not in task):
             raise ValueError('Campaign manual wake requires an explicitly enabled original timed recipient')
+        if 'recover_fixed_check_receipt' in task and (task['recover_fixed_check_receipt'] is not True
+                or task.get('wake_on_observe') is not True or training_readback_task(task)):
+            raise ValueError('Campaign fixed-check receipt recovery requires the selected common fixed-check wake')
         if 'recover_release_receipt' in task and (task['recover_release_receipt'] is not True
                 or not training_gpu_release_task(task) or 'recipient' not in task):
             raise ValueError('Campaign receipt recovery requires the selected original GPU release and recipient')
@@ -425,6 +429,8 @@ def readback_id(grant):
 
 def receipt_recovery_activity(task):
     if task is not None:
+        if task.get('recover_fixed_check_receipt') is True:
+            return FIXED_CHECK_RECOVERY_ACTIVITY
         if task.get('recover_release_receipt') is True:
             return RELEASE_RECOVERY_ACTIVITY
         if task.get('recover_full_result_receipt') is True:
@@ -432,9 +438,17 @@ def receipt_recovery_activity(task):
 
 
 def receipt_recovery_id(grant):
-    prefix = ('training-gpu-release-recovery:' if grant.get('source_kind') == TRAINING_GPU_RELEASE_SOURCE else
-              'training-full-result-recovery:')
+    if 'waiting_receipt_sha256' in grant:
+        prefix = 'fixed-check-receipt-recovery:'
+    else:
+        prefix = ('training-gpu-release-recovery:' if grant.get('source_kind') == TRAINING_GPU_RELEASE_SOURCE else
+                  'training-full-result-recovery:')
     return prefix + identity(grant)
+
+
+def readback_reports_terminal(task):
+    return task is not None and (task['source'].get('kind') == TRAINING_RESULT_SOURCE
+                                 or receipt_recovery_activity(task) == FIXED_CHECK_RECOVERY_ACTIVITY)
 
 
 def receipt_recovery_proof(grant, reply):

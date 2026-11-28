@@ -11,8 +11,8 @@ from temporalio import activity
 from temporalio.exceptions import ApplicationError
 
 from ergora.campaigns.records import (
-    FULL_RESULT_RECOVERY_ACTIVITY, FULL_RESULT_REOBSERVATION_ACTIVITY, READBACK_ACTIVITY, READBACK_CLEANUP_SECONDS,
-    RELEASE_RECOVERY_ACTIVITY,
+    FIXED_CHECK_RECOVERY_ACTIVITY, FULL_RESULT_RECOVERY_ACTIVITY, FULL_RESULT_REOBSERVATION_ACTIVITY,
+    READBACK_ACTIVITY, READBACK_CLEANUP_SECONDS, RELEASE_RECOVERY_ACTIVITY,
     TRAINING_GPU_RELEASE_ACTIVITY, TRAINING_READBACK_ACTIVITY, TRAINING_SCREEN_ACTIVITY,
     CampaignFiles, check_receipt, identity, readback_activity, readback_grant, readback_id, readback_task,
     readback_followup_activity, receipt_recovery_activity, receipt_recovery_id, reobservation_id, reobservation_task,
@@ -50,6 +50,10 @@ class CampaignReadback:
                 TRAINING_SCREEN_ACTIVITY: self.read_training_screen,
                 TRAINING_GPU_RELEASE_ACTIVITY: self.read_training_gpu_release}[readback_activity(task)]
 
+    @activity.defn(name=FIXED_CHECK_RECOVERY_ACTIVITY)
+    async def recover_fixed_check(self, grant: dict) -> dict:
+        return self._recover_receipt(grant)
+
     @activity.defn(name=RELEASE_RECOVERY_ACTIVITY)
     async def recover_release(self, grant: dict) -> dict:
         return self._recover_receipt(grant)
@@ -63,7 +67,8 @@ class CampaignReadback:
         return await self._read(grant, reobservation=True)
 
     def recovery_activity_for(self, task):
-        return {RELEASE_RECOVERY_ACTIVITY: self.recover_release,
+        return {FIXED_CHECK_RECOVERY_ACTIVITY: self.recover_fixed_check,
+                RELEASE_RECOVERY_ACTIVITY: self.recover_release,
                 FULL_RESULT_RECOVERY_ACTIVITY: self.recover_full_result,
                 FULL_RESULT_REOBSERVATION_ACTIVITY: self.reobserve}.get(readback_followup_activity(task))
 
@@ -73,11 +78,13 @@ class CampaignReadback:
         info = activity.info()
         task = readback_task(self.opening)
         recovery = receipt_recovery_activity(task)
+        fixed = recovery == FIXED_CHECK_RECOVERY_ACTIVITY
+        waiting = self.files.load_check(self.opening, self.start_attempt, self.run_id, task, waiting=True) if fixed else None
         if (recovery is None or info.activity_type != recovery or info.attempt != 1
                 or info.workflow_id != self.opening['workflow_id'] or info.workflow_run_id != self.run_id
-                or info.activity_id != receipt_recovery_id(grant)
-                or grant != readback_grant(self.opening, self.run_id, task, None)):
-            raise ValueError('Campaign recovery requires its selected original training read')
+                or info.activity_id != receipt_recovery_id(grant) or (fixed and waiting is None)
+                or grant != readback_grant(self.opening, self.run_id, task, check_receipt(waiting) if waiting else None)):
+            raise ValueError('Campaign recovery requires its selected original read')
 
         def require_open(work_cutoff=None):
             opening, start, result = self.files.load()
@@ -92,9 +99,9 @@ class CampaignReadback:
         require_open()
         require_check_project(State(self.files.home, read_only=True), self.opening)
         _, reply, guard, model = verified_receipt_recovery(self.files, self.opening, self.start_attempt, self.run_id, task)
-        full_result = recovery == FULL_RESULT_RECOVERY_ACTIVITY
-        _require_original_read_exits(guard, model, full_result=full_result)
-        require_open(guard['work_cutoff_monotonic'] if full_result else None)
+        strict = recovery != RELEASE_RECOVERY_ACTIVITY
+        _require_original_read_exits(guard, model, strict=strict)
+        require_open(guard['work_cutoff_monotonic'] if strict else None)
         return reply
 
     async def _admit_reobservation(self, grant, packet):
@@ -134,7 +141,7 @@ class CampaignReadback:
             current, guard, model = verified_interrupted_read(self.files, grant)
             if current != interruption:
                 raise ValueError('Campaign re-observation proof changed while waiting for its original lock')
-            _require_original_read_exits(guard, model, full_result=True, exact_generation=True)
+            _require_original_read_exits(guard, model, strict=True, exact_generation=True)
 
             require_window()
             self.files.write('reobservation-attempt', {**packet, 'interruption_sha256': interruption},
@@ -216,7 +223,7 @@ class CampaignReadback:
         return result
 
 
-def _require_original_read_exits(guard, model, *, full_result, exact_generation=False):
+def _require_original_read_exits(guard, model, *, strict, exact_generation=False):
     boot = processes.identity(os.getpid())['boot_id']
     for role, saved in (('worker', guard['worker']), ('guard', guard['guard']), ('reader', model)):
         if (not isinstance(saved, dict) or saved.keys() != {'pid', 'start_ticks', 'boot_id'}
@@ -225,11 +232,11 @@ def _require_original_read_exits(guard, model, *, full_result, exact_generation=
                 or saved['boot_id'] != boot):
             raise ValueError('Campaign receipt recovery cannot verify the original process identity')
         ticks = saved['start_ticks']
-        if full_result and (not ticks.isascii() or (ticks != '0' and ticks.startswith('0'))):
+        if strict and (not ticks.isascii() or (ticks != '0' and ticks.startswith('0'))):
             raise ValueError('Campaign receipt recovery cannot verify the original process identity')
         try:
             exited = False
-            if full_result and role == 'worker':
+            if strict and role == 'worker':
                 process_state, original_process = processes.observe_process(saved['pid'])
                 exited = process_state in ('Z', 'X', 'x')
             else:
@@ -275,6 +282,7 @@ def _guard(home, project, campaign, prefix='readback'):
     if result is not None and result['run_id'] != run_id:
         raise ValueError('Readback guard does not bind the original start')
     training = training_readback_task(task)
+    fenced_publication = training or receipt_recovery_activity(task) == FIXED_CHECK_RECOVERY_ACTIVITY
     waiting = None if training else files.load_check(opening, attempt, run_id, task, waiting=True)
     if ((waiting is None and not training) or (training and result is None)
             or grant != readback_grant(opening, run_id, task, check_receipt(waiting) if waiting else None)
@@ -298,7 +306,7 @@ def _guard(home, project, campaign, prefix='readback'):
         if cancel == {'activity_id': activity_id} or (reobservation and files._read('readback-cancel') is not None):
             return True
         intent, _, stop = files.load_stop(opening, attempt, result)
-        return intent is not None if training else stop is not None and stop['receipt']['decision'] == 'accepted'
+        return intent is not None if fenced_publication else stop is not None and stop['receipt']['decision'] == 'accepted'
 
     def save_cleanup(receipt):
         files.write(f'{prefix}-cleanup', {'activity_id': activity_id, 'receipt': receipt,
@@ -317,18 +325,18 @@ def _guard(home, project, campaign, prefix='readback'):
         raise ValueError('Original training reader cleanup is unavailable' if training else
                          'Original fixed-check reader cleanup is unavailable')
     observed = {'activity_id': activity_id, 'observation': status, 'reader_cleanup_sha256': identity(cleanup)}
-    if training:
-        _publish_training_result(files, observed, work_cutoff, stopped, record=f'{prefix}-result')
+    if fenced_publication:
+        _publish_guarded_result(files, observed, work_cutoff, stopped, record=f'{prefix}-result')
     else:
         files.write('readback-result', observed)
 
 
-def _publish_training_result(files, observed, work_cutoff, stopped, *, record='readback-result'):
+def _publish_guarded_result(files, observed, work_cutoff, stopped, *, record='readback-result'):
     def require_window():
         if time.monotonic() >= work_cutoff:
-            raise TimeoutError('Original Campaign training result reached its publication cutoff')
+            raise TimeoutError('Original Campaign readback result reached its publication cutoff')
         if stopped():
-            raise ValueError('Original Campaign no longer admits the training result')
+            raise ValueError('Original Campaign no longer admits the readback result')
 
     with ExitStack() as claim:
         while True:

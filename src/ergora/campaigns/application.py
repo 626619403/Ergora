@@ -10,9 +10,9 @@ from uuid import uuid4
 from ergora.campaigns.records import (
     ASSIGNMENT_ATTEMPT, FIXED_CHECK_TERMINAL, FIXED_TASK_LOCATOR, FIXED_TASK_UPDATE_PREFIX,
     PENDING_JOB_STATES, READBACK_ALREADY_ADMITTED,
-    ROLLOVER_UPDATE_PREFIX, TRAINING_RESULT_SOURCE, WORKFLOW_TYPE,
+    ROLLOVER_UPDATE_PREFIX, WORKFLOW_TYPE,
     CampaignFiles, assignment_task, attempt_document, check_intent, check_record_name, identity, local_readback_stop,
-    original_check_evidence, project_selection, read_plan, readback_task,
+    original_check_evidence, project_selection, read_plan, readback_reports_terminal, readback_task,
     recipient_task, require_assignment_bindings, require_check_project, result_document, rollover_intent,
     require_training_assignment_wait, rollover_task, sha256, stop_intent,
     tasks_by_id, training_assignment_task, training_readback_task, update_attempt, uuid_text, verify_registration,
@@ -211,7 +211,7 @@ async def _read_original(runtime, output, opening, attempt, run_id, *, client=No
                 task['eligible'] = False
     selected = readback_task(opening)
     training = training_readback_task(selected)
-    full_result = training and selected['source']['kind'] == TRAINING_RESULT_SOURCE
+    terminal_evidence = readback_reports_terminal(selected)
     if training or (check_commands and (include_task_history or observed['workflow_state_status'] == 'unavailable'
                                         or recipient_task(opening) is not None)):
         try:
@@ -232,17 +232,17 @@ async def _read_original(runtime, output, opening, attempt, run_id, *, client=No
                         decisions, _, _, _, _, _ = await runtime.read_task_history(client, target, opening, commands)
                         updates.update(decisions)
         except (TimeoutError, ConnectionError, runtime.RPCError):
-            if full_result:
+            if terminal_evidence:
                 observed['readback_history_status'] = 'unavailable'
             return observed
         except ValueError as error:
             before_wake = getattr(error, 'verified_before_wake', None)
-            if before_wake is None and not include_task_history and not full_result:
+            if before_wake is None and not include_task_history and not terminal_evidence:
                 raise
             conflict = {'task_observation_history_status': 'contradictory', 'task_observation_history_error': str(error)}
             if before_wake is None:
                 original_terminal = getattr(error, 'verified_original_terminal', None)
-                if full_result and original_terminal is not None:
+                if terminal_evidence and original_terminal is not None:
                     observed['readback_terminal'] = original_terminal
                 return {**observed, **conflict}
             observed.update(conflict)
@@ -261,7 +261,7 @@ async def _read_original(runtime, output, opening, attempt, run_id, *, client=No
                                      'receipt': None, 'eligible': False, 'state_source': 'history'}}
         if terminal is not None:
             observed['readback_terminal'] = terminal
-        elif full_result and completion is None:
+        elif terminal_evidence and completion is None:
             observed['readback_history_status'] = 'unresolved'
         if followup_terminal is not None:
             observed['readback_followup_terminal'] = followup_terminal

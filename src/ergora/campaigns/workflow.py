@@ -24,13 +24,14 @@ from temporalio.worker import Worker
 
 with workflow.unsafe.imports_passed_through():
     from ergora.campaigns.records import (
-        ATTEMPT_MEMO, OPENING_MEMO, READBACK_ALREADY_ADMITTED, READBACK_CLEANUP_SECONDS,
-        RECIPIENT_ACTIVITY, TRAINING_RESULT_SOURCE, WORKFLOW_TYPE,
+        ATTEMPT_MEMO, FIXED_CHECK_RECOVERY_ACTIVITY, OPENING_MEMO, READBACK_ALREADY_ADMITTED, READBACK_CLEANUP_SECONDS,
+        RECIPIENT_ACTIVITY, WORKFLOW_TYPE,
         assignment_intent, assignment_task, check_receipt, checked_readback, fixed_task_state, has_pending_checks,
         identity, manual_wake_source,
         readback_activity, readback_grant, readback_id, readback_proof, readback_ready_tasks, readback_reference,
-        readback_followup_activity, readback_followup_id, readback_followup_result, readback_result, readback_task,
-        recipient_task, reobservation_task,
+        readback_followup_activity, readback_followup_id, readback_followup_result, readback_reports_terminal,
+        readback_result, readback_task,
+        receipt_recovery_activity, recipient_task, reobservation_task,
         tasks_by_id, training_assignment_task, training_readback_task,
         require_check_receipt, require_rollover_receipt, require_stop_receipt, restore_rollover, rollover_checkpoint,
         rollover_task, same_check_observation,
@@ -203,10 +204,12 @@ class Campaign:
             remaining = grant['deadline_at'] - workflow.time()
             recovery_activity = readback_followup_activity(task)
             reobservation = reobservation_task(task)
+            requires_started_read = reobservation or recovery_activity == FIXED_CHECK_RECOVERY_ACTIVITY
             if (recovery_activity is None or self.stop_decision is not None
                     or not isinstance(cause, ActivityTimeoutError) or cause.type != ActivityTimeoutType.HEARTBEAT
-                    or reobservation and (error.activity_id != activity_id or error.activity_type != readback_activity(task)
-                                         or not 0 < error.scheduled_event_id < error.started_event_id)
+                    or requires_started_read and (error.activity_id != activity_id
+                          or error.activity_type != readback_activity(task)
+                          or not 0 < error.scheduled_event_id < error.started_event_id)
                     or remaining <= READBACK_CLEANUP_SECONDS):
                 self._readback_unknown('original_read_unavailable')
                 return
@@ -535,12 +538,14 @@ async def read_task_history(client, handle, opening, commands, *, start_attempt=
                        and command['intent']['task_id'] == task['task_id']
                        and command['intent']['operation'] == 'wait_check'), None)
     training = training_readback_task(task)
-    full_result = training and task['source']['kind'] == TRAINING_RESULT_SOURCE
+    fixed_receipt = receipt_recovery_activity(task) == FIXED_CHECK_RECOVERY_ACTIVITY
+    terminal_evidence = readback_reports_terminal(task)
     waiting = check_receipt(timer_wait) if timer_wait is not None else None
     wait_entry = entries[timer_wait['attempt']['update_id']] if timer_wait is not None else None
     grant = readback_grant(opening, handle.run_id, task, waiting) if training or waiting is not None else None
     activity_id = readback_id(grant) if grant is not None else None
-    recovery_id = readback_followup_id(task, grant) if readback_followup_activity(task) is not None else None
+    recovery_id = (readback_followup_id(task, grant)
+                   if grant is not None and readback_followup_activity(task) is not None else None)
     recovery_events = []
     recovery_ids = set()
     recovery_cancel_requests = []
@@ -574,7 +579,7 @@ async def read_task_history(client, handle, opening, commands, *, start_attempt=
                     if event.HasField(field) and getattr(event, field).scheduled_event_id in recovery_ids:
                         recovery_events.append(event)
                         break
-        if full_result and event.HasField('activity_task_cancel_requested_event_attributes'):
+        if terminal_evidence and event.HasField('activity_task_cancel_requested_event_attributes'):
             cancelled_schedule_id = event.activity_task_cancel_requested_event_attributes.scheduled_event_id
             if cancelled_schedule_id in recovery_ids and len(recovery_cancel_requests) < 2:
                 recovery_cancel_requests.append(event)
@@ -593,11 +598,11 @@ async def read_task_history(client, handle, opening, commands, *, start_attempt=
               and event.activity_task_started_event_attributes.scheduled_event_id in schedule_ids
               or event.HasField('activity_task_completed_event_attributes')
               and event.activity_task_completed_event_attributes.scheduled_event_id in schedule_ids
-              or (full_result or recovery_id is not None) and event.HasField('activity_task_timed_out_event_attributes')
+              or (terminal_evidence or recovery_id is not None) and event.HasField('activity_task_timed_out_event_attributes')
               and event.activity_task_timed_out_event_attributes.scheduled_event_id in schedule_ids
-              or full_result and event.HasField('activity_task_failed_event_attributes')
+              or terminal_evidence and event.HasField('activity_task_failed_event_attributes')
               and event.activity_task_failed_event_attributes.scheduled_event_id in schedule_ids
-              or full_result and event.HasField('activity_task_canceled_event_attributes')
+              or terminal_evidence and event.HasField('activity_task_canceled_event_attributes')
               and event.activity_task_canceled_event_attributes.scheduled_event_id in schedule_ids):
             activity_events.append(event)
     updates = {}
@@ -608,16 +613,24 @@ async def read_task_history(client, handle, opening, commands, *, start_attempt=
                                   'receipt': entry['receipt'],
                                   'status': 'failed' if entry.get('failed') else 'verified'}
     completion = readback_terminal = followup_terminal = None
-    if training or (wait_entry is not None and wait_entry.get('receipt') is not None):
+    verified_wait = wait_entry is not None and wait_entry.get('receipt') is not None
+    if fixed_receipt and (activity_events or recovery_events):
+        if not verified_wait:
+            raise ValueError('Campaign fixed-check recovery lacks its verified original waiting Update')
+        if not activity_events or wait_entry['completed_event_id'] >= activity_events[0].event_id:
+            raise ValueError('Campaign fixed-check recovery requires the original wait to precede its read schedule')
+    if training or verified_wait:
         completion, readback_terminal = await _readback_history(
             converter, activity_events, opening, task, grant, activity_id, cancel_requests)
     if recovery_events:
         if completion is not None:
             raise ValueError('Campaign receipt recovery conflicts with an original Activity completion')
+        if fixed_receipt and readback_terminal is None:
+            raise ValueError('Campaign fixed-check recovery lacks its verified original heartbeat timeout')
         try:
             completion, followup_terminal = await _readback_followup_history(
                 converter, activity_events, recovery_events, opening, task, grant, activity_id,
-                include_terminal=full_result, cancel_requests=recovery_cancel_requests)
+                include_terminal=terminal_evidence, cancel_requests=recovery_cancel_requests)
         except ValueError as error:
             if readback_terminal is None:
                 raise
@@ -633,7 +646,7 @@ async def read_task_history(client, handle, opening, commands, *, start_attempt=
         late = check_receipt(entry['command'])
         waiting = entries[timer_wait['attempt']['update_id']].get('receipt') if timer_wait is not None else None
         source = manual_wake_source(task, waiting, late) if task is not None else {}
-        if (completion is None or completion['completed_event_id'] >= entry['completed_event_id']
+        if (completion is None or completion.get('recovery_history', completion)['completed_event_id'] >= entry['completed_event_id']
                 or not same_check_observation(completion, source)):
             raise ValueError('Campaign readback refusal lacks its earlier identical guarded result')
         updates[update_id]['reason'] = READBACK_ALREADY_ADMITTED
@@ -692,6 +705,9 @@ async def read_task_history(client, handle, opening, commands, *, start_attempt=
             wake = await _read_recipient_history(converter, wake_events, opening, intent, ready,
                                                  check_pending=check_pending_wake)
             if claimed.get('kind') != 'manual_update':
+                if fixed_receipt and 'recovery_history' in completion:
+                    wake.update(waiting_accepted_event_id=wait_entry['accepted_event_id'],
+                                waiting_completed_event_id=wait_entry['completed_event_id'])
                 completion['recipient'] = wake
         except ValueError as error:
             raise WakeHistoryConflict(error, (updates, completion, readback_terminal, followup_terminal),
@@ -878,7 +894,7 @@ def _readback_terminal(task, grant, activity_id, ancestry, event, kind, attribut
 async def _readback_history(converter, events, opening, task, grant, activity_id, cancel_requests):
     scheduled_id = started_id = completed = None
     terminal = None
-    full_result = task['source'].get('kind') == TRAINING_RESULT_SOURCE
+    terminal_evidence = readback_reports_terminal(task)
     timing_events = {}
     for event in events:
         if event.HasField('activity_task_scheduled_event_attributes'):
@@ -908,7 +924,7 @@ async def _readback_history(converter, events, opening, task, grant, activity_id
                         or event.event_id <= started_id or result_event.started_event_id != started_id):
                     raise ValueError('Campaign readback completion does not bind its original Activity attempt')
                 completed = event
-        elif full_result:
+        elif terminal_evidence:
             for kind in ('failed', 'timed_out', 'canceled'):
                 field = f'activity_task_{kind}_event_attributes'
                 if event.HasField(field):
@@ -1014,6 +1030,8 @@ async def _readback_followup_history(converter, original, events, opening, task,
         evidence, job = readback_result(opening, task, result_activity_id, result)
     except (KeyError, TypeError) as error:
         raise ValueError('Campaign receipt recovery has an invalid original result') from error
+    if job['status'] != 'succeeded':
+        raise ValueError('Campaign receipt recovery requires a passing original result')
     return {'task_id': task['task_id'], 'activity_id': activity_id, **readback_reference(grant),
             'scheduled_event_id': original_schedule.event_id, **readback_proof(evidence, job, result), **recovery,
             'recovery_history': {'original_timeout_event_id': timeout.event_id, 'scheduled_event_id': sequence.event_id,

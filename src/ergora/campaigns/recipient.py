@@ -144,6 +144,8 @@ class CodexRecipient:
         assigned = assignment_task(opening)
         independent = assigned is not None and intent.get('task_id') == assigned['task_id']
         manual = intent['source'].get('kind') == 'manual_update'
+        training = training_readback_task(task)
+        fixed_recovery = not training and 'recovery_activity_id' in intent['source']
         if independent:
             training = training_assignment_task(opening) is not None
             commands = () if training else (assignment_wait(self.files, opening, self.start, self.run_id),)
@@ -152,12 +154,26 @@ class CodexRecipient:
                 if training:
                     raise ValueError('Campaign independent task lacks its verified original training wait and schedule')
                 raise ValueError('Campaign independent task lacks its verified original waiting Update and schedule')
-        elif manual or training_readback_task(task):
-            commands = manual_commands(self.files, opening, self.start, self.run_id, task) if manual else ()
+        elif manual or training or fixed_recovery:
+            if manual:
+                commands = manual_commands(self.files, opening, self.start, self.run_id, task)
+            elif fixed_recovery:
+                waiting = self.files.load_check(opening, self.start, self.run_id, task, waiting=True)
+                if waiting is None:
+                    raise ValueError('Campaign fixed-check recovery delivery lacks its protected waiting attempt')
+                commands = (waiting,)
+            else:
+                commands = ()
             wake = await self.read_wake_history(commands)
             if wake is None or wake['intent'] != intent:
                 raise ValueError('Campaign manual delivery lacks its verified original Update and schedule' if manual
-                                 else 'Campaign training delivery lacks its verified original result and schedule')
+                                 else 'Campaign recipient delivery lacks its verified original result and schedule')
+            if fixed_recovery:
+                accepted, completed, scheduled = (wake.get(key) for key in (
+                    'waiting_accepted_event_id', 'waiting_completed_event_id', 'scheduled_event_id'))
+                if (not all(type(event_id) is int for event_id in (accepted, completed, scheduled))
+                        or not 0 < accepted < completed < scheduled):
+                    raise ValueError('Campaign fixed-check recovery delivery lacks its verified original waiting Update')
         return await asyncio.to_thread(self._deliver, intent)
 
     @activity.defn(name=RECIPIENT_ACTIVITY)
