@@ -11,6 +11,7 @@ import time
 import uuid
 
 import ergora.definitions.skills as skill_assets
+from ergora.agents import native_sources
 from ergora.configuration import validation as contracts
 from ergora.definitions.bundles import parse_json
 from ergora.runtime import processes
@@ -130,6 +131,30 @@ def listing(state: State, project_id: str) -> dict:
                     "SELECT document FROM evaluations WHERE project=? ORDER BY rowid DESC", (project_id,))]}
 
 
+def _suite_snapshot(manifest: dict) -> bytes:
+    return json.dumps(manifest, ensure_ascii=False, indent=2).encode("utf-8")
+
+
+def _read_result(directory: Path, expected_identity: dict | None) -> tuple[dict, dict | None, str]:
+    try:
+        raw = native_sources.artifact(directory, "stdout.txt", 1_000_000)
+    except native_sources.ArtifactCapacityError as error:
+        raise ValueError("Evaluator JSON response exceeded 1 MB") from error
+    try:
+        # The schema checks consumed numbers and leaves scored metadata opaque.
+        result = parse_json(raw.decode("utf-8"), "Evaluator result")
+    except RecursionError as error:
+        raise ValueError("Evaluator JSON response is too deeply nested") from error
+    identity = None
+    if expected_identity is not None and isinstance(result, dict):
+        identity = result.pop("execution_identity", None)
+    contracts.validate(result, contracts.EVALUATION_RESULT, "Evaluator result")
+    if identity is not None:
+        contracts.validate(identity, contracts.EVALUATION_MANIFEST["properties"]["execution_identity"],
+                           "Reported evaluator execution identity")
+    return result, identity, hashlib.sha256(raw).hexdigest()
+
+
 def evaluate(state: State, project_id: str, digest: str, suite_digest: str, case_ids: list[str] | None = None,
              deadline: float | None = None, remaining_cost: float | None = None, *,
              unreserved_metric_calls: int | None = None) -> dict:
@@ -150,7 +175,7 @@ def evaluate(state: State, project_id: str, digest: str, suite_digest: str, case
     run_id = uuid.uuid4().hex
     directory = state.root / "evaluations" / run_id
     directory.mkdir(parents=True)
-    (directory / "suite.json").write_text(json.dumps(snapshot, ensure_ascii=False, indent=2), encoding="utf-8", newline="\n")
+    (directory / "suite.json").write_bytes(_suite_snapshot(snapshot))
     working = directory / "work"
     working.mkdir()
     document = {"id": run_id, "project": project_id, "skill": digest, "name": candidate["name"],
@@ -183,6 +208,7 @@ def evaluate(state: State, project_id: str, digest: str, suite_digest: str, case
                 "unreserved_metric_calls": unreserved_metric_calls}})
             case_output = directory / "cases" / case["id"]
             row = {"id": case["id"], "split": case["split"], "status": "running", "output": str(case_output),
+                   "stdin_sha256": hashlib.sha256(payload.encode("utf-8")).hexdigest(),
                    "reported_cost_complete": False}
             document["cases"].append(row)
             document["reported_cost_complete"] = False
@@ -193,25 +219,12 @@ def evaluate(state: State, project_id: str, digest: str, suite_digest: str, case
             if outcome["status"] != "succeeded":
                 document["status"] = outcome["status"]
                 break
-            output = Path(outcome["output"]) / "stdout.txt"
-            if output.stat().st_size > 1_000_000:
-                raise ValueError("Evaluator JSON response exceeded 1 MB")
-            try:
-                # The schema checks consumed numbers and leaves scored metadata opaque.
-                result = parse_json(output.read_text(encoding="utf-8"), "Evaluator result")
-            except RecursionError as error:
-                raise ValueError("Evaluator JSON response is too deeply nested") from error
-            observed_identity = None
-            if expected_identity is not None and isinstance(result, dict):
-                observed_identity = result.pop("execution_identity", None)
-            contracts.validate(result, contracts.EVALUATION_RESULT, "Evaluator result")
+            result, observed_identity, result_sha256 = _read_result(Path(outcome["output"]), expected_identity)
+            row["stdout_sha256"] = result_sha256
             cost = result["cost"]
             countable_cost = cost
             identity_mismatch = False
             if expected_identity is not None:
-                if observed_identity is not None:
-                    contracts.validate(observed_identity, contracts.EVALUATION_MANIFEST["properties"]["execution_identity"],
-                                       "Reported evaluator execution identity")
                 row["execution_identity"] = observed_identity
                 identity_mismatch = observed_identity != expected_identity
                 if observed_identity is None or observed_identity["cost_unit"] != expected_identity["cost_unit"]:
@@ -265,27 +278,75 @@ def get(state: State, project_id: str, run_id: str) -> dict:
     return json.loads(row[0])
 
 
+def _check_evaluation_input(row: dict, directory: Path, skill_path: str, case: dict) -> None:
+    expected = {"skill_dir": skill_path, "case": case["input"]}
+    # The original request adds a bounded set of per-call budget fields to these inputs.
+    limit = len(json.dumps(expected).encode("utf-8")) + 4096
+    raw = native_sources.artifact(directory, "stdin.txt", limit)
+    if "stdin_sha256" in row and hashlib.sha256(raw).hexdigest() != row["stdin_sha256"]:
+        raise ValueError(f"case {case['id']} request differs from its recorded digest")
+    observed = parse_json(raw.decode("utf-8"), "Evaluator request")
+    if not isinstance(observed, dict) or expected.keys() - observed.keys() or manifest_sha256(
+            {name: observed[name] for name in expected}) != manifest_sha256(expected):
+        raise ValueError(f"case {case['id']} request differs from the frozen Skill or case input")
+
+
+def _check_evaluation_archive(run: dict, specification: dict, skill_path: str) -> None:
+    cases = specification["cases"]
+    expected = [(case["id"], case["split"]) for case in cases]
+    if [(case["id"], case["split"]) for case in run["cases"]] != expected:
+        raise ValueError("recorded cases or splits differ from the full evaluation suite")
+    directory = Path(run["output"])
+    if directory.name != run["id"] or directory.parent.name != "evaluations":
+        raise ValueError("archive path differs from the original evaluation")
+    raw = native_sources.artifact(directory, "suite.json", len(_suite_snapshot(specification)))
+    snapshot = parse_json(raw.decode("utf-8"), "Evaluation suite snapshot")
+    if manifest_sha256(snapshot) != run["suite"]:
+        raise ValueError("archived suite differs from the registered manifest")
+    expected_identity = specification.get("execution_identity")
+    for row, case in zip(run["cases"], cases):
+        case_id = row["id"]
+        case_directory = directory / "cases" / case_id
+        if (Path(row["output"]) != case_directory or row.get("status") != "succeeded"
+                or row.get("returncode") != 0):
+            raise ValueError(f"case {case_id} lacks a matching completed output")
+        _check_evaluation_input(row, case_directory, skill_path, case)
+        result, identity, result_sha = _read_result(case_directory, expected_identity)
+        if row.get("stdout_sha256", result_sha) != result_sha:
+            raise ValueError(f"case {case_id} output differs from its recorded digest")
+        if expected_identity is not None and (identity != expected_identity or row.get("execution_identity") != identity):
+            raise ValueError(f"case {case_id} evaluator execution identity differs from the frozen suite")
+        if result.get("outcome") == "unevaluable" or any(
+                type(row.get(field)) is not type(result[field]) or row[field] != result[field]
+                for field in ("score", "passed", "cost", "feedback")):
+            raise ValueError(f"case {case_id} summary differs from the original evaluator result")
+
+
 def compare(state: State, project_id: str, baseline_run: str, candidate_run: str) -> dict:
     baseline, candidate = get(state, project_id, baseline_run), get(state, project_id, candidate_run)
     if baseline["suite"] != candidate["suite"] or baseline["name"] != candidate["name"]:
         raise ValueError("Compare the same skill name against the same frozen evaluation suite")
     specification = suite(state, project_id, candidate["suite"])["manifest"]
     expected_identity = specification.get("execution_identity")
-    for run in (baseline, candidate):
-        skill_assets.get(state, project_id, run["skill"])
+    skill_paths = {run["skill"]: skill_assets.get(state, project_id, run["skill"])["path"]
+                   for run in (baseline, candidate)}
     reasons = []
     if overlap := split_overlap(specification["cases"]):
         reasons.append(overlap)
     if baseline["skill"] == candidate["skill"]:
         reasons.append("Candidate content is identical to the baseline")
-    expected = {case["id"] for case in specification["cases"]}
     averages = {}
-    for label, run in (("baseline", baseline), ("candidate", candidate)):
-        if run["status"] != "succeeded" or {case["id"] for case in run["cases"]} != expected:
+    for label, run_id, run in (("baseline", baseline_run, baseline), ("candidate", candidate_run, candidate)):
+        if run.get("id") != run_id or run.get("project") != project_id:
+            reasons.append(f"{label} evaluation identity differs from the selected run")
+            continue
+        if run.get("status") != "succeeded":
             reasons.append(f"{label} did not complete the whole evaluation suite")
             continue
-        if expected_identity is not None and any(case.get("execution_identity") != expected_identity for case in run["cases"]):
-            reasons.append(f"{label} evaluator execution identity differs from the frozen suite")
+        try:
+            _check_evaluation_archive(run, specification, skill_paths[run["skill"]])
+        except (KeyError, TypeError, ValueError, OSError, RecursionError) as error:
+            reasons.append(f"{label} original evaluation evidence could not be verified: {error}")
             continue
         if label == "candidate" and not all(case["passed"] for case in run["cases"]):
             reasons.append("Candidate failed a required correctness check")

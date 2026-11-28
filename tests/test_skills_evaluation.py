@@ -181,6 +181,62 @@ def test_evaluation_suite_read_requires_frozen_manifest_identity(skill_project):
     assert evaluation.listing(state, "demo")["runs"] == []
 
 
+@pytest.mark.parametrize("changed", ["snapshot", "split", "missing-result", "result-bytes", "summary",
+                                     "skill", "case-input", "input-bytes"])
+def test_adoption_requires_matching_original_evaluation_archive(skill_project, monkeypatch, changed):
+    state, _, source, baseline, suite = skill_project
+    skill = source / "SKILL.md"
+    skill.write_text(skill.read_text().replace("BASELINE", "IMPROVED"))
+    candidate = skill_assets.import_bundle(state, "demo", source)
+    original, proposed = [evaluation.evaluate(state, "demo", value["digest"], suite["digest"])
+                          for value in (baseline, candidate)]
+    assert evaluation.compare(state, "demo", original["id"], proposed["id"])["eligible"]
+
+    if changed == "snapshot":
+        snapshot = Path(proposed["output"], "suite.json")
+        value = json.loads(snapshot.read_bytes())
+        value["minimum_gain"] = .2
+        snapshot.write_text(json.dumps(value, ensure_ascii=False, indent=2), encoding="utf-8")
+    elif changed in ("missing-result", "result-bytes"):
+        output = Path(proposed["cases"][-1]["output"], "stdout.txt")
+        if changed == "missing-result":
+            output.unlink()
+        else:
+            output.write_bytes(output.read_bytes() + b" ")
+    elif changed == "input-bytes":
+        input_file = Path(proposed["cases"][-1]["output"], "stdin.txt")
+        input_file.write_bytes(input_file.read_bytes() + b" ")
+    else:
+        if changed == "split":
+            first, last = proposed["cases"][0], proposed["cases"][-1]
+            first["split"], last["split"] = last["split"], first["split"]
+        elif changed == "skill":
+            skill.write_text(skill.read_text().replace("IMPROVED", "UNEVALUATED"))
+            proposed["skill"] = skill_assets.import_bundle(state, "demo", source)["digest"]
+        elif changed == "case-input":
+            row = proposed["cases"][-1]
+            row.pop("stdin_sha256", None)
+            input_file = Path(row["output"], "stdin.txt")
+            value = json.loads(input_file.read_bytes())
+            value["case"]["data"] = "A different case input"
+            input_file.write_text(json.dumps(value), encoding="utf-8")
+        else:
+            proposed["cases"][-1]["score"] = .95
+        with state.connect() as db:
+            db.execute("UPDATE evaluations SET document=? WHERE id=?", (json.dumps(proposed), proposed["id"]))
+
+    def no_replay(*args, **kwargs):
+        pytest.fail("Checking archived evaluation evidence must not run the evaluator")
+
+    monkeypatch.setattr(evaluation.processes, "run", no_replay)
+    result = evaluation.compare(state, "demo", original["id"], proposed["id"])
+    assert not result["eligible"] and any("candidate" in reason for reason in result["reasons"])
+    assert evaluation.get(state, "demo", proposed["id"]) == proposed
+    with pytest.raises(ValueError, match="not eligible"):
+        skills.adopt(state, "demo", original["id"], proposed["id"], 1, "Incomplete archived proof")
+    assert skill_assets.versions(state, "demo")["active"][0]["digest"] == baseline["digest"]
+
+
 @pytest.mark.parametrize("drift", [None, "provider", "model", "cost_unit", "missing"])
 def test_pinned_rsi_execution_identity_gates_adoption_and_cost_units(skill_project, drift):
     state, repo, source, baseline, _ = skill_project
@@ -965,7 +1021,9 @@ def test_reported_cost_comparison_preserves_unrecorded_history_and_quality_gate(
     def process(argv, cwd, output, timeout, stdin, **options):
         request = json.loads(stdin)
         score = .9 if request["skill_dir"] == candidate["path"] else .5
-        return _reported_outcome(output, json.dumps({"score": score, "passed": True, "cost": .125, "feedback": "report"}))
+        result = _reported_outcome(output, json.dumps({"score": score, "passed": True, "cost": .125, "feedback": "report"}))
+        (output / "stdin.txt").write_text(stdin, encoding="utf-8", newline="\n")
+        return result
 
     monkeypatch.setattr(evaluation.processes, "run", process)
     base_run, candidate_run = [evaluation.evaluate(state, "demo", item["digest"], suite["digest"])
@@ -973,6 +1031,9 @@ def test_reported_cost_comparison_preserves_unrecorded_history_and_quality_gate(
     complete = evaluation.compare(state, "demo", base_run["id"], candidate_run["id"])
     assert complete["eligible"] and complete["reported_cost_complete"] is True and complete["reported_cost"] == .75
     candidate_run.pop("reported_cost_complete")
+    for row in candidate_run["cases"]:
+        row.pop("stdin_sha256")
+        row.pop("stdout_sha256")
     with state.connect() as db:
         db.execute("UPDATE evaluations SET document=? WHERE id=?", (json.dumps(candidate_run), candidate_run["id"]))
     assert evaluation.get(State(state.root), "demo", candidate_run["id"]) == candidate_run
