@@ -4,11 +4,29 @@ English · [Documentation](../README.md) · [Architecture contract](current.md)
 
 Ergora is a control plane for project-bound specialist Agents, workflow composition, formal software delivery, training experiments and reusable improvements. Definitions describe reusable behavior. Each operation freezes its own inputs, checks its execution authority and produces evidence under its original identity.
 
-This tour uses runtime revision `7482e4781453c5b73fc37dd80ab8a4afa92d3ac7` and its `src` tree `e3f06bf680831c3e0d3ce50fda4a1eefc20038f3` as the exact source reference. Packages, installed applications and local definition libraries have separate identities. The [current plan](../PLAN.md) and its delivery records track review, CI and installation status.
+This tour uses runtime revision `e953eaa52c3184676904d1396f7dcbe6d2eb1391` as its exact source reference. Its `src` tree `f03287a5395006d9c2d58d1163b165c52b0a98d5` matches tested development revision `99d1995`. Packages, installed applications and local definition libraries have separate identities. See review, CI and daily activation in the [current plan](../PLAN.md).
 
 ## The whole system
 
 The template library offers exact bundled and saved starter graphs. An operator can preview and freeze a template before choosing its execution route.
+
+```mermaid
+flowchart TB
+  Entry["CLI and Console"] --> Selection["Frozen project and<br/>template selections"]
+  Selection --> Graph["Standalone<br/>Agent graph"]
+  Selection --> Session["Native project<br/>session"]
+  Selection --> Development["Formal<br/>development"]
+  Selection --> Training["Training<br/>experiments"]
+  Selection --> Campaign["Campaign"]
+  Graph -.-> Evidence["Original evidence<br/>and recovery"]
+  Session -.-> Evidence
+  Development -.-> Evidence
+  Training -.-> Evidence
+  Campaign -.-> Evidence
+  Evidence -. "selected evidence" .-> Improvement["Retrospectives and<br/>verified Skill adoption"]
+```
+
+### Detailed execution and evidence paths
 
 ```mermaid
 flowchart TB
@@ -33,9 +51,11 @@ flowchart TB
 
   Check --> CheckJob["Registered executor<br/>Original fixed-check Job"]
   Graph --> GraphProof["Offline inspect-graph<br/>Saved recovery and historical Agent evidence"]
-  Graph --> Choice["Optional supervisor checkpoint<br/>Original recommendation or finish"]
+  Graph --> Choice["Optional supervisor checkpoint<br/>Original recommendation and eligible branches"]
   Choice -. "saved decision" .-> GraphProof
-  Choice -. "predeclared Python follow-up" .-> Child["Pinned fixed review<br/>Original grant, deadline and STOP"]
+  Choice -. "follow-up or explicit selection" .-> Specialist["One frozen Agent branch<br/>Original clock and STOP"]
+  Specialist -. "original branch result" .-> GraphProof
+  Choice -. "original follow-up" .-> Child["Pinned fixed review<br/>Original grant, deadline and STOP"]
   Child -. "original child receipt" .-> GraphProof
   Choice -. "selected packaging consultation" .-> Consultation["Packaged reviewer request and reply<br/>Original Agent evidence"]
   Consultation -. "saved consultation decision" .-> GraphProof
@@ -87,7 +107,9 @@ flowchart TB
   Wake -->|with assignment| AssignmentResume["A1 native claim and reservation<br/>Verify original slot availability"]
   Assignment -. "original A2 reap and slot release" .-> AssignmentResume
   AssignmentResume --> Turn
-  Improve --> Eval["Trusted evaluation<br/>Reviewed identity and explicit adoption"]
+  Improve --> Eval["Trusted evaluation<br/>Verified manifest and disjoint splits"]
+  Eval --> ScoringArchive["Original scoring archive<br/>Frozen suite and Skill-bound requests and responses"]
+  ScoringArchive --> Adoption["Verified full-suite comparison<br/>Explicit Skill adoption"]
 
   GraphProof -.-> Recover["Read original IDs, receipts and outcomes"]
   CheckJob -.-> ActionRead["Original action observation<br/>Fixed-check and training receipts"]
@@ -120,7 +142,7 @@ flowchart TB
   CampaignStatus -. "selected task, direct dependencies and recipient evidence" .-> ConsoleTimeline["Formal Tasks timeline<br/>Selected eligibility and original evidence"]
   ConsoleTimeline -.-> Recover
   CampaignStatus -.-> Recover
-  Eval -.-> Recover
+  ScoringArchive -.-> Recover
   Recover -. "offline recovery check" .-> Scope["Registered recovery scope<br/>Original paths, Git and SQLite"]
 ```
 
@@ -134,6 +156,8 @@ Development's [workflow extensions](../../src/ergora/development/runtime/workflo
 
 “New template” preselects the bundled six-stage graph. Other bundled graphs and exact saved versions are peer choices. The selected starter opens an editable draft under its own destination ID and version. Formal task admission separately checks the published graph and explicitly selected route. [Choose a starter and save a template](../definitions/workflows/revisions.md#revise-workflows-on-the-page)
 
+The read-only `composition plan-revisions` command takes exact published replacements and explicit versions for affected parents. It checks the candidate roots with their selected grants and returns each complete parent draft and its checked digest in dependency order. Publication uses `composition revise`. [Prepare parent drafts from published replacements](../definitions/workflows/revisions.md#prepare-parent-drafts-from-published-replacements)
+
 The optional route check in the definition preview takes the selected standalone graph inputs, complete formal task definition, or prepared leaf. CLI, HTTP and Console show the static admission and required bindings from the original execution gates. A refusal names the affected instance when the gate identifies one. The route facts preserve the graph and manifest identities, and live readiness remains `not_queried`. [Inspect a selected execution route](../definitions/workflows/compose.md#inspect-a-selected-execution-route) · [Preview entry point](../../src/ergora/interfaces/composition_preview.py)
 
 ### Standalone graph
@@ -143,8 +167,8 @@ The optional route check in the definition preview takes the selected standalone
 For a standalone Workflow v2 graph of Agents, Workflows and all-joins with ordinary ports, the root can explicitly name a direct Agent in `completion.continue_after_failure` and declare `optional_outputs`. A verified original normal exit with a code from 1 to 255 blocks hard dependents and lets independent branches finish under the same deadline. The graph retains the original failure and records blocked optional ports in `unavailable_outputs`. Success requires all required outputs. Other failures, global STOP and expiry still fence new work. [Declared branch failure policy](../definitions/workflows/compose.md#continue-independent-work-after-a-declared-failure)
 
 - `choose-agent` reads the verified analyzer result and records the decision before any follow-up dispatch. Its typed route selects one declared sibling Agent or `none`. The all-join carries the selected branch's original result and explicit skipped states for untaken branches. [Routing contract](../definitions/workflows/contracts.md#conditional-agent-routing)
-- An operator can select one frozen `choose-agent` instance with `run-graph --recoverable --pause-before-route`. A specialist recommendation pauses before its original reservation. `resume-graph` accepts `follow-up` or `finish` at the same checkpoint digest, under the same owner lock and deadline. A `none` recommendation completes the selector without a pause. [Decide on a recommended follow-up](../definitions/workflows/compose.md#decide-on-a-recommended-follow-up)
-- The Python `ergora.agents.graphs.run_graph` entry can pin one fixed-check review child with `fixed_follow_up=PinnedFixedReview(...)` when admitting a recoverable parent at its selected route pause. It binds the declared branch, exact child manifest and inputs, and a passing original fixed-check receipt. The supervisor's decision, original grant, deadline and STOP carry into the child. Parent recovery corroborates the saved child reservation, original attempt, verification proof and named output. An incomplete child remains unresolved. [Pinned Python follow-up](../definitions/workflows/compose.md#decide-on-a-recommended-follow-up)
+- An operator can select one frozen `choose-agent` instance with `run-graph --recoverable --pause-before-route`. A specialist recommendation pauses before reservation. At the same checkpoint digest, `resume-graph` can accept `follow-up`, `finish`, or `select` with `--route-branch` naming one eligible ordinary frozen Agent instance. The checkpoint retains the analyzer's recommendation alongside the saved operator decision. Dispatch uses the original owner lock, clock and STOP fence. A `none` recommendation completes the selector without a pause. [Decide on a recommended follow-up](../definitions/workflows/compose.md#decide-on-a-recommended-follow-up)
+- The Python `ergora.agents.graphs.run_graph` entry can pin one fixed-check review child with `fixed_follow_up=PinnedFixedReview(...)` when admitting a recoverable parent at its selected route pause. It binds the declared branch, exact child manifest and inputs, and a passing original fixed-check receipt. The pinned child uses the original recommendation and `follow-up` under the original grant, deadline and STOP fence. Parent recovery corroborates the saved child reservation, original attempt, verification proof and named output. An incomplete child remains unresolved. [Pinned Python follow-up](../definitions/workflows/compose.md#decide-on-a-recommended-follow-up)
 - `--packaging-consultation` uses the original supervised checkpoint to ask one fixed question about an eager Temporal import in the standalone CLI. It pins the complete `ergora-structure-reviewer@1.0.2` and `ergora-dependency-reviewer@1.0.1` references. The graph verifies the original Agent input, prompt and result before issuing the scoped request and accepting the matching reply under the original deadline and STOP. A wrong reply blocks dependent output and leaves the specialist's original result readable. `inspect-graph` reads the request and reply evidence under the original graph identity. [Confirm one packaging consultation](../definitions/workflows/compose.md#confirm-one-packaging-consultation)
 - `verify-evidence` takes an exact original fixed-verify locator from a declared root input. The native reader uses the registered reference installation, original Temporal History and Job artifacts to validate the candidate, receipt, complete check results and process records. One candidate evidence read can wait alongside dependency-ready Agents. The graph saves the original locator and verified result before exposing the node's output and joins the original reader on stop or deadline. The formal executor owns execution of that verify Job. [Verification readback](../definitions/workflows/compose.md#read-original-fixed-verification-evidence)
 - `verify-fixed-check` reads a separately authorized fixed-check Job. Given a queued or attempted Job, it can wait until the earlier of the original graph deadline and the requested observation window. The original executor owns check execution, stop and cleanup. The gate requires a passing receipt and confirmed cleanup bound to the exact candidate, review packet, frozen manifest and prepared task before the pinned correctness reviewer starts. The graph publishes the verified receipt and report identities in `proof` alongside the separate advisory result. [Gated advisory review](../definitions/workflows/compose.md#gate-an-advisory-review-on-a-completed-fixed-check)
@@ -157,7 +181,7 @@ For recoverable runs, `recovery` reports the saved authorization, lock file iden
 
 For a collected text-only graph leaf on Linux/WSL2, `original_run.process_start` can show the historical direct local child's PID, boot ID and start ticks. The original process owner samples the child at launch and returns the sample after its wait. The leaf reader verifies the sample's binding to the original run, frozen input and prompt. The graph-level `process_start` and `stop_and_cleanup` fields remain `unknown`. Use `composition inspect-run` on the exact original leaf run ID for complete result content. [Original leaf readback](../definitions/workflows/leaf-calls.md#read-an-original-composition-run-by-exact-id)
 
-On Linux/WSL2, graphs with read-only, text-only Agent leaves, nested Workflows, all-joins and `choose-agent` can opt into recovery at launch with `run-graph --recoverable`. `resume-graph` acquires the original lock and checks admission for the same directory, control home, boot and saved deadline. It verifies original reservations and successful Agent results to reconstruct the graph's ports. Saved typed choices must match the original analyzer result. If a choice is missing and its dependent work has yet to be prepared or reserved, the coordinator records the same branch or `none` before proceeding. Only previously unreserved, ready Agent leaves can start. An active, stopped, terminal or expired graph, or any unproven original Agent attempt, blocks resume. [Standalone recovery](../definitions/workflows/compose.md#resume-an-interrupted-graph)
+On Linux/WSL2, graphs with read-only, text-only Agent leaves, nested Workflows, all-joins and `choose-agent` can opt into recovery at launch with `run-graph --recoverable`. `resume-graph` acquires the original lock and checks admission for the same directory, control home, boot and saved deadline. It verifies original reservations and successful Agent results to reconstruct the graph's ports. Recovery derives each typed choice from the analyzer's original result and, at the supervised checkpoint, the saved operator decision. If a route record is missing and its dependent work has yet to be prepared or reserved, the coordinator reconstructs the choice from that evidence before proceeding. Only previously unreserved, ready Agent leaves can start. An active, stopped, terminal or expired graph, or any unproven original Agent attempt, blocks resume. [Standalone recovery](../definitions/workflows/compose.md#resume-an-interrupted-graph)
 
 The pinned correctness-review graph can opt in with a completed locator or a bounded wait on its separately authorized fixed-check Job. When passing proof is already durable, resume revalidates it within the first gate read's saved cutoff and the graph deadline. For proof from an initial wait, the native reader uses the captured receipt and report digests for a completed lookup of the same Job. The graph keeps the original wait locator and proof.
 
@@ -296,9 +320,11 @@ The local pool commits required stop and device evidence within its bounded jour
 
 ### Trusted evaluation and adoption
 
-`improvement.retrospectives` turns source-bound handoff material into checked Skill, memory or Workflow candidates. `memory` owns revisions, validity, deletion and restore, and optional ReMe mirroring. `evaluation` freezes trusted evaluator files and train, validation and holdout cases, then binds results to exact Skill content. A registered suite can pin the evaluator-reported provider, model and cost unit. A missing or different report withholds the grade and retains the original evidence. Paired comparison checks that identity on both runs. Provider and billing claims depend on the trusted evaluator's evidence. [Evaluation and adoption](../improvement/skills-and-evaluation.md)
+`improvement.retrospectives` turns source-bound handoff material into checked Skill, memory or Workflow candidates. `memory` owns revisions, validity, deletion and restore, and optional ReMe mirroring. `evaluation` freezes trusted evaluator files and train, validation and holdout cases, then binds results to exact Skill content. Using a selected suite checks its registered manifest digest. New suite registration, GEPA search and adoption require disjoint splits by canonical JSON input and declared lineage. A suite can pin the evaluator-reported provider, model and cost unit. A missing or different report withholds the grade and retains the original evidence. Provider and billing claims depend on the trusted evaluator's evidence. [Evaluation and adoption](../improvement/skills-and-evaluation.md#skill-candidates-evaluation-and-adoption)
 
-Optional GEPA search in `optimization` starts from the registered Skill's exact seed bytes and evaluates visible cases under call, time and reported-cost bounds. A suite with pinned execution identity requires the proposer to use the same cost unit. Ambiguous proposer cost ends the search with incomplete cost coverage. `skill_adoption.adopt` compares full-suite runs and explicitly moves a revision-checked head. Rollback and later task-context freezing have their own operations. Project-document correction suggestions have their own exact-preview consent and apply owner. Research scheduling and native kernel campaigns retain separate domain lifecycles and capability checks. [GEPA cost and adoption](../improvement/skills-and-evaluation.md)
+Paired comparison verifies each original full-suite snapshot and case archive locally with zero evaluator calls. It checks case order and splits, the saved requests against the exact Skill and case inputs, and the saved responses against recorded scores, correctness and any pinned evaluator identity. New runs record SHA-256 of the exact request and response bytes. Comparison withholds adoption eligibility if either archive fails verification. Historical records remain inspectable. `skill_adoption.adopt` uses the verified comparison and explicitly moves a revision-checked head. [Original scoring evidence and adoption](../improvement/skills-and-evaluation.md#skill-candidates-evaluation-and-adoption)
+
+Optional GEPA search in `optimization` starts from the registered Skill's exact seed bytes and evaluates visible cases under call, time and reported-cost bounds. A suite with pinned execution identity requires the proposer to use the same cost unit. Ambiguous proposer cost ends the search with incomplete cost coverage. Rollback and later task-context freezing have their own operations. Project-document correction suggestions have their own exact-preview consent and apply owner. Research scheduling and native kernel campaigns retain separate domain lifecycles and capability checks. [Optional GEPA](../improvement/skills-and-evaluation.md#optional-gepa)
 
 ## Where each responsibility lives
 
@@ -322,7 +348,7 @@ Control-plane SQLite is not the execution ledger: native task/training directori
 
 State home resolution takes an explicit root such as CLI `--home` first, then `ERGORA_HOME`, then the configured platform data directory from `XDG_DATA_HOME` or Windows `LOCALAPPDATA`. The system user home is the final fallback. [State home resolution](../../src/ergora/storage/state.py)
 
-With writers stopped, `state recovery-scope` discovers a registered local stack's original paths, canonical Git metadata and Temporal SQLite link and payload, including retained sidecars. It reads the control database and retained WAL in a verified private copy. An optional original task selector binds its local creation and submission records. After a same-path restore, `--expected` checks the saved scope before services reopen, including an external SQLite payload behind a restored link. [Registered recovery scope](../operations/backup-recovery.md#create-and-verify-the-offline-copy) · [Same-path restore](../operations/backup-recovery.md#restore-on-the-same-platform-at-the-original-paths)
+With writers stopped, `state recovery-scope` discovers a registered local stack's original paths, canonical Git metadata and Temporal SQLite link and payload, including retained sidecars. It identifies alternate Git object directories and linked alternates files, and verifies reachable borrowed history offline. It reads the control database and retained WAL in a verified private copy. An optional original task selector binds its local creation and submission records. After a same-path restore, `--expected` checks the saved scope before services reopen, including an external SQLite payload behind a restored link. [Registered recovery scope](../operations/backup-recovery.md#create-and-verify-the-offline-copy) · [Same-path restore](../operations/backup-recovery.md#restore-on-the-same-platform-at-the-original-paths)
 
 External effects record an attempt before sending. A lost reply remains **unknown** until reconciliation of the original ID/history/receipt; restarting cannot authorize duplicate execution. Budgets retain their original clock and consumed slots across recovery. Cancellation delivery, fences, actual process stopping, durable cleanup, terminal outcome and lease release are separate facts. Each supervised subtree has one reaper; its stopped record follows actual collection, and it cannot spawn after stopping. See [development](execution/development.md) and [training recovery](execution/training.md) before changing these owners.
 
