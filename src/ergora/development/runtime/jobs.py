@@ -348,7 +348,7 @@ class CandidateCheckJob(BudgetedJob):
         adapter = fixed_checks.check_adapter()
         admission = fixed_checks.authorized(adapter, envelope)
         context = envelope['context']
-        relative = context['task_id'] + '/' + envelope['job_id'] + '.json'
+        relative = verification.fixed_check_receipt_name(envelope['job_id'])
         require(path == adapter.path('requests', relative), 'Candidate check job was moved from its original request')
         require(str(home) == admission['control_home'], 'Candidate check job belongs to another control directory')
         self.bind(path, home, admission, envelope, context['task_id'])

@@ -60,16 +60,31 @@ def test_read_only_state_observes_live_wal_without_writer_access(tmp_path):
                 db.execute('CREATE TABLE invalid_write (test TEXT)')
 
 
-def test_read_only_state_never_migrates_a_legacy_database(old_home):
+@pytest.mark.parametrize('read_only', (False, True))
+def test_existing_state_never_migrates_a_legacy_database(old_home, read_only):
     home, document = old_home
     database = home / 'ergora.sqlite3'
     original = database.read_bytes()
-    reader = State(home, read_only=True)
+    reader = State(home, read_only=read_only, existing_only=True)
     with pytest.raises(ValueError, match='Unsupported database schema'):
         reader.project(document['id'])
     assert database.read_bytes() == original
     assert not (home / '.schema.lock').exists()
     assert not (home / 'backups').exists()
+
+
+def test_existing_writer_never_creates_a_database(tmp_path):
+    with pytest.raises(ValueError, match='No existing Ergora state'):
+        State(tmp_path, existing_only=True)
+    assert not (tmp_path / '.schema.lock').exists()
+    state = State(tmp_path)
+    existing = State(state.root, existing_only=True)
+    database = state.root / 'ergora.sqlite3'
+    database.rename(database.with_suffix('.saved'))
+    with pytest.raises(sqlite3.OperationalError):
+        with existing.connect(timeout=0):
+            pytest.fail('Opening an existing writer recreated a removed database')
+    assert not database.exists()
 
 
 def _fixed_v1(db):

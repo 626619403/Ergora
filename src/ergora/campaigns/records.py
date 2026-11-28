@@ -8,7 +8,7 @@ from pathlib import Path
 import re
 import stat
 import tempfile
-from uuid import UUID
+from uuid import NAMESPACE_URL, UUID, uuid5
 
 from ergora.definitions.bundles import parse_json
 from ergora.development.envelopes import identity
@@ -22,6 +22,8 @@ MAX_PLAN_BYTES = 65_536
 MAX_RECORD_BYTES = 2 * MAX_PLAN_BYTES
 MAX_FIXED_TASKS = 8
 FIXED_TASK_UPDATE_PREFIX = 'ergora-campaign-check:'
+FIXED_OWNER_UPDATE_PREFIX = 'ergora-campaign-owner-check:'
+CHECK_WAKE_SOURCES = ('manual_update', 'owner_update')
 ROLLOVER_UPDATE_PREFIX = 'ergora-campaign-rollover:'
 FIXED_CHECK_LOCATOR = ('operation_id', 'request_file_sha256', 'job_sha256', 'candidate_sha')
 FIXED_CHECK_TERMINAL = ('receipt_sha256', 'fixed_results_sha256')
@@ -153,7 +155,8 @@ def validate_tasks(tasks):
     dependencies = {}
     scheduled = False
     for task in tasks:
-        optional = {'readback', 'recipient', 'wake_on_observe', 'recover_fixed_check_receipt', 'recover_screen_receipt',
+        optional = {'readback', 'recipient', 'wake_on_observe', 'wake_on_owner_notice',
+                    'recover_fixed_check_receipt', 'recover_screen_receipt',
                     'recover_release_receipt', 'recover_full_result_receipt', 'reobserve_full_result_after_reader_loss'}
         if not isinstance(task, dict) or task.keys() - optional != {'task_id', 'depends_on', 'source'}:
             raise ValueError('Campaign task requires task_id, depends_on and an exact source')
@@ -202,6 +205,9 @@ def validate_tasks(tasks):
                 raise ValueError('Campaign Codex recipient requires the selected original timed readback')
         if 'wake_on_observe' in task and (task['wake_on_observe'] is not True or 'recipient' not in task):
             raise ValueError('Campaign manual wake requires an explicitly enabled original timed recipient')
+        if 'wake_on_owner_notice' in task and (task['wake_on_owner_notice'] is not True
+                or task.get('wake_on_observe') is not True or training_readback_task(task)):
+            raise ValueError('Campaign owner notification requires the selected common fixed-check wake')
         if 'recover_fixed_check_receipt' in task and (task['recover_fixed_check_receipt'] is not True
                 or task.get('wake_on_observe') is not True or training_readback_task(task)):
             raise ValueError('Campaign fixed-check receipt recovery requires the selected common fixed-check wake')
@@ -388,15 +394,17 @@ def assignment_intent(opening, run_id, waiting=None):
     return {'wake_id': 'codex-assignment:' + identity(scope), **scope}
 
 
-def manual_wake_source(task, waiting, receipt):
+def check_wake_source(task, waiting, receipt):
     if (task.get('wake_on_observe') is not True or waiting is None or receipt is None
             or waiting.get('decision') != 'waiting_job' or receipt.get('decision') != 'observed'
             or waiting.get('task_id') != task['task_id'] or receipt.get('task_id') != task['task_id']
             or waiting.get('run_id') != receipt.get('run_id')
             or receipt.get('job', {}).get('waiting_receipt_sha256') != identity(waiting)):
-        raise ValueError('Campaign manual wake requires its original accepted wait and terminal Update')
+        raise ValueError('Campaign check wake requires its original accepted wait and terminal Update')
     job = receipt['job']
-    return {'kind': 'manual_update', 'update_id': receipt['update_id'],
+    update_id = receipt['update_id']
+    kind = 'owner_update' if update_id.startswith(FIXED_OWNER_UPDATE_PREFIX) else 'manual_update'
+    return {'kind': kind, 'update_id': update_id,
             'waiting_receipt_sha256': job['waiting_receipt_sha256'], 'observation_sha256': receipt['observation_sha256'],
             **{key: job[key] for key in FIXED_CHECK_TERMINAL}}
 
@@ -1011,6 +1019,10 @@ def check_intent(opening, start_attempt_sha256, run_id, task_id, evidence_sha256
     return {**intent, 'job': job} if job is not None else intent
 
 
+def fixed_owner_update_id(intent):
+    return FIXED_OWNER_UPDATE_PREFIX + str(uuid5(NAMESPACE_URL, 'ergora:fixed-check-owner:' + identity(intent)))
+
+
 def _validate_check_job(task, job):
     if task['source'].get('pending') is not True:
         if job is not None:
@@ -1042,8 +1054,12 @@ def validate_check_command(opening, start_attempt_sha256, run_id, command):
     if identity(intent) != identity(check_intent(opening, start_attempt_sha256, run_id, task_id, evidence, job=job)):
         raise ValueError('Campaign check intent does not bind the original opening, task and first Run')
     update_id = attempt.get('update_id')
-    if (not isinstance(update_id, str) or not update_id.startswith(FIXED_TASK_UPDATE_PREFIX)
-            or not uuid_text(update_id[len(FIXED_TASK_UPDATE_PREFIX):])
+    owner = isinstance(update_id, str) and update_id.startswith(FIXED_OWNER_UPDATE_PREFIX)
+    if owner and (task.get('wake_on_owner_notice') is not True or intent['operation'] != 'observe_check'
+                  or job is None or 'waiting_receipt_sha256' not in job or update_id != fixed_owner_update_id(intent)):
+        raise ValueError('Campaign original owner notice differs from its authorized passing Job and wait')
+    if ((not owner and (not isinstance(update_id, str) or not update_id.startswith(FIXED_TASK_UPDATE_PREFIX)
+                        or not uuid_text(update_id[len(FIXED_TASK_UPDATE_PREFIX):])))
             or identity(attempt) != identity(update_attempt(intent, update_id))):
         raise ValueError('Campaign check attempt differs from its original intent or Update ID')
 

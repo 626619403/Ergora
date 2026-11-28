@@ -1,6 +1,8 @@
 """Local operator entry points for one immutable campaign plan and original start."""
 
 import asyncio
+from contextlib import ExitStack
+import logging
 from pathlib import Path
 import sqlite3
 from threading import Event
@@ -12,7 +14,7 @@ from ergora.campaigns.records import (
     PENDING_JOB_STATES, READBACK_ALREADY_ADMITTED,
     ROLLOVER_UPDATE_PREFIX, WORKFLOW_TYPE,
     CampaignFiles, assignment_task, attempt_document, check_intent, check_record_name, identity, local_readback_stop,
-    original_check_evidence, project_selection, read_plan, readback_reports_terminal, readback_task,
+    fixed_owner_update_id, original_check_evidence, project_selection, read_plan, readback_reports_terminal, readback_task,
     recipient_task, require_assignment_bindings, require_check_project, result_document, rollover_intent,
     require_training_assignment_wait, rollover_task, sha256, stop_intent,
     tasks_by_id, training_assignment_task, training_readback_task, update_attempt, uuid_text, verify_registration,
@@ -888,6 +890,10 @@ async def observe_check(state: State, project: str, campaign: str, task_id: str,
     """Record one already-authorized original Job observation as the trusted local operator."""
     if confirm is not True:
         raise ValueError('Campaign task observation requires explicit --confirm')
+    return await _observe_check(state, project, campaign, task_id, owner_scope=None)
+
+
+async def _observe_check(state, project, campaign, task_id, *, owner_scope):
     files = CampaignFiles(state.root, project, campaign)
     opening, attempt, result = files.load()
     if attempt is None:
@@ -900,7 +906,16 @@ async def observe_check(state: State, project: str, campaign: str, task_id: str,
         raise ValueError('Read the original guarded training result with campaign status --online')
     runtime = _temporal()
     first_run_id = result['run_id'] if result is not None else None
+    owner_notice = owner_scope is not None
+    if owner_notice:
+        owned_opening, owned_attempt, owned_run = owner_scope
+        if (task.get('wake_on_owner_notice') is not True or opening != owned_opening or attempt != owned_attempt
+                or first_run_id not in (None, owned_run)):
+            raise ValueError('Campaign did not select this original fixed-check owner notification')
+        first_run_id = owned_run
     client, handle, description, successor = await _check_run(runtime, files, opening, attempt, first_run_id)
+    if owner_notice and (handle.run_id != first_run_id or successor is not None):
+        raise ValueError('Campaign owner notification requires the current original Run')
     if first_run_id is None:
         first_run_id = handle.run_id
     command = files.load_check(opening, attempt, handle.run_id, task)
@@ -910,7 +925,7 @@ async def observe_check(state: State, project: str, campaign: str, task_id: str,
     pending = source.get('pending') is True
     waiting_command = files.load_check(opening, attempt, first_run_id, task, waiting=True) if pending else None
     waiting_receipt = None
-    expires_at = opening['plan']['limits']['expires_at']
+    expires_at = task['readback']['due_at'] if owner_notice else opening['plan']['limits']['expires_at']
     if waiting_command is not None:
         waiting_handle = _command_handle(client, handle, successor, waiting_command)
         waiting_receipt = await _read_check(runtime, client, waiting_handle, waiting_command)
@@ -920,11 +935,15 @@ async def observe_check(state: State, project: str, campaign: str, task_id: str,
 
     _require_no_pending_rollover(files, opening, attempt, handle, successor)
     require_check_project(state, opening)
-    view = await _require_ready_check(runtime, handle, description, opening, attempt, task_id, successor=successor)
-    if _readback_admitted(view):
-        return await _readback_check_response(runtime, client, handle, opening, view, waiting_command)
-    if waiting_command is None and view.get('waiting_receipt') is not None:
-        raise ValueError('Campaign original waiting task attempt is missing')
+    if owner_notice:
+        if waiting_receipt is None:
+            raise ValueError('Campaign owner notification requires its accepted original wait')
+    else:
+        view = await _require_ready_check(runtime, handle, description, opening, attempt, task_id, successor=successor)
+        if _readback_admitted(view):
+            return await _readback_check_response(runtime, client, handle, opening, view, waiting_command)
+        if waiting_command is None and view.get('waiting_receipt') is not None:
+            raise ValueError('Campaign original waiting task attempt is missing')
 
     def stopped():
         stop_intent_saved, _, saved_stop = files.load_stop(opening, attempt, result)
@@ -942,6 +961,12 @@ async def observe_check(state: State, project: str, campaign: str, task_id: str,
         return _check_response(opening, task, waiting_command, waiting_receipt)
 
     files.ensure_directory()
+    if owner_notice:
+        job = {**job, 'waiting_receipt_sha256': identity(waiting_receipt)}
+        intent = check_intent(opening, identity(attempt), first_run_id, task_id, evidence_sha256, job=job)
+        command = {'intent': intent, 'attempt': update_attempt(intent, fixed_owner_update_id(intent))}
+        return await _submit_fixed_owner_check(runtime, state, files, opening, attempt, task, waiting_command,
+                                               command, client)
     with file_lock(files.lock, blocking=False):
         client, handle, description, successor = await _check_run(runtime, files, opening, attempt, first_run_id, client)
         command = files.load_check(opening, attempt, handle.run_id, task)
@@ -989,6 +1014,89 @@ async def observe_check(state: State, project: str, campaign: str, task_id: str,
         return _check_response(opening, task, command, receipt)
 
 
+async def _submit_fixed_owner_check(runtime, state, files, opening, attempt, task, waiting, command, client):
+    run_id = command['intent']['run_id']
+    cutoff = task['readback']['due_at']
+    authority = State(state.root, existing_only=True)
+    while True:
+        _require_check_window(cutoff)
+        if files.load_stop(opening, attempt, None)[0] is not None:
+            raise ValueError('Campaign no longer admits original task observations')
+        client, handle, description, successor = await _check_run(runtime, files, opening, attempt, run_id, client)
+        if (handle.run_id != run_id or successor is not None
+                or description.status != runtime.WorkflowExecutionStatus.RUNNING):
+            raise ValueError('Campaign owner notification requires the current original running Run')
+        with ExitStack() as reservation:
+            try:
+                db = reservation.enter_context(authority.connect(timeout=0))
+                db.execute('BEGIN IMMEDIATE')
+            except sqlite3.OperationalError as error:
+                if (getattr(error, 'sqlite_errorcode', 0) & 0xff) not in (sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED):
+                    raise
+            else:
+                require_check_project(state, opening)
+                # The manual path retains its original lock order. Release State on Campaign contention.
+                try:
+                    reservation.enter_context(file_lock(files.lock, blocking=False))
+                except BlockingIOError:
+                    pass
+                else:
+                    current, current_attempt, result = files.load()
+                    if current != opening or current_attempt != attempt or result is not None and result['run_id'] != run_id:
+                        raise ValueError('Campaign owner notification differs from its saved original Run')
+                    if files.load_check(opening, attempt, run_id, task, waiting=True) != waiting:
+                        raise ValueError('Campaign original waiting task attempt changed')
+                    previous = files.load_check(opening, attempt, run_id, task)
+                    if previous is None:
+                        _require_check_window(cutoff)
+                        if files.load_stop(opening, attempt, result)[0] is not None:
+                            raise ValueError('Campaign no longer admits original task observations')
+                        files.write(check_record_name(task['task_id'], waiting=False), command,
+                                    before_publish=lambda: _require_check_window(cutoff))
+                    break
+        await asyncio.sleep(min(.25, max(0, cutoff - time.time())))
+
+    if previous is not None:
+        return await _check_attempt_response(runtime, client, handle, files, opening, attempt, task, previous)
+    receipt = None
+    remaining = cutoff - time.time()
+    if remaining > 0 and files.load_stop(opening, attempt, None)[0] is None:
+        try:
+            async with asyncio.timeout(min(runtime.RPC_SECONDS, remaining)):
+                receipt = await runtime.send_check(client, command, expires_at=cutoff)
+        except (TimeoutError, ConnectionError, runtime.RPCError):
+            pass
+    if receipt is None:
+        return await _check_attempt_response(runtime, client, handle, files, opening, attempt, task, command)
+    return _check_response(opening, task, command, receipt)
+
+
+async def observe_fixed_owner_notice(state, files, opening, start, run_id, task):
+    """Watch the selected producer's immutable receipt until the original Timer takes over."""
+    from ergora.development.envelopes import FIXED_CANDIDATE_CHECK
+    from ergora.development.verification import fixed_check_receipt_name
+
+    try:
+        registered = verify_registration(state, opening)
+        execution = registered['registration']['definition']['execution']
+        receipt = (Path(execution['state_directory']) / 'receipts' / FIXED_CANDIDATE_CHECK
+                   / fixed_check_receipt_name(task['source']['job_id']))
+        cutoff = task['readback']['due_at']
+        while time.time() < cutoff:
+            if files.load_stop(opening, start, None)[0] is not None:
+                return
+            if files.load_check(opening, start, run_id, task) is not None:
+                return
+            if receipt.is_file() and files.load_check(opening, start, run_id, task, waiting=True) is not None:
+                observed = await _observe_check(state, files.project, files.campaign, task['task_id'],
+                                                owner_scope=(opening, start, run_id))
+                if observed['status'] != 'unknown' or files.load_check(opening, start, run_id, task) is not None:
+                    return
+            await asyncio.sleep(min(.25, max(0, cutoff - time.time())))
+    except (OSError, ValueError, sqlite3.Error) as error:
+        logging.getLogger(__name__).warning('Original fixed-check owner notification unavailable: %s', error)
+
+
 async def manage_worker(state: State, project: str, campaign: str, action: str, *, confirm=False, timeout=30) -> dict:
     from ergora.campaigns.worker_service import manage
 
@@ -1011,10 +1119,10 @@ async def worker(state: State, project: str, campaign: str) -> dict:
     from ergora.campaigns.worker_service import polling_owner
 
     with polling_owner(files, opening, attempt, result, registration) as poller_identity:
-        return await _run_worker(files, opening, attempt, result, poller_identity)
+        return await _run_worker(state, files, opening, attempt, result, poller_identity)
 
 
-async def _run_worker(files, opening, attempt, result, poller_identity):
+async def _run_worker(state, files, opening, attempt, result, poller_identity):
     runtime = _temporal()
     local_fence = local_readback_stop(opening)
     stop_records = files.load_stop(opening, attempt, result)
@@ -1046,6 +1154,9 @@ async def _run_worker(files, opening, attempt, result, poller_identity):
         return selected
 
     scope = {'next_run': next_run} if rollover_task(opening) is not None and successor is None else {}
+    task = readback_task(opening)
+    if task is not None and task.get('wake_on_owner_notice') is True:
+        scope['owner_observer'] = lambda: observe_fixed_owner_notice(state, files, opening, attempt, handle.run_id, task)
     try:
         worker_status = await runtime.run_worker(client, handle, opening, files, attempt,
                                                  poller_identity=poller_identity, **scope)

@@ -8,12 +8,12 @@ from temporalio import activity
 
 from ergora.agents import runs
 from ergora.campaigns.records import (
-    ASSIGNMENT_ATTEMPT, ASSIGNMENT_REFUSAL, RECIPIENT_ACTIVITY, assignment_task, identity, recipient_task,
+    ASSIGNMENT_ATTEMPT, ASSIGNMENT_REFUSAL, CHECK_WAKE_SOURCES, RECIPIENT_ACTIVITY, assignment_task, identity, recipient_task,
     training_assignment_task, training_readback_task,
 )
 from ergora.campaigns.recipient_gate import (
     TRAINING_PENDING_UNAVAILABLE, RecipientBlocked, RecipientGate,
-    assignment_refusal, assignment_wait, attempt_record, manual_commands,
+    assignment_refusal, assignment_wait, attempt_record, check_wake_commands,
     stopped_receipt, verify_wake_intent,
 )
 from ergora.storage.state import State
@@ -143,7 +143,7 @@ class CodexRecipient:
         task = recipient_task(opening)
         assigned = assignment_task(opening)
         independent = assigned is not None and intent.get('task_id') == assigned['task_id']
-        manual = intent['source'].get('kind') == 'manual_update'
+        update_wake = intent['source'].get('kind') in CHECK_WAKE_SOURCES
         training = training_readback_task(task)
         fixed_recovery = not training and 'recovery_activity_id' in intent['source']
         if independent:
@@ -154,9 +154,9 @@ class CodexRecipient:
                 if training:
                     raise ValueError('Campaign independent task lacks its verified original training wait and schedule')
                 raise ValueError('Campaign independent task lacks its verified original waiting Update and schedule')
-        elif manual or training or fixed_recovery:
-            if manual:
-                commands = manual_commands(self.files, opening, self.start, self.run_id, task)
+        elif update_wake or training or fixed_recovery:
+            if update_wake:
+                commands = check_wake_commands(self.files, opening, self.start, self.run_id, task)
             elif fixed_recovery:
                 waiting = self.files.load_check(opening, self.start, self.run_id, task, waiting=True)
                 if waiting is None:
@@ -166,7 +166,7 @@ class CodexRecipient:
                 commands = ()
             wake = await self.read_wake_history(commands)
             if wake is None or wake['intent'] != intent:
-                raise ValueError('Campaign manual delivery lacks its verified original Update and schedule' if manual
+                raise ValueError('Campaign check delivery lacks its verified original Update and schedule' if update_wake
                                  else 'Campaign recipient delivery lacks its verified original result and schedule')
             if fixed_recovery:
                 accepted, completed, scheduled = (wake.get(key) for key in (

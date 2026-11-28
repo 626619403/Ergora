@@ -99,6 +99,13 @@ def validate_fixed_check_locator(source: dict) -> dict:
     return source
 
 
+def fixed_check_receipt_name(job_id: str) -> str:
+    """Resolve the one registered fixed-check receipt relative to its adapter."""
+    if not isinstance(job_id, str) or re.fullmatch(r'check-[a-f0-9]{40}-[a-f0-9]{24}', job_id) is None:
+        raise ValueError('Fixed check receipt requires the exact original Job ID')
+    return job_id.rsplit('-', 1)[0] + '/' + job_id + '.json'
+
+
 def value_bytes(value) -> bytes:
     """One exact JSON domain: bool is distinct from int, and floats are absent."""
     raw = observation_bytes(value, SOURCE_BYTES)

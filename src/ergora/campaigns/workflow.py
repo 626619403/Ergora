@@ -24,10 +24,11 @@ from temporalio.worker import Worker
 
 with workflow.unsafe.imports_passed_through():
     from ergora.campaigns.records import (
-        ATTEMPT_MEMO, FIXED_CHECK_RECOVERY_ACTIVITY, OPENING_MEMO, READBACK_ALREADY_ADMITTED, READBACK_CLEANUP_SECONDS,
+        ATTEMPT_MEMO, CHECK_WAKE_SOURCES, FIXED_CHECK_RECOVERY_ACTIVITY, FIXED_OWNER_UPDATE_PREFIX,
+        OPENING_MEMO, READBACK_ALREADY_ADMITTED, READBACK_CLEANUP_SECONDS,
         RECIPIENT_ACTIVITY, SCREEN_RESULT_RECOVERY_ACTIVITY, WORKFLOW_TYPE,
         assignment_intent, assignment_task, check_receipt, checked_readback, fixed_task_state, has_pending_checks,
-        identity, manual_wake_source,
+        check_wake_source, identity,
         readback_activity, readback_grant, readback_id, readback_proof, readback_ready_tasks, readback_reference,
         readback_followup_activity, readback_followup_id, readback_followup_result, readback_reports_terminal,
         readback_result, readback_task,
@@ -146,7 +147,14 @@ class Campaign:
     async def _time_readback(self, task, grant, activity_id, shared, assigned):
         delay = grant['due_at'] - workflow.time()
         if delay > 0:
-            await workflow.sleep(delay)
+            if task.get('wake_on_owner_notice') is True:
+                try:
+                    await workflow.wait_condition(lambda: self.ready_source is not None
+                        and self.ready_source.get('kind') == 'owner_update', timeout=delay)
+                except asyncio.TimeoutError:
+                    pass
+            else:
+                await workflow.sleep(delay)
         remaining = grant['deadline_at'] - workflow.time()
         if shared:
             await self._run_shared_intake(task, grant, activity_id, remaining, assigned)
@@ -290,6 +298,9 @@ class Campaign:
         if (self.stop_decision is not None or self.rollover_command is not None
                 or workflow.time() >= self.opening['plan']['limits']['expires_at']):
             raise ApplicationError('Campaign no longer admits new task observations', non_retryable=True)
+        if (receipt['update_id'].startswith(FIXED_OWNER_UPDATE_PREFIX)
+                and workflow.time() >= task['readback']['due_at']):
+            raise ApplicationError('Campaign owner notice reached its original fallback read time', non_retryable=True)
         automatic = readback_ready_tasks(readback_task(self.opening), self.readback or {})
         if not set(task['depends_on']) <= self.check_receipts.keys() | automatic:
             raise ApplicationError('Campaign task dependencies lack an original observation', non_retryable=True)
@@ -307,7 +318,7 @@ class Campaign:
                                        type=READBACK_ALREADY_ADMITTED, non_retryable=True)
             if (task.get('wake_on_observe') is True and prior_wait is not None
                     and workflow.time() < task['readback']['deadline_at']):
-                self.ready_source = manual_wake_source(task, prior_wait, receipt)
+                self.ready_source = check_wake_source(task, prior_wait, receipt)
         receipts[receipt['task_id']] = receipt
         return receipt
 
@@ -646,7 +657,7 @@ async def read_task_history(client, handle, opening, commands, *, start_attempt=
             continue
         late = check_receipt(entry['command'])
         waiting = entries[timer_wait['attempt']['update_id']].get('receipt') if timer_wait is not None else None
-        source = manual_wake_source(task, waiting, late) if task is not None else {}
+        source = check_wake_source(task, waiting, late) if task is not None else {}
         if (completion is None or completion.get('recovery_history', completion)['completed_event_id'] >= entry['completed_event_id']
                 or not same_check_observation(completion, source)):
             raise ValueError('Campaign readback refusal lacks its earlier identical guarded result')
@@ -682,15 +693,21 @@ async def read_task_history(client, handle, opening, commands, *, start_attempt=
             if len(values) != 1 or not isinstance(values[0], dict) or not isinstance(values[0].get('source'), dict):
                 raise ValueError('Campaign recipient History has an invalid original source')
             claimed = values[0]['source']
-            if claimed.get('kind') == 'manual_update':
+            update_wake = claimed.get('kind') in CHECK_WAKE_SOURCES
+            if update_wake:
                 if timer_wait is None or not isinstance(claimed.get('update_id'), str):
                     raise ValueError('Campaign recipient History lacks its original wait and terminal Update')
                 preceding = entries[timer_wait['attempt']['update_id']]
                 terminal = entries.get(claimed['update_id'], {})
-                source = manual_wake_source(recipient, preceding.get('receipt'), terminal.get('receipt'))
+                source = check_wake_source(recipient, preceding.get('receipt'), terminal.get('receipt'))
                 ready = terminal['completed_event']
                 if preceding['completed_event_id'] >= ready.event_id:
                     raise ValueError('Campaign recipient terminal Update preceded its original wait')
+                if source['kind'] == 'owner_update':
+                    timestamp = _history_timestamp_ns(ready)
+                    if (recipient.get('wake_on_owner_notice') is not True or timestamp is None
+                            or timestamp >= recipient['readback']['deadline_at'] * 1_000_000_000):
+                        raise ValueError('Campaign owner notice lacks its original read window')
             else:
                 if completion is None:
                     raise ValueError('Campaign recipient History lacks its original passing readback')
@@ -705,7 +722,7 @@ async def read_task_history(client, handle, opening, commands, *, start_attempt=
             intent = wake_intent(opening, handle.run_id, recipient, source)
             wake = await _read_recipient_history(converter, wake_events, opening, intent, ready,
                                                  check_pending=check_pending_wake)
-            if claimed.get('kind') != 'manual_update':
+            if not update_wake:
                 if fixed_receipt and 'recovery_history' in completion:
                     wake.update(waiting_accepted_event_id=wait_entry['accepted_event_id'],
                                 waiting_completed_event_id=wait_entry['completed_event_id'])
@@ -1276,7 +1293,7 @@ def _observed_state(observed, expected, opening, start_attempt_sha256, temporal_
     return {'temporal_status': temporal_status.name, 'workflow_state_status': 'observed', 'workflow_state': observed, **extra}
 
 
-async def run_worker(client, handle, opening, files, attempt, *, poller_identity=None, next_run=None):
+async def run_worker(client, handle, opening, files, attempt, *, poller_identity=None, next_run=None, owner_observer=None):
     """Poll only the saved queue until the original run closes, or the foreground worker stops."""
     stopped = asyncio.Event()
     loop = asyncio.get_running_loop()
@@ -1333,6 +1350,9 @@ async def run_worker(client, handle, opening, files, attempt, *, poller_identity
         async with worker:
             closing = asyncio.create_task(wait_for_completion())
             stopping = asyncio.create_task(stopped.wait())
+            owned = [closing, stopping]
+            if owner_observer is not None:
+                owned.append(asyncio.create_task(owner_observer()))
             try:
                 await asyncio.wait((closing, stopping), return_when=asyncio.FIRST_COMPLETED)
                 if closing.done():
@@ -1344,9 +1364,9 @@ async def run_worker(client, handle, opening, files, attempt, *, poller_identity
                     return 'closed'
                 return 'interrupted'
             finally:
-                for task in (closing, stopping):
+                for task in owned:
                     task.cancel()
-                await asyncio.gather(closing, stopping, return_exceptions=True)
+                await asyncio.gather(*owned, return_exceptions=True)
     finally:
         if previous is not None:
             signal.signal(signal.SIGTERM, previous)

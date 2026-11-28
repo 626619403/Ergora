@@ -11,9 +11,9 @@ import time
 
 from ergora.agents import native_sources
 from ergora.campaigns.records import (
-    ASSIGNMENT_ATTEMPT, ASSIGNMENT_REFUSAL, FIXED_CHECK_RECOVERY_ACTIVITY,
+    ASSIGNMENT_ATTEMPT, ASSIGNMENT_REFUSAL, CHECK_WAKE_SOURCES, FIXED_CHECK_RECOVERY_ACTIVITY,
     CampaignFiles, assignment_intent, assignment_task, check_receipt,
-    identity, manual_wake_source, readback_grant, readback_id, readback_proof, readback_reference, readback_result,
+    check_wake_source, identity, readback_grant, readback_id, readback_proof, readback_reference, readback_result,
     receipt_recovery_activity, receipt_recovery_id, receipt_recovery_proof, recipient_task,
     reobservation_id, reobservation_task, require_check_project, require_training_assignment_wait, sha256,
     training_assignment_task, training_readback_task, wake_intent,
@@ -68,11 +68,11 @@ def verified_source(files, opening, start, run_id, task, *, reobservation=False)
             **readback_reference(grant), **readback_proof(evidence, job, readback)}
 
 
-def manual_commands(files, opening, start, run_id, task):
+def check_wake_commands(files, opening, start, run_id, task):
     wait = files.load_check(opening, start, run_id, task, waiting=True)
     terminal = files.load_check(opening, start, run_id, task)
     if wait is None or terminal is None:
-        raise ValueError('Campaign manual wake requires its protected waiting and terminal attempts')
+        raise ValueError('Campaign check wake requires its protected waiting and terminal attempts')
     return wait, terminal
 
 
@@ -153,9 +153,9 @@ def verify_wake_intent(files, opening, start, run_id, task, intent):
     claimed = intent.get('source')
     if not isinstance(claimed, dict):
         raise ValueError('Campaign recipient attempt lacks its original result source')
-    if claimed.get('kind') == 'manual_update':
-        wait, terminal = manual_commands(files, opening, start, run_id, task)
-        source = manual_wake_source(task, check_receipt(wait), check_receipt(terminal))
+    if claimed.get('kind') in CHECK_WAKE_SOURCES:
+        wait, terminal = check_wake_commands(files, opening, start, run_id, task)
+        source = check_wake_source(task, check_receipt(wait), check_receipt(terminal))
     elif 'recovery_activity_id' in claimed:
         source, _, _, _ = verified_receipt_recovery(files, opening, start, run_id, task)
     elif 'reobservation_activity_id' in claimed:

@@ -1786,7 +1786,7 @@ def test_assignment_proves_preclaim_revocation_without_native_effects(registrati
     from ergora.campaigns import recipient
     from ergora.campaigns.records import (
         ASSIGNMENT_ATTEMPT, ASSIGNMENT_REFUSAL, FIXED_TASK_LOCATOR, CampaignFiles, assignment_intent,
-        attempt_document, check_intent, check_receipt, identity, manual_wake_source, project_selection,
+        attempt_document, check_intent, check_receipt, identity, check_wake_source, project_selection,
         result_document, stop_intent, update_attempt, wake_intent,
     )
     from ergora.storage.assets import inventory_tree
@@ -1854,7 +1854,7 @@ def test_assignment_proves_preclaim_revocation_without_native_effects(registrati
         terminal = {'intent': terminal, 'attempt': update_attempt(terminal, 'ergora-campaign-check:' + str(uuid4()))}
         owner.write('check-wait', terminal)
         intent = wake_intent(opening, run_id, waiting_task,
-                             manual_wake_source(waiting_task, check_receipt(waiting), check_receipt(terminal)))
+                             check_wake_source(waiting_task, check_receipt(waiting), check_receipt(terminal)))
     else:
         intent = assignment_intent(opening, run_id, check_receipt(waiting))
 
@@ -2340,7 +2340,10 @@ def test_status_recovers_original_task_history_without_worker(registration, tmp_
 
 
 def test_pending_task_retains_exact_stage_receipts():
-    from ergora.campaigns.records import check_intent, check_receipt, fixed_task_state, identity, update_attempt
+    from ergora.campaigns.records import (
+        FIXED_OWNER_UPDATE_PREFIX, check_intent, check_receipt, fixed_owner_update_id, fixed_task_state,
+        identity, update_attempt, validate_check_command,
+    )
 
     task = {'task_id': 'wait', 'depends_on': [], 'source': {'pending': True}}
     dependent = {'task_id': 'next', 'depends_on': ['wait'], 'source': {'pending': True}}
@@ -2367,6 +2370,138 @@ def test_pending_task_retains_exact_stage_receipts():
     assert fixed_task_state(opening, start, run, {'wait': direct})['wait']['waiting_receipt'] is None
     with pytest.raises(ValueError, match='original waiting receipt'):
         fixed_task_state(opening, start, run, {'wait': direct}, waits)
+
+    owner_task = {**task, 'wake_on_owner_notice': True}
+    owner_opening = {**opening, 'plan': {'tasks': [owner_task, dependent]}}
+    job = {**terminal, 'waiting_receipt_sha256': identity(pending)}
+    owner_intent = check_intent(owner_opening, start, run, 'wait', 'b' * 64, job=job)
+    owner_id = fixed_owner_update_id(owner_intent)
+    assert owner_id.startswith(FIXED_OWNER_UPDATE_PREFIX)
+    validate_check_command(owner_opening, start, run, {'intent': owner_intent, 'attempt': update_attempt(owner_intent, owner_id)})
+    for selected_opening, selected_job, forced_id in (
+        (opening, job, None), (owner_opening, terminal, None), (owner_opening, job, FIXED_OWNER_UPDATE_PREFIX + completed_id),
+    ):
+        invalid = check_intent(selected_opening, start, run, 'wait', 'b' * 64, job=selected_job)
+        with pytest.raises(ValueError, match='owner notice differs'):
+            validate_check_command(selected_opening, start, run, {'intent': invalid,
+                'attempt': update_attempt(invalid, forced_id or fixed_owner_update_id(invalid))})
+
+
+@pytest.mark.parametrize('case', ('contention', 'stop-before-publication', 'stop-during-send', 'lost-reply',
+                                  'database-contention', 'stop-during-database-contention'))
+def test_fixed_owner_reserves_locally_and_sends_without_campaign_lock(tmp_path, monkeypatch, case):
+    import sqlite3
+    from ergora.campaigns.records import check_intent, check_receipt, fixed_owner_update_id, identity, update_attempt
+    from ergora.storage.state import file_lock
+
+    state = State(tmp_path)
+    worker_state = State(state.root, read_only=True)
+    task = {'task_id': 'fixed', 'readback': {'due_at': time.time() + 10}, 'source': {'project_revision': 1}}
+    opening = {'workflow_id': 'original', 'project': 'demo', 'campaign': 'record', 'project_revision': 1}
+    start, run = {'attempt_id': 'original-start'}, 'original-run'
+    original_wait = {'attempt': 'original-wait'}
+    intent = check_intent(opening, identity(start), run, task['task_id'], 'a' * 64,
+                          job={'status': 'succeeded', 'waiting_receipt_sha256': 'b' * 64})
+    command = {'intent': intent, 'attempt': update_attempt(intent, fixed_owner_update_id(intent))}
+    writes, sends, history = [], [], []
+    stop, entered, sending, release = asyncio.Event(), asyncio.Event(), asyncio.Event(), asyncio.Event()
+    lock = tmp_path / '.start.lock'
+
+    def write(name, document, *, before_publish):
+        assert name == 'check-fixed' and not stop.is_set()
+        with pytest.raises(BlockingIOError):
+            with file_lock(lock, blocking=False):
+                pytest.fail('Reservation must hold the original lock')
+        with state.connect(timeout=0) as reader:
+            with pytest.raises(sqlite3.OperationalError) as error:
+                reader.execute('BEGIN IMMEDIATE')
+            assert error.value.sqlite_errorcode == sqlite3.SQLITE_BUSY
+        before_publish()
+        writes.append(document)
+
+    files = SimpleNamespace(lock=lock, load=lambda: (opening, start, {'run_id': run}),
+        load_stop=lambda *args: ({'run_id': run} if stop.is_set() else None, None, None),
+        load_check=lambda *args, waiting=False: original_wait if waiting else next(iter(writes), None), write=write)
+
+    async def check_run(*args):
+        if case == 'stop-before-publication':
+            entered.set()
+            await release.wait()
+        else:
+            entered.set()
+        assert args[4] == run
+        return None, SimpleNamespace(run_id=run), SimpleNamespace(status='running'), None
+
+    async def send(_, document, *, expires_at):
+        with file_lock(lock, blocking=False):
+            assert expires_at == task['readback']['due_at'] and writes == [document]
+        sends.append(document)
+        sending.set()
+        if case == 'stop-during-send':
+            await release.wait()
+            assert stop.is_set()
+        if case == 'lost-reply':
+            raise TimeoutError
+        return check_receipt(document)
+
+    async def read_history(*args):
+        with file_lock(lock, blocking=False):
+            history.append(args[-1])
+        return application._check_response(opening, task, args[-1], None)
+
+    monkeypatch.setattr(application, '_check_run', check_run)
+    monkeypatch.setattr(application, '_check_attempt_response', read_history)
+    monkeypatch.setattr(application, 'require_check_project', lambda *args: None)
+    runtime = SimpleNamespace(WorkflowExecutionStatus=SimpleNamespace(RUNNING='running'), RPCError=ValueError,
+                              RPC_SECONDS=2, send_check=send)
+
+    async def observe():
+        return await application._submit_fixed_owner_check(runtime, worker_state, files, opening, start, task, original_wait,
+                                                            command, None)
+
+    async def exercise():
+        if case == 'contention':
+            with file_lock(lock):
+                attempt = asyncio.create_task(observe())
+                await asyncio.wait_for(entered.wait(), 2)
+                assert not attempt.done() and not writes and not sends
+            assert (await asyncio.wait_for(attempt, 3))['status'] == 'observed'
+        elif case in ('database-contention', 'stop-during-database-contention'):
+            with state.connect() as competitor:
+                competitor.execute('BEGIN IMMEDIATE')
+                attempt = asyncio.create_task(observe())
+                await asyncio.wait_for(entered.wait(), 2)
+                with file_lock(lock, blocking=False):
+                    assert not attempt.done() and not writes and not sends
+                    if case == 'stop-during-database-contention':
+                        stop.set()
+                if stop.is_set():
+                    with pytest.raises(ValueError, match='no longer admits'):
+                        await asyncio.wait_for(attempt, 3)
+            if not stop.is_set():
+                assert (await asyncio.wait_for(attempt, 3))['status'] == 'observed'
+        elif case == 'lost-reply':
+            assert (await observe())['status'] == 'unknown'
+            assert (await observe())['status'] == 'unknown'
+            assert history == [command, command]
+        else:
+            attempt = asyncio.create_task(observe())
+            if case == 'stop-during-send':
+                await asyncio.wait_for(sending.wait(), 2)
+            else:
+                await asyncio.wait_for(entered.wait(), 2)
+            with file_lock(lock, blocking=False):
+                stop.set()
+            release.set()
+            if case == 'stop-before-publication':
+                with pytest.raises(ValueError, match='no longer admits'):
+                    await asyncio.wait_for(attempt, 3)
+            else:
+                assert (await asyncio.wait_for(attempt, 3))['status'] == 'observed'
+
+    asyncio.run(exercise())
+    fenced_before_publication = case in ('stop-before-publication', 'stop-during-database-contention')
+    assert writes == sends == ([] if fenced_before_publication else [command])
 
 
 @pytest.mark.skipif(not os.environ.get('ERGORA_TEST_TEMPORAL_BIN'), reason='Requires the optional local Temporal CLI')
@@ -2979,7 +3114,7 @@ def test_opted_fixed_check_shares_manual_and_guarded_readiness(tmp_path):
     from ergora.campaigns import workflow as runtime
     from ergora.campaigns.records import (
         FIXED_CHECK_RECOVERY_ACTIVITY, FIXED_TASK_UPDATE_PREFIX, READBACK_ACTIVITY, RECIPIENT_ACTIVITY, attempt_document,
-        check_intent, identity, original_check_evidence, readback_id, receipt_recovery_id, stop_intent, update_attempt,
+        check_intent, fixed_owner_update_id, identity, original_check_evidence, readback_id, receipt_recovery_id, stop_intent, update_attempt,
         validate_plan,
     )
 
@@ -3025,7 +3160,8 @@ def test_opted_fixed_check_shares_manual_and_guarded_readiness(tmp_path):
 
     async def check(client, queue, campaign):
         now = int(time.time())
-        due, expiry = now + 4, now + 25
+        owner_first = campaign == 'owner-first'
+        due, expiry = now + (12 if owner_first else 4), now + 28
         selected = {'task_id': 'fixed', 'depends_on': [], 'source': source,
                     'wake_on_observe': True, 'readback': {'due_at': due, 'deadline_at': due + 12},
                     'recipient': {'session_id': 'session', 'parent_run_id': 'parent', 'intent_id': 'original',
@@ -3033,6 +3169,8 @@ def test_opted_fixed_check_shares_manual_and_guarded_readiness(tmp_path):
         recovery_first = campaign == 'recovery-first'
         if recovery_first:
             selected['recover_fixed_check_receipt'] = True
+        if owner_first or campaign == 'owner-timer-fallback':
+            selected['wake_on_owner_notice'] = True
         child = {'task_id': 'dependent', 'depends_on': ['fixed'], 'source': source}
         plan = {'schema_version': 1, 'goal': 'Verify one fixed check', 'acceptance': 'One original result',
                 'evidence_format': 'Native History', 'baseline_commit': source['candidate_sha'],
@@ -3047,12 +3185,13 @@ def test_opted_fixed_check_shares_manual_and_guarded_readiness(tmp_path):
         if recovery_first:
             assert await runtime.read_task_history(client, handle, opening, []) == ({}, None, None, None, None, None)
 
-        def command(task, observation, wait=None):
+        def command(task, observation, wait=None, *, owner=False):
             evidence, job = original_check_evidence(opening, task, observation)
             if wait is not None:
                 job = {**job, 'waiting_receipt_sha256': identity(wait)}
             intent = check_intent(opening, identity(attempt), run_id, task['task_id'], evidence, job=job)
-            return {'intent': intent, 'attempt': update_attempt(intent, FIXED_TASK_UPDATE_PREFIX + str(uuid4()))}
+            update_id = fixed_owner_update_id(intent) if owner else FIXED_TASK_UPDATE_PREFIX + str(uuid4())
+            return {'intent': intent, 'attempt': update_attempt(intent, update_id)}
 
         async def send(update):
             return await runtime.send_check(client, update, expires_at=expiry)
@@ -3070,9 +3209,9 @@ def test_opted_fixed_check_shares_manual_and_guarded_readiness(tmp_path):
         if holds_read:
             async with asyncio.timeout(10):
                 await held_reads[campaign][0].wait()
-        if manual_first or holds_read:
+        if owner_first or manual_first or holds_read:
             observation = {**succeeded, 'detail': 'different observation'} if conflict else succeeded
-            manual = command(selected, observation, wait)
+            manual = command(selected, observation, wait, owner=owner_first)
             result = await send(manual)
             assert result['decision'] == 'observed' and await send(manual) == result
             commands.append(manual)
@@ -3111,9 +3250,12 @@ def test_opted_fixed_check_shares_manual_and_guarded_readiness(tmp_path):
             assert terminal is None
         selected_wake, = deliveries[workflow_id]
         assert wake['intent'] == selected_wake
-        if manual_first or holds_read:
+        if owner_first or manual_first or holds_read:
             assert selected_wake['source']['update_id'] == result['update_id']
-            assert readback is None if manual_first else readback['observation_sha256'] == identity(succeeded)
+            assert readback is None if owner_first or manual_first else readback['observation_sha256'] == identity(succeeded)
+            if owner_first:
+                assert selected_wake['source']['kind'] == 'owner_update'
+                assert wake['timing']['events']['scheduled']['seconds'] < due
         else:
             assert selected_wake['source']['activity_id'] == readback['activity_id']
             late = command(selected, succeeded, wait)
@@ -3137,7 +3279,7 @@ def test_opted_fixed_check_shares_manual_and_guarded_readiness(tmp_path):
         history = await handle.fetch_history()
         scheduled = [event.activity_task_scheduled_event_attributes.activity_type.name for event in history.events
                      if event.HasField('activity_task_scheduled_event_attributes')]
-        expected = [] if manual_first else [READBACK_ACTIVITY]
+        expected = [] if owner_first or manual_first else [READBACK_ACTIVITY]
         if recovery_first:
             expected.append(FIXED_CHECK_RECOVERY_ACTIVITY)
         expected.append(RECIPIENT_ACTIVITY)
@@ -3178,7 +3320,7 @@ def test_opted_fixed_check_shares_manual_and_guarded_readiness(tmp_path):
                               activities=[original_result, recover_result, recipient]):
                 await asyncio.gather(*(check(service.client, queue, name)
                                        for name in ('manual-first', 'timer-first', 'manual-held', 'conflict',
-                                                    'recovery-first')))
+                                                    'recovery-first', 'owner-first', 'owner-timer-fallback')))
 
     asyncio.run(exercise())
 

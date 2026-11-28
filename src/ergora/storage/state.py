@@ -169,10 +169,11 @@ def resolve_home(root: Path | None = None) -> Path:
 
 
 class State:
-    def __init__(self, root: Path | None = None, *, read_only: bool = False):
+    def __init__(self, root: Path | None = None, *, read_only: bool = False, existing_only: bool = False):
         self.root = resolve_home(root)
         self._read_only = read_only
-        if read_only:
+        self._existing_only = read_only or existing_only
+        if self._existing_only:
             if not (self.root / "ergora.sqlite3").is_file():
                 raise ValueError("No existing Ergora state database in the selected home")
             return
@@ -214,20 +215,21 @@ class State:
                 detail = f"Pre-migration DB backup: {backup}" if backup and backup.exists() else "No complete pre-migration DB backup was created"
                 raise ValueError(f"State migration failed; database transaction rolled back. {detail}. {error}") from error
 
-    def _open(self) -> sqlite3.Connection:
+    def _open(self, *, timeout=15) -> sqlite3.Connection:
         database = self.root / "ergora.sqlite3"
-        if self._read_only:
-            db = sqlite3.connect(database.as_uri() + "?mode=ro", timeout=15, uri=True)
+        if self._existing_only:
+            mode = "ro" if self._read_only else "rw"
+            db = sqlite3.connect(database.as_uri() + "?mode=" + mode, timeout=timeout, uri=True)
         else:
-            db = sqlite3.connect(database, timeout=15)
+            db = sqlite3.connect(database, timeout=timeout)
         db.row_factory = sqlite3.Row
         if not self._read_only:
             db.create_function("ergora_writer_schema_version", 0, lambda: SCHEMA_VERSION, deterministic=True)
         return db
 
     @contextmanager
-    def connect(self):
-        db = self._open()
+    def connect(self, *, timeout=None):
+        db = self._open() if timeout is None else self._open(timeout=timeout)
         try:
             version = db.execute("PRAGMA user_version").fetchone()[0]
             if version != SCHEMA_VERSION:
