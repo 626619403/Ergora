@@ -21,6 +21,15 @@ from ergora._paths import DATA_ROOT
 
 
 _PRESETS = DATA_ROOT / "presets"
+_REFERENCE = contracts.WORKFLOW_DEFINITION["$defs"]["reference"]
+_DEFINITION_REF = {
+    **_REFERENCE,
+    "properties": {**_REFERENCE["properties"], "version": contracts.WORKFLOW_DEFINITION["properties"]["version"]},
+}
+_WORKFLOW_REF = {
+    **_DEFINITION_REF,
+    "properties": {**_DEFINITION_REF["properties"], "kind": {"const": "workflow"}},
+}
 _IMPACT_SELECTION = {
     "$defs": contracts.WORKFLOW_DEFINITION["$defs"],
     "type": "object", "additionalProperties": False, "required": ["schema_version", "roots"],
@@ -31,18 +40,26 @@ _IMPACT_SELECTION = {
             "items": {
                 "type": "object", "additionalProperties": False, "required": ["ref", "grant"],
                 "properties": {
-                    "ref": {
-                        **contracts.WORKFLOW_DEFINITION["$defs"]["reference"],
-                        "properties": {
-                            "kind": {"const": "workflow"}, "id": {"$ref": "#/$defs/id"},
-                            "version": contracts.WORKFLOW_DEFINITION["properties"]["version"],
-                            "digest": {"$ref": "#/$defs/digest"},
-                        },
-                    },
+                    "ref": _WORKFLOW_REF,
                     "grant": {"$ref": "#/$defs/grant"},
                 },
             },
         },
+    },
+}
+_REVISION_PLAN = {
+    **_IMPACT_SELECTION,
+    "required": ["schema_version", "roots", "replacements", "versions"],
+    "properties": {
+        **_IMPACT_SELECTION["properties"],
+        "replacements": {"type": "array", "minItems": 1, "items": {
+            "type": "object", "additionalProperties": False, "required": ["base", "published"],
+            "properties": {"base": _DEFINITION_REF, "published": _DEFINITION_REF},
+        }},
+        "versions": {"type": "array", "items": {
+            "type": "object", "additionalProperties": False, "required": ["base", "version"],
+            "properties": {"base": _WORKFLOW_REF, "version": contracts.WORKFLOW_DEFINITION["properties"]["version"]},
+        }},
     },
 }
 
@@ -174,12 +191,19 @@ def inspect_bundle(source: Path, *, material: bool = False) -> dict:
     return document
 
 
-def _check_bundle(root: Path, path: Path, *, material=False, inspect_revision=None) -> dict:
+def _compile_candidate(root: Path, document: dict, grant: dict, drafts: dict | None = None) -> dict:
+    compilation = _Compilation(root, grant, agent_admission=agent_definitions.validate_admission)
+    if drafts is not None:
+        compilation.documents.update(drafts)
+    return compilation.compile(document)
+
+
+def _check_bundle(root: Path, path: Path, *, material=False, inspect_revision=None, drafts=None) -> dict:
     document = inspect_bundle(path, material=True)
     definition = document["definition"]
     grant = {"schema_version": 1, "permissions": definition["permissions"], "limits": definition["limits"]}
     if inspect_revision is None:
-        _Compilation(root, grant, agent_admission=agent_definitions.validate_admission).compile(document)
+        _compile_candidate(root, document, grant, drafts)
     else:
         document["impact"] = inspect_revision(document, grant)
     if not material:
@@ -645,6 +669,82 @@ def revision_impact(root: Path, identity: str, version: str, base_digest: str, d
     if result["impact"]["candidate"]["standalone"]["status"] != "checked":
         result.pop("candidate", None)
     return result
+
+
+def plan_revisions(root: Path, selection: dict) -> dict:
+    """Prepare checked, dependency-first parent drafts from exact published replacements."""
+    definition_bundles.check_document_tree(selection, "Workflow revision plan")
+    contracts.validate(selection, _REVISION_PLAN, "Workflow revision plan")
+    source = library(root)
+    reader = _Compilation(root, selection["roots"][0]["grant"])
+    replacements = {}
+    for edit in selection["replacements"]:
+        base, published = edit["base"], edit["published"]
+        key = _ref_key(base)
+        if key in replacements or key[:2] != _ref_key(published)[:2] or base["version"] == published["version"]:
+            raise ValueError("Each revision replacement must select one different published version of the same definition")
+        reader._resolve(base, "replacement base")
+        reader._resolve(published, "published replacement")
+        replacements[key] = published
+    versions = {_ref_key(item["base"]): item["version"] for item in selection["versions"]}
+    if (len(versions) != len(selection["versions"]) or
+            len({(key[1], version) for key, version in versions.items()}) != len(versions)):
+        raise ValueError("Workflow revision plan must assign one distinct next version to each parent")
+
+    drafts, rewritten, parents = {}, {}, []
+    active, used_replacements, used_versions = set(), set(), set()
+    source._check_store()
+    known = source._index()["definitions"]
+    max_depth = contracts.WORKFLOW_DEFINITION["$defs"]["limits"]["properties"]["depth"]["maximum"]
+
+    def derive(reference):
+        key = _ref_key(reference)
+        if key in replacements:
+            used_replacements.add(key)
+            return replacements[key]
+        if reference["kind"] == "agent":
+            return reference
+        if key in rewritten:
+            return rewritten[key]
+        if key in active or len(active) > max_depth:
+            raise ValueError(f"Workflow revision plan exceeds the reference depth or contains a cycle at {reference['id']}")
+        active.add(key)
+        document = deepcopy(reader._resolve(reference, "parent revision")["definition"])
+        changed = []
+        for node in document["nodes"]:
+            if "ref" in node:
+                updated = derive(node["ref"])
+                if updated != node["ref"]:
+                    changed.append(node["id"])
+                    node["ref"] = updated
+        active.remove(key)
+        result = reference
+        if changed:
+            version = versions.get(key)
+            if version is None or version == reference["version"]:
+                raise ValueError(f"Specify a different next version for parent {reference['id']}@{reference['version']}")
+            used_versions.add(key)
+            document["version"] = version
+            candidate = source.revise(reference["id"], reference["version"], reference["digest"], document,
+                inspect_check=lambda path: _check_bundle(root, path, material=True, drafts=drafts))
+            result = _reference(candidate, "workflow")
+            registered = known.get(result["id"], {}).get(version)
+            source._publication_target(result["id"], version, result["digest"], registered)
+            drafts[_ref_key(result)] = candidate
+            parents.append({"base": reference, "candidate": result, "definition": document, "changed_nodes": changed})
+        rewritten[key] = result
+        return result
+
+    roots = []
+    for item in selection["roots"]:
+        candidate = derive(item["ref"])
+        document = drafts.get(_ref_key(candidate)) or reader._resolve(candidate, "candidate root")
+        preview = _compile_candidate(root, document, item["grant"], drafts)
+        roots.append({"base": item["ref"], "candidate": candidate, "grant": item["grant"],
+                      "preview_sha256": preview["preview_sha256"], "usage": preview["usage"]})
+    if used_replacements != replacements.keys() or used_versions != versions.keys():
+        raise ValueError("Workflow revision plan contains replacements or parent versions outside the selected update chain")
+    return {"schema_version": 1, "published": False, "executable": False, "parents": parents, "roots": roots}
 
 
 def read_file(state: State, identity: str, version: str, base_digest: str, path: str, *, offset: int = 0,

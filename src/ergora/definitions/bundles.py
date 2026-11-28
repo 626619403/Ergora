@@ -255,6 +255,18 @@ class DefinitionLibrary:
             raise ValueError(f"Stored {self.label} definition identity changed: {identity}@{version}")
         return document
 
+    def _publication_target(self, identity: str, version: str, digest: str, registered: str | None) -> tuple[Path, bool]:
+        """Verify the candidate's version slot and any object already present."""
+        if registered is not None and registered != digest:
+            raise ValueError(f"{self.label} {identity}@{version} already exists with different content; choose a new version")
+        destination = self.store / "objects" / digest
+        present = destination.exists() or destination.is_symlink()
+        if present:
+            self._get(identity, version, digest)
+        elif registered is not None:
+            raise ValueError(f"Stored {self.label} definition is missing; refuse to replace registered evidence")
+        return destination, present
+
     @staticmethod
     def _publish_index(store: Path, index: dict) -> None:
         destination = store / "index.json"
@@ -296,17 +308,12 @@ class DefinitionLibrary:
                     return {**staged, "path": str(self.store / "objects" / digest)}
                 index = self._index()
                 registered = index["definitions"].get(identity, {}).get(version)
-                if registered is not None and registered != digest:
-                    raise ValueError(f"{self.label} {identity}@{version} already exists with different content; choose a new version")
-                destination = self.store / "objects" / digest
-                if destination.exists() or destination.is_symlink():
-                    self._get(identity, version, digest)
+                destination, present = self._publication_target(identity, version, digest, registered)
+                if present:
                     if expected_directories is not None:
                         _, _, directories = inventory_tree(destination, label=self.label, max_directories=500, max_depth=32)
                         if directories != expected_directories:
                             raise ValueError(f"{self.label} object has different directories; choose a new version")
-                elif registered is not None:
-                    raise ValueError(f"Stored {self.label} definition is missing; refuse to replace registered evidence")
                 else:
                     copy.rename(destination)
                 if registered is None:

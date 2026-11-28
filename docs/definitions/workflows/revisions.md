@@ -69,6 +69,12 @@ For the governance composition's structure reviewer, publication order is Agent 
 
 Resource revision does not automatically adopt definitions for projects, elevate permissions or execute anything. Training templates retain their proposal/material-review entry points; real training and adoption must pass their own experiment gates.
 
+### Prepare parent drafts from published replacements
+
+Run `ergora composition plan-revisions selection.json` after publishing the edited Agent and Workflow definitions. Use `schema_version: 1`, `roots` with the same exact references and grants as impact preview, `replacements` with an exact `base` and `published` reference for each edited definition, and `versions` with an exact Workflow `base` and an explicit next `version` for each affected parent.
+
+The plan checks complete parent drafts and the selected roots with their grants. It returns each parent once in dependency order with its original reference, complete new document and checked candidate digest. The plan is read-only and reserves no versions. Save each returned `definition` and use the existing `composition revise` command in the listed order. Check the published digest against the candidate before using its parent draft. If a document, receipt or grant changes, regenerate the plan from the intended exact inputs.
+
 ### Regenerate bundled optimization proposals
 
 In a source checkout, edit the shared graph or the direction's declared expert, role, instruction digest and version in the [proposal generator](../../../scripts/generate-optimization-proposals.py). The 18 common graphs and the low-precision graph use the same builder. Low precision adds its kernel assessment before measurement. Each proposal retains its own `instructions.md`.

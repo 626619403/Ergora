@@ -267,6 +267,8 @@ def parser() -> argparse.ArgumentParser:
     composition = commands.add_parser("composition", help="Check nested definitions, prepare inputs or explicitly invoke a leaf")
     operations = composition.add_subparsers(dest="operation", required=True)
     _definition_edit_parsers(operations, workflow=True)
+    revision_plan = operations.add_parser("plan-revisions", help="Prepare exact parent drafts from published replacements")
+    revision_plan.add_argument("selection", type=Path, help="Pinned roots, published replacements and next versions in JSON")
     operations.add_parser("presets", help="List bundled domain recipes and their actual execution scope")
     preset = operations.add_parser("install-preset", help="Import a bundled recipe's exact dependencies; does not authorize execution")
     preset.add_argument("id", help="Bundled recipe ID from composition presets")
@@ -1650,6 +1652,8 @@ def main(argv: list[str] | None = None) -> int:
                 output = workflow_definitions.install_preset(State(args.home), args.id)
             elif args.operation == "check":
                 output = workflow_definitions.inspect_bundle(args.directory, material=args.material)
+            elif args.operation == "plan-revisions":
+                output = workflow_definitions.plan_revisions(resolve_home(args.home), definition_bundles.read_json(args.selection))
             elif args.operation == "revise" and args.impact:
                 options = _definition_revision_options(args)
                 if options.pop("publish"):

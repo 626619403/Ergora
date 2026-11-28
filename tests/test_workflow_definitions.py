@@ -463,6 +463,92 @@ def test_revision_impact_uses_exact_roots_and_keeps_existing_revision_identity(b
     assert workflows.inspect_manifest(Path(saved["path"]), material=True)["composition"] == before
 
 
+def test_revision_plan_prepares_shared_parents_from_published_replacements(base, capsys, monkeypatch):
+    from ergora.interfaces import cli
+    from ergora.storage.assets import inventory_tree
+
+    state, agent, folder = base
+    old, published = [], []
+    for identity in ("shared-input", "shared-check"):
+        doc = definition(identity, [leaf("review", agent)])
+        old.append(ref(imported(base, doc, "Original material.\n"), "workflow"))
+        newer = {**doc, "version": "1.0.1"}
+        published.append(ref(imported(base, newer, "Revised material.\n"), "workflow"))
+    middle = ref(imported(base, definition("shared-parent", [child("first", old[0]), child("second", old[0]),
+                                                            child("check", old[1])])), "workflow")
+    roots = [ref(imported(base, definition(identity, [child("parent", middle)]), "Preserve this root.\n"), "workflow")
+             for identity in ("left-root", "right-root")]
+    original = workflows.preview(state.root, "left-root", "1.0.0", grant())
+    saved = workflows.prepare_manifest(state.root, "left-root", "1.0.0", grant(), folder / "original-revision-plan-manifest")
+    reserved = {**workflows.get(state, "right-root", "1.0.0")["definition"], "version": "1.0.2"}
+    workflows.revise(state, "right-root", "1.0.0", roots[1]["digest"], reserved, publish=True)
+    selection = {"schema_version": 1, "roots": [{"ref": root, "grant": grant()} for root in roots],
+                 "replacements": [{"base": child_ref, "published": replacement}
+                                  for child_ref, replacement in zip(old, published, strict=True)],
+                 "versions": [{"base": parent, "version": "1.0.1"} for parent in (middle, *roots)]}
+    original_store = inventory_tree(state.root)
+
+    with pytest.raises(ValueError, match="Specify a different next version for parent right-root"):
+        workflows.plan_revisions(state.root, {**selection, "versions": selection["versions"][:-1]})
+    stale = deepcopy(selection)
+    stale["replacements"][0]["published"]["digest"] = "0" * 64
+    with pytest.raises(ValueError, match="reference digest mismatch"):
+        workflows.plan_revisions(state.root, stale)
+    collision = deepcopy(selection)
+    collision["versions"][-1]["version"] = "1.0.2"
+    with pytest.raises(ValueError, match="right-root@1.0.2 already exists with different content"):
+        workflows.plan_revisions(state.root, collision)
+    over_limit = deepcopy(selection)
+    over_limit["roots"][1]["grant"]["limits"]["material_bytes"] = 1
+    with pytest.raises(ValueError, match="material_bytes budget exceeded"):
+        workflows.plan_revisions(state.root, over_limit)
+
+    def deny_state(*args, **kwargs):
+        pytest.fail("A revision plan initialized the control store")
+
+    monkeypatch.setattr(cli, "State", deny_state)
+    request = folder / "revision-plan.json"
+    request.write_text(json.dumps(selection), encoding="utf-8")
+    assert cli.main(["--home", str(state.root), "composition", "plan-revisions", str(request)]) == 0
+    plan = json.loads(capsys.readouterr().out)
+    assert not plan["published"] and not plan["executable"]
+    assert [row["base"] for row in plan["parents"]] == [middle, *roots]
+    shared, left, right = plan["parents"]
+    assert shared["changed_nodes"] == ["first", "second", "check"]
+    assert [node["ref"] for node in shared["definition"]["nodes"]] == [published[0], *published]
+    assert all(row["definition"]["nodes"][0]["ref"] == shared["candidate"] for row in (left, right))
+    assert inventory_tree(state.root) == original_store
+
+    object_path = state.root / "workflow-definitions/objects" / shared["candidate"]["digest"]
+    old_middle = workflows.get(state, middle["id"], middle["version"])
+    shutil.copytree(old_middle["path"], object_path)
+    try:
+        with pytest.raises(ValueError, match="Stored Workflow definition identity changed"):
+            workflows.plan_revisions(state.root, selection)
+    finally:
+        shutil.rmtree(object_path)
+
+    for draft in plan["parents"]:
+        parent = draft["base"]
+        result = workflows.revise(state, parent["id"], parent["version"], parent["digest"], draft["definition"], publish=True)
+        assert ref(result, "workflow") == draft["candidate"]
+        before = workflows.get(state, parent["id"], parent["version"])["files"]
+        assert {name: value for name, value in result["files"].items() if name != "workflow.json"} == {
+            name: value for name, value in before.items() if name != "workflow.json"}
+    for row in plan["roots"]:
+        ref_value = row["candidate"]
+        assert workflows.preview(state.root, ref_value["id"], ref_value["version"], row["grant"])["preview_sha256"] == row["preview_sha256"]
+    assert workflows.plan_revisions(state.root, selection) == plan
+    assert workflows.inspect_manifest(Path(saved["path"]), material=True)["composition"] == original
+    retained = folder / "retained-parent-object"
+    object_path.rename(retained)
+    try:
+        with pytest.raises(ValueError, match="Stored Workflow definition is missing"):
+            workflows.plan_revisions(state.root, selection)
+    finally:
+        retained.rename(object_path)
+
+
 def test_revision_impact_checks_shrink_to_fit_after_baseline_capacity_stop(base):
     state, agent, _ = base
     shared = imported(base, definition("shared-review", [leaf("review", agent)]), "Complete original notes.\n" * 500)

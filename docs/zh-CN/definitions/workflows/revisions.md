@@ -41,6 +41,12 @@ ergora composition file kernel-delivery 1.0.0 instructions.md --base-digest BASE
 
 资源修订没有自动项目采用、权限提升或执行动作。训练模板继续使用提案和材料审查入口；真实训练与采用须走各自的实验门禁。
 
+## 从已发布替换版本准备父级草稿
+
+发布已编辑的 Agent 和 Workflow 后，运行 `ergora composition plan-revisions selection.json`。输入使用 `schema_version: 1`。`roots` 使用影响预览的精确 ref 和 grant，`replacements` 为每个已编辑定义给出精确的 `base` 和 `published` ref，`versions` 为每个受影响父级给出精确的 Workflow `base` 和明确的下一 `version`。
+
+计划沿依赖顺序检查父级完整草稿和指定 grant 下的新根，每个父级只返回一次，包含原引用、完整新正文和已检查的候选摘要。计划只读，版本仍由发布时确认。按清单顺序保存各项 `definition`，使用现有 `composition revise` 逐项发布。在使用其父级草稿前，核对实际发布摘要和候选摘要。正文、回执或 grant 变化后，从所需的精确输入重新生成计划。
+
 ## 重新生成内置优化提案
 
 在源码目录中，通过[提案生成脚本](../../../../scripts/generate-optimization-proposals.py)编辑共享图，或调整某个方向声明的专家、角色、指令摘要和版本。18 个同形提案与低精度提案使用同一个构建函数。低精度提案在测量前增加 kernel 评估。每个提案保留各自的 `instructions.md`。
