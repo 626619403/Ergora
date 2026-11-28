@@ -1630,8 +1630,9 @@ def conditional_definition(prepared, tmp_path):
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Recoverable standalone graphs require Linux/WSL2')
-@pytest.mark.parametrize('case', ['follow-up', 'finish', 'lost-before-publish', 'conflicting-publication',
-                                  'lost-decision', 'lost-progress', 'expired', 'stopped', 'none'])
+@pytest.mark.parametrize('case', ['follow-up', 'finish', 'select', 'select-lost-decision',
+                                  'lost-before-publish', 'conflicting-publication', 'lost-decision',
+                                  'lost-progress', 'expired', 'stopped', 'none'])
 def test_supervised_route_keeps_the_original_graph(conditional_definition, tmp_path, monkeypatch, capsys, case):
     import time
 
@@ -1708,8 +1709,11 @@ output.write_text(json.dumps({'summary': 'Review', 'decision': 'approve', 'artif
     clock_bytes = recovery.read_bytes()
     original_receipt = (directory / 'run.json').read_bytes()
 
-    def decide(action, digest=checkpoint_sha):
-        return [*resume, '--route-checkpoint', digest, '--route-action', action]
+    def decide(action, digest=checkpoint_sha, *, branch=None):
+        arguments = [*resume, '--route-checkpoint', digest, '--route-action', action]
+        if branch is not None:
+            arguments.extend(['--route-branch', branch])
+        return arguments
 
     assert invoke(resume) == paused
     assert (directory / 'run.json').read_bytes() == original_receipt
@@ -1732,6 +1736,15 @@ output.write_text(json.dumps({'summary': 'Review', 'decision': 'approve', 'artif
         return
 
     action = 'finish' if case == 'finish' else 'follow-up'
+    branch = None
+    if case in ('select', 'select-lost-decision'):
+        action, branch = 'select', 'root/structure'
+        invoke(decide('select'), 2, 'requires an exact route branch')
+        invoke(decide('finish', branch=branch), 2, 'Only the select action accepts a route branch')
+        invoke(decide('select', branch='root/analyze'), 2, 'Select an exact eligible Agent branch')
+        assert not decision.exists() and not (directory / 'input-2').exists()
+        assert (directory / 'run.json').read_bytes() == original_receipt
+    selected_action = decide(action, branch=branch)
     if case in ('lost-before-publish', 'conflicting-publication'):
         link = os.link
 
@@ -1747,7 +1760,7 @@ output.write_text(json.dumps({'summary': 'Review', 'decision': 'approve', 'artif
 
         with monkeypatch.context() as patch:
             patch.setattr(os, 'link', interrupt_publication)
-            invoke(decide(action), 2, 'before publication' if case == 'lost-before-publish' else 'File exists')
+            invoke(selected_action, 2, 'before publication' if case == 'lost-before-publish' else 'File exists')
         assert (directory / 'run.json').read_bytes() == original_receipt
         assert recovery.read_bytes() == clock_bytes and not (directory / 'input-2').exists()
         assert len(agent_runs.runs(state, 'demo')) == 1
@@ -1756,7 +1769,7 @@ output.write_text(json.dumps({'summary': 'Review', 'decision': 'approve', 'artif
             return
         assert not decision.exists()
         assert invoke(inspect)['recovery']['route_checkpoint']['state'] == 'awaiting'
-    if case == 'lost-decision':
+    if case in ('lost-decision', 'select-lost-decision'):
         publish = graphs._GraphRun.publish_route_decision
 
         def lose_ack(graph, record):
@@ -1765,11 +1778,21 @@ output.write_text(json.dumps({'summary': 'Review', 'decision': 'approve', 'artif
 
         with monkeypatch.context() as patch:
             patch.setattr(graphs._GraphRun, 'publish_route_decision', lose_ack)
-            invoke(decide(action), 2, 'lost the decision reply')
+            invoke(selected_action, 2, 'lost the decision reply')
         assert (directory / 'run.json').read_bytes() == original_receipt
         published = decision.read_bytes()
         decided = invoke(inspect)['recovery']['route_checkpoint']
         assert decided['state'] == 'decided' and decided['decision']['action'] == action
+        if branch is not None:
+            assert decided['decision']['branch'] == branch
+            invoke(decide('select', branch='root/dependency'), 2, 'already has a different decision')
+            invalid = {**decided['decision'], 'branch': 'root/analyze'}
+            decision.write_text(json.dumps(invalid), encoding='utf-8')
+            assert invoke(inspect)['recovery']['route_checkpoint']['state'] == 'invalid'
+            invoke(resume, 2, 'Select an exact eligible Agent branch')
+            assert (directory / 'run.json').read_bytes() == original_receipt
+            assert not (directory / 'input-2').exists()
+            decision.write_bytes(published)
         invoke(decide('finish'), 2, 'already has a different decision')
         assert decision.read_bytes() == published and not (directory / 'input-2').exists()
     if case == 'lost-progress':
@@ -1782,7 +1805,7 @@ output.write_text(json.dumps({'summary': 'Review', 'decision': 'approve', 'artif
 
         with monkeypatch.context() as patch:
             patch.setattr(graphs._GraphRun, 'save', lose_progress)
-            invoke(decide(action), 2, 'lost the coordinator')
+            invoke(selected_action, 2, 'lost the coordinator')
         published = decision.read_bytes()
         decision.unlink()
         invoke(resume, 2, 'missing the original operator decision')
@@ -1790,20 +1813,24 @@ output.write_text(json.dumps({'summary': 'Review', 'decision': 'approve', 'artif
         assert not (directory / 'input-2').exists()
         decision.write_bytes(published)
 
-    completed = invoke(decide(action))
+    completed = invoke(resume if case == 'select-lost-decision' else selected_action)
     assert completed['status'] == 'succeeded'
     assert completed['leaves'][0] == analyzer and recovery.read_bytes() == clock_bytes
     observed = invoke(inspect)
     route, = observed['route_decisions']
     assert route['state'] == 'corroborated'
     assert route['operator_decision_sha256'] == observed['recovery']['route_checkpoint']['decision_sha256']
-    assert route['selected'] == ('root/dependency' if action == 'follow-up' else None)
+    expected = branch if action == 'select' else ('root/dependency' if action == 'follow-up' else None)
+    assert route['selected'] == expected
+    assert [item['instance'] for item in completed['leaves']] == ['root/analyze', *([expected] if expected else [])]
+    if branch is not None:
+        assert completed['outputs']['followups']['root/dependency'] == {'status': 'skipped'}
     assert observed['recovery']['route_checkpoint']['recommendation']['selected'] == 'root/dependency'
     published = decision.read_bytes()
-    invoke(decide(action), 2, 'terminal or explicitly stopped graph cannot resume')
+    invoke(selected_action, 2, 'terminal or explicitly stopped graph cannot resume')
     assert decision.read_bytes() == published
-    assert len(calls.read_text(encoding='utf-8').splitlines()) == (2 if action == 'follow-up' else 1)
-    assert len(agent_runs.runs(state, 'demo')) == (2 if action == 'follow-up' else 1)
+    assert len(calls.read_text(encoding='utf-8').splitlines()) == (2 if expected else 1)
+    assert len(agent_runs.runs(state, 'demo')) == (2 if expected else 1)
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Recoverable standalone graphs require Linux/WSL2')
@@ -2066,6 +2093,12 @@ output.write_text(json.dumps({'summary': 'Review', 'decision': 'approve', 'artif
         pause_before_route='root/choose', fixed_follow_up=bound)
     assert paused['status'] == 'awaiting_route_decision' and not reads
     assert not (directory / 'follow-up-invocation.json').exists()
+    if cut == 'completed':
+        with pytest.raises(ValueError, match='pinned fixed-review branch requires the original follow-up'):
+            graphs.resume_graph(state.root, 'demo', directory, parent['digest'],
+                route_checkpoint=native_sources.sha(paused['route_checkpoint']),
+                route_action='select', route_branch='root/dependency')
+        assert not reads and not (directory / 'route-operator-decision.json').exists()
 
     def resume():
         return graphs.resume_graph(state.root, 'demo', directory, parent['digest'],

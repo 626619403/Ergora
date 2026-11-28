@@ -344,7 +344,9 @@ def parser() -> argparse.ArgumentParser:
     resume.add_argument("directory", type=Path)
     resume.add_argument("--manifest-digest", required=True)
     resume.add_argument("--route-checkpoint", metavar="SHA256", help="Exact original route checkpoint from inspect-graph")
-    resume.add_argument("--route-action", choices=("follow-up", "finish"), help="Apply the original recommendation or finish without a follow-up")
+    resume.add_argument("--route-action", choices=("follow-up", "finish", "select"),
+                        help="Apply the recommendation, finish, or select a frozen Agent branch")
+    resume.add_argument("--route-branch", metavar="INSTANCE", help="Exact frozen Agent instance for the select action")
     graph_inspection = operations.add_parser("inspect-graph", help="Observe a standalone graph and original Agent runs offline")
     graph_inspection.add_argument("project")
     graph_inspection.add_argument("directory", type=Path)
@@ -1721,7 +1723,7 @@ def main(argv: list[str] | None = None) -> int:
                     else:
                         output = graphs.resume_graph(args.home, args.project, args.directory, args.manifest_digest,
                                                      stop_requested=lambda: stopped, route_checkpoint=args.route_checkpoint,
-                                                     route_action=args.route_action)
+                                                     route_action=args.route_action, route_branch=args.route_branch)
                 except KeyboardInterrupt:
                     print('Workflow interrupted', file=sys.stderr)
                     return 1

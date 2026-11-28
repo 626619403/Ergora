@@ -36,7 +36,7 @@ _AWAITING_ROUTE = 'awaiting_route_decision'
 _ROUTE_DECISION = 'route-operator-decision.json'
 _FOLLOW_UP_MANIFEST = 'follow-up-manifest'
 _FOLLOW_UP_INVOCATION = 'follow-up-invocation.json'
-_ROUTE_ACTIONS = ('follow-up', 'finish')
+_ROUTE_ACTIONS = ('follow-up', 'finish', 'select')
 _FIXED_READ_ATTEMPT = 'verification-attempt.json'
 _FIXED_READ_COMPLETE = 'verification-complete.json'
 _FIXED_OUTPUT_DIGESTS = ('receipt_sha256', 'fixed_results_sha256')
@@ -282,8 +282,10 @@ def _checked_checkpoint_sha(receipt, recommendation):
 
 
 def _check_operator_decision(decision, checkpoint_sha, deadline_ns, timeout, *, now_ns=None):
-    if (not isinstance(decision, dict) or decision.keys() != {
-            'schema_version', 'checkpoint_sha256', 'action', 'accepted_monotonic_ns'}
+    fields = {'schema_version', 'checkpoint_sha256', 'action', 'accepted_monotonic_ns'}
+    if isinstance(decision, dict) and decision.get('action') == 'select':
+        fields.add('branch')
+    if (not isinstance(decision, dict) or decision.keys() != fields
             or type(decision['schema_version']) is not int or decision['schema_version'] != 1
             or decision['checkpoint_sha256'] != checkpoint_sha or decision['action'] not in _ROUTE_ACTIONS):
         raise native_sources.ArtifactIdentityError('Saved operator decision differs from the original route checkpoint')
@@ -293,8 +295,17 @@ def _check_operator_decision(decision, checkpoint_sha, deadline_ns, timeout, *, 
         raise ValueError('Saved operator decision is outside the original graph clock')
 
 
-def _decided_route(node, recommendation, decision):
-    choice = recommendation['choice'] if decision['action'] == 'follow-up' else 'none'
+def _decided_route(node, recommendation, decision, *, fixed_follow_up=None):
+    action = decision['action']
+    if action == 'select':
+        branch = decision['branch']
+        if not isinstance(branch, str) or branch not in node['branches']:
+            raise ValueError('Select an exact eligible Agent branch from the frozen route')
+        if fixed_follow_up is not None and branch == fixed_follow_up['branch']:
+            raise ValueError('A pinned fixed-review branch requires the original follow-up recommendation')
+        choice = branch.rsplit('/', 1)[1]
+    else:
+        choice = recommendation['choice'] if action == 'follow-up' else 'none'
     return {**_route_record(node, choice, recommendation['source']), 'operator_decision_sha256': native_sources.sha(decision)}
 
 
@@ -979,7 +990,7 @@ class _GraphRun:
                 self.check_active()
                 self.receipt['route_checkpoint'] = _route_checkpoint_record(self.receipt, record)
                 return None
-            record = _decided_route(node, record, self.operator_decision)
+            record = self.check_route_checkpoint(record)
             if self.selects_follow_up(record):
                 self.follow_up_output = self.fixed_follow_up(record, launch=True)
         self.receipt.setdefault('route_decisions', []).append(record)
@@ -992,6 +1003,9 @@ class _GraphRun:
         if self.operator_decision is not None:
             _check_operator_decision(self.operator_decision, self.checkpoint_sha, self.recovery['deadline_monotonic_ns'],
                                      self.receipt['timeout'], now_ns=time.monotonic_ns())
+            selector = self.nodes[self.pause_before_route]
+            return _decided_route(selector, recommendation, self.operator_decision,
+                                  fixed_follow_up=self.receipt.get('fixed_follow_up'))
 
     def publish_route_decision(self, decision):
         self.publish_route_record(_ROUTE_DECISION, decision)
@@ -1016,11 +1030,11 @@ class _GraphRun:
         if saved != raw:
             raise native_sources.ArtifactIdentityError('Published route record differs from its complete packet')
 
-    def accept_route_action(self, checkpoint_sha, action):
+    def accept_route_action(self, checkpoint_sha, action, branch):
         if checkpoint_sha != self.checkpoint_sha:
             raise ValueError('Select the exact original route checkpoint SHA256')
         if self.operator_decision is not None:
-            if self.operator_decision['action'] != action:
+            if (self.operator_decision['action'], self.operator_decision.get('branch')) != (action, branch):
                 raise ValueError('The original route checkpoint already has a different decision')
             return
         if self.receipt['status'] != _AWAITING_ROUTE:
@@ -1028,6 +1042,10 @@ class _GraphRun:
         self.check_active()
         decision = {'schema_version': 1, 'checkpoint_sha256': checkpoint_sha, 'action': action,
                     'accepted_monotonic_ns': time.monotonic_ns()}
+        if action == 'select':
+            decision['branch'] = branch
+            _decided_route(self.nodes[self.pause_before_route], self.receipt['route_checkpoint']['recommendation'],
+                           decision, fixed_follow_up=self.receipt.get('fixed_follow_up'))
         _check_operator_decision(decision, checkpoint_sha, self.recovery['deadline_monotonic_ns'], self.receipt['timeout'])
         self.publish_route_decision(decision)
         self.operator_decision = decision
@@ -1309,10 +1327,9 @@ class _GraphRun:
                         expected = self.route_decision(selector, source)
                         authority = 'analyzer result'
                         if selector['path'] == self.pause_before_route and expected['selected'] is not None:
-                            self.check_route_checkpoint(expected)
+                            expected = self.check_route_checkpoint(expected)
                             if self.operator_decision is None:
                                 raise ValueError('Saved route depends on a missing original operator decision')
-                            expected = _decided_route(selector, expected, self.operator_decision)
                             authority = 'operator decision'
                         if native_sources.encode(record) != native_sources.encode(expected):
                             raise ValueError(f'Saved route decision differs from its original {authority}: {selector["path"]}')
@@ -1745,12 +1762,17 @@ def _run_graph(state, project_id, manifest, manifest_digest, inputs, directory, 
 
 
 def resume_graph(home: Path | None, project_id: str, directory: Path, manifest_digest: str, *, stop_requested=None,
-                 route_checkpoint: str | None = None, route_action: str | None = None) -> dict:
+                 route_checkpoint: str | None = None, route_action: str | None = None,
+                 route_branch: str | None = None) -> dict:
     """Continue only the original, unexpired graph after verifying all its saved attempts."""
-    if route_checkpoint is not None or route_action is not None:
+    if route_checkpoint is not None or route_action is not None or route_branch is not None:
         contracts.validate(route_checkpoint, contracts.COMPOSITION_MANIFEST['$defs']['digest'], 'Route checkpoint SHA256')
         if route_action not in _ROUTE_ACTIONS:
-            raise ValueError('Select follow-up or finish for the original route checkpoint')
+            raise ValueError('Select follow-up, finish or select for the original route checkpoint')
+        if route_action == 'select' and (not isinstance(route_branch, str) or not route_branch):
+            raise ValueError('The select action requires an exact route branch')
+        if route_action != 'select' and route_branch is not None:
+            raise ValueError('Only the select action accepts a route branch')
     directory = directory.expanduser().resolve()
     state_home = resolve_home(home)
     lock = directory / '.owner.lock'
@@ -1800,7 +1822,7 @@ def resume_graph(home: Path | None, project_id: str, directory: Path, manifest_d
                 raise ValueError('Project revision changed during graph recovery')
             run.check_active()
             if route_checkpoint is not None:
-                run.accept_route_action(route_checkpoint, route_action)
+                run.accept_route_action(route_checkpoint, route_action, route_branch)
         except KeyboardInterrupt:
             run.fence_stop()
             raise
@@ -2024,7 +2046,7 @@ def _observe_route_checkpoint(directory, receipt, selectors, attempts, choices, 
             decision = native_sources.packet(directory, _ROUTE_DECISION)
             now = time.monotonic_ns() if clock['state'] in ('within_deadline', 'expired') else None
             _check_operator_decision(decision, checkpoint_sha, deadline_ns, receipt['timeout'], now_ns=now)
-            route = _decided_route(selector, recommendation, decision)
+            route = _decided_route(selector, recommendation, decision, fixed_follow_up=receipt.get('fixed_follow_up'))
             return {**observation, 'state': 'decided', 'decision': decision,
                     'decision_sha256': route['operator_decision_sha256']}, route
     except (OSError, ValueError, RecursionError) as error:

@@ -51,11 +51,11 @@ ergora composition resume-graph PROJECT ./original-graph-run --manifest-digest M
   --route-checkpoint CHECKPOINT_SHA256 --route-action follow-up
 ```
 
-`follow-up` 采用原建议，`finish` 跳过条件专家。等待期间原截止时间继续计算，决定沿用原项目、manifest、输入和权限。
+`follow-up` 采用原建议，`finish` 跳过条件专家。要改选另一位冻结专家，用 `--route-action select --route-branch root/structure`，路径从检查点的 `eligible` 列表取得。绑定的固定检查审查子图仍须由原分析推荐，并用 `follow-up` 确认。等待期间原截止时间继续计算，决定沿用原项目、manifest、输入和权限。
 
 自动分流的读回与恢复使用原分析结果和冻结分支。监督者选择跟进或结束时，还会核对原检查点和原决定，再恢复有效分支或跳过状态。
 
-若回复丢失，先对原运行目录执行 `inspect-graph`。检查点仍为 `awaiting` 且原图可恢复时，提交相同的摘要和决定。`decided` 状态会给出已保存的原决定及其摘要，原图仍可恢复时可用普通 `resume-graph` 继续。终态继续通过 `inspect-graph` 读取。
+若回复丢失，先对原运行目录执行 `inspect-graph`。检查点仍为 `awaiting` 且原图可恢复时，提交相同的摘要、决定和所选分支。`decided` 状态会给出已保存的原决定及其摘要，原图仍可恢复时可用普通 `resume-graph` 继续。终态继续通过 `inspect-graph` 读取。
 
 ## 使用内置领域组合
 
