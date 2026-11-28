@@ -271,6 +271,10 @@ Use `{"kind":"training_screen_result","locator":{...}}` for a root task that rea
 
 For the selected task, `campaign status PROJECT CAMPAIGN --online --task-id TASK` returns the original `SCREEN_COMPLETED` or `SCREEN_REJECTED` state, its literal decision, diagnostic references and a separate lease observation. A verified rejection is decision evidence and can wake the selected recipient. Any later full comparison uses its own prepared experiment and original execution grant.
 
+Set `"recover_screen_receipt": true` on that timed screen task with a declared `recipient` to allow one receipt-only recovery after the original read Activity starts and then times out on heartbeat. Recovery verifies the saved screen decision and original reader cleanup for the same attempt and Campaign Run within the original read deadline and STOP fence. It can wake the declared recipient once from the original decision. A new training launch requires its own execution grant.
+
+Online status retains the verified original timeout in `readback_terminal`. A verified recovery preserves `readback_completion.native_result_state` and `readback_completion.decision`, and links to the original timeout through `readback_completion.recovery_history.original_timeout_event_id`. A verified unsuccessful follow-up appears in `readback_followup_terminal`.
+
 ### Read one original managed GPU lease release
 
 Use `{"kind":"training_gpu_release","locator":{...}}` for a root task that observes the original managed training lease. Add the original pool `session_id` and `lease_id` to the six training locator fields and declare the existing `due_at` and `deadline_at` window. An optional `recipient` authorizes one continuation after the original resource owner confirms the matching release during that read window.

@@ -25,7 +25,7 @@ from temporalio.worker import Worker
 with workflow.unsafe.imports_passed_through():
     from ergora.campaigns.records import (
         ATTEMPT_MEMO, FIXED_CHECK_RECOVERY_ACTIVITY, OPENING_MEMO, READBACK_ALREADY_ADMITTED, READBACK_CLEANUP_SECONDS,
-        RECIPIENT_ACTIVITY, WORKFLOW_TYPE,
+        RECIPIENT_ACTIVITY, SCREEN_RESULT_RECOVERY_ACTIVITY, WORKFLOW_TYPE,
         assignment_intent, assignment_task, check_receipt, checked_readback, fixed_task_state, has_pending_checks,
         identity, manual_wake_source,
         readback_activity, readback_grant, readback_id, readback_proof, readback_ready_tasks, readback_reference,
@@ -204,7 +204,8 @@ class Campaign:
             remaining = grant['deadline_at'] - workflow.time()
             recovery_activity = readback_followup_activity(task)
             reobservation = reobservation_task(task)
-            requires_started_read = reobservation or recovery_activity == FIXED_CHECK_RECOVERY_ACTIVITY
+            requires_started_read = reobservation or recovery_activity in (
+                FIXED_CHECK_RECOVERY_ACTIVITY, SCREEN_RESULT_RECOVERY_ACTIVITY)
             if (recovery_activity is None or self.stop_decision is not None
                     or not isinstance(cause, ActivityTimeoutError) or cause.type != ActivityTimeoutType.HEARTBEAT
                     or requires_started_read and (error.activity_id != activity_id

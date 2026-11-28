@@ -12,7 +12,7 @@ from temporalio.exceptions import ApplicationError
 
 from ergora.campaigns.records import (
     FIXED_CHECK_RECOVERY_ACTIVITY, FULL_RESULT_RECOVERY_ACTIVITY, FULL_RESULT_REOBSERVATION_ACTIVITY,
-    READBACK_ACTIVITY, READBACK_CLEANUP_SECONDS, RELEASE_RECOVERY_ACTIVITY,
+    READBACK_ACTIVITY, READBACK_CLEANUP_SECONDS, RELEASE_RECOVERY_ACTIVITY, SCREEN_RESULT_RECOVERY_ACTIVITY,
     TRAINING_GPU_RELEASE_ACTIVITY, TRAINING_READBACK_ACTIVITY, TRAINING_SCREEN_ACTIVITY,
     CampaignFiles, check_receipt, identity, readback_activity, readback_grant, readback_id, readback_task,
     readback_followup_activity, receipt_recovery_activity, receipt_recovery_id, reobservation_id, reobservation_task,
@@ -62,6 +62,10 @@ class CampaignReadback:
     async def recover_full_result(self, grant: dict) -> dict:
         return self._recover_receipt(grant)
 
+    @activity.defn(name=SCREEN_RESULT_RECOVERY_ACTIVITY)
+    async def recover_screen_result(self, grant: dict) -> dict:
+        return self._recover_receipt(grant)
+
     @activity.defn(name=FULL_RESULT_REOBSERVATION_ACTIVITY)
     async def reobserve(self, grant: dict) -> dict:
         return await self._read(grant, reobservation=True)
@@ -70,6 +74,7 @@ class CampaignReadback:
         return {FIXED_CHECK_RECOVERY_ACTIVITY: self.recover_fixed_check,
                 RELEASE_RECOVERY_ACTIVITY: self.recover_release,
                 FULL_RESULT_RECOVERY_ACTIVITY: self.recover_full_result,
+                SCREEN_RESULT_RECOVERY_ACTIVITY: self.recover_screen_result,
                 FULL_RESULT_REOBSERVATION_ACTIVITY: self.reobserve}.get(readback_followup_activity(task))
 
     def _recover_receipt(self, grant):

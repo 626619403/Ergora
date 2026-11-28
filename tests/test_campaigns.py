@@ -3279,10 +3279,12 @@ def test_training_result_source_only_accepts_its_guarded_full_result():
     ('SCREEN_COMPLETED', 'no_gain', 'stop_direction'),
     ('SCREEN_COMPLETED', 'unavailable', 'inconclusive'),
 ))
-def test_training_screen_readback_preserves_its_exact_decision(state, performance, decision):
+@pytest.mark.parametrize('recover', (False, True), ids=('original-reply', 'receipt-recovery'))
+def test_training_screen_readback_preserves_its_exact_decision(state, performance, decision, recover):
     from ergora.campaigns.records import (
-        TRAINING_SCREEN_ACTIVITY, TRAINING_SCREEN_DIGESTS, checked_readback, readback_activity,
-        readback_grant, readback_id, readback_proof, readback_reference, readback_result, validate_tasks, wake_intent,
+        SCREEN_RESULT_RECOVERY_ACTIVITY, TRAINING_SCREEN_ACTIVITY, TRAINING_SCREEN_DIGESTS, checked_readback,
+        readback_activity, readback_followup_result, readback_grant, readback_id, readback_proof, readback_reference,
+        readback_result, receipt_recovery_activity, receipt_recovery_id, validate_tasks, wake_intent,
     )
 
     locator = {'experiment_id': 'alpha', 'workflow_id': 'perf-experiment/alpha',
@@ -3292,6 +3294,8 @@ def test_training_screen_readback_preserves_its_exact_decision(state, performanc
             'readback': {'due_at': 20, 'deadline_at': 30},
             'recipient': {'session_id': 'session', 'parent_run_id': 'parent', 'intent_id': 'screen-notice',
                           'prompt': 'Read the selected original screen decision.', 'timeout_seconds': 30}}
+    if recover:
+        task['recover_screen_receipt'] = True
     validate_tasks([task])
     opening = {'project': 'demo', 'project_revision': 3, 'workflow_id': 'campaign',
                'registration': {'sha256': 'c' * 64}, 'plan': {'tasks': [task], 'limits': {'expires_at': 60}}}
@@ -3312,14 +3316,23 @@ def test_training_screen_readback_preserves_its_exact_decision(state, performanc
                    'diagnostics': diagnostics, 'local_gpu_lease': lease,
                    **dict.fromkeys(TRAINING_SCREEN_DIGESTS, 'e' * 64)}
     raw = {'activity_id': activity_id, 'observation': observation, 'reader_cleanup_sha256': 'f' * 64}
+    recovered = {}
+    if recover:
+        recovery_id = receipt_recovery_id(grant)
+        assert recovery_id.startswith('training-screen-result-recovery:')
+        assert receipt_recovery_activity(task) == SCREEN_RESULT_RECOVERY_ACTIVITY
+        reply = {'recovery_activity_id': recovery_id, 'recovery_receipt_sha256': 'a' * 64, 'original_result': raw}
+        recovered, original, original_id = readback_followup_result(task, grant, reply)
+        assert original_id == activity_id and original == raw
     evidence, job = readback_result(opening, task, activity_id, raw)
     readback = {'status': 'available', 'activity_id': activity_id, **readback_reference(grant),
-                **readback_proof(evidence, job, raw)}
+                **readback_proof(evidence, job, raw), **recovered}
     assert checked_readback(opening, run_id, None, readback) == readback
     wake = wake_intent(opening, run_id, task, readback)
     assert wake['source']['decision'] == decision and wake['source']['native_result_state'] == state
     assert wake['source']['diagnostics'] == diagnostics and wake['source']['local_gpu_lease'] == lease
     assert wake['source']['full_execution_authorized'] is False
+    assert ('recovery_activity_id' in wake['source']) is recover
     for changes in ({'native_result_state': 'SUCCEEDED'}, {'native_result_state': 'FAILED'},
                     {'native_result_state': 'CANCELLED'}, {'decision': 'approved'},
                     {'verification_experiment_id': locator['experiment_id']}, {'full_execution_authorized': True},
@@ -3333,6 +3346,24 @@ def test_training_screen_readback_preserves_its_exact_decision(state, performanc
         readback_result(opening, {**task, 'source': {**task['source'], 'kind': 'training_full_result'}}, activity_id, raw)
     with pytest.raises(ValueError, match='original evidence'):
         checked_readback(opening, run_id, None, {**readback, 'full_execution_authorized': True})
+
+
+def test_screen_receipt_recovery_requires_an_explicit_screen_recipient():
+    from ergora.campaigns.records import validate_tasks
+
+    locator = {'experiment_id': 'alpha', 'workflow_id': 'perf-experiment/alpha',
+               'run_id': 'original-native-run', 'job_id': 'local-perf-alpha',
+               'native_request_sha256': 'a' * 64, 'attempt_sha256': 'b' * 64}
+    source = {'kind': 'training_screen_result', 'locator': locator}
+    task = {'task_id': 'screen', 'depends_on': [], 'source': source,
+            'readback': {'due_at': 20, 'deadline_at': 30}, 'recover_screen_receipt': True}
+    recipient = {'session_id': 'session', 'parent_run_id': 'parent', 'intent_id': 'screen-notice',
+                 'prompt': 'Read the selected original screen decision.', 'timeout_seconds': 30}
+    for invalid in (task, {**task, 'recipient': recipient, 'recover_screen_receipt': False},
+                    {**task, 'recipient': recipient, 'source': {**source, 'kind': 'training_full_result'}}):
+        with pytest.raises(ValueError, match='selected original training screen and recipient'):
+            validate_tasks([invalid])
+    validate_tasks([{**task, 'recipient': recipient}])
 
 
 def test_training_gpu_release_requires_an_exact_accepted_original_lease():
@@ -3572,6 +3603,8 @@ def test_receipt_recovery_history_requires_original_activity_lineage(monkeypatch
                                           'original_worker_unicode_ticks', 'original_worker_zero_ticks')),
     *((case, 'fixed-check') for case in ('exact', 'stop', 'expired', 'foreign_guard', 'original_worker_live',
                                           'missing_wait', 'pending')),
+    *((case, 'screen') for case in ('exact', 'exact_completed', 'stop', 'expired', 'stale_screen_attempt',
+                                      'screen_cannot_authorize_full')),
 ))
 def test_receipt_recovery_only_accepts_original_receipt_and_reaped_processes(tmp_path, monkeypatch, case, source_kind):
     from dataclasses import replace
@@ -3588,6 +3621,7 @@ def test_receipt_recovery_only_accepts_original_receipt_and_reaped_processes(tmp
                           'prompt': 'Read the original training observation.', 'timeout_seconds': 20}}
     fixed = source_kind == 'fixed-check'
     full_result = source_kind == 'full-result'
+    screen = source_kind == 'screen'
     if fixed:
         task.update(source={'pending': True, 'project_revision': 1, 'operation_id': 'original',
             'job_id': 'check-' + 'a' * 40 + '-' + 'b' * 24, 'authorization_sha256': 'a' * 64,
@@ -3595,6 +3629,8 @@ def test_receipt_recovery_only_accepts_original_receipt_and_reaped_processes(tmp
             'candidate_sha': 'a' * 40}, wake_on_observe=True, recover_fixed_check_receipt=True)
     elif full_result:
         task.update(source={'kind': 'training_full_result', 'locator': locator}, recover_full_result_receipt=True)
+    elif screen:
+        task.update(source={'kind': 'training_screen_result', 'locator': locator}, recover_screen_receipt=True)
     else:
         locator.update(session_id='c'*32, lease_id='d'*64)
         task.update(source={'kind': 'training_gpu_release', 'locator': locator}, recover_release_receipt=True)
@@ -3626,6 +3662,15 @@ def test_receipt_recovery_only_accepts_original_receipt_and_reaped_processes(tmp
             observation.update(status='attempted', cleanup_confirmed=None, receipt_sha256=None, fixed_results_sha256=None)
     elif full_result:
         observation.update(native_result_state='SUCCEEDED', **{field: 'f'*64 for field in records.TRAINING_RESULT_DIGESTS})
+    elif screen:
+        completed = case == 'exact_completed'
+        observation.update(native_result_state='SCREEN_COMPLETED' if completed else 'SCREEN_REJECTED',
+            decision='promising' if completed else 'rejected', performance_state='promising' if completed else 'unavailable',
+            verification_experiment_id='alpha-full', full_execution_authorized=case == 'screen_cannot_authorize_full',
+            diagnostics={'checks': [], 'checks_not_run': [], 'first_failure_ref': None, 'profile_receipt_ref': None},
+            **dict.fromkeys(records.TRAINING_SCREEN_DIGESTS, 'f' * 64))
+        if case == 'stale_screen_attempt':
+            observation['locator'] = {**locator, 'attempt_sha256': 'f' * 64}
     else:
         observation['local_gpu_lease'] = {
             'status': 'released', 'read_only': True, 'request_id': '1'*64, 'request_sha256': '2'*64,
@@ -3698,7 +3743,7 @@ def test_receipt_recovery_only_accepts_original_receipt_and_reaped_processes(tmp
     async def call():
         return await env.run(handler.recovery_activity_for(task), grant)
 
-    if case in ('exact', 'original_worker_exited', 'original_worker_zero_ticks'):
+    if case in ('exact', 'exact_completed', 'original_worker_exited', 'original_worker_zero_ticks'):
         assert asyncio.run(call()) == {'recovery_activity_id': recovery, 'original_result': result,
                                        'recovery_receipt_sha256': records.identity(documents)}
     elif case == 'original_worker_unknown':
