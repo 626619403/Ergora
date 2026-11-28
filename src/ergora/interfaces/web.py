@@ -916,10 +916,14 @@ def create_app(home: Path | None = None) -> FastAPI:
     @application.get("/api/projects/{project_id}/training/{experiment_id}/evidence")
     def training_evidence(project_id: str, experiment_id: str, artifact: str | None = None,
                           evidence_sha256: str | None = None, screen_result_sha256: str | None = None,
-                          offset: int = 0, limit: int = 12_000, retained_archive: bool = False):
-        return training.evidence(state, project_id, experiment_id, artifact=artifact,
+                          offset: int = 0, limit: int = 12_000, retained_archive: bool = False,
+                          profile_attempt_sha256: str | None = None, profile_capture_sha256: str | None = None):
+        recovering_profile = profile_attempt_sha256 is not None or profile_capture_sha256 is not None
+        evidence_state = State(state.root, read_only=True) if recovering_profile else state
+        return training.evidence(evidence_state, project_id, experiment_id, artifact=artifact,
                                  evidence_sha256=evidence_sha256, screen_result_sha256=screen_result_sha256,
-                                 offset=offset, limit=limit, retained_archive=retained_archive)
+                                 offset=offset, limit=limit, retained_archive=retained_archive,
+                                 profile_attempt_sha256=profile_attempt_sha256, profile_capture_sha256=profile_capture_sha256)
 
     @application.get("/api/projects/{project_id}/training/{experiment_id}/submission")
     def training_submission(project_id: str, experiment_id: str):

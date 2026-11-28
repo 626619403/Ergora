@@ -76,6 +76,8 @@ ergora training evidence my-project EXPERIMENT_ID \
 
 The command verifies the original Job, profile policy, capture checkpoint and exact raw capture. It uses the fixed cProfile reader to return `profile_recovery.derived` as a bounded text window with a digest. Use `--offset` and `--limit` for subsequent windows. The original profile receipt is available when the native result declares it in a full archive or screen artifact index. With no such declaration, `original_profile_receipt` is null and the checkpoint still supports rendering. Rendering is read-only and leaves the original failure, comparison, cleanup and progression unchanged. A capture missing its original checkpoint or raw bytes is unavailable.
 
+The local HTTP evidence endpoint accepts the same selection through `profile_attempt_sha256` and `profile_capture_sha256` on `GET /api/projects/{project}/training/{experiment}/evidence`. Supply both digests. Use `offset` and `limit` for text windows.
+
 ## Multi-round evidence index
 
 First select this project's existing original experiments with `ergora training list my-project`. This entry point collects original records only; it neither runs experiments nor advances baselines. Collection uses the original training entry point, requiring a registered training project and `ergora[temporal]`; it connects to neither Temporal nor models. Offline index reads need only the core installation.

@@ -831,6 +831,13 @@ def test_no_archive_and_cli_http_share_the_observation(experiments):
         assert client.get('/api/projects/demo/training/alpha/evidence', params={'artifact': 'notes.txt'}).status_code == 400
         assert client.get('/api/projects/demo/training/alpha/evidence', params={
             'retained_archive': True, 'artifact': 'notes.txt', 'evidence_sha256': '0' * 64}).status_code == 400
+        incomplete = client.get('/api/projects/demo/training/alpha/evidence', params={'profile_attempt_sha256': 'a' * 64})
+        assert incomplete.status_code == 400
+        assert 'exact raw attempt and capture' in incomplete.json()['error']
+        conflicting = client.get('/api/projects/demo/training/alpha/evidence', params={
+            'profile_attempt_sha256': 'a' * 64, 'profile_capture_sha256': 'b' * 64, 'retained_archive': True})
+        assert conflicting.status_code == 400
+        assert 'separate original evidence selection' in conflicting.json()['error']
 
 
 def test_round_index_retains_negative_unknown_and_offline_cli_read(experiments, tmp_path, monkeypatch):
