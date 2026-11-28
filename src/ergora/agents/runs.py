@@ -109,10 +109,16 @@ def _prepare_role(state, project_id, role, prompt, timeout, skill_names, recall,
 def run_agent(state: State, project_id: str, role: str, prompt: str, timeout: int = 300,
               skill_names: list[str] | None = None, recall: str | None = None,
               template: str | None = None, *, session_intent: str | None = None,
-              expected_revision: int | None = None, codex_config: Path | None = None) -> dict:
+              expected_revision: int | None = None, codex_config: Path | None = None,
+              active_fixed_check: Path | None = None) -> dict:
+    if active_fixed_check is not None:
+        from ergora.agents import active_fixed_check as active
+        if session_intent is None or codex_config is None or role != 'reviewer' or template is not None:
+            raise ValueError('Active fixed-check delivery requires a persistent plain reviewer session and explicit Codex configuration')
+        active_fixed_check = active.read_locator(active_fixed_check)
     if session_intent is not None:
         return _start_session(state, project_id, role, prompt, timeout, skill_names, recall, template,
-                              session_intent, expected_revision, codex_config)
+                              session_intent, expected_revision, codex_config, active_fixed_check)
     prepared, schema, document, configuration = _prepare_role(state, project_id, role, prompt, timeout, skill_names, recall, template)
     document.pop('suffix')
     document.pop('schema')
@@ -952,6 +958,10 @@ def _session_outcome(state, document, *, full_preview=False, request=None):
                 or stop_request.get('session') != document['session']['id']
                 or stop_request.get('request_sha256') != document['request_sha256']):
             raise ValueError('Saved stop request differs from its original turn')
+    active_notice = {}
+    if 'active_fixed_check' in request['submitted']:
+        from ergora.agents import active_fixed_check as active
+        active_notice = {'active_fixed_check': active.receipt(state, document, request, folder)}
     if (folder / 'final').exists():
         try:
             final = native_sources.packet(folder / 'final', confirm_durable=True)
@@ -959,7 +969,7 @@ def _session_outcome(state, document, *, full_preview=False, request=None):
             unavailable = dict(document, status='unknown', execution_stopped=False, stop_request=stop_request,
                                error='Final packet durability is unconfirmed: ' + str(error))
             suggestion = _correction_observation(state, request, unavailable, include_preview=full_preview)
-            return {**unavailable, **({'correction_suggestion': suggestion} if suggestion is not None else {})}, False
+            return {**unavailable, **active_notice, **({'correction_suggestion': suggestion} if suggestion is not None else {})}, False
         if (not isinstance(final, dict) or any(final.get(key) != document[key]
                 for key in ('request_sha256', 'id', 'project', 'session', 'submitted'))
                 or final.get('status') not in ('succeeded', 'failed', 'cancelled', 'timed_out', 'unknown')
@@ -971,7 +981,7 @@ def _session_outcome(state, document, *, full_preview=False, request=None):
             if hashlib.sha256(raw).hexdigest() != final.get('result_sha256'):
                 raise ValueError('Session result differs from its original complete bytes')
         suggestion = _correction_observation(state, request, final, include_preview=full_preview)
-        return {**final, 'stop_request': stop_request,
+        return {**final, 'stop_request': stop_request, **active_notice,
                 **({'correction_suggestion': suggestion} if suggestion is not None else {})}, True
     observed = dict(document, status='unknown', execution_stopped=False, stop_request=stop_request)
     try:
@@ -982,7 +992,7 @@ def _session_outcome(state, document, *, full_preview=False, request=None):
     except (FileNotFoundError, ProcessLookupError, KeyError, TypeError, ValueError):
         pass
     suggestion = _correction_observation(state, request, observed, include_preview=full_preview)
-    return {**observed, **({'correction_suggestion': suggestion} if suggestion is not None else {})}, False
+    return {**observed, **active_notice, **({'correction_suggestion': suggestion} if suggestion is not None else {})}, False
 
 
 def _correction_observation(state, request, document, *, include_preview=False):
@@ -1142,7 +1152,7 @@ def _session_prompt(prompt, timeout):
 
 
 def _start_session(state, project_id, role, prompt, timeout, skill_names, recall, template,
-                   intent, revision, codex_config):
+                   intent, revision, codex_config, active_fixed_check=None):
     try:
         native_sources.session_id(intent, 'Session intent')
         _session_prompt(prompt, timeout)
@@ -1154,6 +1164,8 @@ def _start_session(state, project_id, role, prompt, timeout, skill_names, recall
     submitted = {'role': role, 'prompt': prompt, 'timeout': timeout, 'skills': skill_names or [], 'recall': recall,
                  'template': template, 'expected_revision': revision,
                  'codex_config': str(codex_config) if codex_config is not None else None, 'intent_id': intent}
+    if active_fixed_check is not None:
+        submitted['active_fixed_check'] = active_fixed_check
     existing = native_sources.find_run(state, project_id, ident)
     if existing is not None:
         if existing['submitted'] != submitted:
@@ -1162,7 +1174,8 @@ def _start_session(state, project_id, role, prompt, timeout, skill_names, recall
     state.root.joinpath('runs').mkdir(exist_ok=True, mode=0o700)
     with file_lock(state.root / 'runs' / (ident + '.session.lock'), blocking=False) as lock:
         if native_sources.find_run(state, project_id, ident) is not None:
-            return _start_session(state, project_id, role, prompt, timeout, skill_names, recall, template, intent, revision, codex_config)
+            return _start_session(state, project_id, role, prompt, timeout, skill_names, recall, template, intent,
+                                  revision, codex_config, active_fixed_check)
         project = state.project(project_id)
         if revision != project['revision']:
             raise SessionRejected('Session start requires the current project revision', intent)
@@ -1179,6 +1192,9 @@ def _start_session(state, project_id, role, prompt, timeout, skill_names, recall
                 raise ValueError('Project changed during session preparation; no native effect was started')
             adapter = agent_backends.for_binding(context['binding'], {'codex': {'config': codex_config, 'role': role}})
             inference = adapter.session_configuration(Path(project['repo']))
+            if active_fixed_check is not None:
+                from ergora.agents import active_fixed_check as active
+                active.command(inference)
             requested = context['binding']
             context.update(binding=inference['binding'], requested_binding=requested, inference=inference,
                            repo=project['repo'], repo_identity=native_sources.directory_identity(Path(project['repo'])),
@@ -1775,8 +1791,13 @@ def stop_session(state: State, project_id: str, session_id: str, run_id: str, *,
     stop = {'project': project_id, 'session': session_id, 'run_id': run_id,
             'request_sha256': document['request_sha256'], 'intent_id': intent_id}
     recipient = document['submitted'].get('campaign_recipient')
-    with (file_lock(CampaignFiles(state.root, project_id, recipient['campaign']).lock, blocking=False)
-          if recipient is not None else nullcontext()):
+    if recipient is not None:
+        admission = file_lock(CampaignFiles(state.root, project_id, recipient['campaign']).lock, blocking=False)
+    elif 'active_fixed_check' in document['submitted']:
+        admission = file_lock(folder / 'active-send.lock', blocking=False)
+    else:
+        admission = nullcontext()
+    with admission:
         if (folder / 'stop').exists():
             if native_sources.packet(folder / 'stop') != stop:
                 raise ValueError('The original stop request is already recorded')
@@ -1899,12 +1920,18 @@ def session_main():
             if gate is not None:
                 remaining = min(remaining, gate.remaining())
             invocation_entered = True
-            document.update(agents.invoke(context['binding'], context['role'], request['prompt'], Path(context['repo']),
-                state.root / 'runs' / ident, max(.01, remaining),
-                request['schema'], env=environment, supervised=True, lock_fd=fd, session=native, stop_requested=should_stop,
-                **({'launch_prefix': gate.command_prefix(ident, fd), 'payload_executable': gate.payload_identity(),
-                    'record_lifecycle': True} if gate is not None else {}),
-                on_start=publish_native_start if request['session']['parent_run'] is not None else None))
+            if 'active_fixed_check' in request['submitted']:
+                from ergora.agents import active_fixed_check as active
+                document.update(active.run(state, document, request, context, environment, fd, max(.01, remaining),
+                    should_stop=should_stop, check_authority=lambda: _validate_session_authority(state, context, verify_executable=False),
+                    publish=_publish_session_packet))
+            else:
+                document.update(agents.invoke(context['binding'], context['role'], request['prompt'], Path(context['repo']),
+                    state.root / 'runs' / ident, max(.01, remaining),
+                    request['schema'], env=environment, supervised=True, lock_fd=fd, session=native, stop_requested=should_stop,
+                    **({'launch_prefix': gate.command_prefix(ident, fd), 'payload_executable': gate.payload_identity(),
+                        'record_lifecycle': True} if gate is not None else {}),
+                    on_start=publish_native_start if request['session']['parent_run'] is not None else None))
         if expired or campaign_blocker == 'expired':
             document['status'] = 'timed_out'
         document['execution_stopped'] = True

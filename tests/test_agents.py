@@ -2717,3 +2717,92 @@ def test_native_correction_missing_final_eligibility_is_not_recreated(native_cor
     assert native_document_history(state) == frozen and not eligibility.exists()
     assert (repo / 'AGENTS.md').read_bytes() == before
     assert len((repo / 'native-calls.jsonl').read_text().splitlines()) == 1
+
+
+@pytest.mark.parametrize('case', ['ack_only', 'matching_item', 'wrong_turn', 'duplicate_items'])
+def test_active_fixed_check_reconciles_only_one_exact_original_item(tmp_path, case):
+    from types import SimpleNamespace
+    import uuid
+
+    from ergora.agents import active_fixed_check as active, native_sources, runs
+
+    identity = lambda: str(uuid.uuid4())
+    state = SimpleNamespace(root=tmp_path)
+    locator = {'operation_id': 'check-original', 'job_sha256': 'a' * 64,
+               'request_file_sha256': 'b' * 64, 'candidate_sha': 'c' * 40}
+    document = {'id': 'original-run', 'project': 'demo', 'role': 'reviewer',
+                'session': {'id': 'original-run'}, 'request_sha256': 'd' * 64}
+    request = {'submitted': {'active_fixed_check': locator}}
+    folder = native_sources.turn_folder(state, document['id'])
+    home = native_sources.session_folder(state, document['id']) / 'native-home'
+    home.mkdir(parents=True)
+    path = home / 'rollout.jsonl'
+    owner = {'thread_id': identity(), 'turn_id': identity(), 'rollout': path.name,
+             'request_sha256': document['request_sha256']}
+    client_id, text = identity(), 'Original fixed-check notice'
+    frame = {'id': 5, 'method': 'turn/steer', 'params': {
+        'threadId': owner['thread_id'], 'expectedTurnId': owner['turn_id'],
+        'clientUserMessageId': client_id, 'input': [{'type': 'text', 'text': text}],
+    }}
+    intent = {'owner': owner, 'frame': frame}
+    frame_sha = native_sources.sha(frame)
+
+    def save(destination, value):
+        runs._publish_session_packet(destination, {'record.json': native_sources.encode(value)})
+
+    save(folder / 'active-owner', owner)
+    save(folder / 'active-intent', intent)
+    save(active._scope(state, document, locator),
+         {'run_id': document['id'], 'intent_sha256': native_sources.sha(intent), 'frame_sha256': frame_sha})
+    save(folder / 'active-ack', {'frame_sha256': frame_sha, 'response': {'id': 5, 'result': {'turnId': owner['turn_id']}}})
+    session = {'type': 'session_meta', 'payload': {'id': owner['thread_id']}}
+    item = {'type': 'UserMessage', 'id': identity(), 'client_id': client_id,
+            'content': [{'type': 'text', 'text': text}]}
+    event = {'type': 'event_msg', 'payload': {'type': 'item_completed', 'thread_id': owner['thread_id'],
+            'turn_id': identity() if case == 'wrong_turn' else owner['turn_id'], 'item': item}}
+    entries = [session]
+    if case != 'ack_only':
+        entries.append(event)
+    if case == 'duplicate_items':
+        entries.append({**event, 'payload': {**event['payload'], 'item': {**item, 'id': identity()}}})
+    path.write_bytes(b'\n'.join(map(native_sources.encode, entries)) + b'\n')
+
+    observed = active.receipt(state, document, request, folder)
+    assert observed['rpc_acknowledged'] is True
+    assert observed['status'] == ('delivered' if case == 'matching_item' else 'unresolved')
+    assert observed.get('native_item_id') == (item['id'] if case == 'matching_item' else None)
+    assert observed['payload_sha256'] == hashlib.sha256(text.encode()).hexdigest()
+
+    different_session = {**document, 'id': 'second-run'}
+    blocked = active.receipt(state, different_session, request, native_sources.turn_folder(state, 'second-run'))
+    assert blocked == {'status': 'blocked', 'source': locator, 'reason': 'original_notice_attempt_exists'}
+
+
+def test_active_fixed_check_already_terminal_refuses_before_app_server_spawn(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+
+    from ergora.agents import active_fixed_check as active, native_sources, runs
+
+    state = SimpleNamespace(root=tmp_path)
+    locator = {'operation_id': 'check-original', 'job_sha256': 'a' * 64,
+               'request_file_sha256': 'b' * 64, 'candidate_sha': 'c' * 40}
+    document = {'id': 'original-run', 'project': 'demo', 'role': 'reviewer', 'request_sha256': 'd' * 64}
+    request = {'submitted': {'active_fixed_check': locator}, 'prompt': 'One finite authorized turn'}
+    context = {'native_home': str(tmp_path / 'home'), 'repo': str(tmp_path), 'inference': {
+        'binding': {'tool': 'codex'}, 'version': 'codex-cli 0.172.0', 'sandbox': 'read-only',
+        'executable': '/usr/bin/true', 'arguments': ['-c', 'model_provider="fixture"',
+            '-c', 'model_providers.fixture.base_url="http://127.0.0.1:1/v1"',
+            '-c', 'model_providers.fixture.wire_api="responses"',
+            '-c', 'model_providers.fixture.requires_openai_auth=false'],
+    }}
+    terminal = {'status': 'succeeded', 'cleanup_confirmed': True}
+    monkeypatch.setattr(active, '_observe', lambda *_: (terminal, 'f' * 64, {'status': 'succeeded'}))
+    monkeypatch.setattr(active.processes, 'run', lambda *a, **kw: pytest.fail('App Server must stay unstarted'))
+    result = active.run(state, document, request, context, {}, -1, 5,
+                        should_stop=lambda: False, check_authority=lambda: {},
+                        publish=runs._publish_session_packet)
+    turn = native_sources.turn_folder(state, document['id'])
+    assert native_sources.packet(turn / 'active-source')['observation'] == terminal
+    assert result == {'status': 'failed', 'error': 'Original fixed-check must be pending at App Server preflight'}
+    assert not (turn / 'active-owner').exists() and not (turn / 'active-intent').exists()
+    assert not active._scope(state, document, locator).exists()

@@ -99,6 +99,17 @@ On Linux/WSL2 the same receipt separately reports `native_start`. A successful l
 
 The same HTTP operations are `GET /api/projects/ID/agent-sessions` (optional `intent_id`, `after`, `limit`), `GET /api/projects/ID/agent-sessions/SESSION_ID`, and POST `.../continue` or `.../stop`. A continue body contains only `parent_run_id`, `prompt`, `expected_revision`, `intent_id` and optional `timeout`. A stop body contains `run_id` and `intent_id`. Starting a persistent session uses the existing `POST .../agent-runs` with `session_intent`, `expected_revision` and a one-time `codex_config` source. Mutations retain the same-origin and `X-Ergora-Request: 1` contract. Existing single-use run/output history remains readable.
 
+To deliver one fixed-check result to a new plain-text reviewer session on Linux/WSL2, select a `codex` reviewer binding with a read-only sandbox and Codex CLI `0.172.0`. Freeze an authorized provider in `--codex-config` with `wire_api = "responses"` and `requires_openai_auth = false`. The App Server starts in a fresh private native home and receives any credentials through the selected provider's environment references. The installed validation used a controlled local loopback provider.
+
+Save a JSON locator with exactly `operation_id`, `request_file_sha256`, `job_sha256` and `candidate_sha` from `ergora task candidate-check-status PROJECT OPERATION_ID` in the same control home. Before session birth, Ergora verifies that the existing original Job is still `queued` or `attempted` and has no STOP fence. Its passing result and confirmed cleanup can supply one notice to the original active thread and turn. The session's original deadline and STOP fence the notice. The Job retains its own executor and STOP. [Original fixed-check status](../development/run-and-recover.md#run-registered-fixed-checks-on-an-exported-candidate)
+
+```bash
+ergora agent run PROJECT reviewer --prompt FILE --session-intent INTENT \
+  --revision REV --codex-config FILE --active-fixed-check LOCATOR
+```
+
+Use `ergora agent sessions PROJECT --intent INTENT` to locate the original session and `ergora agent session PROJECT SESSION_ID` to read `active_fixed_check` on its original turn. `status: delivered` with `native_item_id` verifies the original native item against the frozen thread, turn, client ID and payload. `rpc_acknowledged: true` can still accompany `status: unresolved`. For an unresolved notice, keep the original intent and reread that turn. A second submission cannot send the same attempted notice again. To stop the active turn from another shell, use `ergora agent stop PROJECT SESSION_ID --run EXACT_RUN_ID --intent STOP_INTENT`.
+
 New eligible plain-text native sessions suggest reusable corrections by default. The console shows the effective project preference, whether it comes from the default or an explicit setting, and each original turn's actual availability or unsupported reason. Suggestions use the existing project `AGENTS.md` and the original model turn; template and six-stage outputs retain their own contracts and use the [manual document-correction workflow](../improvement/retrospectives.md). Native workspace permissions still apply; this feature does not isolate arbitrary file writes or grant approval for other document changes.
 
 To opt out for new sessions, save the preference in the session console, or run:

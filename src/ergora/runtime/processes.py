@@ -216,8 +216,9 @@ def run(argv: list[str], cwd: Path, output: Path, timeout: float, stdin: str = "
         record_lifecycle: bool = False, deadline: float | None = None,
         on_start: Callable[[dict], None] | None = None, observe_direct_child_start: bool = False,
         payload_executable: tuple[int, int] | None = None,
-        on_supervised_stop: Callable[[int], None] | None = None) -> dict:
-    if (record_lifecycle or on_start is not None or on_supervised_stop is not None) and not supervised:
+        on_supervised_stop: Callable[[int], None] | None = None,
+        stdio_exchange: Callable | None = None) -> dict:
+    if (record_lifecycle or on_start is not None or on_supervised_stop is not None or stdio_exchange is not None) and not supervised:
         raise ValueError('Durable subtree receipts require the original supervised process owner')
     if payload_executable is not None and (sys.platform != 'linux' or on_start is None
             or len(payload_executable) != 2 or not all(type(value) is int and value > 0 for value in payload_executable)):
@@ -276,7 +277,9 @@ def run(argv: list[str], cwd: Path, output: Path, timeout: float, stdin: str = "
                 status = "cancelled"
             else:
                 process = subprocess.Popen(
-                    argv, cwd=cwd, env=env, stdin=recorded_input, stdout=stdout, stderr=stderr,
+                    argv, cwd=cwd, env=env,
+                    stdin=recorded_input if stdio_exchange is None else subprocess.PIPE,
+                    stdout=stdout if stdio_exchange is None else subprocess.PIPE, stderr=stderr,
                     text=True, start_new_session=not supervised,
                     pass_fds=() if lock_fd is None else (lock_fd,), encoding="utf-8")
                 if record_lifecycle or on_start is not None:
@@ -287,6 +290,8 @@ def run(argv: list[str], cwd: Path, output: Path, timeout: float, stdin: str = "
                 if on_start is not None and payload_executable is None:
                     on_start(model)
                 try:
+                    if stdio_exchange is not None:
+                        stdio_exchange(process, stdout)
                     if supervised or stop_requested is not None:
                         # TERM only requests cancellation, including during final cleanup.
                         wait_deadline = None if supervised else (deadline if deadline is not None else time.monotonic() + timeout)
@@ -324,6 +329,9 @@ def run(argv: list[str], cwd: Path, output: Path, timeout: float, stdin: str = "
                 except ProcessLookupError:
                     pass
                 process.wait()
+                if stdio_exchange is not None:
+                    process.stdin.close()
+                    process.stdout.close()
             if supervised:
                 descendants = _reap_children()
                 if payload_executable is not None:

@@ -724,6 +724,8 @@ def parser() -> argparse.ArgumentParser:
     run.add_argument("--session-intent", help="Save a native session under this stable intent; requires --revision")
     run.add_argument("--revision", type=int, help="Current project revision for a new persistent session")
     run.add_argument("--codex-config", type=Path, help="Trusted native configuration to freeze once when starting a session")
+    run.add_argument("--active-fixed-check", type=Path,
+                     help="Deliver one original fixed check on a newly owned read-only Codex App Server turn")
     for name in ("sessions", "session"):
         listing = operations.add_parser(name, help="Read original project sessions without invoking an Agent")
         listing.add_argument("project")
@@ -1784,7 +1786,8 @@ def main(argv: list[str] | None = None) -> int:
                                               revision=args.history_revision)
                 else:
                     output = agent_runs.run_agent(state, args.project, args.role, args.prompt.read_text(encoding="utf-8-sig"), args.timeout, args.skill, args.recall, args.template,
-                        session_intent=args.session_intent, expected_revision=args.revision, codex_config=args.codex_config)
+                        session_intent=args.session_intent, expected_revision=args.revision, codex_config=args.codex_config,
+                        **({'active_fixed_check': args.active_fixed_check} if args.active_fixed_check is not None else {}))
             print(json.dumps(output, ensure_ascii=False, indent=2))
             return 0 if args.operation not in ("run", "continue") or output["status"] == "succeeded" else 1
         elif args.command == "training":
