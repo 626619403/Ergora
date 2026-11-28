@@ -30,7 +30,8 @@ class GitMaterials:
         self.max_bytes = max_bytes
         self._checked = False
 
-    def _run(self, arguments: tuple[str, ...], limit: int, input_data: bytes | None) -> bytes:
+    def _run(self, arguments: tuple[str, ...], limit: int, input_data: bytes | None,
+             *, reject_stderr: bool = False) -> bytes:
         env = {key: value for key, value in os.environ.items() if not key.upper().startswith("GIT_")}
         env.update(GIT_CONFIG_NOSYSTEM="1", GIT_CONFIG_GLOBAL=os.devnull, GIT_TERMINAL_PROMPT="0",
                    GIT_NO_LAZY_FETCH="1", GIT_OPTIONAL_LOCKS="0")
@@ -57,7 +58,7 @@ class GitMaterials:
                     try:
                         process.wait(timeout=60)
                         raw, detail = output.result(), errors.result()
-                        if process.returncode:
+                        if process.returncode or (reject_stderr and detail):
                             raise ValueError("Git material read failed: " + detail.decode("utf-8", errors="replace"))
                         return raw
                     finally:
@@ -65,14 +66,16 @@ class GitMaterials:
                             process.kill()
                         process.wait()
 
-    def read(self, *arguments: str, limit: int | None = None, input_data: bytes | None = None) -> bytes:
+    def read(self, *arguments: str, limit: int | None = None, input_data: bytes | None = None,
+             reject_stderr: bool = False) -> bytes:
         if not self._checked:
             version = self._run(("--version",), 1500, None).decode("ascii").strip()
             match = re.fullmatch(r"git version (\d+)\.(\d+)[^\n]*", version)
             if match is None or tuple(map(int, match.groups())) < (2, 43):
                 raise ValueError("Offline material reading requires Git 2.43 or later with GIT_NO_LAZY_FETCH support")
             self._checked = True
-        return self._run(arguments, self.max_bytes if limit is None else limit, input_data)
+        return self._run(arguments, self.max_bytes if limit is None else limit, input_data,
+                         reject_stderr=reject_stderr)
 
     def repository_sources(self, commits: dict[str, str], paths: list[str], *,
                            authorize: Callable[[str], bool] | None = None) -> dict:

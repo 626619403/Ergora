@@ -1,5 +1,6 @@
 """Offline state snapshots; canonical records and their absolute paths stay intact."""
 
+from ast import literal_eval
 from contextlib import closing, contextmanager
 import hashlib
 import json
@@ -205,6 +206,34 @@ def recovery_scope(root: Path, project_id: str, *, task_id: str | None = None,
         value = git.read("rev-parse", "--path-format=absolute", argument, limit=4096).removesuffix(b"\n")
         git_paths[name] = str(_recovery_directory(Path(os.fsdecode(value)).resolve(), f"Git {name}"))
     git_paths["head"] = git.read("rev-parse", "--verify", "HEAD^{commit}", limit=128).decode("ascii").strip()
+    objects = Path(git_paths["common_directory"]) / "objects"
+    alternates_file = objects / "info/alternates"
+    if os.path.lexists(alternates_file):
+        # Git reports the complete alternate list, including borrowed stores of borrowed stores.
+        # A missing store can appear only on stderr even when Git exits successfully.
+        report = git.read("-c", "core.quotePath=true", "count-objects", "--verbose",
+                          limit=32_768, reject_stderr=True)
+        borrowed = []
+        for line in report.split(b"\n"):
+            if line.startswith(b"alternate: "):
+                value = line.removeprefix(b"alternate: ")
+                if value.startswith(b'"'):
+                    value = literal_eval("b" + value.decode("ascii"))
+                borrowed.append(str(_recovery_directory(Path(os.fsdecode(value)), "Git alternate object")))
+        alternate_targets = set()
+        for object_directory in (objects, *map(Path, borrowed)):
+            path = object_directory / "info/alternates"
+            if path.is_symlink():
+                if not path.is_file():
+                    raise ValueError(f"Missing or invalid original Git alternates file target: {path}")
+                alternate_targets.add(str(path.resolve(strict=True)))
+        # Git's fsck accepts missing promised objects. Recovery needs the objects available offline.
+        git.read("rev-list", "--quiet", "--objects", "--missing=error", "--all", "--reflog",
+                 "--indexed-objects", "HEAD", limit=4096, reject_stderr=True)
+        if borrowed:
+            git_paths["alternate_object_directories"] = sorted(set(borrowed))
+        if alternate_targets:
+            git_paths["alternate_file_targets"] = sorted(alternate_targets)
 
     submission = None
     if task_id is not None:

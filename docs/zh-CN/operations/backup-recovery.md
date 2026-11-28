@@ -52,7 +52,7 @@ tar --compare --file "$BACKUP/execution.tar" --directory /
 (cd "$BACKUP" && sha256sum execution.tar > execution.tar.sha256)
 ```
 
-对于已注册的本地 Supervisor 栈，`recovery-scope` 列出原目录、Git 元数据目录的规范路径及本地 Temporal 服务使用的 SQLite 文件。制作归档前请核对报告。若 Git 元数据目录、数据库或任一已列出的 sidecar 的 `payload_path` 位于归档目录之外，将它们一并纳入。保留符号链接本身及其目标，包括指向 Git 元数据目录的链接。可用 `--task` 记录一个原任务已验证的本地创建、提交身份及已保存的 run ID。将离线窗口的查询结果作为可信证据私下保留。
+对于已注册的本地 Supervisor 栈，`recovery-scope` 列出原目录、Git 元数据目录的规范路径及本地 Temporal 服务使用的 SQLite 文件。制作归档前请核对报告。将归档目录之外的 Git 元数据目录、`git.alternate_object_directories` 和 `git.alternate_file_targets` 所列路径，以及数据库和 sidecar 的 `payload_path` 一并纳入。保留符号链接本身及其目标，包括指向 Git 元数据目录的链接。对于借用 Git 对象的仓库，命令会离线检查可达的对象历史。可用 `--task` 记录一个原任务已验证的本地创建、提交身份及已保存的 run ID。将离线窗口的查询结果作为可信证据私下保留。
 
 该命令在私有临时目录读取控制库及其保留的预写日志（WAL）。如果原控制库仍有回滚日志，先恢复其离线状态再记录范围。
 

@@ -366,6 +366,85 @@ def test_recovery_scope_rejects_omitted_or_replaced_temporal_target(registration
 
 
 @pytest.mark.skipif(sys.platform != "linux", reason="Local Supervisor recovery is supported on Linux")
+@pytest.mark.parametrize("promisor", [False, True], ids=["shared", "shared-promisor"])
+def test_recovery_scope_verifies_shared_git_object_directories(registration, tmp_path, promisor):
+    state, definition = registration
+    repository = Path(definition["repo"])
+    donor = tmp_path / "原对象库 original lender"
+    intermediate = tmp_path / "intermediate"
+    repository.rename(donor)
+    offline = dict(os.environ, GIT_NO_LAZY_FETCH="1")
+
+    def git(*arguments, check=True):
+        return subprocess.run(["git", "-C", str(tmp_path), *arguments], capture_output=True, text=True,
+                              env=offline, timeout=20, check=check)
+
+    git("clone", "--shared", str(donor), str(intermediate))
+    git("clone", "--shared", str(intermediate), str(repository))
+    ancestor = git("-C", str(repository), "rev-parse", "HEAD").stdout.strip()
+    git("-C", str(repository), "-c", "user.name=Fixture", "-c", "user.email=fixture@example.test",
+        "-c", "commit.gpgsign=false", "commit", "--allow-empty", "-m", "New local head")
+    git("-C", str(repository), "remote", "remove", "origin")
+    if promisor:
+        command = ["git", "-C", str(repository)]
+        head = git("-C", str(repository), "rev-parse", "HEAD").stdout
+        pack = subprocess.run([*command, "pack-objects", "--stdout"], input=head.encode("ascii"),
+                              capture_output=True, check=True, timeout=20).stdout
+        subprocess.run([*command, "index-pack", "--stdin", "--promisor"], input=pack,
+                       capture_output=True, check=True, timeout=20)
+        git("-C", str(repository), "prune-packed")
+        git("-C", str(repository), "remote", "add", "origin", str(intermediate))
+        git("-C", str(repository), "config", "remote.origin.promisor", "true")
+        git("-C", str(repository), "config", "remote.origin.partialclonefilter", "blob:none")
+        alternates = repository / ".git/objects/info/alternates"
+        alternate_manifest = tmp_path / "original alternates file"
+        alternates.rename(alternate_manifest)
+        alternates.symlink_to(alternate_manifest)
+    project = registrations.register(state, definition, 0)
+    runtime = Path(definition["execution"]["state_directory"])
+    runtime.mkdir(exist_ok=True)
+    with closing(sqlite3.connect(runtime / "temporal.sqlite3")) as db:
+        db.execute("CREATE TABLE original (identity TEXT)")
+
+    def inspect(*arguments):
+        return subprocess.run([sys.executable, "-m", "ergora", "--home", str(state.root), "state",
+                               "recovery-scope", project["id"], *arguments], capture_output=True,
+                              text=True, encoding="utf-8", timeout=20)
+
+    observed = inspect()
+    assert observed.returncode == 0, observed.stderr
+    inventory = json.loads(observed.stdout)["inventory"]
+    objects = donor / ".git/objects"
+    assert inventory["git"]["alternate_object_directories"] == sorted(
+        [str(objects), str(intermediate / ".git/objects")])
+    expected = tmp_path / "scope.json"
+    expected.write_text(observed.stdout, encoding="utf-8")
+    before = inspect("--expected", str(expected))
+    assert before.returncode == 0 and json.loads(before.stdout)["status"] == "verified", before.stderr
+    if promisor:
+        assert inventory["git"]["alternate_file_targets"] == [str(alternate_manifest)]
+        retained_manifest = alternate_manifest.rename(tmp_path / "retained alternates file")
+        missing_target = inspect()
+        assert missing_target.returncode == 2 and "Git alternates file target" in missing_target.stderr
+        retained_manifest.rename(alternate_manifest)
+
+    retained = objects.with_name("retained-objects")
+    objects.rename(retained)
+    assert git("-C", str(repository), "cat-file", "-e", inventory["git"]["head"]).returncode == 0
+    assert git("-C", str(repository), "cat-file", "-e", ancestor, check=False).returncode != 0
+    missing = inspect("--expected", str(expected))
+    assert missing.returncode == 2 and str(objects) in missing.stderr
+
+    objects.mkdir()
+    empty = inspect("--expected", str(expected))
+    assert empty.returncode == 2 and ancestor in empty.stderr
+    objects.rmdir()
+    retained.rename(objects)
+    restored = inspect("--expected", str(expected))
+    assert restored.returncode == 0 and json.loads(restored.stdout)["inventory"] == inventory, restored.stderr
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Local Supervisor recovery is supported on Linux")
 @pytest.mark.parametrize("sidecars", [(), ("-wal",), ("-wal", "-shm")],
                          ids=["checkpointed", "committed-wal", "committed-wal-and-shm"])
 def test_recovery_scope_reads_control_wal_without_writing_original(registration, sidecars):
