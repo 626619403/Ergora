@@ -1634,6 +1634,7 @@ def test_training_evidence_verifies_retained_archive_after_tracking_failure(
         'next_offset': 14, 'text': text[3:14],
     }}
     if failure == 'missing-module':
+        from contextlib import redirect_stderr
         from ergora.interfaces.cli import main
 
         output = io.StringIO()
@@ -1642,6 +1643,13 @@ def test_training_evidence_verifies_retained_archive_after_tracking_failure(
                          '--artifact', artifact.name, '--evidence-sha256', gate['evidence_sha256'],
                          '--offset', '3', '--limit', '11']) == 0
         assert json.loads(output.getvalue()) == selected
+        if sys.platform == 'linux':
+            error = io.StringIO()
+            with redirect_stderr(error), redirect_stdout(io.StringIO()):
+                assert main(['--home', str(state.root), 'training', 'tracking-observe', 'demo', 'alpha',
+                    '--artifact', artifact.name, '--metric', 'gate_passed', '--mlflow-run-id', 'a' * 32,
+                    '--evidence-sha256', gate['evidence_sha256'], '--tracking-attempt-sha256', 'f' * 64]) == 2
+            assert 'exact original tracking attempt SHA-256' in error.getvalue()
     for options, error in (
             ({'evidence_sha256': 'f' * 64}, 'exact retained evidence SHA-256'),
             ({'artifact': '../configuration-receipt.json'}, 'absent from the original retained evidence index'),

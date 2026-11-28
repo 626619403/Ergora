@@ -48,6 +48,22 @@ Once `retained_archive.status` is `verified`, rerun `ergora training evidence my
 
 On the same GET, combine `retained_archive=true` with `artifact`, `evidence_sha256`, `offset` and `limit`. Python `training.application.evidence` takes the same keywords with `retained_archive=True`. Retained archive observation reads only saved local files. Exporter calls, launch, retry and resource release remain with their original owners. The original accepted archive remains the input to baseline references, approval and round advancement.
 
+#### Observe selected effects on the original MLflow Run
+
+For a verified retained archive with `tracking.status` equal to `raised` or `unknown`, use the original registered Linux environment and an independently observed original MLflow Run ID. Take both SHA-256 values from the retained archive response. A manifest match alone cannot supply the Run ID.
+
+```bash
+ergora training tracking-observe my-project EXPERIMENT_ID \
+  --evidence-sha256 RETAINED_EVIDENCE_SHA256 \
+  --tracking-attempt-sha256 ORIGINAL_TRACKING_ATTEMPT_SHA256 \
+  --mlflow-run-id ORIGINAL_MLFLOW_RUN_ID \
+  --metric gate_passed --artifact INDEXED_PATH
+```
+
+The command uses the original loopback MLflow route. It verifies the pinned Run against the original experiment, manifest, commits and Job tags. A foreign, mismatched, inactive or ambiguous selection returns the corresponding status without fetching effects. The bound response shows up to 256 rows for the selected original metric, including the step, timestamp and value of each row and the number matching the frozen value at step zero. A larger history fails explicitly. The selected artifact read verifies up to 16 MiB under the pinned Run's local artifact route and reports its current digest and whether it matches the archived bytes.
+
+The metric rows and current artifact are separate observations. Matching rows do not identify which attempt wrote them, and matching artifact bytes can survive multiple uploads. Missing data does not rule out an earlier write. Every observation leaves retry authorization false.
+
 ## Multi-round evidence index
 
 First select this project's existing original experiments with `ergora training list my-project`. This entry point collects original records only; it neither runs experiments nor advances baselines. Collection uses the original training entry point, requiring a registered training project and `ergora[temporal]`; it connects to neither Temporal nor models. Offline index reads need only the core installation.

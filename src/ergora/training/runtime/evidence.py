@@ -527,6 +527,39 @@ def _retained_tracking(chain, read, evidence_sha, gate_sha, output_sha):
             'tracking_outcome_sha256': hashlib.sha256(outcome_raw).hexdigest()}
 
 
+def _observe_tracking(payload):
+    from ergora.training.runtime.context import _TrainingProject
+    from ergora.training.runtime import tracking
+
+    project = _TrainingProject(payload)
+    project.registration()
+    ident = project.core.slug(payload['experiment_id'])
+    observed = _training_records({'project': project.project['id'], 'repo': project.project['repo'],
+                                  'experiment_id': ident})
+    experiment = observed['experiment']
+    retained, _ = _retained_archive(project, experiment, {'artifact': None})
+    if retained['status'] != 'verified':
+        raise ValueError('Original retained training archive is unavailable: ' + retained['reason'])
+    archive, checkpoint = retained['archive'], retained['tracking']
+    if archive['evidence_sha256'] != payload['evidence_sha256']:
+        raise ValueError('Tracking observation requires the exact retained evidence SHA-256')
+    if checkpoint['status'] not in ('raised', 'unknown'):
+        raise ValueError('Tracking observation requires an original checkpoint with an uncertain provider outcome')
+    if checkpoint['tracking_attempt_sha256'] != payload['tracking_attempt_sha256']:
+        raise ValueError('Tracking observation requires the exact original tracking attempt SHA-256')
+    artifact = next((item for item in archive['evidence']['artifacts'] if item['path'] == payload['artifact']), None)
+    if artifact is None:
+        raise ValueError('Selected tracking artifact is absent from the original retained evidence index')
+    metric = tracking.selected_metric(archive['gate_result'], payload['metric'])
+    binding = experiment['binding']
+    provider = tracking.observe(project.project['id'], binding, retained['job_id'], payload['mlflow_run_id'],
+                                payload['metric'], metric, artifact)
+    return {'schema_version': 1, 'kind': 'training-tracking-observation', 'project': project.project['id'],
+            'experiment_id': ident, 'binding': binding, 'job_id': retained['job_id'], 'native_run_id': retained['run_id'],
+            'attempt_sha256': retained['attempt_sha256'], 'evidence_sha256': archive['evidence_sha256'],
+            'tracking': checkpoint, 'provider': provider, 'retry_authorized': False}
+
+
 def inspect(payload: dict) -> dict:
     from ergora.training.runtime.context import _TrainingProject
     from ergora.training.materials import read_raw
@@ -2239,12 +2272,14 @@ def main() -> None:
         if len(raw) > 16 * 1_048_576:
             raise ValueError('capacity_exceeded: complete training reader request')
         payload = decode_record(raw)
-        if payload['operation'] not in ('inspect', 'baseline-reference', 'native-poll', 'collect-screen',
+        if payload['operation'] not in ('inspect', 'baseline-reference', 'tracking-observe', 'native-poll', 'collect-screen',
                                         'managed-full-result', 'managed-screen-decision', 'managed-gpu-release',
                                         'managed-pending-execution'):
             raise ValueError('Unsupported training evidence operation')
         if payload['operation'] in ('native-poll', 'collect-screen'):
             result = _native_screen_read(payload)
+        elif payload['operation'] == 'tracking-observe':
+            result = _observe_tracking(payload)
         elif payload['operation'] == 'managed-full-result':
             result = _managed_full_result(payload)
         elif payload['operation'] == 'managed-screen-decision':

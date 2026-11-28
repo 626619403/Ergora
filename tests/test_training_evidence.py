@@ -25,6 +25,98 @@ from test_training_search import (search_request, search_input, search_execution
                                   _prepare_cpu_screens, _execute_search)
 
 
+@pytest.mark.parametrize('case, outcome', [('bound', 'bound_run_observed'), ('foreign', 'foreign_run'),
+    ('multiple', 'multiple_manifest_matches'), ('other_run', 'selected_run_mismatch'), ('deleted', 'run_inactive')])
+def test_training_tracking_observation_reads_effects_only_for_the_original_run(monkeypatch, case, outcome):
+    from ergora.training.runtime import tracking
+
+    run_id, other = 'a' * 32, 'b' * 32
+    binding = {'manifest_sha': '1' * 64, 'experiment_id': 'alpha', 'baseline_sha': '2' * 40, 'candidate_sha': '3' * 40}
+    job_id = 'local-perf-alpha'
+    tags = {**binding, 'runner_job_id': 'foreign' if case == 'foreign' else job_id,
+            'purpose': 'paired-comparison', 'trust_model': 'trusted-current-container'}
+    ids = [run_id, other] if case == 'multiple' else [other if case == 'other_run' else run_id]
+    responses = {'experiments/get-by-name': {'experiment': {'name': 'training-demo', 'experiment_id': '7'}},
+        'runs/search': {'runs': [{'info': {'run_id': ident}} for ident in ids]},
+        'runs/get': {'run': {'info': {'run_id': run_id, 'experiment_id': '7', 'status': 'FINISHED',
+            'lifecycle_stage': 'deleted' if case == 'deleted' else 'active',
+            'artifact_uri': f'mlflow-artifacts:/7/{run_id}/artifacts'},
+            'data': {'tags': [{'key': key, 'value': value} for key, value in tags.items()]}}},
+        'metrics/get-history': {'metrics': [
+            {'key': 'gate_passed', 'step': 0, 'timestamp': 3, 'value': 1, 'dataset_name': 'other'},
+            {'key': 'gate_passed', 'step': 0, 'timestamp': 2, 'value': 1},
+            {'key': 'gate_passed', 'step': 0, 'timestamp': 1, 'value': 1}]}}
+
+    def read_document(endpoint, *, query=None, search=None):
+        if endpoint == 'runs/search':
+            assert search == {'experiment_ids': ['7'], 'max_results': 2, 'run_view_type': 'ALL',
+                              'filter': f"tags.manifest_sha = '{binding['manifest_sha']}'"}
+        if endpoint in ('runs/get', 'metrics/get-history'):
+            assert query['run_id'] == run_id
+        assert case == 'bound' or endpoint != 'metrics/get-history'
+        return responses[endpoint]
+
+    def read_artifact(path, limit):
+        assert case == 'bound' and limit == 16 * 1_048_576
+        assert path == f'/api/2.0/mlflow-artifacts/artifacts/7/{run_id}/artifacts/immutable-evidence/my%20score'
+        return b'original bytes'
+
+    monkeypatch.setattr(tracking, '_document', read_document)
+    monkeypatch.setattr(tracking, '_read', read_artifact)
+    sha = hashlib.sha256(b'original bytes').hexdigest()
+    result = tracking.observe('demo', binding, job_id, run_id, 'gate_passed', 1,
+                              {'path': 'my score', 'sha256': sha})
+    assert result['status'] == outcome
+    if case != 'bound':
+        assert result['metric'] is result['artifact'] is None
+    else:
+        metric, artifact = result['metric'], result['artifact']
+        assert metric['row_count'] == 3 and metric['matching_row_count'] == 2
+        assert [row['timestamp'] for row in metric['rows']] == [1, 2, 3]
+        assert artifact['status'] == 'matching_bytes' and artifact['observed_sha256'] == sha
+
+
+def test_training_tracking_observation_refuses_partial_metric_history(monkeypatch):
+    from ergora.training.runtime import tracking
+
+    def paged_history(endpoint, *, query):
+        assert endpoint == 'metrics/get-history' and query['max_results'] == 257
+        return {'next_page_token': 'more'}
+
+    monkeypatch.setattr(tracking, '_document', paged_history)
+    with pytest.raises(ValueError, match='capacity_exceeded: original MLflow metric history'):
+        tracking._metric_history('a' * 32, 'gate_passed', 1)
+
+
+def test_training_tracking_observation_refuses_duplicate_run_identity_before_effects(monkeypatch):
+    from ergora.training.runtime import tracking
+
+    run_id, other = 'a' * 32, 'b' * 32
+    binding = {'manifest_sha': '1' * 64, 'experiment_id': 'alpha', 'baseline_sha': '2' * 40, 'candidate_sha': '3' * 40}
+    info = {'run_id': run_id, 'experiment_id': '7', 'status': 'RUNNING', 'lifecycle_stage': 'active',
+            'artifact_uri': f'mlflow-artifacts:/7/{run_id}/artifacts'}
+    tags = {**binding, 'runner_job_id': 'local-perf-alpha', 'purpose': 'paired-comparison',
+            'trust_model': 'trusted-current-container'}
+    run = {'run': {'info': info, 'data': {'tags': [{'key': key, 'value': value} for key, value in tags.items()]}}}
+    duplicate = json.dumps(run).replace(f'"run_id": "{run_id}"', f'"run_id": "{other}", "run_id": "{run_id}"', 1)
+    itinerary = iter((
+        ('experiments/get-by-name', json.dumps({'experiment': {'name': 'training-demo', 'experiment_id': '7'}})),
+        ('runs/search', json.dumps({'runs': [{'info': info}]})),
+        ('runs/get', duplicate),
+    ))
+
+    def read_response(path, limit, *, query=None, search=None):
+        endpoint, raw = next(itinerary)
+        assert path == '/api/2.0/mlflow/' + endpoint
+        return raw.encode()
+
+    monkeypatch.setattr(tracking, '_read', read_response)
+    with pytest.raises(ValueError, match='Duplicate execution record key: run_id'):
+        tracking.observe('demo', binding, 'local-perf-alpha', run_id, 'gate_passed', 1,
+                         {'path': 'notes.txt', 'sha256': '4' * 64})
+    assert next(itinerary, None) is None
+
+
 @pytest.fixture
 def saved_source_subject(tmp_path, request):
     """Declaration-only source data; no archived implementation or executable fixture."""

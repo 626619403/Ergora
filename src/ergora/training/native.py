@@ -476,9 +476,11 @@ def training_submission(project: dict, home: Path, operation: str, payload: dict
 
 
 def training_evidence(project: dict, home: Path, payload: dict) -> dict:
-    """Read the original archive without the optional SDK, services or release side effects."""
+    """Read original evidence, querying the original MLflow route only on explicit request."""
     if project.get('_original_registration') is not None:
         raise ValueError('Training evidence does not support registration recovery')
+    if payload['operation'] == 'tracking-observe' and sys.platform != 'linux':
+        raise ValueError('Original tracking observation requires the registered Linux runtime; use WSL2 on Windows')
     return _training_reader(project, 'from ergora.training.runtime.evidence import main;main()',
                             {'project': project, 'control_home': str(home), **payload}, timeout=20)
 

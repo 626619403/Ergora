@@ -888,6 +888,14 @@ def parser() -> argparse.ArgumentParser:
                           help="Verify the local archive retained by an unsuccessful managed experiment")
     evidence.add_argument("--offset", type=int, default=0, help="Unicode character offset in the selected text artifact")
     evidence.add_argument("--limit", type=int, default=12_000, help="Text window size, at most 65,536 characters")
+    tracking = operations.add_parser("tracking-observe", help="Read selected effects on a previously observed local MLflow Run")
+    tracking.add_argument("project")
+    tracking.add_argument("experiment_id")
+    tracking.add_argument("--evidence-sha256", required=True, help="Exact retained evidence digest")
+    tracking.add_argument("--tracking-attempt-sha256", required=True, help="Exact original tracking checkpoint digest")
+    tracking.add_argument("--mlflow-run-id", required=True, help="Independently observed original provider Run ID")
+    tracking.add_argument("--metric", required=True, help="One metric key emitted from the retained archive")
+    tracking.add_argument("--artifact", required=True, help="One relative path in the original evidence index")
     live = operations.add_parser("status", help="Query the original workflow; never start, cancel or approve an experiment")
     live.add_argument("project")
     live.add_argument("experiment_id")
@@ -1880,6 +1888,10 @@ def main(argv: list[str] | None = None) -> int:
                                            artifact=args.artifact, evidence_sha256=args.evidence_sha256,
                                            screen_result_sha256=args.screen_result_sha256, offset=args.offset,
                                            limit=args.limit, retained_archive=args.retained_archive)
+            elif args.operation == "tracking-observe":
+                output = training.observe_tracking(State(args.home, read_only=True), args.project, args.experiment_id,
+                    evidence_sha256=args.evidence_sha256, tracking_attempt_sha256=args.tracking_attempt_sha256,
+                    mlflow_run_id=args.mlflow_run_id, metric=args.metric, artifact=args.artifact)
             elif args.operation == "submission":
                 output = training.submission(State(args.home), args.project, args.experiment_id, original_registration=recovery)
             elif args.operation == "check-start":

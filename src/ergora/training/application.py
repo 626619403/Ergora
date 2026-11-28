@@ -124,6 +124,22 @@ def baseline_reference(state: State, project_id: str, experiment_id: str, *, evi
         {'operation': 'baseline-reference', 'experiment_id': experiment_id, 'evidence_sha256': evidence_sha256})
 
 
+def observe_tracking(state: State, project_id: str, experiment_id: str, *, evidence_sha256: str,
+                     tracking_attempt_sha256: str, mlflow_run_id: str, metric: str, artifact: str) -> dict:
+    """Observe a previously identified MLflow Run against the retained training attempt."""
+    for value, label, size in ((evidence_sha256, 'retained evidence SHA-256', 64),
+                               (tracking_attempt_sha256, 'tracking attempt SHA-256', 64),
+                               (mlflow_run_id, 'previously observed MLflow Run ID', 32)):
+        if not isinstance(value, str) or re.fullmatch(r'[a-f0-9]+', value) is None or len(value) != size:
+            raise ValueError('Tracking observation requires the exact ' + label)
+    if not isinstance(metric, str) or not 1 <= len(metric) <= 250 or not isinstance(artifact, str) or not artifact:
+        raise ValueError('Tracking observation requires one original metric key and one indexed artifact path')
+    return training_native.training_evidence(_project(state, project_id), state.root,
+        {'operation': 'tracking-observe', 'experiment_id': experiment_id, 'evidence_sha256': evidence_sha256,
+         'tracking_attempt_sha256': tracking_attempt_sha256, 'mlflow_run_id': mlflow_run_id,
+         'metric': metric, 'artifact': artifact})
+
+
 def submission(state: State, project_id: str, experiment_id: str, *, original_registration: dict | None = None) -> dict:
     """Read local operation receipts; never query or submit a native workflow."""
     project = _project(state, project_id, original_registration)
