@@ -977,19 +977,9 @@ class _GraphRun:
         attempt = next(item for item in self.receipt['leaves'] if item['instance'] == analyzer)
         return _route_record(node, choice, attempt)
 
-    def choose_agent(self, node, source):
+    def choose_agent(self, node, record):
         self.check_active()
-        record = self.route_decision(node, source)
         if node['path'] == self.pause_before_route and record['selected'] is not None:
-            if self.operator_decision is None:
-                while self.running:
-                    self.check_active()
-                    self.wait_for_work()
-                    if self.collect_finished():
-                        self.save()
-                self.check_active()
-                self.receipt['route_checkpoint'] = _route_checkpoint_record(self.receipt, record)
-                return None
             record = self.check_route_checkpoint(record)
             if self.selects_follow_up(record):
                 self.follow_up_output = self.fixed_follow_up(record, launch=True)
@@ -1417,6 +1407,7 @@ class _GraphRun:
         graph_aborted = False
         graph_expired = False
         completed_before_fence = False
+        checkpoint = None
         try:
             while 'root' not in self.completed:
                 self.check_active()
@@ -1434,6 +1425,9 @@ class _GraphRun:
                                   or node['path'] == self.unreserved[0])), None)
                 if node is None:
                     if not self.running and self.candidate_read is None:
+                        if checkpoint is not None:
+                            self.receipt['route_checkpoint'] = checkpoint
+                            return None
                         raise ValueError('No runnable workflow node remains')
                     self.wait_for_work()
                     continue
@@ -1462,10 +1456,12 @@ class _GraphRun:
                     self.completed[path] = self.finish_verification(record, attempt,
                         lambda: self.read_verification(node['kind'], ports['source'], attempt))
                 elif node['kind'] == 'choose-agent':
-                    route = self.choose_agent(node, ports['source'])
-                    if route is None:
-                        return None
-                    self.complete_route(route, pending)
+                    recommendation = self.route_decision(node, ports['source'])
+                    if (path == self.pause_before_route and recommendation['selected'] is not None
+                            and self.operator_decision is None):
+                        checkpoint = _route_checkpoint_record(self.receipt, recommendation)
+                    else:
+                        self.complete_route(self.choose_agent(node, recommendation), pending)
                 else:
                     raise ValueError(f'Unsupported standalone workflow node: {path}')
         except BaseException as error:

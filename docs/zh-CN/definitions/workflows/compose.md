@@ -42,7 +42,7 @@ ergora composition run-graph my-project ./complete-manifest --manifest-digest MA
 
 ### 确认是否启动建议的专家
 
-在 Linux/WSL2 上，为原始 `run-graph --recoverable` 命令加 `--pause-before-route root/choose`，使用冻结图中一个 `choose-agent` 的精确实例路径。分析专家建议启动后续专家时，图等待已启动的工作收尾，返回 `awaiting_route_decision`，退出码为零。分析专家给出 `none` 时，按图的声明完成该节点。
+在 Linux/WSL2 上，为原始 `run-graph --recoverable` 命令加 `--pause-before-route root/choose`，使用冻结图中一个 `choose-agent` 的精确实例路径。分析专家建议启动后续专家时，该分流等待决定，独立工作继续遵守原权限、并发上限和截止时间。可运行的工作收尾后，命令返回 `awaiting_route_decision`，退出码为零。分析专家给出 `none` 时，按图的声明完成该节点。
 
 从 `inspect-graph` 取得 `recovery.route_checkpoint.sha256`、推荐分支和原分析运行 ID。读回原分析后，在原图上提交决定：
 

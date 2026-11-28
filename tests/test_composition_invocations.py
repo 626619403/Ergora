@@ -1632,13 +1632,20 @@ def conditional_definition(prepared, tmp_path):
 @pytest.mark.skipif(sys.platform != 'linux', reason='Recoverable standalone graphs require Linux/WSL2')
 @pytest.mark.parametrize('case', ['follow-up', 'finish', 'select', 'select-lost-decision',
                                   'lost-before-publish', 'conflicting-publication', 'lost-decision',
-                                  'lost-progress', 'expired', 'stopped', 'none'])
+                                  'lost-progress', 'expired', 'stopped', 'none',
+                                  'independent', 'independent-interrupted', 'independent-stopped'])
 def test_supervised_route_keeps_the_original_graph(conditional_definition, tmp_path, monkeypatch, capsys, case):
     import time
 
     from ergora.agents import graphs
 
     state, _, draft, publish = conditional_definition
+    independent = case.startswith('independent')
+    if independent:
+        for name, predecessor in (('side-first', 'analyze'), ('side-second', 'side-first')):
+            draft['nodes'].append({**draft['nodes'][0], 'id': name, 'depends_on': [predecessor],
+                                   'inputs': {'task': {'node': predecessor, 'output': 'result'}}})
+        draft['outputs']['independent'] = {'node': 'side-second', 'output': 'result'}
     publish(draft)
     grant = {'schema_version': 1, 'permissions': draft['permissions'], 'limits': draft['limits']}
     manifest, directory = tmp_path / 'manifest', tmp_path / 'graph'
@@ -1670,6 +1677,8 @@ output.write_text(json.dumps({'summary': 'Review', 'decision': 'approve', 'artif
     monkeypatch.setattr(agent_backends.CodexBackend, 'check_invocation', lambda self: None)
     cli = ['--home', str(state.root), 'composition']
     common = ['demo', str(directory), '--manifest-digest', selected['digest']]
+    inspect = ['inspect-graph', *common]
+    resume = ['resume-graph', *common]
 
     def invoke(arguments, code=0, diagnostic=None):
         assert main(cli + arguments) == code
@@ -1685,13 +1694,70 @@ output.write_text(json.dumps({'summary': 'Review', 'decision': 'approve', 'artif
     if case == 'follow-up':
         invoke(launch, 2, 'requires an original recoverable graph')
         assert not directory.exists() and not calls.exists()
-    paused = invoke(launch + ['--recoverable'])
+    if case == 'independent-stopped':
+        stopped = False
+        save = graphs._GraphRun.save
+
+        def stop_after_independent_finish(graph):
+            nonlocal stopped
+            save(graph)
+            stopped = stopped or any(leaf['instance'] == 'root/side-first' and leaf['status'] == 'succeeded'
+                                     for leaf in graph.receipt['leaves'])
+
+        with monkeypatch.context() as patch:
+            patch.setattr(graphs._GraphRun, 'save', stop_after_independent_finish)
+            terminal = graphs.run_graph(state, 'demo', manifest, selected['digest'],
+                json.loads(inputs.read_bytes()), directory, 50000, timeout,
+                stop_requested=lambda: stopped, recoverable=True, pause_before_route='root/choose')
+        assert terminal['status'] == 'cancelled' and (directory / 'stop.json').is_file()
+        assert [row['instance'] for row in terminal['leaves']] == ['root/analyze', 'root/side-first']
+        assert 'route_checkpoint' not in terminal and not (directory / 'route-operator-decision.json').exists()
+        invoke(resume, 2, 'terminal or explicitly stopped graph cannot resume')
+        assert len(calls.read_text(encoding='utf-8').splitlines()) == 2
+        return
+    if case == 'independent-interrupted':
+        class CoordinatorLost(BaseException):
+            pass
+
+        save = graphs._GraphRun.save
+
+        def interrupt_after_independent_finish(graph):
+            save(graph)
+            if any(leaf['instance'] == 'root/side-first' and leaf['status'] == 'succeeded'
+                   for leaf in graph.receipt['leaves']):
+                assert 'route_checkpoint' not in graph.receipt
+                raise CoordinatorLost
+
+        with monkeypatch.context() as patch:
+            patch.setattr(graphs._GraphRun, 'save', interrupt_after_independent_finish)
+            with pytest.raises(CoordinatorLost):
+                invoke(launch + ['--recoverable'])
+        paused = invoke(resume)
+    else:
+        paused = invoke(launch + ['--recoverable'])
+    if independent:
+        assert paused['status'] == 'awaiting_route_decision'
+        assert [row['instance'] for row in paused['leaves']] == ['root/analyze', 'root/side-first', 'root/side-second']
+        assert all(row['status'] == 'succeeded' for row in paused['leaves'])
+        assert len(calls.read_text(encoding='utf-8').splitlines()) == 3
+        proof = invoke(inspect)['recovery']['route_checkpoint']
+        assert proof['state'] == 'awaiting' and proof['recommendation']['selected'] == 'root/dependency'
+        assert not (directory / 'route-operator-decision.json').exists()
+        clock = (directory / 'recovery.json').read_bytes()
+        assert invoke(resume) == paused
+        completed = invoke([*resume, '--route-checkpoint', proof['sha256'], '--route-action', 'follow-up'])
+        assert completed['status'] == 'succeeded' and completed['leaves'][:-1] == paused['leaves']
+        assert completed['leaves'][-1]['instance'] == 'root/dependency'
+        independent_result = agent_runs.inspect_run(state, 'demo', paused['leaves'][-1]['run_id'])['result']
+        assert independent_result['sha256'] == paused['leaves'][-1]['result_sha256']
+        assert completed['outputs']['independent'] == independent_result['document']
+        assert len(calls.read_text(encoding='utf-8').splitlines()) == 4
+        assert (directory / 'recovery.json').read_bytes() == clock
+        return
     analyzer, = paused['leaves']
     assert analyzer['instance'] == 'root/analyze' and analyzer['status'] == 'succeeded'
     assert not (directory / 'input-2').exists()
     assert len(calls.read_text(encoding='utf-8').splitlines()) == 1
-    inspect = ['inspect-graph', *common]
-    resume = ['resume-graph', *common]
     observed = invoke(inspect)
     checkpoint = observed['recovery']['route_checkpoint']
     if case == 'none':

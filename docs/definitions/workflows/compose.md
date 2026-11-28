@@ -108,7 +108,7 @@ The command refuses an active coordinator, a terminal or explicitly stopped grap
 
 ### Decide on a recommended follow-up
 
-On Linux/WSL2, add `--pause-before-route root/choose` to the original `run-graph --recoverable` command. Use the exact instance path of one frozen `choose-agent` node. When its analyzer recommends a specialist, the graph joins any work already running and returns `awaiting_route_decision` with exit status zero. The analyzer's `none` recommendation completes the selector automatically.
+On Linux/WSL2, add `--pause-before-route root/choose` to the original `run-graph --recoverable` command. Use the exact instance path of one frozen `choose-agent` node. When its analyzer recommends a specialist, the graph holds that route and continues independent work under the original permissions, concurrency and deadline. After runnable work settles, it returns `awaiting_route_decision` with exit status zero. The analyzer's `none` recommendation completes the selector automatically.
 
 Use `inspect-graph` to get `recovery.route_checkpoint.sha256` and the original recommendation. Read the analyzer by its original run ID, then record the decision in the original graph:
 
