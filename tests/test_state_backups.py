@@ -386,6 +386,11 @@ def test_recovery_scope_verifies_shared_git_object_directories(registration, tmp
         "-c", "commit.gpgsign=false", "commit", "--allow-empty", "-m", "New local head")
     git("-C", str(repository), "remote", "remove", "origin")
     if promisor:
+        alternates = repository / ".git/objects/info/alternates"
+        alternate_manifest = tmp_path / "original alternates file"
+        # Indexing a promisor pack can also repack locally reachable links.
+        # Keep the parent in the donor while installing the local HEAD pack.
+        alternates.rename(alternate_manifest)
         command = ["git", "-C", str(repository)]
         head = git("-C", str(repository), "rev-parse", "HEAD").stdout
         pack = subprocess.run([*command, "pack-objects", "--stdout"], input=head.encode("ascii"),
@@ -396,9 +401,6 @@ def test_recovery_scope_verifies_shared_git_object_directories(registration, tmp
         git("-C", str(repository), "remote", "add", "origin", str(intermediate))
         git("-C", str(repository), "config", "remote.origin.promisor", "true")
         git("-C", str(repository), "config", "remote.origin.partialclonefilter", "blob:none")
-        alternates = repository / ".git/objects/info/alternates"
-        alternate_manifest = tmp_path / "original alternates file"
-        alternates.rename(alternate_manifest)
         alternates.symlink_to(alternate_manifest)
     project = registrations.register(state, definition, 0)
     runtime = Path(definition["execution"]["state_directory"])
