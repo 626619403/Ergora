@@ -52,7 +52,8 @@ def test_campaign_timeline_reads_and_exposes_only_the_selected_original_task(con
     calls = []
     selected = {"task_id": "selected", "status": "observed", "eligible": False,
                 "attempt_status": "failed", "update_id": "saved",
-                "readback_observation": {"status": "available"}}
+                "readback_observation": {"status": "available"},
+                "waiting_receipt": {"update_id": "original-wait"}, "receipt": None}
     attempt = {"terminal": {"status": "failed", "run_id": "original", "update_id": "saved",
                             "accepted_event_id": 28, "completed_event_id": 29,
                             "receipt": None, "reason": "readback_already_admitted"}}
@@ -65,7 +66,8 @@ def test_campaign_timeline_reads_and_exposes_only_the_selected_original_task(con
                 "plan": {"acceptance": "Inspect original evidence", "limits": {"expires_at": 100},
                          "tasks": [{"task_id": "selected", "depends_on": [], "source": {}},
                                    {"task_id": "other-private"}]},
-                "tasks": {"selected": selected, "other-private": {}},
+                "tasks": {"selected": {**selected, "recipient": {"prompt": "selected-private-prompt"}},
+                          "other-private": {"recipient": {"prompt": "other-private-prompt"}}},
                 "task_observation_history": {"selected": attempt, "other-private": {}},
                 "task_evidence": {"task_id": task_id, "correlation": "unavailable"},
                 "stop": {"status": "unknown", "remote_status": "unavailable", "update_id": "original-stop",
@@ -91,7 +93,7 @@ def test_campaign_timeline_reads_and_exposes_only_the_selected_original_task(con
                                 "decision": None, "receipt_run_id": None, "local_fence_saved": True}
     assert observed["rollover"] == {"status": "unresolved", "update_id": "original-rollover"}
     assert observed["readback_completion"] == completion
-    assert "other-private" not in response.text
+    assert "other-private" not in response.text and "selected-private-prompt" not in response.text
 
 
 @pytest.mark.parametrize("disposition", ["released", "unknown", "release-error", "refused", "completed-unknown", "timed-out",
@@ -264,17 +266,22 @@ def test_campaign_timeline_projects_only_direct_dependency_state(console, monkey
     assert "-private" not in response.text
 
 
-@pytest.mark.parametrize("terminal_task", ["full", "other-private"])
-@pytest.mark.parametrize("activity_type", ["ergora_campaign_training_full_result_reobserve",
-                                         "ergora_campaign_training_full_result_recover_receipt"])
-def test_campaign_training_timeline_keeps_only_selected_history_terminals(console, monkeypatch, terminal_task,
-                                                                         activity_type):
+@pytest.mark.parametrize("foreign_evidence", [None, "readback_terminal", "readback_followup_terminal"])
+@pytest.mark.parametrize(("kind", "activity_type"), [
+    ("training_full_result", "ergora_campaign_training_full_result_reobserve"),
+    ("training_full_result", "ergora_campaign_training_full_result_recover_receipt"),
+    ("training_screen_result", "ergora_campaign_training_screen_result_recover_receipt"),
+    (None, "ergora_campaign_fixed_check_receipt_recovery"),
+])
+def test_campaign_timeline_keeps_only_selected_history_terminals(console, monkeypatch, foreign_evidence, kind,
+                                                                activity_type):
     from ergora.campaigns import application
 
     client, state, _ = console
-    task = {"task_id": "full", "depends_on": [], "source": {"kind": "training_full_result", "locator": {}}}
-    terminal = {"task_id": terminal_task, "status": "timed_out", "run_id": "original-run",
-                "activity_id": "training-full-result-readback:original", "source_sha256": "a" * 64,
+    task = {"task_id": "selected", "depends_on": [], "source": {"kind": kind, "locator": {}} if kind else {}}
+    provenance = {"source_sha256": "a" * 64} if kind else {"waiting_receipt_sha256": "a" * 64}
+    terminal = {"task_id": "selected", "status": "timed_out", "run_id": "original-run",
+                "activity_id": "original-read", **provenance,
                 "scheduled_event_id": 11, "started_event_id": 12, "terminal_event_id": 13,
                 "cause": {"kind": "timeout", "type": "HEARTBEAT"}}
     followup = {**terminal, "status": "cancelled", "activity_id": "original-followup",
@@ -282,25 +289,28 @@ def test_campaign_training_timeline_keeps_only_selected_history_terminals(consol
                 "scheduled_event_id": 17, "started_event_id": 18, "cancel_requested_event_id": 19,
                 "terminal_event_id": 20}
     del followup["cause"]
+    evidence = {"readback_terminal": terminal, "readback_followup_terminal": followup}
+    observed_evidence = {key: {**value, "recipient": {"prompt": "private-prompt"},
+                              **({"cause": {**value["cause"], "message": "private-message"}} if "cause" in value else {})}
+                         for key, value in evidence.items()}
+    if foreign_evidence:
+        observed_evidence[foreign_evidence]["task_id"] = "other-private"
 
     async def status(store, project, campaign, *, online, task_id):
-        assert (store.root, project, campaign, online, task_id) == (state.root, "demo", "record", True, "full")
+        assert (store.root, project, campaign, online, task_id) == (state.root, "demo", "record", True, "selected")
         return {"run_id": "original-run", "workflow_state_status": "unavailable",
                 "plan": {"acceptance": "Read the original result", "limits": {"expires_at": 100}, "tasks": [task]},
                 "stop": {"status": "not_recorded", "remote_status": "not_requested", "update_id": None, "receipt": None},
-                "readback_terminal": terminal, "readback_followup_terminal": followup}
+                **observed_evidence}
 
     monkeypatch.setattr(application, "status", status)
-    response = client.get("/api/projects/demo/campaigns/record/tasks/full/timeline")
+    response = client.get("/api/projects/demo/campaigns/record/tasks/selected/timeline")
     assert response.status_code == 200, response.text
     observed = response.json()
     assert observed["task_state"] is None and observed["readback_completion"] is None
-    if terminal_task == task["task_id"]:
-        assert observed["readback_terminal"] == terminal
-        assert observed["readback_followup_terminal"] == followup
-    else:
-        assert "readback_terminal" not in observed and "readback_followup_terminal" not in observed
-        assert "other-private" not in response.text
+    assert {name: observed[name] for name in evidence if name in observed} == {
+        name: value for name, value in evidence.items() if name != foreign_evidence}
+    assert "private-" not in response.text and "other-private" not in response.text
 
 
 @pytest.mark.parametrize("workflow_observed", [True, False])

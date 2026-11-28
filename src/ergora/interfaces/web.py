@@ -1122,6 +1122,8 @@ def create_app(home: Path | None = None) -> FastAPI:
                               if key in task_state}
             if "recipient" in selected and "recipient" in observed:
                 training_task["recipient"] = _training_timeline_recipient(observed["recipient"])
+        elif task_state is not None and "recipient" in task_state:
+            task_state = {key: value for key, value in task_state.items() if key != "recipient"}
         stop = observed["stop"]
         stop_receipt = stop["receipt"] or {}
         rollover = observed.get("rollover")
@@ -1134,11 +1136,17 @@ def create_app(home: Path | None = None) -> FastAPI:
         else:
             completion = None
         terminal_evidence = {}
-        if training_task:
-            for name in ("readback_terminal", "readback_followup_terminal"):
-                terminal = observed.get(name)
-                if terminal is not None and terminal.get("task_id") == task_id:
-                    terminal_evidence[name] = terminal
+        terminal_keys = ("task_id", "status", "run_id", "activity_id", "activity_type", "source_sha256", "source_kind",
+                         "waiting_receipt_sha256", "scheduled_event_id", "started_event_id", "terminal_event_id",
+                         "original_timeout_event_id", "cancel_requested_event_id")
+        for name in ("readback_terminal", "readback_followup_terminal"):
+            terminal = observed.get(name)
+            if terminal is not None and terminal.get("task_id") == task_id:
+                projected = {key: terminal[key] for key in terminal_keys if key in terminal}
+                cause = terminal.get("cause")
+                if isinstance(cause, dict):
+                    projected["cause"] = {key: cause[key] for key in ("kind", "type", "non_retryable") if key in cause}
+                terminal_evidence[name] = projected
         return {**{name: observed[name] for name in fields if name in observed},
                 "acceptance": plan["acceptance"], "expires_at": plan["limits"]["expires_at"],
                 "workflow_phase": observed.get("workflow_state", {}).get("phase"),
