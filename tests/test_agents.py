@@ -2719,6 +2719,7 @@ def test_native_correction_missing_final_eligibility_is_not_recreated(native_cor
     assert len((repo / 'native-calls.jsonl').read_text().splitlines()) == 1
 
 
+@pytest.mark.skipif(sys.platform != 'linux', reason='Persistent native sessions require the Linux/WSL2 process owner')
 @pytest.mark.parametrize('case', ['ack_only', 'matching_item', 'wrong_turn', 'duplicate_items'])
 def test_active_fixed_check_reconciles_only_one_exact_original_item(tmp_path, case):
     from types import SimpleNamespace
@@ -2778,6 +2779,7 @@ def test_active_fixed_check_reconciles_only_one_exact_original_item(tmp_path, ca
     assert blocked == {'status': 'blocked', 'source': locator, 'reason': 'original_notice_attempt_exists'}
 
 
+@pytest.mark.skipif(sys.platform != 'linux', reason='Persistent native sessions require the Linux/WSL2 process owner')
 def test_active_fixed_check_already_terminal_refuses_before_app_server_spawn(tmp_path, monkeypatch):
     from types import SimpleNamespace
 
